@@ -4,6 +4,7 @@ import {
   type EmitOutput,
   type PrismaProvider,
 } from './emitters/prisma.js';
+import { emitTypeorm } from './emitters/typeorm.js';
 import type { IrSchema } from './ir.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
@@ -206,10 +207,28 @@ const prismaAdapter: FormatAdapter = {
   },
 };
 
+const typeormAdapter: FormatAdapter = {
+  name: 'typeorm',
+  // No extension is claimed: ".ts" is too generic to infer, so pass --to typeorm.
+  extensions: [],
+  description: 'TypeORM entity classes (TypeScript)',
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitTypeorm(prepared, {
+        provider: options.provider,
+        camelFields: options.naming === 'normalize',
+      })
+    );
+  },
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
   registerFormat(prismaAdapter),
+  registerFormat(typeormAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

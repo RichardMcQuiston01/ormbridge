@@ -4,6 +4,7 @@
 
 ### Added
 
+- TypeORM emitter (`src/emitters/typeorm.ts`, `emitTypeorm`, registered as the output-only `typeorm` format; use `--to typeorm`). Writes entity classes with typed properties, `@PrimaryGeneratedColumn` / `@PrimaryColumn`, `@Column` with explicit types, TypeScript enums, `@CreateDateColumn` / `@UpdateDateColumn`, owning and inverse relation decorators with `@JoinColumn` / `@JoinTable` and `onDelete`, and class-level `@Index` / `@Unique`. Both naming modes are supported; unrepresentable constructs produce warnings naming the model and field.
 - Shared test harness: a canonical schema per format (`test/fixtures/canonical.ts`), golden-file comparisons for every readable/writable format pair in both naming modes, and round-trip drift files that document lossy mappings. See `test/README.md`.
 - Format registry (`src/formats.ts`) with a `FormatAdapter` interface (`name`, `extensions`, `description`, optional `parse` and `emit`) and `registerFormat`, `getFormat`, `getFormatByExtension`, `listFormats` and `listFormatNames` helpers, exported from the package. Django and Prisma are registered as adapters.
 - `ormbridge formats` command listing each format with its file extensions and whether it can be read and/or written.
