@@ -63,10 +63,13 @@ describe.each(
   });
 });
 
+// A round trip needs the target format to be readable as well.
 describe.each(
-  conversionPairs().map(
-    ([source, target]) => [source.name, target.name, source, target] as const
-  )
+  conversionPairs()
+    .filter(([, target]) => target.parse !== undefined)
+    .map(
+      ([source, target]) => [source.name, target.name, source, target] as const
+    )
 )('round trip %s -> %s', (_sourceName, _targetName, source, target) => {
   it('has only the documented drift after one pass', async () => {
     const trip: RoundTripResult = await roundTrip(source.name, target.name);
