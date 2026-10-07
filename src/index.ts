@@ -5,6 +5,16 @@ export type {
   FormatName,
   SourceText,
 } from './convert.js';
+export {
+  describeFormats,
+  getFormat,
+  getFormatByExtension,
+  listFormatNames,
+  listFormats,
+  registerFormat,
+  unregisterFormat,
+} from './formats.js';
+export type { FormatAdapter, FormatOptions } from './formats.js';
 export { runConversion, deriveAppLabel } from './io.js';
 export type { RunOptions, RunSummary } from './io.js';
 export { parseDjango } from './parsers/django.js';
