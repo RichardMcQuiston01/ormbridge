@@ -4,6 +4,7 @@ import {
   type EmitOutput,
   type PrismaProvider,
 } from './emitters/prisma.js';
+import { emitTypeorm } from './emitters/typeorm.js';
 import type { IrSchema } from './ir.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
@@ -209,8 +210,9 @@ const prismaAdapter: FormatAdapter = {
 
 const typeormAdapter: FormatAdapter = {
   name: 'typeorm',
-  extensions: ['.ts'],
-  description: 'TypeORM entity classes (.ts files)',
+  // No extension is claimed: ".ts" is too generic to infer, so pass --from/--to typeorm.
+  extensions: [],
+  description: 'TypeORM entity classes (TypeScript)',
   parse: (
     sources: SourceText[],
     options: FormatOptions
@@ -222,6 +224,16 @@ const typeormAdapter: FormatAdapter = {
       })),
       { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
     ),
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitTypeorm(prepared, {
+        provider: options.provider,
+        camelFields: options.naming === 'normalize',
+      })
+    );
+  },
 };
 
 // The built-in names and extensions are distinct, so these registrations cannot fail.

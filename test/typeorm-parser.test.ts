@@ -61,10 +61,11 @@ function warningsMatching(schema: IrSchema, text: string): string[] {
 }
 
 describe('typeorm adapter registration', () => {
-  it('is registered as a read-only format for .ts files', () => {
+  it('is registered as a read and write format that does not claim .ts', () => {
     const adapter = expectOk(getFormat('typeorm'));
     expect(adapter.parse).toBeDefined();
-    expect(getFormatByExtension('.ts')?.name).toBe('typeorm');
+    expect(adapter.emit).toBeDefined();
+    expect(getFormatByExtension('.ts')).toBeUndefined();
   });
 
   it('converts through convertText', async () => {

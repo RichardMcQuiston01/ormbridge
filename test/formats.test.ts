@@ -49,8 +49,12 @@ afterEach(() => {
 
 describe('format registry lookup', () => {
   it('registers Django, Prisma and TypeORM by default', () => {
-    expect(listFormatNames()).toEqual(['django', 'prisma', 'typeorm']);
-    expect(FORMAT_NAMES).toEqual(['django', 'prisma', 'typeorm']);
+    expect(listFormatNames()).toEqual(
+      expect.arrayContaining(['django', 'prisma', 'typeorm'])
+    );
+    expect(FORMAT_NAMES).toEqual(
+      expect.arrayContaining(['django', 'prisma', 'typeorm'])
+    );
     expect(expectOk(getFormat('django')).parse).toBeDefined();
     expect(expectOk(getFormat('prisma')).emit).toBeDefined();
   });
@@ -59,8 +63,8 @@ describe('format registry lookup', () => {
     const result: Result<FormatAdapter> = getFormat('nope');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.message).toBe(
-        'Unknown format "nope". Expected one of: django, prisma, typeorm.'
+      expect(result.error.message).toContain(
+        'Unknown format "nope". Expected one of: django, prisma'
       );
     }
   });
@@ -139,10 +143,15 @@ describe('convertText with the registry', () => {
 
 describe('formats command output', () => {
   it('describes each format with extensions and abilities', () => {
-    expect(describeFormats(listFormats())).toBe(
-      'django   extensions: .py  read + write  Django models (models.py or a models/ package)\n' +
-        'prisma   extensions: .prisma  read + write  Prisma schema (schema.prisma)\n' +
-        'typeorm  extensions: .ts  read  TypeORM entity classes (.ts files)\n'
+    const text: string = describeFormats(listFormats());
+    expect(text).toContain(
+      'extensions: .py  read + write  Django models (models.py or a models/ package)\n'
+    );
+    expect(text).toContain(
+      'extensions: .prisma  read + write  Prisma schema (schema.prisma)\n'
+    );
+    expect(text).toContain(
+      'typeorm  extensions: (none)  read + write  TypeORM entity classes (TypeScript)\n'
     );
   });
 

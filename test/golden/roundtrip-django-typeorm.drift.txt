@@ -1,0 +1,4 @@
++ @Index('post_title_idx', ['title'])
++ @Unique('blog_post_author_title_uniq', ['author', 'title'])
+- @Index(['title'])
+- @Unique(['author', 'title'])

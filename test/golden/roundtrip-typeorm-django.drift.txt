@@ -1,0 +1,2 @@
++ category = models.ForeignKey("Category", on_delete=models.PROTECT, related_name="post_set")
+- category = models.ForeignKey("Category", on_delete=models.PROTECT)
