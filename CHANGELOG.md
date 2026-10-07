@@ -4,6 +4,7 @@
 
 ### Added
 
+- Shared test harness: a canonical schema per format (`test/fixtures/canonical.ts`), golden-file comparisons for every readable/writable format pair in both naming modes, and round-trip drift files that document lossy mappings. See `test/README.md`.
 - Format registry (`src/formats.ts`) with a `FormatAdapter` interface (`name`, `extensions`, `description`, optional `parse` and `emit`) and `registerFormat`, `getFormat`, `getFormatByExtension`, `listFormats` and `listFormatNames` helpers, exported from the package. Django and Prisma are registered as adapters.
 - `ormbridge formats` command listing each format with its file extensions and whether it can be read and/or written.
 - ESLint (typescript-eslint) with `lint`, `lint:fix`, `format` and `format:check` scripts.

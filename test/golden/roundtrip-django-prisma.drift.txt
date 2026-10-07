@@ -1,0 +1,6 @@
++ @@index([title], map: "post_title_idx")
++ @@unique([author_id, title], map: "blog_post_author_title_uniq")
++ @@unique([post_id, tag_id], map: "blog_post_tags_post_tag_uniq")
+- @@index([title])
+- @@unique([author_id, title])
+- @@unique([post_id, tag_id])
