@@ -24,7 +24,9 @@ export function splitWords(input: string): string[] {
   const spaced: string = input
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
-  return spaced.split(/[^A-Za-z0-9]+/).filter((word: string) => word.length > 0);
+  return spaced
+    .split(/[^A-Za-z0-9]+/)
+    .filter((word: string) => word.length > 0);
 }
 
 export function toSnakeCase(input: string): string {
@@ -35,7 +37,10 @@ export function toSnakeCase(input: string): string {
 
 export function toPascalCase(input: string): string {
   return splitWords(input)
-    .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map(
+      (word: string) =>
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )
     .join('');
 }
 

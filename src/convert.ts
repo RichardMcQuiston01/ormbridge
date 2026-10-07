@@ -1,10 +1,18 @@
 import { emitDjango } from './emitters/django.js';
-import { emitPrisma, type EmitOutput, type PrismaProvider } from './emitters/prisma.js';
+import {
+  emitPrisma,
+  type EmitOutput,
+  type PrismaProvider,
+} from './emitters/prisma.js';
 import type { IrSchema } from './ir.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
 import { err, ok, type Result } from './result.js';
-import { expandManyToMany, normalizeSchema, type NamingMode } from './transforms.js';
+import {
+  expandManyToMany,
+  normalizeSchema,
+  type NamingMode,
+} from './transforms.js';
 
 export type FormatName = 'django' | 'prisma';
 
@@ -41,11 +49,14 @@ export interface ConvertResult {
 export const DEFAULT_APP_LABEL: string = 'app';
 
 /** Converts in-memory source text from one ORM format to another. */
-export async function convertText(sources: SourceText[], options: ConvertOptions): Promise<Result<ConvertResult>> {
+export async function convertText(
+  sources: SourceText[],
+  options: ConvertOptions
+): Promise<Result<ConvertResult>> {
   if (options.from === options.to) {
     return err(
       'UNSUPPORTED_CONVERSION',
-      `The source and target formats are both "${options.from}". Choose different values for --from and --to.`,
+      `The source and target formats are both "${options.from}". Choose different values for --from and --to.`
     );
   }
   if (sources.length === 0) {
@@ -69,36 +80,52 @@ export async function convertText(sources: SourceText[], options: ConvertOptions
   });
 }
 
-async function parseSources(sources: SourceText[], options: ConvertOptions): Promise<Result<IrSchema>> {
+async function parseSources(
+  sources: SourceText[],
+  options: ConvertOptions
+): Promise<Result<IrSchema>> {
   const fallbackLabel: string = options.appLabel ?? DEFAULT_APP_LABEL;
   if (options.from === 'django') {
-    const djangoSources: DjangoSourceFile[] = sources.map((source: SourceText) => ({
-      path: source.path,
-      text: source.text,
-      appLabel: options.appLabel ?? source.appLabel ?? DEFAULT_APP_LABEL,
-    }));
+    const djangoSources: DjangoSourceFile[] = sources.map(
+      (source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+        appLabel: options.appLabel ?? source.appLabel ?? DEFAULT_APP_LABEL,
+      })
+    );
     return parseDjango(djangoSources, { autoField: options.autoField });
   }
-  const prismaSources: PrismaSourceFile[] = sources.map((source: SourceText) => ({
-    path: source.path,
-    text: source.text,
-  }));
+  const prismaSources: PrismaSourceFile[] = sources.map(
+    (source: SourceText) => ({
+      path: source.path,
+      text: source.text,
+    })
+  );
   return parsePrisma(prismaSources, { appLabel: fallbackLabel });
 }
 
-function emitSchema(schema: IrSchema, options: ConvertOptions): Result<EmitOutput> {
+function emitSchema(
+  schema: IrSchema,
+  options: ConvertOptions
+): Result<EmitOutput> {
   if (options.to === 'prisma') {
-    const prepared: IrSchema = options.naming === 'normalize' ? normalizeSchema(schema) : expandManyToMany(schema);
+    const prepared: IrSchema =
+      options.naming === 'normalize'
+        ? normalizeSchema(schema)
+        : expandManyToMany(schema);
     return ok(
       emitPrisma(prepared, {
         provider: options.provider,
         header: options.header,
         camelFields: options.naming === 'normalize',
-      }),
+      })
     );
   }
   if (options.to === 'django') {
     return ok(emitDjango(schema));
   }
-  return err('UNSUPPORTED_CONVERSION', `Unsupported target format "${String(options.to)}".`);
+  return err(
+    'UNSUPPORTED_CONVERSION',
+    `Unsupported target format "${String(options.to)}".`
+  );
 }

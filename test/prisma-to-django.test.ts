@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { convertText, type ConvertOptions, type ConvertResult } from '../src/convert.js';
+import {
+  convertText,
+  type ConvertOptions,
+  type ConvertResult,
+} from '../src/convert.js';
 import type { Result } from '../src/result.js';
 import { DEFAULT_OPTIONS, convertBlogFixture, expectOk } from './helpers.js';
 
-const PRISMA_OPTIONS: ConvertOptions = { ...DEFAULT_OPTIONS, from: 'prisma', to: 'django' };
+const PRISMA_OPTIONS: ConvertOptions = {
+  ...DEFAULT_OPTIONS,
+  from: 'prisma',
+  to: 'django',
+};
 
 const SAMPLE_SCHEMA: string = `
 generator client {
@@ -50,7 +58,10 @@ model Membership {
 `;
 
 async function convertSample(): Promise<ConvertResult> {
-  const result: Result<ConvertResult> = await convertText([{ path: 'schema.prisma', text: SAMPLE_SCHEMA }], PRISMA_OPTIONS);
+  const result: Result<ConvertResult> = await convertText(
+    [{ path: 'schema.prisma', text: SAMPLE_SCHEMA }],
+    PRISMA_OPTIONS
+  );
   return expectOk(result);
 }
 
@@ -59,9 +70,15 @@ describe('Prisma -> Django', () => {
     const { output } = await convertSample();
     expect(output).toContain('class Account(models.Model):');
     expect(output).toContain('db_table = "accounts"');
-    expect(output).toContain('email = models.CharField(max_length=255, unique=True)');
-    expect(output).toContain('created_at = models.DateTimeField(default=timezone.now)');
-    expect(output).toContain('balance = models.DecimalField(max_digits=10, decimal_places=2)');
+    expect(output).toContain(
+      'email = models.CharField(max_length=255, unique=True)'
+    );
+    expect(output).toContain(
+      'created_at = models.DateTimeField(default=timezone.now)'
+    );
+    expect(output).toContain(
+      'balance = models.DecimalField(max_digits=10, decimal_places=2)'
+    );
   });
 
   it('converts enums into TextChoices with mapped database values', async () => {
@@ -73,27 +90,46 @@ describe('Prisma -> Django', () => {
 
   it('turns foreign keys into ForeignKey with the mapped on_delete behavior', async () => {
     const { output } = await convertSample();
-    expect(output).toContain('account = models.ForeignKey("Account", on_delete=models.CASCADE');
-    expect(output).toContain('group = models.ForeignKey("Group", on_delete=models.PROTECT');
+    expect(output).toContain(
+      'account = models.ForeignKey("Account", on_delete=models.CASCADE'
+    );
+    expect(output).toContain(
+      'group = models.ForeignKey("Group", on_delete=models.PROTECT'
+    );
   });
 
   it('turns implicit many-to-many lists into a single ManyToManyField and warns about the join table', async () => {
     const { output, warnings } = await convertSample();
-    expect(output).toContain('groups = models.ManyToManyField("Group", related_name="accounts", blank=True)');
+    expect(output).toContain(
+      'groups = models.ManyToManyField("Group", related_name="accounts", blank=True)'
+    );
     expect(output).not.toContain('accounts = models.ManyToManyField');
-    expect(warnings.some((warning: string) => warning.includes('implicit many-to-many'))).toBe(true);
+    expect(
+      warnings.some((warning: string) =>
+        warning.includes('implicit many-to-many')
+      )
+    ).toBe(true);
   });
 
   it('emits composite primary keys and warns about the required Django version', async () => {
     const { output, warnings } = await convertSample();
-    expect(output).toContain('pk = models.CompositePrimaryKey("account", "group")');
-    expect(warnings.some((warning: string) => warning.includes('Django 5.2'))).toBe(true);
+    expect(output).toContain(
+      'pk = models.CompositePrimaryKey("account", "group")'
+    );
+    expect(
+      warnings.some((warning: string) => warning.includes('Django 5.2'))
+    ).toBe(true);
   });
 
   it('fails clearly when the schema has no models', async () => {
     const result: Result<ConvertResult> = await convertText(
-      [{ path: 'empty.prisma', text: 'datasource db {\n  provider = "sqlite"\n}\n' }],
-      PRISMA_OPTIONS,
+      [
+        {
+          path: 'empty.prisma',
+          text: 'datasource db {\n  provider = "sqlite"\n}\n',
+        },
+      ],
+      PRISMA_OPTIONS
     );
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -107,14 +143,25 @@ describe('Round trip (Django -> Prisma -> Django)', () => {
     const prisma: ConvertResult = await convertBlogFixture();
     const result: Result<ConvertResult> = await convertText(
       [{ path: 'schema.prisma', text: prisma.output }],
-      PRISMA_OPTIONS,
+      PRISMA_OPTIONS
     );
     const django: string = expectOk(result).output;
-    for (const modelName of ['Category', 'Post', 'Tag', 'Profile', 'User', 'PostTags']) {
+    for (const modelName of [
+      'Category',
+      'Post',
+      'Tag',
+      'Profile',
+      'User',
+      'PostTags',
+    ]) {
       expect(django).toContain(`class ${modelName}(models.Model):`);
     }
     expect(django).toContain('db_table = "blog_post"');
-    expect(django).toContain('author = models.ForeignKey("User", on_delete=models.CASCADE, related_name="posts")');
-    expect(django).toContain('user = models.OneToOneField("User", on_delete=models.CASCADE, related_name="profile")');
+    expect(django).toContain(
+      'author = models.ForeignKey("User", on_delete=models.CASCADE, related_name="posts")'
+    );
+    expect(django).toContain(
+      'user = models.OneToOneField("User", on_delete=models.CASCADE, related_name="profile")'
+    );
   });
 });

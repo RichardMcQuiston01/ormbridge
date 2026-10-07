@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { convertText, type ConvertResult } from '../src/convert.js';
 import type { Result } from '../src/result.js';
-import { BLOG_FIXTURE_PATH, DEFAULT_OPTIONS, convertBlogFixture, expectOk } from './helpers.js';
+import {
+  BLOG_FIXTURE_PATH,
+  DEFAULT_OPTIONS,
+  convertBlogFixture,
+  expectOk,
+} from './helpers.js';
 
 describe('Django -> Prisma (preserve naming)', () => {
   it('maps tables, fields and nullability', async () => {
@@ -31,9 +36,15 @@ describe('Django -> Prisma (preserve naming)', () => {
   it('writes both sides of foreign keys with explicit onDelete behavior', async () => {
     const { output } = await convertBlogFixture();
     expect(output).toMatch(/category_id\s+Int\n/);
-    expect(output).toMatch(/category\s+Category\s+@relation\(fields: \[category_id\], references: \[id\], onDelete: Restrict\)/);
-    expect(output).toMatch(/parent\s+Category\?\s+@relation\("Category_parent", fields: \[parent_id\], references: \[id\], onDelete: SetNull\)/);
-    expect(output).toMatch(/children\s+Category\[\]\s+@relation\("Category_parent"\)/);
+    expect(output).toMatch(
+      /category\s+Category\s+@relation\(fields: \[category_id\], references: \[id\], onDelete: Restrict\)/
+    );
+    expect(output).toMatch(
+      /parent\s+Category\?\s+@relation\("Category_parent", fields: \[parent_id\], references: \[id\], onDelete: SetNull\)/
+    );
+    expect(output).toMatch(
+      /children\s+Category\[\]\s+@relation\("Category_parent"\)/
+    );
   });
 
   it('names relations when a model pair is linked more than once', async () => {
@@ -59,15 +70,21 @@ describe('Django -> Prisma (preserve naming)', () => {
     const { output } = await convertBlogFixture();
     expect(output).toContain('@@unique([author_id, title])');
     expect(output).toContain('@@index([title])');
-    expect(output).toContain('@@index([published_at, status], map: "post_pub_status_idx")');
+    expect(output).toContain(
+      '@@index([published_at, status], map: "post_pub_status_idx")'
+    );
   });
 
   it('generates a stub for AUTH_USER_MODEL and warns about it', async () => {
     const { output, warnings } = await convertBlogFixture();
     expect(output).toContain('model User {');
     expect(output).toContain('@@map("auth_user")');
-    expect(warnings.some((warning: string) => warning.includes('AUTH_USER_MODEL'))).toBe(true);
-    expect(warnings.some((warning: string) => warning.includes('stub model'))).toBe(true);
+    expect(
+      warnings.some((warning: string) => warning.includes('AUTH_USER_MODEL'))
+    ).toBe(true);
+    expect(
+      warnings.some((warning: string) => warning.includes('stub model'))
+    ).toBe(true);
   });
 
   it('omits native database types for sqlite', async () => {
@@ -88,7 +105,9 @@ describe('Django -> Prisma (normalize naming)', () => {
     const { output } = await convertBlogFixture({ naming: 'normalize' });
     expect(output).toContain('@@map("post")');
     expect(output).toMatch(/id\s+String\s+@id @default\(uuid\(\)\) @db\.Uuid/);
-    expect(output).toMatch(/viewCount\s+Int\s+@default\(0\) @map\("view_count"\)/);
+    expect(output).toMatch(
+      /viewCount\s+Int\s+@default\(0\) @map\("view_count"\)/
+    );
     expect(output).toMatch(/authorId\s+String\s+@map\("author_id"\) @db\.Uuid/);
   });
 
@@ -102,8 +121,12 @@ describe('Django -> Prisma (normalize naming)', () => {
   it('adds created_at and updated_at to models that lack them', async () => {
     const { output } = await convertBlogFixture({ naming: 'normalize' });
     const tagModel: string = /model Tag \{[\s\S]*?\n\}/.exec(output)?.[0] ?? '';
-    expect(tagModel).toMatch(/createdAt\s+DateTime\s+@default\(now\(\)\) @map\("created_at"\)/);
-    expect(tagModel).toMatch(/updatedAt\s+DateTime\s+@updatedAt @map\("updated_at"\)/);
+    expect(tagModel).toMatch(
+      /createdAt\s+DateTime\s+@default\(now\(\)\) @map\("created_at"\)/
+    );
+    expect(tagModel).toMatch(
+      /updatedAt\s+DateTime\s+@updatedAt @map\("updated_at"\)/
+    );
   });
 });
 
@@ -116,16 +139,23 @@ describe('Django parser edge cases', () => {
       '    title = models.CharField(max_length=10)',
       '',
     ].join('\n');
-    const result: Result<ConvertResult> = await convertText([{ path: 'models.py', text: source }], DEFAULT_OPTIONS);
+    const result: Result<ConvertResult> = await convertText(
+      [{ path: 'models.py', text: source }],
+      DEFAULT_OPTIONS
+    );
     const converted: ConvertResult = expectOk(result);
     expect(converted.output).toContain('model Article {');
-    expect(converted.warnings.some((warning: string) => warning.includes('ExternalBase'))).toBe(true);
+    expect(
+      converted.warnings.some((warning: string) =>
+        warning.includes('ExternalBase')
+      )
+    ).toBe(true);
   });
 
   it('returns NO_MODELS_FOUND when the file defines no models', async () => {
     const result: Result<ConvertResult> = await convertText(
       [{ path: 'models.py', text: 'VALUE = 1\n' }],
-      DEFAULT_OPTIONS,
+      DEFAULT_OPTIONS
     );
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -137,7 +167,7 @@ describe('Django parser edge cases', () => {
   it('rejects identical source and target formats with a descriptive error', async () => {
     const result: Result<ConvertResult> = await convertText(
       [{ path: BLOG_FIXTURE_PATH, text: 'x = 1' }],
-      { ...DEFAULT_OPTIONS, from: 'django', to: 'django' },
+      { ...DEFAULT_OPTIONS, from: 'django', to: 'django' }
     );
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -146,11 +176,14 @@ describe('Django parser edge cases', () => {
   });
 
   it('uses BigAutoField-style keys when requested', async () => {
-    const source: string = 'from django.db import models\n\nclass Thing(models.Model):\n    name = models.CharField(max_length=5)\n';
+    const source: string =
+      'from django.db import models\n\nclass Thing(models.Model):\n    name = models.CharField(max_length=5)\n';
     const result: Result<ConvertResult> = await convertText(
       [{ path: 'models.py', text: source }],
-      { ...DEFAULT_OPTIONS, autoField: 'bigInt' },
+      { ...DEFAULT_OPTIONS, autoField: 'bigInt' }
     );
-    expect(expectOk(result).output).toMatch(/id\s+BigInt\s+@id @default\(autoincrement\(\)\)/);
+    expect(expectOk(result).output).toMatch(
+      /id\s+BigInt\s+@id @default\(autoincrement\(\)\)/
+    );
   });
 });

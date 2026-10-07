@@ -3,7 +3,12 @@ import { singularize, toPascalCase, toSnakeCase } from './naming.js';
 
 export type NamingMode = 'preserve' | 'normalize';
 
-const CREATED_FIELD_NAMES: ReadonlySet<string> = new Set(['created_at', 'created', 'createdat', 'date_created']);
+const CREATED_FIELD_NAMES: ReadonlySet<string> = new Set([
+  'created_at',
+  'created',
+  'createdat',
+  'date_created',
+]);
 const UPDATED_FIELD_NAMES: ReadonlySet<string> = new Set([
   'updated_at',
   'updated',
@@ -94,9 +99,12 @@ function normalizeModel(model: IrModel): IrModel {
   const fields: IrField[] = model.fields.map(normalizeField);
 
   if (model.isJoinTable !== true) {
-    const hasCreated: boolean = fields.some((field: IrField) => CREATED_FIELD_NAMES.has(field.name.toLowerCase()));
+    const hasCreated: boolean = fields.some((field: IrField) =>
+      CREATED_FIELD_NAMES.has(field.name.toLowerCase())
+    );
     const hasUpdated: boolean = fields.some(
-      (field: IrField) => field.isAutoUpdated || UPDATED_FIELD_NAMES.has(field.name.toLowerCase()),
+      (field: IrField) =>
+        field.isAutoUpdated || UPDATED_FIELD_NAMES.has(field.name.toLowerCase())
     );
     if (!hasCreated) {
       fields.push({
@@ -135,7 +143,10 @@ function normalizeModel(model: IrModel): IrModel {
 }
 
 function normalizeField(field: IrField): IrField {
-  const normalized: IrField = { ...field, columnName: toSnakeCase(field.columnName) };
+  const normalized: IrField = {
+    ...field,
+    columnName: toSnakeCase(field.columnName),
+  };
   const isAutoIncrementKey: boolean =
     field.isPrimaryKey &&
     field.default !== undefined &&
