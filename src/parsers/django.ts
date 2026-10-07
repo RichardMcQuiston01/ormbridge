@@ -72,7 +72,11 @@ const SCALAR_FIELDS: Readonly<Record<string, ScalarSpec>> = {
   BinaryField: { type: 'bytes' },
 };
 
-const RELATION_FIELDS: ReadonlySet<string> = new Set(['ForeignKey', 'OneToOneField', 'ManyToManyField']);
+const RELATION_FIELDS: ReadonlySet<string> = new Set([
+  'ForeignKey',
+  'OneToOneField',
+  'ManyToManyField',
+]);
 
 const ON_DELETE_MAP: Readonly<Record<string, IrOnDelete>> = {
   CASCADE: 'cascade',
@@ -83,9 +87,16 @@ const ON_DELETE_MAP: Readonly<Record<string, IrOnDelete>> = {
   SET_DEFAULT: 'setDefault',
 };
 
-const NOW_CALLABLES: ReadonlySet<string> = new Set(['now', 'timezone.now', 'datetime.now', 'datetime.datetime.now']);
+const NOW_CALLABLES: ReadonlySet<string> = new Set([
+  'now',
+  'timezone.now',
+  'datetime.now',
+  'datetime.datetime.now',
+]);
 
-type EnumInfo = { kind: 'string'; enumName: string; values: IrEnumValue[] } | { kind: 'integer' };
+type EnumInfo =
+  | { kind: 'string'; enumName: string; values: IrEnumValue[] }
+  | { kind: 'integer' };
 
 interface RawModel {
   name: string;
@@ -124,7 +135,7 @@ interface MetaInfo {
 /** Parses Django model files into the shared IR using tree-sitter (no Python required). */
 export async function parseDjango(
   sources: DjangoSourceFile[],
-  options: DjangoParseOptions,
+  options: DjangoParseOptions
 ): Promise<Result<IrSchema>> {
   const parserResult: Result<Parser> = await getPythonParser();
   if (!parserResult.ok) {
@@ -132,15 +143,19 @@ export async function parseDjango(
   }
   const parser: Parser = parserResult.value;
 
-  const parsedFiles: ParsedFile[] = sources.map((source: DjangoSourceFile) => parseFile(parser, source));
+  const parsedFiles: ParsedFile[] = sources.map((source: DjangoSourceFile) =>
+    parseFile(parser, source)
+  );
   const schema: IrSchema = buildSchema(parsedFiles, options);
 
   if (schema.models.length === 0) {
-    const checkedPaths: string = sources.map((source: DjangoSourceFile) => source.path).join(', ');
+    const checkedPaths: string = sources
+      .map((source: DjangoSourceFile) => source.path)
+      .join(', ');
     return err(
       'NO_MODELS_FOUND',
       `No concrete Django models were found in: ${checkedPaths}. A model is a class inheriting from ` +
-        `models.Model (directly, or through an abstract base) that is not marked abstract = True in its Meta class.`,
+        `models.Model (directly, or through an abstract base) that is not marked abstract = True in its Meta class.`
     );
   }
   return ok(schema);
@@ -158,7 +173,7 @@ function parseFile(parser: Parser, source: DjangoSourceFile): ParsedFile {
   const tree: Parser.Tree = parser.parse(source.text);
   if (tree.rootNode.hasError) {
     warnings.push(
-      `${source.path}: the file contains Python syntax errors; some models or fields may be missing from the output.`,
+      `${source.path}: the file contains Python syntax errors; some models or fields may be missing from the output.`
     );
   }
 
@@ -179,7 +194,15 @@ function parseFile(parser: Parser, source: DjangoSourceFile): ParsedFile {
       continue;
     }
     const bases: string[] = basesOf(classNode);
-    const rawModel: RawModel | undefined = parseModelClass(classNode, className, bases, source, enumByClass, enums, warnings);
+    const rawModel: RawModel | undefined = parseModelClass(
+      classNode,
+      className,
+      bases,
+      source,
+      enumByClass,
+      enums,
+      warnings
+    );
     if (rawModel !== undefined) {
       models.push(rawModel);
     }
@@ -194,7 +217,8 @@ function collectTopLevelClasses(root: SyntaxNode): SyntaxNode[] {
     if (child.type === 'class_definition') {
       classNodes.push(child);
     } else if (child.type === 'decorated_definition') {
-      const definition: SyntaxNode | null = child.childForFieldName('definition');
+      const definition: SyntaxNode | null =
+        child.childForFieldName('definition');
       if (definition !== null && definition.type === 'class_definition') {
         classNodes.push(definition);
       }
@@ -209,12 +233,16 @@ function classNameOf(classNode: SyntaxNode): string {
 }
 
 function basesOf(classNode: SyntaxNode): string[] {
-  const superclasses: SyntaxNode | null = classNode.childForFieldName('superclasses');
+  const superclasses: SyntaxNode | null =
+    classNode.childForFieldName('superclasses');
   if (superclasses === null) {
     return [];
   }
   return superclasses.namedChildren
-    .filter((child: SyntaxNode) => child.type !== 'keyword_argument' && child.type !== 'comment')
+    .filter(
+      (child: SyntaxNode) =>
+        child.type !== 'keyword_argument' && child.type !== 'comment'
+    )
     .map((child: SyntaxNode) => child.text.replace(/\s+/g, ''));
 }
 
@@ -223,30 +251,50 @@ function bodyStatements(classNode: SyntaxNode): SyntaxNode[] {
   return body === null ? [] : body.namedChildren;
 }
 
-const MODEL_BASE_NAMES: ReadonlySet<string> = new Set(['Model', 'AbstractUser', 'AbstractBaseUser']);
+const MODEL_BASE_NAMES: ReadonlySet<string> = new Set([
+  'Model',
+  'AbstractUser',
+  'AbstractBaseUser',
+]);
 
 function isDjangoModelBase(baseName: string): boolean {
   return MODEL_BASE_NAMES.has(lastSegment(baseName));
 }
 
 /** True when the class is a model: it has fields, a Django base, or inherits from another model. */
-function isModelClass(rawModel: RawModel, rawByName: Map<string, RawModel>, visiting: Set<string>): boolean {
-  if (rawModel.fields.length > 0 || rawModel.relations.length > 0 || rawModel.bases.some(isDjangoModelBase)) {
+function isModelClass(
+  rawModel: RawModel,
+  rawByName: Map<string, RawModel>,
+  visiting: Set<string>
+): boolean {
+  if (
+    rawModel.fields.length > 0 ||
+    rawModel.relations.length > 0 ||
+    rawModel.bases.some(isDjangoModelBase)
+  ) {
     return true;
   }
   visiting.add(rawModel.name);
   return rawModel.bases.some((baseName: string): boolean => {
     const parent: RawModel | undefined = rawByName.get(lastSegment(baseName));
-    return parent !== undefined && !visiting.has(parent.name) && isModelClass(parent, rawByName, new Set(visiting));
+    return (
+      parent !== undefined &&
+      !visiting.has(parent.name) &&
+      isModelClass(parent, rawByName, new Set(visiting))
+    );
   });
 }
 
 function isChoicesClass(classNode: SyntaxNode): boolean {
-  return basesOf(classNode).some((base: string) => /Choices$/.test(lastSegment(base)));
+  return basesOf(classNode).some((base: string) =>
+    /Choices$/.test(lastSegment(base))
+  );
 }
 
 /** Returns the evaluated call when the statement looks like `name = something(...)`. */
-function assignmentOf(statement: SyntaxNode): { name: string; value: PyValue } | undefined {
+function assignmentOf(
+  statement: SyntaxNode
+): { name: string; value: PyValue } | undefined {
   if (statement.type !== 'expression_statement') {
     return undefined;
   }
@@ -262,13 +310,19 @@ function assignmentOf(statement: SyntaxNode): { name: string; value: PyValue } |
   return { name: left.text, value: evaluateNode(right) };
 }
 
-function fieldCallOf(statement: SyntaxNode): { name: string; call: PyCall } | undefined {
+function fieldCallOf(
+  statement: SyntaxNode
+): { name: string; call: PyCall } | undefined {
   const assignment = assignmentOf(statement);
   if (assignment === undefined || assignment.value.kind !== 'call') {
     return undefined;
   }
   const calleeName: string = lastSegment(assignment.value.callee);
-  if (RELATION_FIELDS.has(calleeName) || calleeName in SCALAR_FIELDS || calleeName.endsWith('Field')) {
+  if (
+    RELATION_FIELDS.has(calleeName) ||
+    calleeName in SCALAR_FIELDS ||
+    calleeName.endsWith('Field')
+  ) {
     return { name: assignment.name, call: assignment.value };
   }
   return undefined;
@@ -278,8 +332,14 @@ function fieldCallOf(statement: SyntaxNode): { name: string; call: PyCall } | un
 // Choices (TextChoices / IntegerChoices) -> enums
 // ---------------------------------------------------------------------------
 
-function parseChoicesClass(classNode: SyntaxNode, enumName: string, enums: IrEnum[]): EnumInfo {
-  const isInteger: boolean = basesOf(classNode).some((base: string) => lastSegment(base) === 'IntegerChoices');
+function parseChoicesClass(
+  classNode: SyntaxNode,
+  enumName: string,
+  enums: IrEnum[]
+): EnumInfo {
+  const isInteger: boolean = basesOf(classNode).some(
+    (base: string) => lastSegment(base) === 'IntegerChoices'
+  );
   if (isInteger) {
     return { kind: 'integer' };
   }
@@ -291,13 +351,24 @@ function parseChoicesClass(classNode: SyntaxNode, enumName: string, enums: IrEnu
     }
     const value: PyValue = assignment.value;
     if (value.kind === 'string') {
-      values.push({ name: assignment.name, dbValue: value.value, label: toPascalCase(assignment.name) });
+      values.push({
+        name: assignment.name,
+        dbValue: value.value,
+        label: toPascalCase(assignment.name),
+      });
     } else if (value.kind === 'list') {
       const first: PyValue | undefined = value.items[0];
       const second: PyValue | undefined = value.items[1];
       if (first !== undefined && first.kind === 'string') {
-        const label: string | undefined = second !== undefined && second.kind === 'string' ? second.value : undefined;
-        values.push({ name: assignment.name, dbValue: first.value, ...(label === undefined ? {} : { label }) });
+        const label: string | undefined =
+          second !== undefined && second.kind === 'string'
+            ? second.value
+            : undefined;
+        values.push({
+          name: assignment.name,
+          dbValue: first.value,
+          ...(label === undefined ? {} : { label }),
+        });
       }
     }
   }
@@ -334,7 +405,7 @@ function parseModelClass(
   source: DjangoSourceFile,
   fileEnums: Map<string, EnumInfo>,
   allEnums: IrEnum[],
-  warnings: string[],
+  warnings: string[]
 ): RawModel | undefined {
   const enumByClass: Map<string, EnumInfo> = new Map(fileEnums);
   const statements: SyntaxNode[] = bodyStatements(classNode);
@@ -343,20 +414,36 @@ function parseModelClass(
   for (const statement of statements) {
     if (statement.type === 'class_definition' && isChoicesClass(statement)) {
       const nestedName: string = classNameOf(statement);
-      const info: EnumInfo = parseChoicesClass(statement, `${className}${nestedName}`, allEnums);
+      const info: EnumInfo = parseChoicesClass(
+        statement,
+        `${className}${nestedName}`,
+        allEnums
+      );
       enumByClass.set(nestedName, info);
     }
   }
 
-  const fieldContext: FieldContext = { modelName: className, enumByClass, newEnums: allEnums, warnings };
+  const fieldContext: FieldContext = {
+    modelName: className,
+    enumByClass,
+    newEnums: allEnums,
+    warnings,
+  };
   const fields: IrField[] = [];
   const relations: IrRelation[] = [];
   const indexes: IrIndex[] = [];
   let meta: MetaInfo = { isAbstract: false, isProxy: false, indexes: [] };
 
   for (const statement of statements) {
-    if (statement.type === 'class_definition' && classNameOf(statement) === 'Meta') {
-      meta = parseMeta(statement, `${source.path}: ${className}.Meta`, warnings);
+    if (
+      statement.type === 'class_definition' &&
+      classNameOf(statement) === 'Meta'
+    ) {
+      meta = parseMeta(
+        statement,
+        `${source.path}: ${className}.Meta`,
+        warnings
+      );
       continue;
     }
     const fieldCall = fieldCallOf(statement);
@@ -394,7 +481,11 @@ function parseModelClass(
   };
 }
 
-function parseMeta(metaNode: SyntaxNode, location: string, warnings: string[]): MetaInfo {
+function parseMeta(
+  metaNode: SyntaxNode,
+  location: string,
+  warnings: string[]
+): MetaInfo {
   const meta: MetaInfo = { isAbstract: false, isProxy: false, indexes: [] };
   for (const statement of bodyStatements(metaNode)) {
     const assignment = assignmentOf(statement);
@@ -421,14 +512,21 @@ function parseMeta(metaNode: SyntaxNode, location: string, warnings: string[]): 
         break;
       case 'managed':
         if (value.kind === 'bool' && !value.value) {
-          warnings.push(`${location}: managed = False is ignored; the model is converted like any other table.`);
+          warnings.push(
+            `${location}: managed = False is ignored; the model is converted like any other table.`
+          );
         }
         break;
       case 'unique_together':
         meta.indexes.push(...parseUniqueTogether(value));
         break;
       case 'index_together':
-        meta.indexes.push(...parseUniqueTogether(value).map((index: IrIndex) => ({ ...index, isUnique: false })));
+        meta.indexes.push(
+          ...parseUniqueTogether(value).map((index: IrIndex) => ({
+            ...index,
+            isUnique: false,
+          }))
+        );
         break;
       case 'indexes':
         meta.indexes.push(...parseIndexList(value, false, location, warnings));
@@ -451,7 +549,9 @@ function stringItems(value: PyValue | undefined): string[] {
     return [value.value];
   }
   if (value.kind === 'list') {
-    return value.items.flatMap((item: PyValue) => (item.kind === 'string' ? [item.value.replace(/^-/, '')] : []));
+    return value.items.flatMap((item: PyValue) =>
+      item.kind === 'string' ? [item.value.replace(/^-/, '')] : []
+    );
   }
   return [];
 }
@@ -460,16 +560,26 @@ function parseUniqueTogether(value: PyValue): IrIndex[] {
   if (value.kind !== 'list') {
     return [];
   }
-  const allStrings: boolean = value.items.every((item: PyValue) => item.kind === 'string');
+  const allStrings: boolean = value.items.every(
+    (item: PyValue) => item.kind === 'string'
+  );
   if (allStrings) {
     return [{ fields: stringItems(value), isUnique: true }];
   }
   return value.items
-    .map((item: PyValue): IrIndex => ({ fields: stringItems(item), isUnique: true }))
+    .map((item: PyValue): IrIndex => ({
+      fields: stringItems(item),
+      isUnique: true,
+    }))
     .filter((index: IrIndex) => index.fields.length > 0);
 }
 
-function parseIndexList(value: PyValue, constraintsOnly: boolean, location: string, warnings: string[]): IrIndex[] {
+function parseIndexList(
+  value: PyValue,
+  constraintsOnly: boolean,
+  location: string,
+  warnings: string[]
+): IrIndex[] {
   if (value.kind !== 'list') {
     return [];
   }
@@ -481,14 +591,29 @@ function parseIndexList(value: PyValue, constraintsOnly: boolean, location: stri
     const calleeName: string = lastSegment(item.callee);
     const fields: string[] = stringItems(item.kwargs['fields']);
     const explicitName: PyValue | undefined = item.kwargs['name'];
-    const name: string | undefined = explicitName !== undefined && explicitName.kind === 'string' ? explicitName.value : undefined;
+    const name: string | undefined =
+      explicitName !== undefined && explicitName.kind === 'string'
+        ? explicitName.value
+        : undefined;
     if (calleeName === 'Index' && !constraintsOnly && fields.length > 0) {
-      indexes.push({ fields, isUnique: false, ...(name === undefined ? {} : { name }) });
+      indexes.push({
+        fields,
+        isUnique: false,
+        ...(name === undefined ? {} : { name }),
+      });
     } else if (calleeName === 'UniqueConstraint' && fields.length > 0) {
-      indexes.push({ fields, isUnique: true, ...(name === undefined ? {} : { name }) });
-    } else if (calleeName === 'CheckConstraint' || calleeName === 'UniqueConstraint' || calleeName === 'Index') {
+      indexes.push({
+        fields,
+        isUnique: true,
+        ...(name === undefined ? {} : { name }),
+      });
+    } else if (
+      calleeName === 'CheckConstraint' ||
+      calleeName === 'UniqueConstraint' ||
+      calleeName === 'Index'
+    ) {
       warnings.push(
-        `${location}: ${calleeName}(...) could not be converted (only field-based indexes and unique constraints are supported).`,
+        `${location}: ${calleeName}(...) could not be converted (only field-based indexes and unique constraints are supported).`
       );
     }
   }
@@ -512,15 +637,23 @@ function boolKwarg(call: PyCall, key: string): boolean {
 
 function stringKwarg(call: PyCall, key: string): string | undefined {
   const value: PyValue | undefined = call.kwargs[key];
-  return value !== undefined && value.kind === 'string' ? value.value : undefined;
+  return value !== undefined && value.kind === 'string'
+    ? value.value
+    : undefined;
 }
 
 function numberKwarg(call: PyCall, key: string): number | undefined {
   const value: PyValue | undefined = call.kwargs[key];
-  return value !== undefined && value.kind === 'number' ? value.value : undefined;
+  return value !== undefined && value.kind === 'number'
+    ? value.value
+    : undefined;
 }
 
-function parseFieldCall(fieldName: string, call: PyCall, context: FieldContext): ParsedField {
+function parseFieldCall(
+  fieldName: string,
+  call: PyCall,
+  context: FieldContext
+): ParsedField {
   const calleeName: string = lastSegment(call.callee);
   if (RELATION_FIELDS.has(calleeName)) {
     return parseRelationField(fieldName, calleeName, call, context);
@@ -528,13 +661,18 @@ function parseFieldCall(fieldName: string, call: PyCall, context: FieldContext):
   return parseScalarField(fieldName, calleeName, call, context);
 }
 
-function parseScalarField(fieldName: string, calleeName: string, call: PyCall, context: FieldContext): ParsedField {
+function parseScalarField(
+  fieldName: string,
+  calleeName: string,
+  call: PyCall,
+  context: FieldContext
+): ParsedField {
   const location: string = `${context.modelName}.${fieldName}`;
   let spec: ScalarSpec | undefined = SCALAR_FIELDS[calleeName];
   if (spec === undefined) {
     context.warnings.push(
       `${location}: unknown field type "${calleeName}"; it was converted as a plain string column. ` +
-        `Review the generated type.`,
+        `Review the generated type.`
     );
     spec = { type: 'string' };
   }
@@ -546,17 +684,26 @@ function parseScalarField(fieldName: string, calleeName: string, call: PyCall, c
     type: spec.type,
     isPrimaryKey,
     isUnique: boolKwarg(call, 'unique') && !isPrimaryKey,
-    isNullable: !isPrimaryKey && (boolKwarg(call, 'null') || calleeName === 'NullBooleanField'),
+    isNullable:
+      !isPrimaryKey &&
+      (boolKwarg(call, 'null') || calleeName === 'NullBooleanField'),
     isAutoUpdated: boolKwarg(call, 'auto_now'),
   };
 
-  const maxLength: number | undefined = numberKwarg(call, 'max_length') ?? spec.defaultMaxLength;
-  if (maxLength !== undefined && (spec.type === 'string' || spec.type === 'text')) {
+  const maxLength: number | undefined =
+    numberKwarg(call, 'max_length') ?? spec.defaultMaxLength;
+  if (
+    maxLength !== undefined &&
+    (spec.type === 'string' || spec.type === 'text')
+  ) {
     field.maxLength = maxLength;
   }
   if (spec.type === 'decimal') {
     const maxDigits: number | undefined = numberKwarg(call, 'max_digits');
-    const decimalPlaces: number | undefined = numberKwarg(call, 'decimal_places');
+    const decimalPlaces: number | undefined = numberKwarg(
+      call,
+      'decimal_places'
+    );
     if (maxDigits !== undefined) {
       field.maxDigits = maxDigits;
     }
@@ -565,13 +712,23 @@ function parseScalarField(fieldName: string, calleeName: string, call: PyCall, c
     }
   }
 
-  const enumInfo: EnumInfo | undefined = resolveChoices(fieldName, call, context);
+  const enumInfo: EnumInfo | undefined = resolveChoices(
+    fieldName,
+    call,
+    context
+  );
   if (enumInfo !== undefined && enumInfo.kind === 'string') {
     field.enumName = enumInfo.enumName;
     field.type = 'string';
   }
 
-  const defaultValue: IrDefault | undefined = resolveDefault(location, call, spec, enumInfo, context);
+  const defaultValue: IrDefault | undefined = resolveDefault(
+    location,
+    call,
+    spec,
+    enumInfo,
+    context
+  );
   if (defaultValue !== undefined) {
     field.default = defaultValue;
   } else if (spec.isAutoIncrement === true) {
@@ -588,7 +745,11 @@ function parseScalarField(fieldName: string, calleeName: string, call: PyCall, c
   return parsed;
 }
 
-function resolveChoices(fieldName: string, call: PyCall, context: FieldContext): EnumInfo | undefined {
+function resolveChoices(
+  fieldName: string,
+  call: PyCall,
+  context: FieldContext
+): EnumInfo | undefined {
   const choices: PyValue | undefined = call.kwargs['choices'];
   if (choices === undefined) {
     return undefined;
@@ -607,7 +768,10 @@ function resolveChoices(fieldName: string, call: PyCall, context: FieldContext):
       const first: PyValue | undefined = item.items[0];
       const second: PyValue | undefined = item.items[1];
       if (first !== undefined && first.kind === 'string') {
-        const label: string | undefined = second !== undefined && second.kind === 'string' ? second.value : undefined;
+        const label: string | undefined =
+          second !== undefined && second.kind === 'string'
+            ? second.value
+            : undefined;
         values.push({
           name: memberNameFromValue(first.value, usedNames),
           dbValue: first.value,
@@ -630,7 +794,7 @@ function resolveDefault(
   call: PyCall,
   spec: ScalarSpec,
   enumInfo: EnumInfo | undefined,
-  context: FieldContext,
+  context: FieldContext
 ): IrDefault | undefined {
   const value: PyValue | undefined = call.kwargs['default'];
   if (value === undefined || value.kind === 'none') {
@@ -643,7 +807,7 @@ function resolveDefault(
     case 'string': {
       if (enumInfo !== undefined && enumInfo.kind === 'string') {
         const member: IrEnumValue | undefined = enumInfo.values.find(
-          (enumValue: IrEnumValue) => enumValue.dbValue === value.value,
+          (enumValue: IrEnumValue) => enumValue.dbValue === value.value
         );
         if (member !== undefined) {
           return { kind: 'enumValue', value: member.name };
@@ -653,7 +817,11 @@ function resolveDefault(
     }
     case 'name': {
       const dotted: string = value.value;
-      if (dotted === 'uuid.uuid4' || dotted === 'uuid4' || dotted === 'uuid.uuid1') {
+      if (
+        dotted === 'uuid.uuid4' ||
+        dotted === 'uuid4' ||
+        dotted === 'uuid.uuid1'
+      ) {
         return { kind: 'uuid' };
       }
       if (NOW_CALLABLES.has(dotted) || dotted.endsWith('timezone.now')) {
@@ -667,14 +835,22 @@ function resolveDefault(
       }
       const segments: string[] = dotted.split('.');
       const memberName: string | undefined = segments[1];
-      const enumClass: EnumInfo | undefined = context.enumByClass.get(segments[0] ?? '');
-      if (enumClass !== undefined && enumClass.kind === 'string' && memberName !== undefined) {
+      const enumClass: EnumInfo | undefined = context.enumByClass.get(
+        segments[0] ?? ''
+      );
+      if (
+        enumClass !== undefined &&
+        enumClass.kind === 'string' &&
+        memberName !== undefined
+      ) {
         return { kind: 'enumValue', value: memberName };
       }
       if (enumClass !== undefined && enumClass.kind === 'integer') {
         return undefined;
       }
-      context.warnings.push(`${location}: default=${dotted} is not representable and was dropped.`);
+      context.warnings.push(
+        `${location}: default=${dotted} is not representable and was dropped.`
+      );
       return undefined;
     }
     case 'call': {
@@ -687,33 +863,56 @@ function resolveDefault(
           return { kind: 'literal', value: arg.value };
         }
       }
-      context.warnings.push(`${location}: default=${value.callee}(...) is not representable and was dropped.`);
+      context.warnings.push(
+        `${location}: default=${value.callee}(...) is not representable and was dropped.`
+      );
       return undefined;
     }
     default:
-      context.warnings.push(`${location}: a computed default value was dropped (only literals and now/uuid are supported).`);
+      context.warnings.push(
+        `${location}: a computed default value was dropped (only literals and now/uuid are supported).`
+      );
       return undefined;
   }
 }
 
-function parseRelationField(fieldName: string, calleeName: string, call: PyCall, context: FieldContext): ParsedField {
+function parseRelationField(
+  fieldName: string,
+  calleeName: string,
+  call: PyCall,
+  context: FieldContext
+): ParsedField {
   const location: string = `${context.modelName}.${fieldName}`;
-  const target: string | undefined = resolveRelationTarget(location, call, context);
+  const target: string | undefined = resolveRelationTarget(
+    location,
+    call,
+    context
+  );
   if (target === undefined) {
-    context.warnings.push(`${location}: could not determine the target model of ${calleeName}(...); the field was skipped.`);
-    return {};
-  }
-
-  if (calleeName === 'ManyToManyField' && call.kwargs['through'] !== undefined) {
     context.warnings.push(
-      `${location}: ManyToManyField with through= was skipped; the explicit through model carries the relations.`,
+      `${location}: could not determine the target model of ${calleeName}(...); the field was skipped.`
     );
     return {};
   }
 
-  const relatedNameValue: string | undefined = stringKwarg(call, 'related_name');
+  if (
+    calleeName === 'ManyToManyField' &&
+    call.kwargs['through'] !== undefined
+  ) {
+    context.warnings.push(
+      `${location}: ManyToManyField with through= was skipped; the explicit through model carries the relations.`
+    );
+    return {};
+  }
+
+  const relatedNameValue: string | undefined = stringKwarg(
+    call,
+    'related_name'
+  );
   const relatedName: string | undefined =
-    relatedNameValue === undefined || relatedNameValue.endsWith('+') ? undefined : relatedNameValue;
+    relatedNameValue === undefined || relatedNameValue.endsWith('+')
+      ? undefined
+      : relatedNameValue;
   const toField: string | undefined = stringKwarg(call, 'to_field');
 
   let kind: IrRelation['kind'] = 'foreignKey';
@@ -739,23 +938,33 @@ function parseRelationField(fieldName: string, calleeName: string, call: PyCall,
   return { relation };
 }
 
-function resolveRelationTarget(location: string, call: PyCall, context: FieldContext): string | undefined {
+function resolveRelationTarget(
+  location: string,
+  call: PyCall,
+  context: FieldContext
+): string | undefined {
   const targetValue: PyValue | undefined = call.args[0] ?? call.kwargs['to'];
   if (targetValue === undefined) {
     return undefined;
   }
   switch (targetValue.kind) {
     case 'string':
-      return targetValue.value === 'self' ? context.modelName : lastSegment(targetValue.value);
+      return targetValue.value === 'self'
+        ? context.modelName
+        : lastSegment(targetValue.value);
     case 'name':
       if (lastSegment(targetValue.value) === 'AUTH_USER_MODEL') {
-        context.warnings.push(`${location}: settings.AUTH_USER_MODEL was assumed to be a model named "User".`);
+        context.warnings.push(
+          `${location}: settings.AUTH_USER_MODEL was assumed to be a model named "User".`
+        );
         return 'User';
       }
       return lastSegment(targetValue.value);
     case 'call':
       if (lastSegment(targetValue.callee) === 'get_user_model') {
-        context.warnings.push(`${location}: get_user_model() was assumed to return a model named "User".`);
+        context.warnings.push(
+          `${location}: get_user_model() was assumed to return a model named "User".`
+        );
         return 'User';
       }
       return undefined;
@@ -764,17 +973,28 @@ function resolveRelationTarget(location: string, call: PyCall, context: FieldCon
   }
 }
 
-function resolveOnDelete(location: string, call: PyCall, context: FieldContext): IrOnDelete {
+function resolveOnDelete(
+  location: string,
+  call: PyCall,
+  context: FieldContext
+): IrOnDelete {
   const value: PyValue | undefined = call.kwargs['on_delete'] ?? call.args[1];
   if (value === undefined) {
     return 'cascade';
   }
-  const rawName: string = value.kind === 'name' ? lastSegment(value.value) : value.kind === 'call' ? lastSegment(value.callee) : '';
+  const rawName: string =
+    value.kind === 'name'
+      ? lastSegment(value.value)
+      : value.kind === 'call'
+        ? lastSegment(value.callee)
+        : '';
   const mapped: IrOnDelete | undefined = ON_DELETE_MAP[rawName];
   if (mapped !== undefined) {
     return mapped;
   }
-  context.warnings.push(`${location}: on_delete=${rawName || 'unknown'} has no equivalent and was converted to NoAction.`);
+  context.warnings.push(
+    `${location}: on_delete=${rawName || 'unknown'} has no equivalent and was converted to NoAction.`
+  );
   return 'noAction';
 }
 
@@ -796,8 +1016,13 @@ const KNOWN_EXTERNAL_BASES: ReadonlySet<string> = new Set([
   'Manager',
 ]);
 
-function buildSchema(parsedFiles: ParsedFile[], options: DjangoParseOptions): IrSchema {
-  const warnings: string[] = parsedFiles.flatMap((file: ParsedFile) => file.warnings);
+function buildSchema(
+  parsedFiles: ParsedFile[],
+  options: DjangoParseOptions
+): IrSchema {
+  const warnings: string[] = parsedFiles.flatMap(
+    (file: ParsedFile) => file.warnings
+  );
   const enumsByName: Map<string, IrEnum> = new Map();
   for (const file of parsedFiles) {
     for (const enumDefinition of file.enums) {
@@ -810,7 +1035,7 @@ function buildSchema(parsedFiles: ParsedFile[], options: DjangoParseOptions): Ir
     for (const rawModel of file.models) {
       if (rawByName.has(rawModel.name)) {
         warnings.push(
-          `Duplicate model name "${rawModel.name}" (${rawModel.filePath}); only the first definition was converted.`,
+          `Duplicate model name "${rawModel.name}" (${rawModel.filePath}); only the first definition was converted.`
         );
         continue;
       }
@@ -824,10 +1049,17 @@ function buildSchema(parsedFiles: ParsedFile[], options: DjangoParseOptions): Ir
       continue;
     }
     if (rawModel.isProxy) {
-      warnings.push(`${rawModel.name}: proxy models have no table and were skipped.`);
+      warnings.push(
+        `${rawModel.name}: proxy models have no table and were skipped.`
+      );
       continue;
     }
-    const members: Members = collectMembers(rawModel, rawByName, warnings, new Set());
+    const members: Members = collectMembers(
+      rawModel,
+      rawByName,
+      warnings,
+      new Set()
+    );
     models.push(finalizeModel(rawModel, members, options));
   }
 
@@ -839,7 +1071,7 @@ function collectMembers(
   rawModel: RawModel,
   rawByName: Map<string, RawModel>,
   warnings: string[],
-  visiting: Set<string>,
+  visiting: Set<string>
 ): Members {
   const inherited: Members = { fields: [], relations: [], indexes: [] };
   visiting.add(rawModel.name);
@@ -851,22 +1083,29 @@ function collectMembers(
       if (!KNOWN_EXTERNAL_BASES.has(shortName)) {
         warnings.push(
           `${rawModel.name}: base class "${baseName}" was not found in the input files, so any fields it defines ` +
-            `are missing. Add the file that defines it to --input.`,
+            `are missing. Add the file that defines it to --input.`
         );
       } else if (shortName !== 'Model') {
         warnings.push(
           `${rawModel.name}: fields inherited from django.contrib.auth "${shortName}" are not included; ` +
-            `add them to the output manually.`,
+            `add them to the output manually.`
         );
       }
       continue;
     }
     if (visiting.has(parent.name)) {
-      warnings.push(`${rawModel.name}: circular inheritance through "${parent.name}" was ignored.`);
+      warnings.push(
+        `${rawModel.name}: circular inheritance through "${parent.name}" was ignored.`
+      );
       continue;
     }
     if (parent.isAbstract) {
-      const parentMembers: Members = collectMembers(parent, rawByName, warnings, new Set(visiting));
+      const parentMembers: Members = collectMembers(
+        parent,
+        rawByName,
+        warnings,
+        new Set(visiting)
+      );
       inherited.fields.push(...parentMembers.fields);
       inherited.relations.push(...parentMembers.relations);
       inherited.indexes.push(...parentMembers.indexes);
@@ -883,17 +1122,28 @@ function collectMembers(
       });
       warnings.push(
         `${rawModel.name}: multi-table inheritance from "${parent.name}" was converted to a one-to-one primary key ` +
-          `named "${pointerName}".`,
+          `named "${pointerName}".`
       );
     }
   }
 
-  const ownFieldNames: Set<string> = new Set(rawModel.fields.map((field: IrField) => field.name));
-  const ownRelationNames: Set<string> = new Set(rawModel.relations.map((relation: IrRelation) => relation.name));
+  const ownFieldNames: Set<string> = new Set(
+    rawModel.fields.map((field: IrField) => field.name)
+  );
+  const ownRelationNames: Set<string> = new Set(
+    rawModel.relations.map((relation: IrRelation) => relation.name)
+  );
   return {
-    fields: [...inherited.fields.filter((field: IrField) => !ownFieldNames.has(field.name)), ...rawModel.fields],
+    fields: [
+      ...inherited.fields.filter(
+        (field: IrField) => !ownFieldNames.has(field.name)
+      ),
+      ...rawModel.fields,
+    ],
     relations: [
-      ...inherited.relations.filter((relation: IrRelation) => !ownRelationNames.has(relation.name)),
+      ...inherited.relations.filter(
+        (relation: IrRelation) => !ownRelationNames.has(relation.name)
+      ),
       ...rawModel.relations,
     ],
     indexes: [...inherited.indexes, ...rawModel.indexes],
@@ -913,14 +1163,24 @@ function autoPrimaryKey(options: DjangoParseOptions): IrField {
   };
 }
 
-function finalizeModel(rawModel: RawModel, members: Members, options: DjangoParseOptions): IrModel {
+function finalizeModel(
+  rawModel: RawModel,
+  members: Members,
+  options: DjangoParseOptions
+): IrModel {
   const hasPrimaryKey: boolean =
     members.fields.some((field: IrField) => field.isPrimaryKey) ||
-    members.relations.some((relation: IrRelation) => relation.isPrimaryKey === true);
-  const fields: IrField[] = hasPrimaryKey ? members.fields : [autoPrimaryKey(options), ...members.fields];
+    members.relations.some(
+      (relation: IrRelation) => relation.isPrimaryKey === true
+    );
+  const fields: IrField[] = hasPrimaryKey
+    ? members.fields
+    : [autoPrimaryKey(options), ...members.fields];
   return {
     name: rawModel.name,
-    tableName: rawModel.tableName ?? `${rawModel.appLabel}_${rawModel.name.toLowerCase()}`,
+    tableName:
+      rawModel.tableName ??
+      `${rawModel.appLabel}_${rawModel.name.toLowerCase()}`,
     appLabel: rawModel.appLabel,
     fields,
     relations: members.relations,
@@ -932,9 +1192,11 @@ function addStubModels(
   models: IrModel[],
   rawByName: Map<string, RawModel>,
   warnings: string[],
-  options: DjangoParseOptions,
+  options: DjangoParseOptions
 ): void {
-  const known: Set<string> = new Set(models.map((model: IrModel) => model.name));
+  const known: Set<string> = new Set(
+    models.map((model: IrModel) => model.name)
+  );
   const stubs: IrModel[] = [];
   for (const model of models) {
     for (const relation of model.relations) {
@@ -946,7 +1208,9 @@ function addStubModels(
       const isUserModel: boolean = target === 'User';
       stubs.push({
         name: target,
-        tableName: isUserModel ? 'auth_user' : `${model.appLabel}_${target.toLowerCase()}`,
+        tableName: isUserModel
+          ? 'auth_user'
+          : `${model.appLabel}_${target.toLowerCase()}`,
         appLabel: isUserModel ? 'auth' : model.appLabel,
         fields: [autoPrimaryKey(options)],
         relations: [],
@@ -954,7 +1218,7 @@ function addStubModels(
       });
       warnings.push(
         `${model.name}.${relation.name} references model "${target}", which was not found in the input. ` +
-          `A stub model with an auto-increment id was generated; replace it with the real definition.`,
+          `A stub model with an auto-increment id was generated; replace it with the real definition.`
       );
     }
   }

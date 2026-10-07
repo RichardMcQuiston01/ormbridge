@@ -46,7 +46,8 @@ export interface IrField {
   enumName?: string;
 }
 
-export type IrOnDelete = 'cascade' | 'setNull' | 'restrict' | 'noAction' | 'setDefault';
+export type IrOnDelete =
+  'cascade' | 'setNull' | 'restrict' | 'noAction' | 'setDefault';
 
 export type IrRelationKind = 'foreignKey' | 'oneToOne' | 'manyToMany';
 
@@ -110,6 +111,9 @@ export interface IrSchema {
   warnings: string[];
 }
 
-export function findModel(schema: IrSchema, modelName: string): IrModel | undefined {
+export function findModel(
+  schema: IrSchema,
+  modelName: string
+): IrModel | undefined {
   return schema.models.find((model) => model.name === modelName);
 }

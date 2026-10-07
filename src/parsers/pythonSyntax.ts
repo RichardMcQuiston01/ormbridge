@@ -31,9 +31,12 @@ export async function getPythonParser(): Promise<Result<Parser>> {
   }
   try {
     const requireFromHere: NodeRequire = createRequire(import.meta.url);
-    const wasmPath: string = requireFromHere.resolve('tree-sitter-wasms/out/tree-sitter-python.wasm');
+    const wasmPath: string = requireFromHere.resolve(
+      'tree-sitter-wasms/out/tree-sitter-python.wasm'
+    );
     await Parser.init();
-    const pythonLanguage: Parser.Language = await Parser.Language.load(wasmPath);
+    const pythonLanguage: Parser.Language =
+      await Parser.Language.load(wasmPath);
     const parser: Parser = new Parser();
     parser.setLanguage(pythonLanguage);
     cachedParser = parser;
@@ -42,7 +45,7 @@ export async function getPythonParser(): Promise<Result<Parser>> {
     return err(
       'PARSER_INIT_FAILED',
       `Failed to initialize the tree-sitter Python grammar. Check that the "web-tree-sitter" (0.22.x) and ` +
-        `"tree-sitter-wasms" packages are installed. Underlying error: ${describeThrown(thrown)}`,
+        `"tree-sitter-wasms" packages are installed. Underlying error: ${describeThrown(thrown)}`
     );
   }
 }
@@ -53,7 +56,8 @@ export function lastSegment(dottedName: string): string {
 }
 
 function unquote(literalText: string): string {
-  const match: RegExpExecArray | null = /^[rRbBuUfF]*("""|'''|"|')([\s\S]*)\1$/.exec(literalText);
+  const match: RegExpExecArray | null =
+    /^[rRbBuUfF]*("""|'''|"|')([\s\S]*)\1$/.exec(literalText);
   if (match === null) {
     return literalText;
   }
@@ -76,7 +80,9 @@ export function evaluateNode(node: SyntaxNode): PyValue {
     case 'integer':
     case 'float': {
       const parsedNumber: number = Number(node.text.replace(/_/g, ''));
-      return Number.isNaN(parsedNumber) ? { kind: 'other', text: node.text } : { kind: 'number', value: parsedNumber };
+      return Number.isNaN(parsedNumber)
+        ? { kind: 'other', text: node.text }
+        : { kind: 'number', value: parsedNumber };
     }
     case 'true':
       return { kind: 'bool', value: true };
@@ -94,7 +100,9 @@ export function evaluateNode(node: SyntaxNode): PyValue {
       return { kind: 'list', items: node.namedChildren.map(evaluateNode) };
     case 'parenthesized_expression': {
       const inner: SyntaxNode | undefined = node.namedChildren[0];
-      return inner === undefined ? { kind: 'other', text: node.text } : evaluateNode(inner);
+      return inner === undefined
+        ? { kind: 'other', text: node.text }
+        : evaluateNode(inner);
     }
     case 'unary_operator': {
       const operand: SyntaxNode | undefined = node.namedChildren[0];
@@ -116,14 +124,17 @@ export function evaluateNode(node: SyntaxNode): PyValue {
 function evaluateCall(node: SyntaxNode): PyValue {
   const functionNode: SyntaxNode | null = node.childForFieldName('function');
   const argumentsNode: SyntaxNode | null = node.childForFieldName('arguments');
-  const callee: string = functionNode === null ? '' : functionNode.text.replace(/\s+/g, '');
+  const callee: string =
+    functionNode === null ? '' : functionNode.text.replace(/\s+/g, '');
   const args: PyValue[] = [];
   const kwargs: Record<string, PyValue> = {};
   if (argumentsNode !== null && argumentsNode.type === 'argument_list') {
     for (const argumentNode of argumentsNode.namedChildren) {
       if (argumentNode.type === 'keyword_argument') {
-        const keyNode: SyntaxNode | null = argumentNode.childForFieldName('name');
-        const valueNode: SyntaxNode | null = argumentNode.childForFieldName('value');
+        const keyNode: SyntaxNode | null =
+          argumentNode.childForFieldName('name');
+        const valueNode: SyntaxNode | null =
+          argumentNode.childForFieldName('value');
         if (keyNode !== null && valueNode !== null) {
           kwargs[keyNode.text] = evaluateNode(valueNode);
         }

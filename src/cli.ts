@@ -22,11 +22,15 @@ interface ConvertFlags {
 
 function readPackageVersion(): string {
   const requireFromHere: NodeRequire = createRequire(import.meta.url);
-  const packageJson: { version?: string } = requireFromHere('../package.json') as { version?: string };
+  const packageJson: { version?: string } = requireFromHere(
+    '../package.json'
+  ) as { version?: string };
   return packageJson.version ?? '0.0.0';
 }
 
-function inferFormatFromPath(filePath: string | undefined): FormatName | undefined {
+function inferFormatFromPath(
+  filePath: string | undefined
+): FormatName | undefined {
   if (filePath === undefined) {
     return undefined;
   }
@@ -51,31 +55,44 @@ function buildRunOptions(flags: ConvertFlags): Result<RunOptions> {
     error: { code: 'INVALID_OPTION', message },
   });
 
-  const inferredFrom: FormatName | undefined = inferFormatFromPath(flags.input[0]);
+  const inferredFrom: FormatName | undefined = inferFormatFromPath(
+    flags.input[0]
+  );
   const fromValue: string | undefined = flags.from ?? inferredFrom ?? 'django';
   if (!isFormatName(fromValue)) {
-    return failure(`Invalid --from value "${fromValue}". Expected one of: ${FORMAT_NAMES.join(', ')}.`);
+    return failure(
+      `Invalid --from value "${fromValue}". Expected one of: ${FORMAT_NAMES.join(', ')}.`
+    );
   }
 
   const inferredTo: FormatName | undefined = inferFormatFromPath(flags.output);
-  const toValue: string = flags.to ?? inferredTo ?? (fromValue === 'django' ? 'prisma' : 'django');
+  const toValue: string =
+    flags.to ?? inferredTo ?? (fromValue === 'django' ? 'prisma' : 'django');
   if (!isFormatName(toValue)) {
-    return failure(`Invalid --to value "${toValue}". Expected one of: ${FORMAT_NAMES.join(', ')}.`);
+    return failure(
+      `Invalid --to value "${toValue}". Expected one of: ${FORMAT_NAMES.join(', ')}.`
+    );
   }
 
   if (flags.naming !== 'preserve' && flags.naming !== 'normalize') {
-    return failure(`Invalid --naming value "${flags.naming}". Expected "preserve" or "normalize".`);
+    return failure(
+      `Invalid --naming value "${flags.naming}". Expected "preserve" or "normalize".`
+    );
   }
   const naming: NamingMode = flags.naming;
 
   if (!(PRISMA_PROVIDERS as readonly string[]).includes(flags.provider)) {
-    return failure(`Invalid --provider value "${flags.provider}". Expected one of: ${PRISMA_PROVIDERS.join(', ')}.`);
+    return failure(
+      `Invalid --provider value "${flags.provider}". Expected one of: ${PRISMA_PROVIDERS.join(', ')}.`
+    );
   }
   const provider: PrismaProvider = flags.provider as PrismaProvider;
 
   const autoFieldValue: string = flags.autoField.toLowerCase();
   if (autoFieldValue !== 'int' && autoFieldValue !== 'bigint') {
-    return failure(`Invalid --auto-field value "${flags.autoField}". Expected "int" or "bigint".`);
+    return failure(
+      `Invalid --auto-field value "${flags.autoField}". Expected "int" or "bigint".`
+    );
   }
 
   return {
@@ -97,13 +114,17 @@ function buildRunOptions(flags: ConvertFlags): Result<RunOptions> {
 async function handleConvert(flags: ConvertFlags): Promise<number> {
   const options: Result<RunOptions> = buildRunOptions(flags);
   if (!options.ok) {
-    process.stderr.write(`error [${options.error.code}]: ${options.error.message}\n`);
+    process.stderr.write(
+      `error [${options.error.code}]: ${options.error.message}\n`
+    );
     return 1;
   }
 
   const summary: Result<RunSummary> = await runConversion(options.value);
   if (!summary.ok) {
-    process.stderr.write(`error [${summary.error.code}]: ${summary.error.message}\n`);
+    process.stderr.write(
+      `error [${summary.error.code}]: ${summary.error.message}\n`
+    );
     return 1;
   }
 
@@ -115,7 +136,7 @@ async function handleConvert(flags: ConvertFlags): Promise<number> {
   } else {
     process.stderr.write(
       `Converted ${summary.value.modelCount} model(s) from ${summary.value.inputFiles.length} file(s) ` +
-        `(${options.value.from} -> ${options.value.to}): ${summary.value.outputPath}\n`,
+        `(${options.value.from} -> ${options.value.to}): ${summary.value.outputPath}\n`
     );
   }
   return 0;
@@ -132,15 +153,42 @@ async function main(): Promise<number> {
   program
     .command('convert')
     .description('Convert models from one ORM format to another')
-    .requiredOption('-i, --input <paths...>', 'file(s) or directories to read (models.py, models/ package, or .prisma)')
-    .option('-o, --output <path>', 'file to write; prints to stdout when omitted')
-    .option('-f, --from <format>', `source format (${FORMAT_NAMES.join(' | ')}); inferred from the input when omitted`)
-    .option('-t, --to <format>', `target format (${FORMAT_NAMES.join(' | ')}); inferred from the output when omitted`)
-    .option('--naming <mode>', 'preserve existing database names, or normalize to singular snake_case + UUID ids', 'preserve')
-    .option('--provider <name>', `Prisma datasource provider (${PRISMA_PROVIDERS.join(' | ')})`, 'postgresql')
+    .requiredOption(
+      '-i, --input <paths...>',
+      'file(s) or directories to read (models.py, models/ package, or .prisma)'
+    )
+    .option(
+      '-o, --output <path>',
+      'file to write; prints to stdout when omitted'
+    )
+    .option(
+      '-f, --from <format>',
+      `source format (${FORMAT_NAMES.join(' | ')}); inferred from the input when omitted`
+    )
+    .option(
+      '-t, --to <format>',
+      `target format (${FORMAT_NAMES.join(' | ')}); inferred from the output when omitted`
+    )
+    .option(
+      '--naming <mode>',
+      'preserve existing database names, or normalize to singular snake_case + UUID ids',
+      'preserve'
+    )
+    .option(
+      '--provider <name>',
+      `Prisma datasource provider (${PRISMA_PROVIDERS.join(' | ')})`,
+      'postgresql'
+    )
     .option('--no-header', 'omit the Prisma generator and datasource blocks')
-    .option('--app-label <name>', 'Django app label used for default table names (default: derived from the directory)')
-    .option('--auto-field <type>', 'primary key type for Django models without one (int | bigint)', 'int')
+    .option(
+      '--app-label <name>',
+      'Django app label used for default table names (default: derived from the directory)'
+    )
+    .option(
+      '--auto-field <type>',
+      'primary key type for Django models without one (int | bigint)',
+      'int'
+    )
     .action(async (flags: ConvertFlags): Promise<void> => {
       exitCode = await handleConvert(flags);
     });
@@ -154,7 +202,8 @@ main()
     process.exitCode = exitCode;
   })
   .catch((thrown: unknown) => {
-    const message: string = thrown instanceof Error ? thrown.message : String(thrown);
+    const message: string =
+      thrown instanceof Error ? thrown.message : String(thrown);
     process.stderr.write(`error: ${message}\n`);
     process.exitCode = 1;
   });

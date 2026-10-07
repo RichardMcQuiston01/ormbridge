@@ -61,23 +61,48 @@ const ON_DELETE_VALUES: Readonly<Record<string, IrOnDelete>> = {
 };
 
 /** Parses a Prisma schema (hand-written tokenizer, no Prisma engine required) into the shared IR. */
-export function parsePrisma(sources: PrismaSourceFile[], options: PrismaParseOptions): Result<IrSchema> {
+export function parsePrisma(
+  sources: PrismaSourceFile[],
+  options: PrismaParseOptions
+): Result<IrSchema> {
   const warnings: string[] = [];
-  const combinedText: string = sources.map((source: PrismaSourceFile) => source.text).join('\n');
+  const combinedText: string = sources
+    .map((source: PrismaSourceFile) => source.text)
+    .join('\n');
   const strippedText: string = stripComments(combinedText);
 
   const { models, enums } = readBlocks(strippedText, warnings);
   if (models.length === 0) {
-    const checkedPaths: string = sources.map((source: PrismaSourceFile) => source.path).join(', ');
-    return err('NO_MODELS_FOUND', `No "model" blocks were found in: ${checkedPaths}.`);
+    const checkedPaths: string = sources
+      .map((source: PrismaSourceFile) => source.path)
+      .join(', ');
+    return err(
+      'NO_MODELS_FOUND',
+      `No "model" blocks were found in: ${checkedPaths}.`
+    );
   }
 
-  const enumNames: Set<string> = new Set(enums.map((enumDefinition: IrEnum) => enumDefinition.name));
-  const modelByName: Map<string, PrismaModel> = new Map(models.map((model: PrismaModel) => [model.name, model]));
-  const manyToManyOwners: Map<string, Map<string, PrismaField>> = findManyToMany(models, modelByName);
+  const enumNames: Set<string> = new Set(
+    enums.map((enumDefinition: IrEnum) => enumDefinition.name)
+  );
+  const modelByName: Map<string, PrismaModel> = new Map(
+    models.map((model: PrismaModel) => [model.name, model])
+  );
+  const manyToManyOwners: Map<
+    string,
+    Map<string, PrismaField>
+  > = findManyToMany(models, modelByName);
 
   const irModels: IrModel[] = models.map((model: PrismaModel) =>
-    buildModel(model, modelByName, enumNames, enums, manyToManyOwners, options, warnings),
+    buildModel(
+      model,
+      modelByName,
+      enumNames,
+      enums,
+      manyToManyOwners,
+      options,
+      warnings
+    )
   );
   return ok({ models: irModels, enums, warnings });
 }
@@ -117,14 +142,20 @@ function stripComments(text: string): string {
   return result;
 }
 
-function readBlocks(text: string, warnings: string[]): { models: PrismaModel[]; enums: IrEnum[] } {
+function readBlocks(
+  text: string,
+  warnings: string[]
+): { models: PrismaModel[]; enums: IrEnum[] } {
   const models: PrismaModel[] = [];
   const enums: IrEnum[] = [];
   const lines: string[] = text.split('\n');
-  const blockStart: RegExp = /^\s*(model|enum|type|view|generator|datasource)\s+(\w+)\s*\{\s*(.*)$/;
+  const blockStart: RegExp =
+    /^\s*(model|enum|type|view|generator|datasource)\s+(\w+)\s*\{\s*(.*)$/;
 
   for (let lineIndex: number = 0; lineIndex < lines.length; lineIndex += 1) {
-    const match: RegExpExecArray | null = blockStart.exec(lines[lineIndex] ?? '');
+    const match: RegExpExecArray | null = blockStart.exec(
+      lines[lineIndex] ?? ''
+    );
     if (match === null) {
       continue;
     }
@@ -154,14 +185,18 @@ function readBlocks(text: string, warnings: string[]): { models: PrismaModel[]; 
       }
     }
     if (!closed) {
-      warnings.push(`The ${kind} block "${name}" is missing its closing brace; parsing continued with what was found.`);
+      warnings.push(
+        `The ${kind} block "${name}" is missing its closing brace; parsing continued with what was found.`
+      );
     }
     if (kind === 'model') {
       models.push(parseModelBlock(name, body, warnings));
     } else if (kind === 'enum') {
       enums.push(parseEnumBlock(name, body));
     } else if (kind === 'type' || kind === 'view') {
-      warnings.push(`The ${kind} "${name}" (composite type / view) is not supported and was skipped.`);
+      warnings.push(
+        `The ${kind} "${name}" (composite type / view) is not supported and was skipped.`
+      );
     }
   }
   return { models, enums };
@@ -175,16 +210,23 @@ function parseEnumBlock(name: string, body: string[]): IrEnum {
       continue;
     }
     const memberName: string = memberMatch[1] ?? '';
-    const mapAttribute: Attribute | undefined = parseAttributes(memberMatch[2] ?? '').find(
-      (attribute: Attribute) => attribute.name === 'map',
-    );
-    const mappedValue: string | undefined = mapAttribute === undefined ? undefined : firstStringArgument(mapAttribute);
+    const mapAttribute: Attribute | undefined = parseAttributes(
+      memberMatch[2] ?? ''
+    ).find((attribute: Attribute) => attribute.name === 'map');
+    const mappedValue: string | undefined =
+      mapAttribute === undefined
+        ? undefined
+        : firstStringArgument(mapAttribute);
     values.push({ name: memberName, dbValue: mappedValue ?? memberName });
   }
   return { name, values };
 }
 
-function parseModelBlock(name: string, body: string[], warnings: string[]): PrismaModel {
+function parseModelBlock(
+  name: string,
+  body: string[],
+  warnings: string[]
+): PrismaModel {
   const fields: PrismaField[] = [];
   const blockAttributes: Attribute[] = [];
   for (const line of body) {
@@ -192,9 +234,12 @@ function parseModelBlock(name: string, body: string[], warnings: string[]): Pris
       blockAttributes.push(...parseAttributes(line));
       continue;
     }
-    const fieldMatch: RegExpExecArray | null = /^(\w+)\s+(\w+)(\[\])?(\?)?\s*(.*)$/.exec(line);
+    const fieldMatch: RegExpExecArray | null =
+      /^(\w+)\s+(\w+)(\[\])?(\?)?\s*(.*)$/.exec(line);
     if (fieldMatch === null) {
-      warnings.push(`Model ${name}: the line "${line}" could not be understood and was skipped.`);
+      warnings.push(
+        `Model ${name}: the line "${line}" could not be understood and was skipped.`
+      );
       continue;
     }
     fields.push({
@@ -320,7 +365,10 @@ function unquote(value: string): string {
 }
 
 /** Returns the argument supplied under a keyword (e.g. fields: [a, b]) as raw text. */
-function namedArgument(attribute: Attribute | undefined, key: string): string | undefined {
+function namedArgument(
+  attribute: Attribute | undefined,
+  key: string
+): string | undefined {
   if (attribute === undefined || attribute.args === undefined) {
     return undefined;
   }
@@ -334,7 +382,9 @@ function namedArgument(attribute: Attribute | undefined, key: string): string | 
 }
 
 /** Returns the first argument when it is positional (not key: value). */
-function positionalArgument(attribute: Attribute | undefined): string | undefined {
+function positionalArgument(
+  attribute: Attribute | undefined
+): string | undefined {
   if (attribute === undefined || attribute.args === undefined) {
     return undefined;
   }
@@ -355,16 +405,24 @@ function parseNameList(rawList: string | undefined): string[] {
     return [];
   }
   const inner: string = rawList.trim().replace(/^\[/, '').replace(/\]$/, '');
-  return splitTopLevel(inner).map((item: string) => item.replace(/\(.*\)$/, '').trim());
+  return splitTopLevel(inner).map((item: string) =>
+    item.replace(/\(.*\)$/, '').trim()
+  );
 }
 
-function attributeNamed(attributes: Attribute[], name: string): Attribute | undefined {
+function attributeNamed(
+  attributes: Attribute[],
+  name: string
+): Attribute | undefined {
   return attributes.find((attribute: Attribute) => attribute.name === name);
 }
 
 /** Name given to a relation through @relation("Name") or @relation(name: "Name"). */
 function relationLabel(field: PrismaField): string | undefined {
-  const relationAttribute: Attribute | undefined = attributeNamed(field.attributes, 'relation');
+  const relationAttribute: Attribute | undefined = attributeNamed(
+    field.attributes,
+    'relation'
+  );
   if (relationAttribute === undefined) {
     return undefined;
   }
@@ -377,7 +435,10 @@ function relationLabel(field: PrismaField): string | undefined {
 }
 
 function ownsForeignKey(field: PrismaField): boolean {
-  const relationAttribute: Attribute | undefined = attributeNamed(field.attributes, 'relation');
+  const relationAttribute: Attribute | undefined = attributeNamed(
+    field.attributes,
+    'relation'
+  );
   return namedArgument(relationAttribute, 'fields') !== undefined;
 }
 
@@ -391,12 +452,16 @@ function ownsForeignKey(field: PrismaField): boolean {
  */
 function findManyToMany(
   models: PrismaModel[],
-  modelByName: Map<string, PrismaModel>,
+  modelByName: Map<string, PrismaModel>
 ): Map<string, Map<string, PrismaField>> {
   const owners: Map<string, Map<string, PrismaField>> = new Map();
   for (const model of models) {
     for (const field of model.fields) {
-      if (!field.isList || !modelByName.has(field.typeName) || ownsForeignKey(field)) {
+      if (
+        !field.isList ||
+        !modelByName.has(field.typeName) ||
+        ownsForeignKey(field)
+      ) {
         continue;
       }
       const target: PrismaModel | undefined = modelByName.get(field.typeName);
@@ -406,14 +471,16 @@ function findManyToMany(
           candidate.isList &&
           candidate.typeName === model.name &&
           !ownsForeignKey(candidate) &&
-          relationLabel(candidate) === relationLabel(field),
+          relationLabel(candidate) === relationLabel(field)
       );
       if (counterpart === undefined || target === undefined) {
         continue;
       }
-      const isOwner: boolean = `${model.name}.${field.name}` < `${target.name}.${counterpart.name}`;
+      const isOwner: boolean =
+        `${model.name}.${field.name}` < `${target.name}.${counterpart.name}`;
       if (isOwner) {
-        const ownerFields: Map<string, PrismaField> = owners.get(model.name) ?? new Map();
+        const ownerFields: Map<string, PrismaField> =
+          owners.get(model.name) ?? new Map();
         ownerFields.set(field.name, counterpart);
         owners.set(model.name, ownerFields);
       }
@@ -422,11 +489,17 @@ function findManyToMany(
   return owners;
 }
 
-function findInverseField(owner: PrismaModel, field: PrismaField, target: PrismaModel): PrismaField | undefined {
+function findInverseField(
+  owner: PrismaModel,
+  field: PrismaField,
+  target: PrismaModel
+): PrismaField | undefined {
   const label: string | undefined = relationLabel(field);
   return target.fields.find(
     (candidate: PrismaField) =>
-      candidate.typeName === owner.name && !ownsForeignKey(candidate) && relationLabel(candidate) === label,
+      candidate.typeName === owner.name &&
+      !ownsForeignKey(candidate) &&
+      relationLabel(candidate) === label
   );
 }
 
@@ -441,7 +514,7 @@ function buildModel(
   enums: IrEnum[],
   manyToManyOwners: Map<string, Map<string, PrismaField>>,
   options: PrismaParseOptions,
-  warnings: string[],
+  warnings: string[]
 ): IrModel {
   const consumedScalars: Map<string, string> = new Map();
   const relations: IrRelation[] = [];
@@ -455,7 +528,9 @@ function buildModel(
       continue;
     }
     if (field.isList) {
-      const counterpart: PrismaField | undefined = manyToManyOwners.get(model.name)?.get(field.name);
+      const counterpart: PrismaField | undefined = manyToManyOwners
+        .get(model.name)
+        ?.get(field.name);
       if (counterpart !== undefined) {
         relations.push({
           name: field.name,
@@ -468,7 +543,7 @@ function buildModel(
         });
         warnings.push(
           `${model.name}.${field.name}: Prisma's implicit many-to-many table ("_${model.name}To${target.name}" with columns A and B) ` +
-            `differs from the join table Django will create; migrate data or define an explicit through model.`,
+            `differs from the join table Django will create; migrate data or define an explicit through model.`
         );
       }
       continue;
@@ -476,7 +551,13 @@ function buildModel(
     if (!ownsForeignKey(field)) {
       continue;
     }
-    const relation: IrRelation | undefined = buildForeignKey(model, field, target, consumedScalars, warnings);
+    const relation: IrRelation | undefined = buildForeignKey(
+      model,
+      field,
+      target,
+      consumedScalars,
+      warnings
+    );
     if (relation !== undefined) {
       relations.push(relation);
     }
@@ -487,24 +568,33 @@ function buildModel(
     if (modelByName.has(field.typeName) || consumedScalars.has(field.name)) {
       continue;
     }
-    const scalarField: IrField | undefined = buildScalarField(model, field, enumNames, enums, warnings);
+    const scalarField: IrField | undefined = buildScalarField(
+      model,
+      field,
+      enumNames,
+      enums,
+      warnings
+    );
     if (scalarField !== undefined) {
       fields.push(scalarField);
     }
   }
 
-  const resolveName = (name: string): string => consumedScalars.get(name) ?? name;
+  const resolveName = (name: string): string =>
+    consumedScalars.get(name) ?? name;
   const indexes: IrIndex[] = [];
   let compositePrimaryKey: string[] | undefined;
 
   for (const attribute of model.blockAttributes) {
     if (attribute.name === 'id') {
-      const keyFields: string[] = parseNameList(positionalArgument(attribute) ?? namedArgument(attribute, 'fields'));
+      const keyFields: string[] = parseNameList(
+        positionalArgument(attribute) ?? namedArgument(attribute, 'fields')
+      );
       compositePrimaryKey = keyFields.map(resolveName);
     } else if (attribute.name === 'unique' || attribute.name === 'index') {
-      const indexFields: string[] = parseNameList(positionalArgument(attribute) ?? namedArgument(attribute, 'fields')).map(
-        resolveName,
-      );
+      const indexFields: string[] = parseNameList(
+        positionalArgument(attribute) ?? namedArgument(attribute, 'fields')
+      ).map(resolveName);
       const mapArgument: string | undefined = namedArgument(attribute, 'map');
       if (indexFields.length > 0) {
         indexes.push({
@@ -513,13 +603,25 @@ function buildModel(
           ...(mapArgument === undefined ? {} : { name: unquote(mapArgument) }),
         });
       }
-    } else if (attribute.name === 'fulltext' || attribute.name === 'ignore' || attribute.name === 'schema') {
-      warnings.push(`${model.name}: @@${attribute.name} has no Django equivalent and was ignored.`);
+    } else if (
+      attribute.name === 'fulltext' ||
+      attribute.name === 'ignore' ||
+      attribute.name === 'schema'
+    ) {
+      warnings.push(
+        `${model.name}: @@${attribute.name} has no Django equivalent and was ignored.`
+      );
     }
   }
 
-  const mapAttribute: Attribute | undefined = attributeNamed(model.blockAttributes, 'map');
-  const tableName: string = (mapAttribute === undefined ? undefined : firstStringArgument(mapAttribute)) ?? model.name;
+  const mapAttribute: Attribute | undefined = attributeNamed(
+    model.blockAttributes,
+    'map'
+  );
+  const tableName: string =
+    (mapAttribute === undefined
+      ? undefined
+      : firstStringArgument(mapAttribute)) ?? model.name;
 
   return {
     name: model.name,
@@ -533,8 +635,15 @@ function buildModel(
 }
 
 function scalarColumnName(field: PrismaField): string {
-  const mapAttribute: Attribute | undefined = attributeNamed(field.attributes, 'map');
-  return (mapAttribute === undefined ? undefined : firstStringArgument(mapAttribute)) ?? field.name;
+  const mapAttribute: Attribute | undefined = attributeNamed(
+    field.attributes,
+    'map'
+  );
+  return (
+    (mapAttribute === undefined
+      ? undefined
+      : firstStringArgument(mapAttribute)) ?? field.name
+  );
 }
 
 function buildForeignKey(
@@ -542,42 +651,72 @@ function buildForeignKey(
   field: PrismaField,
   target: PrismaModel,
   consumedScalars: Map<string, string>,
-  warnings: string[],
+  warnings: string[]
 ): IrRelation | undefined {
-  const relationAttribute: Attribute | undefined = attributeNamed(field.attributes, 'relation');
-  const foreignKeyNames: string[] = parseNameList(namedArgument(relationAttribute, 'fields'));
-  const referenceNames: string[] = parseNameList(namedArgument(relationAttribute, 'references'));
+  const relationAttribute: Attribute | undefined = attributeNamed(
+    field.attributes,
+    'relation'
+  );
+  const foreignKeyNames: string[] = parseNameList(
+    namedArgument(relationAttribute, 'fields')
+  );
+  const referenceNames: string[] = parseNameList(
+    namedArgument(relationAttribute, 'references')
+  );
   const location: string = `${model.name}.${field.name}`;
 
   if (foreignKeyNames.length !== 1) {
     warnings.push(
-      `${location}: composite foreign keys (${foreignKeyNames.join(', ')}) have no Django equivalent; the relation was skipped.`,
+      `${location}: composite foreign keys (${foreignKeyNames.join(', ')}) have no Django equivalent; the relation was skipped.`
     );
     return undefined;
   }
   const scalarName: string = foreignKeyNames[0] ?? '';
-  const scalarField: PrismaField | undefined = model.fields.find((candidate: PrismaField) => candidate.name === scalarName);
+  const scalarField: PrismaField | undefined = model.fields.find(
+    (candidate: PrismaField) => candidate.name === scalarName
+  );
   if (scalarField === undefined) {
-    warnings.push(`${location}: the foreign key field "${scalarName}" does not exist on ${model.name}; the relation was skipped.`);
+    warnings.push(
+      `${location}: the foreign key field "${scalarName}" does not exist on ${model.name}; the relation was skipped.`
+    );
     return undefined;
   }
   consumedScalars.set(scalarName, field.name);
 
-  const isPrimaryKey: boolean = attributeNamed(scalarField.attributes, 'id') !== undefined;
+  const isPrimaryKey: boolean =
+    attributeNamed(scalarField.attributes, 'id') !== undefined;
   const isUnique: boolean =
     attributeNamed(scalarField.attributes, 'unique') !== undefined ||
     model.blockAttributes.some(
       (attribute: Attribute) =>
-        attribute.name === 'unique' && parseNameList(positionalArgument(attribute) ?? namedArgument(attribute, 'fields')).join() === scalarName,
+        attribute.name === 'unique' &&
+        parseNameList(
+          positionalArgument(attribute) ?? namedArgument(attribute, 'fields')
+        ).join() === scalarName
     );
 
-  const onDeleteRaw: string | undefined = namedArgument(relationAttribute, 'onDelete');
-  const onDelete: IrOnDelete = (onDeleteRaw === undefined ? undefined : ON_DELETE_VALUES[onDeleteRaw]) ?? (field.isOptional ? 'setNull' : 'restrict');
+  const onDeleteRaw: string | undefined = namedArgument(
+    relationAttribute,
+    'onDelete'
+  );
+  const onDelete: IrOnDelete =
+    (onDeleteRaw === undefined ? undefined : ON_DELETE_VALUES[onDeleteRaw]) ??
+    (field.isOptional ? 'setNull' : 'restrict');
 
-  const inverse: PrismaField | undefined = findInverseField(model, field, target);
+  const inverse: PrismaField | undefined = findInverseField(
+    model,
+    field,
+    target
+  );
   const referencedField: string | undefined = referenceNames[0];
-  const targetKeyField: PrismaField | undefined = target.fields.find((candidate: PrismaField) => attributeNamed(candidate.attributes, 'id') !== undefined);
-  const needsToField: boolean = referencedField !== undefined && targetKeyField !== undefined && referencedField !== targetKeyField.name;
+  const targetKeyField: PrismaField | undefined = target.fields.find(
+    (candidate: PrismaField) =>
+      attributeNamed(candidate.attributes, 'id') !== undefined
+  );
+  const needsToField: boolean =
+    referencedField !== undefined &&
+    targetKeyField !== undefined &&
+    referencedField !== targetKeyField.name;
 
   return {
     name: field.name,
@@ -587,7 +726,9 @@ function buildForeignKey(
     isNullable: field.isOptional,
     onDelete,
     ...(inverse === undefined ? {} : { relatedName: inverse.name }),
-    ...(needsToField && referencedField !== undefined ? { toField: referencedField } : {}),
+    ...(needsToField && referencedField !== undefined
+      ? { toField: referencedField }
+      : {}),
     ...(isPrimaryKey ? { isPrimaryKey: true } : {}),
   };
 }
@@ -597,38 +738,54 @@ function buildScalarField(
   field: PrismaField,
   enumNames: Set<string>,
   enums: IrEnum[],
-  warnings: string[],
+  warnings: string[]
 ): IrField | undefined {
   const location: string = `${model.name}.${field.name}`;
   const isEnum: boolean = enumNames.has(field.typeName);
 
   if (field.typeName === 'Unsupported') {
-    warnings.push(`${location}: Unsupported(...) database types cannot be converted; the field was skipped.`);
+    warnings.push(
+      `${location}: Unsupported(...) database types cannot be converted; the field was skipped.`
+    );
     return undefined;
   }
   if (!isEnum && !SCALAR_TYPES.has(field.typeName)) {
-    warnings.push(`${location}: the type "${field.typeName}" is not a known scalar, enum or model; the field was skipped.`);
+    warnings.push(
+      `${location}: the type "${field.typeName}" is not a known scalar, enum or model; the field was skipped.`
+    );
     return undefined;
   }
 
-  const nativeAttribute: Attribute | undefined = field.attributes.find((attribute: Attribute) => attribute.name.startsWith('db.'));
-  const nativeName: string = nativeAttribute === undefined ? '' : nativeAttribute.name.slice(3);
-  const nativeArguments: string[] = nativeAttribute?.args === undefined ? [] : splitTopLevel(nativeAttribute.args);
+  const nativeAttribute: Attribute | undefined = field.attributes.find(
+    (attribute: Attribute) => attribute.name.startsWith('db.')
+  );
+  const nativeName: string =
+    nativeAttribute === undefined ? '' : nativeAttribute.name.slice(3);
+  const nativeArguments: string[] =
+    nativeAttribute?.args === undefined
+      ? []
+      : splitTopLevel(nativeAttribute.args);
 
-  let type: IrScalarType = 'string';
+  let type: IrScalarType;
   let maxLength: number | undefined;
   let maxDigits: number | undefined;
   let decimalPlaces: number | undefined;
 
   if (field.isList) {
-    warnings.push(`${location}: scalar lists have no direct Django equivalent; the field was converted to a JSONField.`);
+    warnings.push(
+      `${location}: scalar lists have no direct Django equivalent; the field was converted to a JSONField.`
+    );
     type = 'json';
   } else if (isEnum) {
     type = 'string';
   } else {
     switch (field.typeName) {
       case 'String':
-        if (nativeName === 'Text' || nativeName === 'MediumText' || nativeName === 'LongText') {
+        if (
+          nativeName === 'Text' ||
+          nativeName === 'MediumText' ||
+          nativeName === 'LongText'
+        ) {
           type = 'text';
         } else if (nativeName === 'Uuid') {
           type = 'uuid';
@@ -651,14 +808,26 @@ function buildScalarField(
         break;
       case 'Decimal':
         type = 'decimal';
-        maxDigits = nativeArguments[0] !== undefined && /^\d+$/.test(nativeArguments[0]) ? Number(nativeArguments[0]) : 65;
-        decimalPlaces = nativeArguments[1] !== undefined && /^\d+$/.test(nativeArguments[1]) ? Number(nativeArguments[1]) : 30;
+        maxDigits =
+          nativeArguments[0] !== undefined && /^\d+$/.test(nativeArguments[0])
+            ? Number(nativeArguments[0])
+            : 65;
+        decimalPlaces =
+          nativeArguments[1] !== undefined && /^\d+$/.test(nativeArguments[1])
+            ? Number(nativeArguments[1])
+            : 30;
         break;
       case 'Boolean':
         type = 'boolean';
         break;
       case 'DateTime':
-        type = nativeName === 'Date' ? 'date' : nativeName.startsWith('Time') && !nativeName.startsWith('Timestamp') ? 'time' : 'dateTime';
+        type =
+          nativeName === 'Date'
+            ? 'date'
+            : nativeName.startsWith('Time') &&
+                !nativeName.startsWith('Timestamp')
+              ? 'time'
+              : 'dateTime';
         break;
       case 'Json':
         type = 'json';
@@ -693,9 +862,19 @@ function buildScalarField(
     irField.decimalPlaces = decimalPlaces;
   }
 
-  const defaultAttribute: Attribute | undefined = attributeNamed(field.attributes, 'default');
+  const defaultAttribute: Attribute | undefined = attributeNamed(
+    field.attributes,
+    'default'
+  );
   if (defaultAttribute !== undefined && !field.isList) {
-    const parsedDefault: IrDefault | undefined = parseDefault(location, defaultAttribute, isEnum ? enums.find((candidate: IrEnum) => candidate.name === field.typeName) : undefined, warnings);
+    const parsedDefault: IrDefault | undefined = parseDefault(
+      location,
+      defaultAttribute,
+      isEnum
+        ? enums.find((candidate: IrEnum) => candidate.name === field.typeName)
+        : undefined,
+      warnings
+    );
     if (parsedDefault !== undefined) {
       irField.default = parsedDefault;
     }
@@ -707,9 +886,10 @@ function parseDefault(
   location: string,
   attribute: Attribute,
   enumDefinition: IrEnum | undefined,
-  warnings: string[],
+  warnings: string[]
 ): IrDefault | undefined {
-  const raw: string | undefined = positionalArgument(attribute) ?? namedArgument(attribute, 'value');
+  const raw: string | undefined =
+    positionalArgument(attribute) ?? namedArgument(attribute, 'value');
   if (raw === undefined) {
     return undefined;
   }
@@ -724,11 +904,19 @@ function parseDefault(
     return { kind: 'uuid' };
   }
   if (/^(cuid|nanoid|ulid)\(.*\)$/.test(value)) {
-    warnings.push(`${location}: @default(${value}) is generated by the Prisma client and has no database or Django equivalent; the default was dropped.`);
+    warnings.push(
+      `${location}: @default(${value}) is generated by the Prisma client and has no database or Django equivalent; the default was dropped.`
+    );
     return undefined;
   }
-  if (/^dbgenerated\(.*\)$/.test(value) || /^auto\(.*\)$/.test(value) || /^sequence\(.*\)$/.test(value)) {
-    warnings.push(`${location}: @default(${value}) is a database-generated default and was dropped.`);
+  if (
+    /^dbgenerated\(.*\)$/.test(value) ||
+    /^auto\(.*\)$/.test(value) ||
+    /^sequence\(.*\)$/.test(value)
+  ) {
+    warnings.push(
+      `${location}: @default(${value}) is a database-generated default and was dropped.`
+    );
     return undefined;
   }
   if (value === 'true' || value === 'false') {
@@ -740,9 +928,14 @@ function parseDefault(
   if (value.startsWith('"')) {
     return { kind: 'literal', value: unquote(value) };
   }
-  if (enumDefinition !== undefined && enumDefinition.values.some((member) => member.name === value)) {
+  if (
+    enumDefinition !== undefined &&
+    enumDefinition.values.some((member) => member.name === value)
+  ) {
     return { kind: 'enumValue', value };
   }
-  warnings.push(`${location}: @default(${value}) could not be converted and was dropped.`);
+  warnings.push(
+    `${location}: @default(${value}) could not be converted and was dropped.`
+  );
   return undefined;
 }
