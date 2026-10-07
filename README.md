@@ -1,9 +1,11 @@
-# Project Title
+# ORMBridge
 
 - Author:  Richard McQuiston
 - Website:  https://richardmcquiston.com/
 
 ## Overview
+
+NPM package for converting to and from various ORM types.  Easily share typed interfaces and/or models between frameworks and languages.
 
 ## Getting Started
 
