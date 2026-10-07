@@ -63,8 +63,16 @@ describe.each(
   });
 });
 
+/** A round trip also needs the source to be writable and the target readable. */
+function roundTripPairs(): [FormatAdapter, FormatAdapter][] {
+  return conversionPairs().filter(
+    ([source, target]) =>
+      source.emit !== undefined && target.parse !== undefined
+  );
+}
+
 describe.each(
-  conversionPairs().map(
+  roundTripPairs().map(
     ([source, target]) => [source.name, target.name, source, target] as const
   )
 )('round trip %s -> %s', (_sourceName, _targetName, source, target) => {

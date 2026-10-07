@@ -33,49 +33,41 @@ ormbridge convert -i ./backend -o ./prisma/schema.prisma
 
 # Prisma -> Django
 ormbridge convert -i ./prisma/schema.prisma -o ./shop/models.py --app-label shop
+
+# TypeORM -> Prisma (a directory needs --from; every .ts file in it is read, entities are picked out)
+ormbridge convert -i ./src/entities --from typeorm -o ./prisma/schema.prisma
 ```
 
-Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma), or set explicitly with `--from` / `--to`. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
+Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `.ts` = TypeORM), or set explicitly with `--from` / `--to`. Passing a directory does not infer the format, so add `--from typeorm` when reading a folder of TypeORM entities. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
 
-| Flag                     | Default        | Description                                                                                                                             |
-| ------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `-i, --input <paths...>` | required       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.              |
-| `-o, --output <path>`    | stdout         | File to write. Parent directories are created.                                                                                          |
-| `-f, --from <format>`    | inferred       | `django` or `prisma`                                                                                                                    |
-| `-t, --to <format>`      | inferred       | `django` or `prisma`                                                                                                                    |
-| `--naming <mode>`        | `preserve`     | `preserve` or `normalize` (see below)                                                                                                   |
-| `--provider <name>`      | `postgresql`   | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`. |
-| `--no-header`            | off            | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                 |
-| `--app-label <name>`     | directory name | Django app label used for default table names (`<app>_<model>`).                                                                        |
-| `--auto-field <type>`    | `int`          | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                          |
-
-[Back to Table of Contents](#table-of-contents)
-
-### Naming modes
-
-**`preserve`** (default) keeps the existing database working unchanged: Django table names (`blog_post`) are kept via `@@map`, columns keep their names, and each Django many-to-many field becomes an explicit join model that matches the table Django already created.
-
-**`normalize`** produces a fresh-schema style: singular snake_case table names (`post`), UUID primary keys in place of auto-increment ids, camelCase Prisma fields mapped to snake_case columns, `created_at` / `updated_at` added to models that lack them, and implicit many-to-many relations.
-
-## What is converted
-
-| Django                                                                        | Prisma                                                     |
-| ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `CharField`, `SlugField`, `EmailField`, `URLField`                            | `String @db.VarChar(n)`                                    |
-| `TextField`                                                                   | `String @db.Text`                                          |
-| `Integer*`, `PositiveInteger*` / `BigInteger*` / `AutoField` / `BigAutoField` | `Int` / `BigInt` / `@default(autoincrement())`             |
-| `FloatField`, `DecimalField`                                                  | `Float`, `Decimal @db.Decimal(p, s)`                       |
-| `BooleanField`, `UUIDField`, `JSONField`, `BinaryField`                       | `Boolean`, `String @db.Uuid`, `Json`, `Bytes`              |
-| `DateTimeField`, `DateField`, `TimeField`                                     | `DateTime` (with `@db.Date` / `@db.Time`)                  |
-| `auto_now_add` / `auto_now`                                                   | `@default(now())` / `@updatedAt`                           |
-| `default=uuid.uuid4`, `timezone.now`, literals                                | `@default(uuid())`, `@default(now())`, literals            |
-| `TextChoices`, inline `choices=[...]`                                         | `enum`                                                     |
-| `ForeignKey`, `OneToOneField` (`on_delete`, `related_name`, `null`)           | `@relation(... onDelete: ...)` plus the reverse field      |
-| `ManyToManyField`                                                             | join model (`preserve`) or implicit relation (`normalize`) |
-| `Meta.db_table`, `unique_together`, `indexes`, `UniqueConstraint`, `db_index` | `@@map`, `@@unique`, `@@index`                             |
-| Abstract base classes, multi-table inheritance                                | fields inherited / one-to-one primary key                  |
+| Flag                                                                          | Default                                                                          | Description                                                                                                                             |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `-i, --input <paths...>`                                                      | required                                                                         | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.              |
+| `-o, --output <path>`                                                         | stdout                                                                           | File to write. Parent directories are created.                                                                                          |
+| `-f, --from <format>`                                                         | inferred                                                                         | `django`, `prisma` or `typeorm`                                                                                                         |
+| `-t, --to <format>`                                                           | inferred                                                                         | `django` or `prisma` (TypeORM is read-only for now)                                                                                     |
+| `--naming <mode>`                                                             | `preserve`                                                                       | `preserve` or `normalize` (see below)                                                                                                   |
+| `--provider <name>`                                                           | `postgresql`                                                                     | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`. |
+| `--no-header`                                                                 | off                                                                              | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                 |
+| `--app-label <name>`                                                          | directory name                                                                   | Django                                                                                                                                  | TypeORM | Prisma |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------                  | ----------------------------------------------------------                                                                              |
+| `CharField`, `SlugField`, `EmailField`, `URLField`                            | `varchar` / `char` columns, `length`, `string` properties                        | `String @db.VarChar(n)`                                                                                                                 |
+| `TextField`                                                                   | `text` columns                                                                   | `String @db.Text`                                                                                                                       |
+| `Integer*`, `PositiveInteger*` / `BigInteger*` / `AutoField` / `BigAutoField` | `int` / `bigint` columns, `@PrimaryGeneratedColumn()`                            | `Int` / `BigInt` / `@default(autoincrement())`                                                                                          |
+| `FloatField`, `DecimalField`                                                  | `float` / `double`, `decimal` with `precision` and `scale`                       | `Float`, `Decimal @db.Decimal(p, s)`                                                                                                    |
+| `BooleanField`, `UUIDField`, `JSONField`, `BinaryField`                       | `boolean`, `uuid`, `json` / `jsonb`, `bytea` / `blob`                            | `Boolean`, `String @db.Uuid`, `Json`, `Bytes`                                                                                           |
+| `DateTimeField`, `DateField`, `TimeField`                                     | `timestamp` / `timestamptz`, `date`, `time`, `Date` properties                   | `DateTime` (with `@db.Date` / `@db.Time`)                                                                                               |
+| `auto_now_add` / `auto_now`                                                   | `@CreateDateColumn` / `@UpdateDateColumn`                                        | `@default(now())` / `@updatedAt`                                                                                                        |
+| `default=uuid.uuid4`, `timezone.now`, literals                                | `@PrimaryGeneratedColumn('uuid')`, `default: () => 'now()'`, literals            | `@default(uuid())`, `@default(now())`, literals                                                                                         |
+| `TextChoices`, inline `choices=[...]`                                         | TypeScript `enum`, `enum: [...]` columns                                         | `enum`                                                                                                                                  |
+| `ForeignKey`, `OneToOneField` (`on_delete`, `related_name`, `null`)           | `@ManyToOne`, `@OneToOne` + `@JoinColumn` (`onDelete`, `nullable`, inverse side) | `@relation(... onDelete: ...)` plus the reverse field                                                                                   |
+| `ManyToManyField`                                                             | `@ManyToMany` + `@JoinTable`                                                     | join model (`preserve`) or implicit relation (`normalize`)                                                                              |
+| `Meta.db_table`, `unique_together`, `indexes`, `UniqueConstraint`, `db_index` | `@Entity('table')`, `@Unique`, `@Index`                                          | `@@map`, `@@unique`, `@@index`                                                                                                          |
+| Abstract base classes, multi-table inheritance                                | abstract base classes, entities extending entities, `@Column(() => Embedded)`    | fields inherited / one-to-one primary key                                                                                               |
 
 Prisma → Django applies the reverse mapping. Field names are converted from camelCase to snake_case, with `db_column` set when the column name differs.
+
+TypeORM is currently read-only. Its entities are parsed statically with tree-sitter (no `reflect-metadata`, TypeScript compiler, or database needed), and the same naming modes apply to the result.
 
 [Back to Table of Contents](#table-of-contents)
 
@@ -87,6 +79,7 @@ ormbridge never fails silently on something it cannot represent: each case produ
 - Python is parsed statically, so computed defaults, custom field classes, and fields added dynamically are skipped or approximated.
 - Prisma composite primary keys become `models.CompositePrimaryKey` (Django 5.2+). Composite foreign keys, `Unsupported(...)` types, and scalar lists have no direct Django equivalent.
 - Prisma's implicit many-to-many join table (`_AToB`) differs from Django's, so data needs migrating.
+- TypeORM: entities are read from decorators only. Not supported, each with a warning naming the entity and column: `EntitySchema`, `@ChildEntity` / `@TableInheritance` (single-table inheritance), `@ViewEntity`, `@Tree*`, `@ObjectIdColumn`, `@VirtualColumn`, array columns, partial and spatial indexes, `@Check` / `@Exclusion`, composite foreign keys, relations inside embedded entities, and column options such as `unsigned`, `collation` and `transformer`. Custom `@JoinTable` names are not preserved. Relations without `onDelete` become `NoAction` and relations are nullable unless `nullable: false`, as in TypeORM. Numeric enums become integers.
 - Generated names for Django indexes are shortened to Django's 30-character limit.
 
 Always review the output and run your own migrations/`prisma validate` before applying it to a real database.
@@ -118,7 +111,7 @@ if (!result.ok) {
 }
 ```
 
-All functions return a `Result` (`{ ok: true, value } | { ok: false, error }`) instead of throwing, with a descriptive error code and message. Parsers and emitters are exported too (`parseDjango`, `parsePrisma`, `emitPrisma`, `emitDjango`), all built on a shared intermediate representation, which is how new formats plug in.
+All functions return a `Result` (`{ ok: true, value } | { ok: false, error }`) instead of throwing, with a descriptive error code and message. Parsers and emitters are exported too (`parseDjango`, `parsePrisma`, `parseTypeorm`, `emitPrisma`, `emitDjango`), all built on a shared intermediate representation, which is how new formats plug in.
 
 ### Format registry
 

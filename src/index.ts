@@ -21,6 +21,11 @@ export { parseDjango } from './parsers/django.js';
 export type { DjangoSourceFile, DjangoParseOptions } from './parsers/django.js';
 export { parsePrisma } from './parsers/prisma.js';
 export type { PrismaSourceFile, PrismaParseOptions } from './parsers/prisma.js';
+export { parseTypeorm } from './parsers/typeorm.js';
+export type {
+  TypeormSourceFile,
+  TypeormParseOptions,
+} from './parsers/typeorm.js';
 export { emitPrisma, PRISMA_PROVIDERS } from './emitters/prisma.js';
 export type {
   EmitOutput,

@@ -22,4 +22,16 @@ function fixturePath(relativePath: string): string {
 export const CANONICAL_FIXTURES: readonly CanonicalFixture[] = [
   { format: 'django', paths: [fixturePath('./blog/models.py')] },
   { format: 'prisma', paths: [fixturePath('./canonical/schema.prisma')] },
+  {
+    format: 'typeorm',
+    paths: [
+      './typeorm/time-stamped.ts',
+      './typeorm/post-status.enum.ts',
+      './typeorm/category.entity.ts',
+      './typeorm/post.entity.ts',
+      './typeorm/tag.entity.ts',
+      './typeorm/profile.entity.ts',
+      './typeorm/user.entity.ts',
+    ].map(fixturePath),
+  },
 ];

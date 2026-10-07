@@ -7,6 +7,7 @@ import {
 import type { IrSchema } from './ir.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
+import { parseTypeorm } from './parsers/typeorm.js';
 import { err, ok, type Result } from './result.js';
 import {
   expandManyToMany,
@@ -206,10 +207,28 @@ const prismaAdapter: FormatAdapter = {
   },
 };
 
+const typeormAdapter: FormatAdapter = {
+  name: 'typeorm',
+  extensions: ['.ts'],
+  description: 'TypeORM entity classes (.ts files)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseTypeorm(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
   registerFormat(prismaAdapter),
+  registerFormat(typeormAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

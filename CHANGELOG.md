@@ -4,6 +4,8 @@
 
 ### Added
 
+- TypeORM parser (`parseTypeorm`, `--from typeorm`): reads entity classes with the tree-sitter TypeScript grammar. Supports `@Entity` names, `@Column` options (type, length, nullable, unique, default, precision/scale, enum), `@PrimaryGeneratedColumn` (increment/uuid), `@PrimaryColumn` (including composite keys), `@CreateDateColumn` / `@UpdateDateColumn`, `@OneToOne` / `@ManyToOne` / `@OneToMany` / `@ManyToMany` with `@JoinColumn` / `@JoinTable` and `onDelete`, `@Index`, `@Unique`, TypeScript enums and string lists, embedded entities and base-class inheritance. Unsupported constructs produce warnings naming the entity and column. Registered as a read-only `typeorm` format for `.ts` files; the emitter is tracked separately.
+- Canonical TypeORM fixture of the blog schema, with goldens for TypeORM to Django and Prisma.
 - Shared test harness: a canonical schema per format (`test/fixtures/canonical.ts`), golden-file comparisons for every readable/writable format pair in both naming modes, and round-trip drift files that document lossy mappings. See `test/README.md`.
 - Format registry (`src/formats.ts`) with a `FormatAdapter` interface (`name`, `extensions`, `description`, optional `parse` and `emit`) and `registerFormat`, `getFormat`, `getFormatByExtension`, `listFormats` and `listFormatNames` helpers, exported from the package. Django and Prisma are registered as adapters.
 - `ormbridge formats` command listing each format with its file extensions and whether it can be read and/or written.
