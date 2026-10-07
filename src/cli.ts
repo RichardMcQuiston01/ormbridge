@@ -2,8 +2,16 @@
 import { createRequire } from 'node:module';
 import { extname } from 'node:path';
 import { Command } from 'commander';
-import { FORMAT_NAMES, type FormatName } from './convert.js';
 import { PRISMA_PROVIDERS, type PrismaProvider } from './emitters/prisma.js';
+import {
+  getFormat,
+  describeFormats,
+  getFormatByExtension,
+  listFormatNames,
+  listFormats,
+  type FormatAdapter,
+  type FormatName,
+} from './formats.js';
 import { runConversion, type RunOptions, type RunSummary } from './io.js';
 import type { Result } from './result.js';
 import type { NamingMode } from './transforms.js';
@@ -34,18 +42,10 @@ function inferFormatFromPath(
   if (filePath === undefined) {
     return undefined;
   }
-  const extension: string = extname(filePath);
-  if (extension === '.prisma') {
-    return 'prisma';
-  }
-  if (extension === '.py') {
-    return 'django';
-  }
-  return undefined;
-}
-
-function isFormatName(value: string): value is FormatName {
-  return (FORMAT_NAMES as readonly string[]).includes(value);
+  const adapter: FormatAdapter | undefined = getFormatByExtension(
+    extname(filePath)
+  );
+  return adapter?.name;
 }
 
 /** Validates the raw CLI flags and builds the options for the conversion. Returns a message on failure. */
@@ -59,18 +59,18 @@ function buildRunOptions(flags: ConvertFlags): Result<RunOptions> {
     flags.input[0]
   );
   const fromValue: string | undefined = flags.from ?? inferredFrom ?? 'django';
-  if (!isFormatName(fromValue)) {
+  if (!getFormat(fromValue).ok) {
     return failure(
-      `Invalid --from value "${fromValue}". Expected one of: ${FORMAT_NAMES.join(', ')}.`
+      `Invalid --from value "${fromValue}". Expected one of: ${listFormatNames().join(', ')}.`
     );
   }
 
   const inferredTo: FormatName | undefined = inferFormatFromPath(flags.output);
   const toValue: string =
     flags.to ?? inferredTo ?? (fromValue === 'django' ? 'prisma' : 'django');
-  if (!isFormatName(toValue)) {
+  if (!getFormat(toValue).ok) {
     return failure(
-      `Invalid --to value "${toValue}". Expected one of: ${FORMAT_NAMES.join(', ')}.`
+      `Invalid --to value "${toValue}". Expected one of: ${listFormatNames().join(', ')}.`
     );
   }
 
@@ -163,11 +163,11 @@ async function main(): Promise<number> {
     )
     .option(
       '-f, --from <format>',
-      `source format (${FORMAT_NAMES.join(' | ')}); inferred from the input when omitted`
+      `source format (${listFormatNames().join(' | ')}); inferred from the input when omitted`
     )
     .option(
       '-t, --to <format>',
-      `target format (${FORMAT_NAMES.join(' | ')}); inferred from the output when omitted`
+      `target format (${listFormatNames().join(' | ')}); inferred from the output when omitted`
     )
     .option(
       '--naming <mode>',
@@ -191,6 +191,15 @@ async function main(): Promise<number> {
     )
     .action(async (flags: ConvertFlags): Promise<void> => {
       exitCode = await handleConvert(flags);
+    });
+
+  program
+    .command('formats')
+    .description(
+      'List the supported formats, their file extensions, and whether each can be read and/or written'
+    )
+    .action((): void => {
+      process.stdout.write(describeFormats(listFormats()));
     });
 
   await program.parseAsync(process.argv);

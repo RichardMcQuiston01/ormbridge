@@ -35,7 +35,7 @@ ormbridge convert -i ./backend -o ./prisma/schema.prisma
 ormbridge convert -i ./prisma/schema.prisma -o ./shop/models.py --app-label shop
 ```
 
-Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma), or set explicitly with `--from` / `--to`. Without `-o`, the result is printed to stdout. Warnings go to stderr.
+Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma), or set explicitly with `--from` / `--to`. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
 
 | Flag                     | Default        | Description                                                                                                                             |
 | ------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -119,6 +119,23 @@ if (!result.ok) {
 ```
 
 All functions return a `Result` (`{ ok: true, value } | { ok: false, error }`) instead of throwing, with a descriptive error code and message. Parsers and emitters are exported too (`parseDjango`, `parsePrisma`, `emitPrisma`, `emitDjango`), all built on a shared intermediate representation, which is how new formats plug in.
+
+### Format registry
+
+Each format is an adapter registered in `src/formats.ts`: a `name`, its file `extensions`, a `description`, and an optional `parse` and/or `emit`. `convertText` and the CLI look formats up in the registry, so a format that only has `emit` is output-only and one that only has `parse` is input-only. Lookups return a `Result` with a descriptive error for unknown or unsupported formats.
+
+```ts
+import { getFormat, listFormats, registerFormat } from 'ormbridge';
+
+const adapter = getFormat('prisma'); // Result<FormatAdapter>
+const formats = listFormats(); // every registered adapter
+registerFormat({
+  name: 'example',
+  extensions: ['.example'],
+  description: 'An output-only example format',
+  emit: (schema, options) => ({ ok: true, value: { text: '', warnings: [] } }),
+});
+```
 
 [Back to Table of Contents](#table-of-contents)
 

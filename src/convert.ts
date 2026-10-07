@@ -1,43 +1,25 @@
-import { emitDjango } from './emitters/django.js';
+import type { EmitOutput } from './emitters/prisma.js';
 import {
-  emitPrisma,
-  type EmitOutput,
-  type PrismaProvider,
-} from './emitters/prisma.js';
+  BUILT_IN_FORMAT_NAMES,
+  DEFAULT_APP_LABEL,
+  getFormat,
+  type FormatAdapter,
+  type FormatName,
+  type FormatOptions,
+  type SourceText,
+} from './formats.js';
 import type { IrSchema } from './ir.js';
-import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
-import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
 import { err, ok, type Result } from './result.js';
-import {
-  expandManyToMany,
-  normalizeSchema,
-  type NamingMode,
-} from './transforms.js';
 
-export type FormatName = 'django' | 'prisma';
+export { DEFAULT_APP_LABEL };
+export type { FormatName, SourceText };
 
-export const FORMAT_NAMES: readonly FormatName[] = ['django', 'prisma'];
+/** Names of the built-in formats. Use listFormatNames() for the live registry contents. */
+export const FORMAT_NAMES: readonly FormatName[] = BUILT_IN_FORMAT_NAMES;
 
-export interface ConvertOptions {
+export interface ConvertOptions extends FormatOptions {
   from: FormatName;
   to: FormatName;
-  /** "preserve" keeps existing database names; "normalize" applies a fresh-schema style. */
-  naming: NamingMode;
-  /** Prisma datasource provider; controls native column types such as @db.VarChar. */
-  provider: PrismaProvider;
-  /** Emit Prisma generator and datasource blocks. */
-  header: boolean;
-  /** Overrides the Django app label (otherwise derived from the models.py directory). */
-  appLabel?: string;
-  /** Primary key type used for Django models without an explicit key. */
-  autoField: 'int' | 'bigInt';
-}
-
-export interface SourceText {
-  path: string;
-  text: string;
-  /** App label derived from the file location (Django input only). */
-  appLabel?: string;
 }
 
 export interface ConvertResult {
@@ -45,8 +27,6 @@ export interface ConvertResult {
   warnings: string[];
   modelCount: number;
 }
-
-export const DEFAULT_APP_LABEL: string = 'app';
 
 /** Converts in-memory source text from one ORM format to another. */
 export async function convertText(
@@ -63,12 +43,22 @@ export async function convertText(
     return err('NO_INPUT_FILES', 'No input sources were provided to convert.');
   }
 
-  const parsed: Result<IrSchema> = await parseSources(sources, options);
+  // Resolve both adapters first so a bad format fails before any parsing work.
+  const parser: Result<ParseFunction> = resolveParser(options.from);
+  if (!parser.ok) {
+    return parser;
+  }
+  const emitter: Result<EmitFunction> = resolveEmitter(options.to);
+  if (!emitter.ok) {
+    return emitter;
+  }
+
+  const parsed: Result<IrSchema> = await parser.value(sources, options);
   if (!parsed.ok) {
     return parsed;
   }
 
-  const emitted: Result<EmitOutput> = emitSchema(parsed.value, options);
+  const emitted: Result<EmitOutput> = emitter.value(parsed.value, options);
   if (!emitted.ok) {
     return emitted;
   }
@@ -80,52 +70,33 @@ export async function convertText(
   });
 }
 
-async function parseSources(
-  sources: SourceText[],
-  options: ConvertOptions
-): Promise<Result<IrSchema>> {
-  const fallbackLabel: string = options.appLabel ?? DEFAULT_APP_LABEL;
-  if (options.from === 'django') {
-    const djangoSources: DjangoSourceFile[] = sources.map(
-      (source: SourceText) => ({
-        path: source.path,
-        text: source.text,
-        appLabel: options.appLabel ?? source.appLabel ?? DEFAULT_APP_LABEL,
-      })
-    );
-    return parseDjango(djangoSources, { autoField: options.autoField });
+type ParseFunction = NonNullable<FormatAdapter['parse']>;
+type EmitFunction = NonNullable<FormatAdapter['emit']>;
+
+function resolveParser(name: FormatName): Result<ParseFunction> {
+  const adapter: Result<FormatAdapter> = getFormat(name);
+  if (!adapter.ok) {
+    return adapter;
   }
-  const prismaSources: PrismaSourceFile[] = sources.map(
-    (source: SourceText) => ({
-      path: source.path,
-      text: source.text,
-    })
-  );
-  return parsePrisma(prismaSources, { appLabel: fallbackLabel });
+  if (adapter.value.parse === undefined) {
+    return err(
+      'UNSUPPORTED_CONVERSION',
+      `The format "${name}" can only be used as an output; it cannot be read as input.`
+    );
+  }
+  return ok(adapter.value.parse);
 }
 
-function emitSchema(
-  schema: IrSchema,
-  options: ConvertOptions
-): Result<EmitOutput> {
-  if (options.to === 'prisma') {
-    const prepared: IrSchema =
-      options.naming === 'normalize'
-        ? normalizeSchema(schema)
-        : expandManyToMany(schema);
-    return ok(
-      emitPrisma(prepared, {
-        provider: options.provider,
-        header: options.header,
-        camelFields: options.naming === 'normalize',
-      })
+function resolveEmitter(name: FormatName): Result<EmitFunction> {
+  const adapter: Result<FormatAdapter> = getFormat(name);
+  if (!adapter.ok) {
+    return adapter;
+  }
+  if (adapter.value.emit === undefined) {
+    return err(
+      'UNSUPPORTED_CONVERSION',
+      `The format "${name}" can only be used as an input; it cannot be written as output.`
     );
   }
-  if (options.to === 'django') {
-    return ok(emitDjango(schema));
-  }
-  return err(
-    'UNSUPPORTED_CONVERSION',
-    `Unsupported target format "${String(options.to)}".`
-  );
+  return ok(adapter.value.emit);
 }
