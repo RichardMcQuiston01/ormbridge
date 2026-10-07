@@ -144,7 +144,9 @@ async function discoverInputFiles(
     const expected: string =
       format === 'django'
         ? 'models.py files (or a models/ package)'
-        : '.prisma files';
+        : format === 'typeorm'
+          ? 'TypeScript (.ts) entity files'
+          : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -156,6 +158,12 @@ async function discoverInputFiles(
 function isRelevantFile(filePath: string, format: FormatName): boolean {
   if (format === 'prisma') {
     return extname(filePath) === '.prisma';
+  }
+  if (format === 'typeorm') {
+    return (
+      extname(filePath) === '.ts' &&
+      !/\.(d|test|spec)\.ts$/.test(basename(filePath))
+    );
   }
   const parentName: string = basename(dirname(filePath));
   const fileName: string = basename(filePath);

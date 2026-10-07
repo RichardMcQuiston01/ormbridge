@@ -33,16 +33,19 @@ ormbridge convert -i ./backend -o ./prisma/schema.prisma
 
 # Prisma -> Django
 ormbridge convert -i ./prisma/schema.prisma -o ./shop/models.py --app-label shop
+
+# TypeORM -> Prisma (a directory needs --from; every .ts file in it is read, entities are picked out)
+ormbridge convert -i ./src/entities --from typeorm -o ./prisma/schema.prisma
 ```
 
-Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma), or set explicitly with `--from` / `--to`. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
+Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `.ts` = TypeORM), or set explicitly with `--from` / `--to`. Passing a directory does not infer the format, so add `--from typeorm` when reading a folder of TypeORM entities. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
 
 | Flag                     | Default        | Description                                                                                                                             |
 | ------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `-i, --input <paths...>` | required       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.              |
 | `-o, --output <path>`    | stdout         | File to write. Parent directories are created.                                                                                          |
-| `-f, --from <format>`    | inferred       | `django`, `prisma` or `typeorm` (output only)                                                                                           |
-| `-t, --to <format>`      | inferred       | `django`, `prisma` or `typeorm` (output only)                                                                                           |
+| `-f, --from <format>`    | inferred       | `django`, `prisma` or `typeorm`                                                                                                         |
+| `-t, --to <format>`      | inferred       | `django`, `prisma` or `typeorm`                                                                                                         |
 | `--naming <mode>`        | `preserve`     | `preserve` or `normalize` (see below)                                                                                                   |
 | `--provider <name>`      | `postgresql`   | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`. |
 | `--no-header`            | off            | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                 |
@@ -59,7 +62,7 @@ Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma), 
 
 ## What is converted
 
-| Django                                                                        | Prisma                                                     | TypeORM (output only)                                                                                 |
+| Django                                                                        | Prisma                                                     | TypeORM                                                                                               |
 | ----------------------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `CharField`, `SlugField`, `EmailField`, `URLField`                            | `String @db.VarChar(n)`                                    | `@Column({ type: 'varchar', length: n })`                                                             |
 | `TextField`                                                                   | `String @db.Text`                                          | `@Column({ type: 'text' })`                                                                           |
@@ -75,7 +78,7 @@ Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma), 
 | `Meta.db_table`, `unique_together`, `indexes`, `UniqueConstraint`, `db_index` | `@@map`, `@@unique`, `@@index`                             | `@Entity('table')`, `@Unique([...])`, `@Index([...])`                                                 |
 | Abstract base classes, multi-table inheritance                                | fields inherited / one-to-one primary key                  | fields inherited / one-to-one primary key                                                             |
 
-TypeORM output is a single TypeScript file of entity classes. Relations use `Relation<T>` so entities declared in one file do not trip over circular references, and `--provider` picks the column types (`timestamptz` and `jsonb` for PostgreSQL, `datetime` and `json` for MySQL, `simple-json` for SQLite). Use `--naming normalize` for camelCase properties mapped to snake_case columns with `name:` options. `.ts` is not inferred as a format, so pass `--to typeorm`; reading TypeORM entities is not supported yet.
+TypeORM output is a single TypeScript file of entity classes. Relations use `Relation<T>` so entities declared in one file do not trip over circular references, and `--provider` picks the column types (`timestamptz` and `jsonb` for PostgreSQL, `datetime` and `json` for MySQL, `simple-json` for SQLite). Use `--naming normalize` for camelCase properties mapped to snake_case columns with `name:` options. `.ts` is not inferred as a format, so pass `--from typeorm` or `--to typeorm`. Reading uses decorators only (see Limitations). TypeORM entities are parsed statically with tree-sitter (no `reflect-metadata`, TypeScript compiler, or database needed), and the same naming modes apply to the result.
 
 Prisma → Django applies the reverse mapping. Field names are converted from camelCase to snake_case, with `db_column` set when the column name differs.
 
@@ -89,6 +92,7 @@ ormbridge never fails silently on something it cannot represent: each case produ
 - Python is parsed statically, so computed defaults, custom field classes, and fields added dynamically are skipped or approximated.
 - Prisma composite primary keys become `models.CompositePrimaryKey` (Django 5.2+). Composite foreign keys, `Unsupported(...)` types, and scalar lists have no direct Django equivalent.
 - Prisma's implicit many-to-many join table (`_AToB`) differs from Django's, so data needs migrating.
+- TypeORM: entities are read from decorators only. Not supported, each with a warning naming the entity and column: `EntitySchema`, `@ChildEntity` / `@TableInheritance` (single-table inheritance), `@ViewEntity`, `@Tree*`, `@ObjectIdColumn`, `@VirtualColumn`, array columns, partial and spatial indexes, `@Check` / `@Exclusion`, composite foreign keys, relations inside embedded entities, and column options such as `unsigned`, `collation` and `transformer`. Custom `@JoinTable` names are not preserved. Relations without `onDelete` become `NoAction` and relations are nullable unless `nullable: false`, as in TypeORM. Numeric enums become integers.
 - TypeORM many-to-many relations use TypeORM's join table (composite key), so Django's surrogate `id` column on the join table is not reproduced. SQL Server has no enum column, so enums become `varchar`. Database-side UUID defaults are not available on SQLite. MongoDB entities are not supported.
 - Generated names for Django indexes are shortened to Django's 30-character limit.
 
@@ -121,7 +125,7 @@ if (!result.ok) {
 }
 ```
 
-All functions return a `Result` (`{ ok: true, value } | { ok: false, error }`) instead of throwing, with a descriptive error code and message. Parsers and emitters are exported too (`parseDjango`, `parsePrisma`, `emitPrisma`, `emitDjango`), all built on a shared intermediate representation, which is how new formats plug in.
+All functions return a `Result` (`{ ok: true, value } | { ok: false, error }`) instead of throwing, with a descriptive error code and message. Parsers and emitters are exported too (`parseDjango`, `parsePrisma`, `parseTypeorm`, `emitPrisma`, `emitDjango`), all built on a shared intermediate representation, which is how new formats plug in.
 
 ### Format registry
 

@@ -8,6 +8,7 @@ import { emitTypeorm } from './emitters/typeorm.js';
 import type { IrSchema } from './ir.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
+import { parseTypeorm } from './parsers/typeorm.js';
 import { err, ok, type Result } from './result.js';
 import {
   expandManyToMany,
@@ -209,9 +210,20 @@ const prismaAdapter: FormatAdapter = {
 
 const typeormAdapter: FormatAdapter = {
   name: 'typeorm',
-  // No extension is claimed: ".ts" is too generic to infer, so pass --to typeorm.
+  // No extension is claimed: ".ts" is too generic to infer, so pass --from/--to typeorm.
   extensions: [],
   description: 'TypeORM entity classes (TypeScript)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseTypeorm(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
   emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
     const prepared: IrSchema =
       options.naming === 'normalize' ? normalizeSchema(schema) : schema;

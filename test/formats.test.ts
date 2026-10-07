@@ -151,7 +151,7 @@ describe('formats command output', () => {
       'extensions: .prisma  read + write  Prisma schema (schema.prisma)\n'
     );
     expect(text).toContain(
-      'typeorm  extensions: (none)  write  TypeORM entity classes (TypeScript)\n'
+      'typeorm  extensions: (none)  read + write  TypeORM entity classes (TypeScript)\n'
     );
   });
 

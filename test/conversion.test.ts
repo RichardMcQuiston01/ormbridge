@@ -63,13 +63,18 @@ describe.each(
   });
 });
 
-// A round trip needs the target format to be readable as well.
+/** A round trip also needs the source to be writable and the target readable. */
+function roundTripPairs(): [FormatAdapter, FormatAdapter][] {
+  return conversionPairs().filter(
+    ([source, target]) =>
+      source.emit !== undefined && target.parse !== undefined
+  );
+}
+
 describe.each(
-  conversionPairs()
-    .filter(([, target]) => target.parse !== undefined)
-    .map(
-      ([source, target]) => [source.name, target.name, source, target] as const
-    )
+  roundTripPairs().map(
+    ([source, target]) => [source.name, target.name, source, target] as const
+  )
 )('round trip %s -> %s', (_sourceName, _targetName, source, target) => {
   it('has only the documented drift after one pass', async () => {
     const trip: RoundTripResult = await roundTrip(source.name, target.name);
