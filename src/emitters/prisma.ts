@@ -200,6 +200,18 @@ function usesNativeTypes(provider: PrismaProvider): boolean {
   );
 }
 
+const POSTGRES_RANGE_TYPES: Readonly<Record<string, string>> = {
+  int: 'int4range',
+  bigInt: 'int8range',
+  decimal: 'numrange',
+  date: 'daterange',
+  dateTime: 'tstzrange',
+};
+
+function rangeTypeName(field: IrField): string {
+  return POSTGRES_RANGE_TYPES[field.rangeOf ?? 'int'] ?? 'int4range';
+}
+
 function prismaTypeOf(context: EmitContext, field: IrField): PrismaType {
   const provider: PrismaProvider = context.options.provider;
   const native: boolean = usesNativeTypes(provider);
@@ -255,6 +267,18 @@ function prismaTypeOf(context: EmitContext, field: IrField): PrismaType {
       return { type: 'Json' };
     case 'bytes':
       return { type: 'Bytes' };
+    case 'duration':
+      return { type: 'BigInt' };
+    case 'ipAddress':
+      return postgres
+        ? { type: 'String', nativeAttr: '@db.Inet' }
+        : { type: 'String' };
+    case 'hstore':
+      return { type: 'Json' };
+    case 'range':
+      return postgres
+        ? { type: `Unsupported(${JSON.stringify(rangeTypeName(field))})` }
+        : { type: 'String' };
     default:
       return { type: 'String' };
   }
@@ -371,7 +395,7 @@ function buildForwardLines(
   const lines: Line[] = [];
 
   for (const field of model.fields) {
-    lines.push(buildFieldLine(context, field));
+    lines.push(buildFieldLine(context, model, field));
   }
 
   for (const relation of model.relations) {
@@ -394,17 +418,95 @@ function buildForwardLines(
   return lines;
 }
 
-function buildFieldLine(context: EmitContext, field: IrField): Line {
+/** Reports the places where a field type or column feature has no Prisma equivalent. */
+function warnAboutSpecialField(
+  context: EmitContext,
+  model: IrModel,
+  field: IrField
+): void {
+  const label: string = `${model.name}.${field.name}`;
+  const postgres: boolean =
+    context.options.provider === 'postgresql' ||
+    context.options.provider === 'cockroachdb';
+  if (field.type === 'duration') {
+    context.warnings.push(
+      `${label}: Prisma has no interval type; the duration was written as BigInt (microseconds).`
+    );
+  }
+  if (field.type === 'hstore') {
+    context.warnings.push(
+      `${label}: Prisma has no hstore type; the field was written as Json.`
+    );
+  }
+  if (field.type === 'range') {
+    context.warnings.push(
+      postgres
+        ? `${label}: range columns are written as Unsupported("${rangeTypeName(field)}"), which Prisma Client cannot read or filter.`
+        : `${label}: range columns exist only on PostgreSQL; the field was written as String.`
+    );
+  }
+  if (field.generated !== undefined) {
+    context.warnings.push(
+      `${label}: the generated column expression ${field.generated.expression} has no Prisma equivalent; ` +
+        `it was written as a regular column, so Prisma will try to write to it.`
+    );
+  }
+}
+
+function buildFieldLine(
+  context: EmitContext,
+  model: IrModel,
+  field: IrField
+): Line {
+  const label: string = `${model.name}.${field.name}`;
+  warnAboutSpecialField(context, model, field);
   const mapped: PrismaType = prismaTypeOf(context, field);
+  let typeText: string = mapped.type;
+  let nativeAttr: string | undefined = mapped.nativeAttr;
+  const isUnsupported: boolean = typeText.startsWith('Unsupported(');
+  const depth: number = field.arrayDepth ?? 0;
+  let isList: boolean = false;
+  if (depth > 0) {
+    const provider: PrismaProvider = context.options.provider;
+    const supportsLists: boolean =
+      provider === 'postgresql' ||
+      provider === 'cockroachdb' ||
+      provider === 'mongodb';
+    if (supportsLists && depth === 1 && !isUnsupported) {
+      isList = true;
+      typeText = `${typeText}[]`;
+      if (field.isNullable) {
+        context.warnings.push(
+          `${label}: Prisma lists cannot be optional; the nullable array was written as a required list.`
+        );
+      }
+    } else {
+      context.warnings.push(
+        supportsLists
+          ? `${label}: Prisma supports only one-dimensional scalar lists; the ${depth}-dimensional array was written as Json.`
+          : `${label}: ${provider} has no scalar list type in Prisma; the array was written as Json.`
+      );
+      typeText = 'Json';
+      nativeAttr = undefined;
+    }
+  }
+
   const attrs: string[] = [];
   if (field.isPrimaryKey) {
     attrs.push('@id');
   }
-  const defaultAttr: string | undefined = defaultAttrOf(field);
+  const defaultAttr: string | undefined =
+    depth > 0 && isList
+      ? field.default?.kind === 'literal' && field.default.value === '[]'
+        ? '@default([])'
+        : undefined
+      : isUnsupported
+        ? undefined
+        : defaultAttrOf(field);
   if (defaultAttr !== undefined) {
     attrs.push(defaultAttr);
   }
-  if (field.isUnique && !field.isPrimaryKey) {
+  if (field.isUnique && !field.isPrimaryKey && !isUnsupported) {
     attrs.push('@unique');
   }
   if (field.isAutoUpdated) {
@@ -414,10 +516,11 @@ function buildFieldLine(context: EmitContext, field: IrField): Line {
   if (field.columnName !== name) {
     attrs.push(`@map(${JSON.stringify(field.columnName)})`);
   }
-  if (mapped.nativeAttr !== undefined) {
-    attrs.push(mapped.nativeAttr);
+  if (nativeAttr !== undefined) {
+    attrs.push(nativeAttr);
   }
-  return { name, type: `${mapped.type}${field.isNullable ? '?' : ''}`, attrs };
+  const optionalMark: string = field.isNullable && !isList ? '?' : '';
+  return { name, type: `${typeText}${optionalMark}`, attrs };
 }
 
 function addForeignKey(

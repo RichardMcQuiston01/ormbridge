@@ -309,6 +309,33 @@ function fieldType(
   field: IrField,
   report: boolean
 ): string {
+  const element: string = elementType(context, label, field, report);
+  const depth: number = field.arrayDepth ?? 0;
+  if (depth === 0) {
+    return element;
+  }
+  const wrapped: string = /[|&]/.test(element) ? `(${element})` : element;
+  return `${wrapped}${'[]'.repeat(depth)}`;
+}
+
+function rangeBoundType(context: EmitContext, field: IrField): string {
+  switch (field.rangeOf) {
+    case 'int':
+      return 'number';
+    case 'dateTime':
+    case 'date':
+      return context.dates === 'date' ? 'Date' : 'string';
+    default:
+      return 'string';
+  }
+}
+
+function elementType(
+  context: EmitContext,
+  label: string,
+  field: IrField,
+  report: boolean
+): string {
   if (field.enumName !== undefined) {
     const enumDefinition: IrEnum | undefined = context.schema.enums.find(
       (candidate: IrEnum) => candidate.name === field.enumName
@@ -345,6 +372,15 @@ function fieldType(
       return context.dates === 'date' ? 'Date' : 'string';
     case 'json':
       return 'unknown';
+    case 'duration':
+    case 'ipAddress':
+      return 'string';
+    case 'hstore':
+      return 'Record<string, string | null>';
+    case 'range': {
+      const bound: string = rangeBoundType(context, field);
+      return `{ lower: ${bound} | null; upper: ${bound} | null; bounds?: string }`;
+    }
     default:
       if (report) {
         context.warnings.push(

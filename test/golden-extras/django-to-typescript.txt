@@ -1,0 +1,76 @@
+export enum ItemKind {
+  /** Tool */
+  TOOL = 'tool',
+  /** Toy */
+  TOY = 'toy',
+}
+
+export interface Item {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  quantity: number;
+  total_cents: number;
+  tags: string[];
+  grid: number[][] | null;
+  kinds: ItemKind[];
+  attributes: Record<string, string | null>;
+  stock_range: { lower: number | null; upper: number | null; bounds?: string } | null;
+  big_range: { lower: string | null; upper: string | null; bounds?: string } | null;
+  price_range: { lower: string | null; upper: string | null; bounds?: string } | null;
+  available: { lower: string | null; upper: string | null; bounds?: string } | null;
+  valid_during: { lower: string | null; upper: string | null; bounds?: string } | null;
+  last_ip: string | null;
+  legacy_ip: string | null;
+  shelf_life: string | null;
+  source_path: string | null;
+  manual: string | null;
+  photo: string | null;
+  small_count: number;
+  tiny_count: number;
+  is_active: boolean;
+  stocked_at: string;
+  priority: number;
+  note: string;
+  shipments?: Shipment[];
+  other_shipments?: Shipment[];
+  assignment_set?: Assignment[];
+}
+
+export interface Counter {
+  small_id: number;
+  label: string;
+}
+
+export interface Shipment {
+  id: number;
+  object_id: number;
+  item_id: number;
+  item?: Item;
+  other_id: number;
+  other?: Item;
+  content_type_id: number;
+  content_type?: ContentType;
+  created_by_id: number;
+  created_by?: Account;
+}
+
+export interface Account {
+  id: number;
+  email: string;
+  shipment_set?: Shipment[];
+  assignment_set?: Assignment[];
+}
+
+export interface Assignment {
+  item_id: number;
+  item?: Item;
+  account_id: number;
+  account?: Account;
+}
+
+export interface ContentType {
+  id: number;
+  shipment_set?: Shipment[];
+}

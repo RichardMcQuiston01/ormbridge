@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ItemKind {
+  TOOL @map("tool")
+  TOY @map("toy")
+}
+
+model Item {
+  id              Int                       @id @default(autoincrement())
+  first_name      String                    @db.VarChar(40)
+  last_name       String                    @db.VarChar(40)
+  full_name       String                    @db.VarChar(81)
+  quantity        Int                       @default(1)
+  total_cents     Int
+  tags            String[]                  @default([]) @db.VarChar(20)
+  grid            Json?
+  kinds           ItemKind[]                @default([])
+  attributes      Json                      @default("{}")
+  stock_range     Unsupported("int4range")?
+  big_range       Unsupported("int8range")?
+  price_range     Unsupported("numrange")?
+  available       Unsupported("daterange")?
+  valid_during    Unsupported("tstzrange")?
+  last_ip         String?                   @db.Inet
+  legacy_ip       String?                   @unique @db.Inet
+  shelf_life      BigInt?
+  source_path     String?                   @db.VarChar(100)
+  manual          String?                   @db.VarChar(100)
+  photo           String?                   @db.VarChar(100)
+  small_count     Int                       @default(0)
+  tiny_count      Int                       @default(0)
+  is_active       Boolean                   @default(true)
+  stocked_at      DateTime                  @default(now()) @db.Timestamptz(6)
+  priority        Int                       @default(5)
+  note            String                    @default("none") @db.VarChar(20)
+  shipments       Shipment[]                @relation("Shipment_item")
+  other_shipments Shipment[]                @relation("Shipment_other")
+  assignment_set  Assignment[]
+
+  @@map("shop_item")
+}
+
+model Counter {
+  small_id Int    @id @default(autoincrement())
+  label    String @db.VarChar(20)
+
+  @@map("shop_counter")
+}
+
+model Shipment {
+  id              Int         @id @default(autoincrement())
+  object_id       Int
+  item_id         Int
+  item            Item        @relation("Shipment_item", fields: [item_id], references: [id], onDelete: Cascade)
+  other_id        Int
+  other           Item        @relation("Shipment_other", fields: [other_id], references: [id], onDelete: Cascade)
+  content_type_id Int
+  content_type    ContentType @relation(fields: [content_type_id], references: [id], onDelete: Cascade)
+  created_by_id   Int
+  created_by      Account     @relation(fields: [created_by_id], references: [id], onDelete: Cascade)
+
+  @@map("shop_shipment")
+}
+
+model Account {
+  id             Int          @id @default(autoincrement())
+  email          String       @unique @db.VarChar(254)
+  shipment_set   Shipment[]
+  assignment_set Assignment[]
+
+  @@map("shop_account")
+}
+
+model Assignment {
+  item_id    Int
+  item       Item    @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  account_id Int
+  account    Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
+
+  @@id([item_id, account_id])
+  @@map("shop_assignment")
+}
+
+model ContentType {
+  id           Int        @id @default(autoincrement())
+  shipment_set Shipment[]
+
+  @@map("shop_contenttype")
+}

@@ -350,7 +350,48 @@ function enumReference(
 // Column types
 // ---------------------------------------------------------------------------
 
+const POSTGRES_RANGE_TYPES: Readonly<Record<string, string>> = {
+  int: 'int4range',
+  bigInt: 'int8range',
+  decimal: 'numrange',
+  date: 'daterange',
+  dateTime: 'tstzrange',
+};
+
+/** Column type of a field, including array columns built on top of the element type. */
 function columnSpecOf(
+  context: EmitContext,
+  label: string,
+  field: IrField
+): ColumnSpec {
+  const depth: number = field.arrayDepth ?? 0;
+  if (depth === 0) {
+    return scalarColumnSpec(context, label, field);
+  }
+  const element: ColumnSpec = scalarColumnSpec(context, label, {
+    ...field,
+    arrayDepth: undefined,
+  });
+  const tsType: string = `${element.tsType.includes(' ') ? `(${element.tsType})` : element.tsType}${'[]'.repeat(depth)}`;
+  if (context.dialect === 'postgres') {
+    return {
+      typeEntries: [...element.typeEntries, 'array: true'],
+      tsType,
+      dbType: element.dbType,
+    };
+  }
+  const jsonType: string = context.dialect === 'mysql' ? 'json' : 'simple-json';
+  context.warnings.push(
+    `${label}: ${context.dialect} has no array column type; the array was written as ${jsonType}.`
+  );
+  return {
+    typeEntries: [`type: '${jsonType}'`],
+    tsType,
+    dbType: jsonType,
+  };
+}
+
+function scalarColumnSpec(
   context: EmitContext,
   label: string,
   field: IrField
@@ -499,6 +540,71 @@ function columnSpecOf(
         dbType: bytesType,
       };
     }
+    case 'duration':
+      if (dialect === 'postgres') {
+        return {
+          typeEntries: [`type: 'interval'`],
+          tsType: 'string',
+          dbType: 'interval',
+        };
+      }
+      context.warnings.push(
+        `${label}: ${dialect} has no interval type; the duration was written as bigint (microseconds).`
+      );
+      return {
+        typeEntries: [`type: 'bigint'`],
+        tsType: 'string',
+        dbType: 'bigint',
+      };
+    case 'ipAddress':
+      if (dialect === 'postgres') {
+        return {
+          typeEntries: [`type: 'inet'`],
+          tsType: 'string',
+          dbType: 'inet',
+        };
+      }
+      return {
+        typeEntries: [`type: 'varchar'`, 'length: 45'],
+        tsType: 'string',
+        dbType: 'varchar',
+      };
+    case 'hstore':
+      if (dialect === 'postgres') {
+        return {
+          typeEntries: [`type: 'hstore'`],
+          tsType: 'Record<string, string | null>',
+          dbType: 'hstore',
+        };
+      }
+      context.warnings.push(
+        `${label}: hstore exists only on PostgreSQL; the field was written as ${dialect === 'mysql' ? 'json' : 'simple-json'}.`
+      );
+      return {
+        typeEntries: [
+          `type: '${dialect === 'mysql' ? 'json' : 'simple-json'}'`,
+        ],
+        tsType: 'Record<string, string | null>',
+        dbType: dialect === 'mysql' ? 'json' : 'simple-json',
+      };
+    case 'range':
+      if (dialect === 'postgres') {
+        const rangeType: string =
+          POSTGRES_RANGE_TYPES[field.rangeOf ?? 'int'] ?? 'int4range';
+        return {
+          typeEntries: [`type: '${rangeType}'`],
+          tsType: 'string',
+          dbType: rangeType,
+        };
+      }
+      context.warnings.push(
+        `${label}: range columns exist only on PostgreSQL; the field was written as varchar.`
+      );
+      return {
+        typeEntries: [`type: 'varchar'`],
+        tsType: 'string',
+        dbType: 'varchar',
+      };
     default:
       context.warnings.push(
         `${label}: unknown field type "${String(field.type)}"; it was written as varchar.`
@@ -578,6 +684,19 @@ function defaultEntryOf(
             return `default: ${reference}`;
           }
         }
+        if ((field.arrayDepth ?? 0) > 0) {
+          if (defaultValue.value !== '[]') {
+            return undefined;
+          }
+          return context.dialect === 'postgres'
+            ? `default: () => ${quote(quote('{}'))}`
+            : `default: () => ${quote(quote('[]'))}`;
+        }
+        if (field.type === 'hstore' && defaultValue.value === '{}') {
+          return context.dialect === 'postgres'
+            ? `default: () => ${quote(quote(''))}`
+            : `default: () => ${quote(quote('{}'))}`;
+        }
         if (field.type === 'json') {
           return `default: () => ${quote(quote(defaultValue.value))}`;
         }
@@ -631,6 +750,12 @@ function buildFieldMember(
 ): Member {
   const label: string = `${model.name}.${field.name}`;
   const spec: ColumnSpec = columnSpecOf(context, label, field);
+  if (field.generated !== undefined) {
+    context.warnings.push(
+      `${label}: the generated column expression ${field.generated.expression} is Python, not SQL, and has no TypeORM equivalent; ` +
+        `the property was written as a regular column.`
+    );
+  }
   const nameOption: string | undefined = nameEntry(field.columnName, propName);
   const inCompositeKey: boolean =
     model.compositePrimaryKey?.includes(field.name) ?? false;
