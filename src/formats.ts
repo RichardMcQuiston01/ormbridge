@@ -1,4 +1,5 @@
 import { emitDjango } from './emitters/django.js';
+import { emitGraphene } from './emitters/graphene.js';
 import {
   emitPrisma,
   type EmitOutput,
@@ -237,6 +238,14 @@ const typeormAdapter: FormatAdapter = {
   },
 };
 
+const grapheneAdapter: FormatAdapter = {
+  name: 'graphene',
+  // No extension is claimed: ".py" belongs to Django, so pass --to graphene.
+  extensions: [],
+  description: 'Graphene (graphene-django) GraphQL schema',
+  emit: (schema: IrSchema): Result<EmitOutput> => ok(emitGraphene(schema)),
+};
+
 const typescriptAdapter: FormatAdapter = {
   name: 'typescript',
   // Output only, and no extension is claimed: TypeORM already reads TypeScript, so pass --to typescript.
@@ -258,6 +267,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
   registerFormat(prismaAdapter),
   registerFormat(typeormAdapter),
+  registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(

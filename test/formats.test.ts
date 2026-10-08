@@ -154,6 +154,9 @@ describe('formats command output', () => {
       /typeorm\s+extensions: \(none\) {2}read \+ write {2}TypeORM entity classes \(TypeScript\)\n/
     );
     expect(text).toMatch(
+      /graphene\s+extensions: \(none\) {2}write {2}Graphene \(graphene-django\) GraphQL schema\n/
+    );
+    expect(text).toMatch(
       /typescript\s+extensions: \(none\) {2}write {2}Plain TypeScript interfaces and enums\n/
     );
   });
