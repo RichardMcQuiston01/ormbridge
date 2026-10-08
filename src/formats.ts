@@ -45,6 +45,21 @@ export interface FormatOptions {
 }
 
 /**
+ * Output of an emitter that produces several files. `files` maps a relative
+ * path (forward slashes, no leading slash, no `..`) to the file text. The
+ * single-text form (`EmitOutput`) stays valid; no existing emitter changes.
+ */
+export interface MultiFileEmitOutput {
+  files: Record<string, string>;
+  warnings: string[];
+  /** Absent in the multi-file form, which lets code tell the two forms apart. */
+  text?: undefined;
+}
+
+/** What `FormatAdapter.emit` returns: one text, or a map of files. */
+export type FormatEmitOutput = EmitOutput | MultiFileEmitOutput;
+
+/**
  * One ORM format. An adapter that omits `parse` can only be written (output
  * only); one that omits `emit` can only be read (input only).
  */
@@ -60,8 +75,11 @@ export interface FormatAdapter {
     sources: SourceText[],
     options: FormatOptions
   ) => Promise<Result<IrSchema>>;
-  /** Writes the intermediate representation as source text. */
-  emit?: (schema: IrSchema, options: FormatOptions) => Result<EmitOutput>;
+  /**
+   * Writes the intermediate representation as source text, or as several
+   * files (`MultiFileEmitOutput`) when the format needs more than one.
+   */
+  emit?: (schema: IrSchema, options: FormatOptions) => Result<FormatEmitOutput>;
 }
 
 const adapters: Map<string, FormatAdapter> = new Map<string, FormatAdapter>();

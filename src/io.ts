@@ -1,5 +1,12 @@
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname, extname, join, resolve } from 'node:path';
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  resolve,
+} from 'node:path';
 import {
   convertText,
   type ConvertOptions,
@@ -25,13 +32,40 @@ const SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
 export interface RunOptions extends ConvertOptions {
   /** Files or directories to read. */
   inputs: string[];
-  /** Destination file. When omitted the converted text is only returned. */
+  /**
+   * Destination. A file path for single-text formats; a directory for formats
+   * that yield several files. When omitted the converted text is only returned.
+   */
   output?: string;
+  /** Run the whole conversion and report what would be written, without touching the filesystem. */
+  dryRun?: boolean;
+  /** Compare the result with the existing output and report differences, without writing. */
+  check?: boolean;
+}
+
+/** How a planned output file relates to what is on disk. */
+export type OutputState = 'created' | 'changed' | 'unchanged';
+
+/** One file the conversion produces, with its relation to the existing file. */
+export interface PlannedFile {
+  /** Absolute destination path. */
+  path: string;
+  text: string;
+  bytes: number;
+  lines: number;
+  state: OutputState;
+  /** Short description of the differences for a changed file, such as "+3 -1 lines (first difference at line 12)". */
+  diff?: string;
 }
 
 export interface RunSummary extends ConvertResult {
   inputFiles: string[];
+  /** The output path as written: the file for single-text formats, the directory for multi-file formats. */
   outputPath?: string;
+  /** Every file planned for the output path. Empty when no output path was given. */
+  plannedFiles: PlannedFile[];
+  /** True when files were written (never in dry-run or check mode). */
+  written: boolean;
 }
 
 /** Reads the inputs, converts them, and writes the result to the output path when one is given. */
@@ -67,18 +101,190 @@ export async function runConversion(
   const summary: RunSummary = {
     ...converted.value,
     inputFiles: discovered.value,
+    plannedFiles: [],
+    written: false,
   };
   if (options.output === undefined) {
+    if (converted.value.files !== undefined) {
+      return err(
+        'INVALID_OPTION',
+        `The "${options.to}" format produces ${Object.keys(converted.value.files).length} files, so it needs an output directory. Pass -o <directory>.`
+      );
+    }
     return ok(summary);
   }
-  const written: Result<string> = await writeTextFile(
-    options.output,
-    converted.value.output
+
+  const planned: Result<PlannedFile[]> = await planOutput(
+    resolve(options.output),
+    converted.value,
+    options.to
   );
-  if (!written.ok) {
-    return written;
+  if (!planned.ok) {
+    return planned;
   }
-  return ok({ ...summary, outputPath: written.value });
+  const outputPath: string = resolve(options.output);
+  const withPlan: RunSummary = {
+    ...summary,
+    outputPath,
+    plannedFiles: planned.value,
+  };
+  if (options.dryRun === true || options.check === true) {
+    return ok(withPlan);
+  }
+  for (const file of planned.value) {
+    if (file.state === 'unchanged') {
+      continue;
+    }
+    const written: Result<string> = await writeTextFile(file.path, file.text);
+    if (!written.ok) {
+      return written;
+    }
+  }
+  return ok({ ...withPlan, written: true });
+}
+
+/** Works out the destination files and compares each with what is already on disk. */
+async function planOutput(
+  outputPath: string,
+  converted: ConvertResult,
+  format: FormatName
+): Promise<Result<PlannedFile[]>> {
+  const existing: 'file' | 'directory' | 'missing' | 'other' =
+    await classifyPath(outputPath);
+  const entries: Array<[string, string]> = [];
+  if (converted.files === undefined) {
+    if (existing === 'directory') {
+      return err(
+        'INVALID_OPTION',
+        `The output path "${outputPath}" is a directory, but the "${format}" format produces a single file. Pass a file path to -o.`
+      );
+    }
+    entries.push([outputPath, converted.output]);
+  } else {
+    const names: string[] = Object.keys(converted.files).sort();
+    if (
+      existing === 'file' ||
+      (existing === 'missing' && extname(outputPath) !== '')
+    ) {
+      return err(
+        'INVALID_OPTION',
+        `The "${format}" format produces ${names.length} files (${names.join(', ')}), so -o must be a directory, but "${outputPath}" is a file path. Pass a directory such as "${join(dirname(outputPath), basename(outputPath, extname(outputPath)))}".`
+      );
+    }
+    for (const name of names) {
+      const target: Result<string> = resolveInside(outputPath, name);
+      if (!target.ok) {
+        return target;
+      }
+      entries.push([target.value, converted.files[name] ?? '']);
+    }
+  }
+
+  const planned: PlannedFile[] = [];
+  for (const [path, text] of entries) {
+    const current: string | undefined = await readIfExists(path);
+    const file: PlannedFile = {
+      path,
+      text,
+      bytes: Buffer.byteLength(text, 'utf8'),
+      lines: countLines(text),
+      state:
+        current === undefined
+          ? 'created'
+          : current === text
+            ? 'unchanged'
+            : 'changed',
+    };
+    if (current !== undefined && current !== text) {
+      file.diff = summarizeDiff(current, text);
+    }
+    planned.push(file);
+  }
+  return ok(planned);
+}
+
+async function classifyPath(
+  path: string
+): Promise<'file' | 'directory' | 'missing' | 'other'> {
+  try {
+    const info = await stat(path);
+    if (info.isDirectory()) {
+      return 'directory';
+    }
+    return info.isFile() ? 'file' : 'other';
+  } catch {
+    return 'missing';
+  }
+}
+
+async function readIfExists(path: string): Promise<string | undefined> {
+  try {
+    return await readFile(path, 'utf8');
+  } catch {
+    return undefined;
+  }
+}
+
+/** Resolves an emitter-provided relative path under the output directory, rejecting escapes. */
+function resolveInside(
+  directory: string,
+  relativePath: string
+): Result<string> {
+  if (
+    relativePath === '' ||
+    isAbsolute(relativePath) ||
+    relativePath.split(/[\\/]/).includes('..')
+  ) {
+    return err(
+      'EMIT_FAILED',
+      `The emitter returned the file path "${relativePath}", which is not a relative path inside the output directory.`
+    );
+  }
+  return ok(resolve(directory, relativePath));
+}
+
+/** Counts lines the way an editor does: a trailing newline does not add a line. */
+export function countLines(text: string): number {
+  if (text === '') {
+    return 0;
+  }
+  const newlines: number = text.split('\n').length - 1;
+  return text.endsWith('\n') ? newlines : newlines + 1;
+}
+
+/**
+ * Describes how two texts differ in a short line, for example
+ * "+3 -1 lines (first difference at line 12)".
+ */
+export function summarizeDiff(before: string, after: string): string {
+  const oldLines: string[] = before.split('\n');
+  const newLines: string[] = after.split('\n');
+  const counts: Map<string, number> = new Map<string, number>();
+  for (const line of oldLines) {
+    counts.set(line, (counts.get(line) ?? 0) + 1);
+  }
+  let added: number = 0;
+  for (const line of newLines) {
+    const remaining: number = counts.get(line) ?? 0;
+    if (remaining > 0) {
+      counts.set(line, remaining - 1);
+    } else {
+      added += 1;
+    }
+  }
+  let removed: number = 0;
+  for (const remaining of counts.values()) {
+    removed += remaining;
+  }
+  let first: number = 0;
+  while (
+    first < oldLines.length &&
+    first < newLines.length &&
+    oldLines[first] === newLines[first]
+  ) {
+    first += 1;
+  }
+  return `+${added} -${removed} lines (first difference at line ${first + 1})`;
 }
 
 async function readTextFile(filePath: string): Promise<Result<string>> {
