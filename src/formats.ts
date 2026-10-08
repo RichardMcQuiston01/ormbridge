@@ -6,6 +6,7 @@ import {
   type PrismaProvider,
 } from './emitters/prisma.js';
 import { emitTypeorm } from './emitters/typeorm.js';
+import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import type { IrSchema } from './ir.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
@@ -245,12 +246,29 @@ const grapheneAdapter: FormatAdapter = {
   emit: (schema: IrSchema): Result<EmitOutput> => ok(emitGraphene(schema)),
 };
 
+const typescriptAdapter: FormatAdapter = {
+  name: 'typescript',
+  // Output only, and no extension is claimed: TypeORM already reads TypeScript, so pass --to typescript.
+  extensions: [],
+  description: 'Plain TypeScript interfaces and enums',
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitTypescriptInterfaces(prepared, {
+        camelFields: options.naming === 'normalize',
+      })
+    );
+  },
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
   registerFormat(prismaAdapter),
   registerFormat(typeormAdapter),
   registerFormat(grapheneAdapter),
+  registerFormat(typescriptAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

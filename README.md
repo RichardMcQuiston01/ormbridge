@@ -45,7 +45,7 @@ Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `
 | `-i, --input <paths...>` | required       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.              |
 | `-o, --output <path>`    | stdout         | File to write. Parent directories are created.                                                                                          |
 | `-f, --from <format>`    | inferred       | `django`, `prisma` or `typeorm`                                                                                                         |
-| `-t, --to <format>`      | inferred       | `django`, `prisma`, `typeorm` or `graphene` (output only)                                                                               |
+| `-t, --to <format>`      | inferred       | `django`, `prisma`, `typeorm`, `typescript` or `graphene` (output only)                                                                 |
 | `--naming <mode>`        | `preserve`     | `preserve` or `normalize` (see below)                                                                                                   |
 | `--provider <name>`      | `postgresql`   | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`. |
 | `--no-header`            | off            | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                 |
@@ -83,6 +83,17 @@ TypeORM output is a single TypeScript file of entity classes. Relations use `Rel
 Graphene output (`--to graphene`) is write-only and pairs with Django models: it writes one Python file that imports every model from `.models` (generate it with `--to django`, or use your own models) and defines a `DjangoObjectType` per model with an explicit `Meta.fields` list (forward and reverse relations included), a `Query` with a single-item field (`post(id)`) and a list field (`post_list`) per model, `Create`/`Update`/`Delete` mutations built on `graphene.Mutation`, and a final `schema = graphene.Schema(query=Query, mutation=Mutation)`. Inputs map the scalar types to `String`, `Int`, `BigInt`, `Float`, `Decimal`, `Boolean`, `DateTime`, `Date`, `Time`, `UUID` and `JSONString`; a field is required when it is not nullable and has no default, and relations are `ID` inputs (`author_id`, many-to-many `tags_ids`). Enum-backed fields rely on graphene-django's choice conversion for output and are `String` inputs validated by the model. Binary columns and relations to models outside the schema are left out, and models with a composite primary key get only a list query and a create mutation; each case produces a warning naming the model and field. Field names are snake_case like the Django output, `.py` stays owned by Django so pass `--to graphene`, and the naming mode has no effect. Requires graphene-django 3.x at runtime.
 
 Prisma → Django applies the reverse mapping. Field names are converted from camelCase to snake_case, with `db_column` set when the column name differs.
+
+### TypeScript interfaces (`--to typescript`)
+
+Writes plain TypeScript interfaces and enums for sharing models with a front end (for example an Angular app). It is output only, needs no parser, and `.ts` is not inferred, so pass `--to typescript`.
+
+- One `export interface` per model, with properties in the IR's order, and one string `export enum` per enum using the stored values (a Django choice label becomes a `/** ... */` comment). The IR carries no model or field help text, so no other doc comments are written.
+- Types follow what travels as JSON: `string`, `text`, `uuid`, `time`, `bigInt`, `decimal` (to keep precision) and `bytes` (base64) are `string`; `int` and `float` are `number`; `boolean` is `boolean`; `json` is `unknown`. `DateTime` and `Date` are `string` (ISO 8601). Programmatic callers can pass `dates: 'date'` to `emitTypescriptInterfaces` to type them as `Date`; the CLI always writes `string`.
+- Nullable fields get `| null`. Fields are never optional, because the interfaces describe the data a server returns, defaults included.
+- A foreign key is written as its scalar (`categoryId: number`, typed from the referenced primary key or `to_field`) plus an optional expanded relation (`category?: Category`). Reverse sides are optional (`comments?: Comment[]`, a one-to-one reverse side is `profile?: Profile | null`), as are many-to-many lists on both sides.
+- `--naming normalize` writes camelCase property names, `preserve` keeps the existing names. Names that are not valid identifiers are quoted.
+- Warnings name the model and field for relations to unknown models, composite-key targets (the foreign key becomes `unknown`), unknown enums or field types, and invalid or clashing type names.
 
 [Back to Table of Contents](#table-of-contents)
 
