@@ -33,6 +33,7 @@ export type {
   PrismaProvider,
 } from './emitters/prisma.js';
 export { emitDjango } from './emitters/django.js';
+export { emitGraphene } from './emitters/graphene.js';
 export { emitTypeorm } from './emitters/typeorm.js';
 export type { TypeormEmitOptions } from './emitters/typeorm.js';
 export { expandManyToMany, normalizeSchema } from './transforms.js';

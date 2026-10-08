@@ -150,8 +150,11 @@ describe('formats command output', () => {
     expect(text).toContain(
       'extensions: .prisma  read + write  Prisma schema (schema.prisma)\n'
     );
-    expect(text).toContain(
-      'typeorm  extensions: (none)  read + write  TypeORM entity classes (TypeScript)\n'
+    expect(text).toMatch(
+      /typeorm\s+extensions: \(none\) {2}read \+ write {2}TypeORM entity classes \(TypeScript\)\n/
+    );
+    expect(text).toMatch(
+      /graphene\s+extensions: \(none\) {2}write {2}Graphene \(graphene-django\) GraphQL schema\n/
     );
   });
 
