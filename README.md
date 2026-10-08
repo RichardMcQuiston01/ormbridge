@@ -111,6 +111,10 @@ ormbridge never fails silently on something it cannot represent: each case produ
 
 Always review the output and run your own migrations/`prisma validate` before applying it to a real database.
 
+### Conversion matrix
+
+[docs/CONVERSION_MATRIX.md](./docs/CONVERSION_MATRIX.md) shows, for every pair of readable and writable formats (Django, Prisma, TypeORM), whether the schema survives a round trip and exactly what is lost when it does not (for example enum labels and column lengths, and Prisma's explicit join model for many-to-many fields). It is generated from the test fixtures with `npm run docs:matrix`, and the tests fail if it is out of date.
+
 Django models are read with a static [tree-sitter](https://tree-sitter.github.io/) parser, so **no Python, Django install, or database is needed**.
 
 [Back to Table of Contents](#table-of-contents)
