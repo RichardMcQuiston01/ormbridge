@@ -8,6 +8,7 @@ import type {
   IrModel,
   IrOnDelete,
   IrRelation,
+  IrRangeSubtype,
   IrScalarType,
   IrSchema,
 } from '../ir.js';
@@ -38,6 +39,7 @@ interface ScalarSpec {
   type: IrScalarType;
   isAutoIncrement?: boolean;
   defaultMaxLength?: number;
+  rangeOf?: IrRangeSubtype;
 }
 
 const SCALAR_FIELDS: Readonly<Record<string, ScalarSpec>> = {
@@ -51,7 +53,11 @@ const SCALAR_FIELDS: Readonly<Record<string, ScalarSpec>> = {
   FileField: { type: 'string', defaultMaxLength: 100 },
   ImageField: { type: 'string', defaultMaxLength: 100 },
   FilePathField: { type: 'string', defaultMaxLength: 100 },
-  GenericIPAddressField: { type: 'string', defaultMaxLength: 39 },
+  GenericIPAddressField: { type: 'ipAddress' },
+  IPAddressField: { type: 'ipAddress' },
+  CICharField: { type: 'string' },
+  CIEmailField: { type: 'string', defaultMaxLength: 254 },
+  CITextField: { type: 'text' },
   TextField: { type: 'text' },
   IntegerField: { type: 'int' },
   SmallIntegerField: { type: 'int' },
@@ -59,7 +65,7 @@ const SCALAR_FIELDS: Readonly<Record<string, ScalarSpec>> = {
   PositiveSmallIntegerField: { type: 'int' },
   BigIntegerField: { type: 'bigInt' },
   PositiveBigIntegerField: { type: 'bigInt' },
-  DurationField: { type: 'bigInt' },
+  DurationField: { type: 'duration' },
   FloatField: { type: 'float' },
   DecimalField: { type: 'decimal' },
   BooleanField: { type: 'boolean' },
@@ -70,7 +76,26 @@ const SCALAR_FIELDS: Readonly<Record<string, ScalarSpec>> = {
   UUIDField: { type: 'uuid' },
   JSONField: { type: 'json' },
   BinaryField: { type: 'bytes' },
+  HStoreField: { type: 'hstore' },
+  IntegerRangeField: { type: 'range', rangeOf: 'int' },
+  BigIntegerRangeField: { type: 'range', rangeOf: 'bigInt' },
+  DecimalRangeField: { type: 'range', rangeOf: 'decimal' },
+  DateRangeField: { type: 'range', rangeOf: 'date' },
+  DateTimeRangeField: { type: 'range', rangeOf: 'dateTime' },
 };
+
+/** Virtual fields from django.contrib.contenttypes: they have no column of their own. */
+const VIRTUAL_RELATION_FIELDS: ReadonlySet<string> = new Set([
+  'GenericForeignKey',
+  'GenericRelation',
+]);
+
+/**
+ * Placeholder relation targets for the user model. They are resolved once every
+ * file is read, because a model with Meta.swappable = "AUTH_USER_MODEL" defines it.
+ */
+const AUTH_USER_SETTING: string = 'settings.AUTH_USER_MODEL';
+const GET_USER_MODEL_CALL: string = 'get_user_model()';
 
 const RELATION_FIELDS: ReadonlySet<string> = new Set([
   'ForeignKey',
@@ -105,7 +130,11 @@ interface RawModel {
   bases: string[];
   isAbstract: boolean;
   isProxy: boolean;
+  /** Value of Meta.swappable, e.g. "AUTH_USER_MODEL". */
+  swappable?: string;
   tableName?: string;
+  /** Field names listed in a models.CompositePrimaryKey(...) attribute. */
+  compositePrimaryKey?: string[];
   fields: IrField[];
   relations: IrRelation[];
   indexes: IrIndex[];
@@ -127,6 +156,7 @@ interface FieldContext {
 interface MetaInfo {
   isAbstract: boolean;
   isProxy: boolean;
+  swappable?: string;
   tableName?: string;
   appLabel?: string;
   indexes: IrIndex[];
@@ -433,6 +463,7 @@ function parseModelClass(
   const relations: IrRelation[] = [];
   const indexes: IrIndex[] = [];
   let meta: MetaInfo = { isAbstract: false, isProxy: false, indexes: [] };
+  let compositePrimaryKey: string[] | undefined;
 
   for (const statement of statements) {
     if (
@@ -444,6 +475,17 @@ function parseModelClass(
         `${source.path}: ${className}.Meta`,
         warnings
       );
+      continue;
+    }
+    const special: SpecialAttribute = parseSpecialAttribute(
+      statement,
+      className,
+      warnings
+    );
+    if (special.consumed) {
+      if (special.compositeKey !== undefined) {
+        compositePrimaryKey = special.compositeKey;
+      }
       continue;
     }
     const fieldCall = fieldCallOf(statement);
@@ -474,11 +516,52 @@ function parseModelClass(
     bases,
     isAbstract: meta.isAbstract,
     isProxy: meta.isProxy,
+    ...(meta.swappable === undefined ? {} : { swappable: meta.swappable }),
     ...(meta.tableName === undefined ? {} : { tableName: meta.tableName }),
+    ...(compositePrimaryKey === undefined ? {} : { compositePrimaryKey }),
     fields,
     relations,
     indexes: [...indexes, ...meta.indexes],
   };
+}
+
+interface SpecialAttribute {
+  /** True when the statement was handled here and must not be read as a column. */
+  consumed: boolean;
+  compositeKey?: string[];
+}
+
+/** Handles class attributes that are not ordinary columns (CompositePrimaryKey, generic relations). */
+function parseSpecialAttribute(
+  statement: SyntaxNode,
+  className: string,
+  warnings: string[]
+): SpecialAttribute {
+  const assignment = assignmentOf(statement);
+  if (assignment === undefined || assignment.value.kind !== 'call') {
+    return { consumed: false };
+  }
+  const calleeName: string = lastSegment(assignment.value.callee);
+  if (calleeName === 'CompositePrimaryKey') {
+    const names: string[] = assignment.value.args.flatMap((arg: PyValue) =>
+      arg.kind === 'string' ? [arg.value] : []
+    );
+    if (names.length === 0) {
+      warnings.push(
+        `${className}.${assignment.name}: CompositePrimaryKey(...) lists no field names that could be read; the model keeps an automatic id.`
+      );
+      return { consumed: true };
+    }
+    return { consumed: true, compositeKey: names };
+  }
+  if (VIRTUAL_RELATION_FIELDS.has(calleeName)) {
+    warnings.push(
+      `${className}.${assignment.name}: ${calleeName} is a virtual field without a column and was skipped; ` +
+        `its content_type and object_id columns are converted as ordinary fields.`
+    );
+    return { consumed: true };
+  }
+  return { consumed: false };
 }
 
 function parseMeta(
@@ -499,6 +582,11 @@ function parseMeta(
         break;
       case 'proxy':
         meta.isProxy = value.kind === 'bool' && value.value;
+        break;
+      case 'swappable':
+        if (value.kind === 'string') {
+          meta.swappable = value.value;
+        }
         break;
       case 'db_table':
         if (value.kind === 'string') {
@@ -589,6 +677,16 @@ function parseIndexList(
       continue;
     }
     const calleeName: string = lastSegment(item.callee);
+    if (
+      calleeName === 'UniqueConstraint' &&
+      item.kwargs['condition'] !== undefined
+    ) {
+      warnings.push(
+        `${location}: UniqueConstraint(...) with condition= is a partial unique constraint and was skipped; ` +
+          `converting it would make the columns unconditionally unique.`
+      );
+      continue;
+    }
     const fields: string[] = stringItems(item.kwargs['fields']);
     const explicitName: PyValue | undefined = item.kwargs['name'];
     const name: string | undefined =
@@ -658,7 +756,177 @@ function parseFieldCall(
   if (RELATION_FIELDS.has(calleeName)) {
     return parseRelationField(fieldName, calleeName, call, context);
   }
+  if (calleeName === 'ArrayField') {
+    return parseArrayField(fieldName, call, context);
+  }
+  if (calleeName === 'GeneratedField') {
+    return parseGeneratedField(fieldName, call, context);
+  }
   return parseScalarField(fieldName, calleeName, call, context);
+}
+
+function syntheticCall(callee: string): PyCall {
+  return { kind: 'call', callee, args: [], kwargs: {}, text: `${callee}()` };
+}
+
+/** Returns Python source text for an evaluated expression (used for GeneratedField). */
+function sourceTextOf(value: PyValue): string {
+  switch (value.kind) {
+    case 'call':
+      return value.text;
+    case 'name':
+      return value.value;
+    case 'other':
+      return value.text.replace(/\s*\n\s*/g, ' ');
+    case 'string':
+      return JSON.stringify(value.value);
+    case 'number':
+      return String(value.value);
+    case 'bool':
+      return value.value ? 'True' : 'False';
+    case 'none':
+      return 'None';
+    case 'list':
+      return `[${value.items.map(sourceTextOf).join(', ')}]`;
+    default:
+      return '';
+  }
+}
+
+/** django.contrib.postgres ArrayField: the element type is the base_field, nested arrays add dimensions. */
+function parseArrayField(
+  fieldName: string,
+  call: PyCall,
+  context: FieldContext
+): ParsedField {
+  const location: string = `${context.modelName}.${fieldName}`;
+  const baseValue: PyValue | undefined =
+    call.args[0] ?? call.kwargs['base_field'];
+  let elementCall: PyCall;
+  if (baseValue !== undefined && baseValue.kind === 'call') {
+    elementCall = baseValue;
+  } else {
+    context.warnings.push(
+      `${location}: the base_field of ArrayField(...) could not be read; the elements were assumed to be strings.`
+    );
+    elementCall = syntheticCall('CharField');
+  }
+  const element: ParsedField = parseFieldCall(fieldName, elementCall, context);
+  if (element.field === undefined) {
+    context.warnings.push(
+      `${location}: the base_field of ArrayField(...) is not a column type; the field was skipped.`
+    );
+    return {};
+  }
+  if (call.kwargs['size'] !== undefined) {
+    context.warnings.push(
+      `${location}: ArrayField size= is not represented in the schema; arrays are unbounded.`
+    );
+  }
+
+  const isPrimaryKey: boolean = boolKwarg(call, 'primary_key');
+  const field: IrField = {
+    ...element.field,
+    name: fieldName,
+    columnName: stringKwarg(call, 'db_column') ?? fieldName,
+    isPrimaryKey,
+    isUnique: boolKwarg(call, 'unique') && !isPrimaryKey,
+    isNullable: !isPrimaryKey && boolKwarg(call, 'null'),
+    isAutoUpdated: false,
+    arrayDepth: (element.field.arrayDepth ?? 0) + 1,
+  };
+  delete field.default;
+  delete field.isDbDefault;
+
+  const spec: ScalarSpec = { type: field.type };
+  const defaultValue: IrDefault | undefined = resolveDefault(
+    location,
+    call,
+    spec,
+    undefined,
+    context,
+    'default',
+    true
+  );
+  if (defaultValue !== undefined) {
+    field.default = defaultValue;
+  } else if (call.kwargs['db_default'] !== undefined) {
+    const dbDefault: IrDefault | undefined = resolveDefault(
+      location,
+      call,
+      spec,
+      undefined,
+      context,
+      'db_default',
+      true
+    );
+    if (dbDefault !== undefined) {
+      field.default = dbDefault;
+      field.isDbDefault = true;
+    }
+  }
+  const parsed: ParsedField = { field };
+  if (boolKwarg(call, 'db_index') && !isPrimaryKey && !field.isUnique) {
+    parsed.index = { fields: [fieldName], isUnique: false };
+  }
+  return parsed;
+}
+
+/** GeneratedField: the column type comes from output_field, the expression is carried as source text. */
+function parseGeneratedField(
+  fieldName: string,
+  call: PyCall,
+  context: FieldContext
+): ParsedField {
+  const location: string = `${context.modelName}.${fieldName}`;
+  const outputValue: PyValue | undefined = call.kwargs['output_field'];
+  let outputCall: PyCall;
+  if (outputValue !== undefined && outputValue.kind === 'call') {
+    outputCall = outputValue;
+  } else {
+    context.warnings.push(
+      `${location}: the output_field of GeneratedField(...) could not be read; the column was typed as a string.`
+    );
+    outputCall = syntheticCall('CharField');
+  }
+  const output: ParsedField = parseFieldCall(fieldName, outputCall, context);
+  if (output.field === undefined) {
+    context.warnings.push(
+      `${location}: the output_field of GeneratedField(...) is not a column type; the field was skipped.`
+    );
+    return {};
+  }
+  const expression: PyValue | undefined =
+    call.kwargs['expression'] ?? call.args[0];
+  const expressionText: string =
+    expression === undefined ? '' : sourceTextOf(expression);
+  const persist: PyValue | undefined = call.kwargs['db_persist'];
+  const field: IrField = {
+    ...output.field,
+    name: fieldName,
+    columnName: stringKwarg(call, 'db_column') ?? fieldName,
+    isPrimaryKey: false,
+    isUnique: boolKwarg(call, 'unique'),
+    isNullable: output.field.isNullable || boolKwarg(call, 'null'),
+    isAutoUpdated: false,
+  };
+  delete field.default;
+  delete field.isDbDefault;
+  if (expressionText.length === 0) {
+    context.warnings.push(
+      `${location}: GeneratedField(...) has no readable expression=; it was converted as a plain column.`
+    );
+  } else {
+    field.generated = {
+      expression: expressionText,
+      isStored: !(
+        persist !== undefined &&
+        persist.kind === 'bool' &&
+        !persist.value
+      ),
+    };
+  }
+  return { field };
 }
 
 function parseScalarField(
@@ -682,6 +950,7 @@ function parseScalarField(
     name: fieldName,
     columnName: stringKwarg(call, 'db_column') ?? fieldName,
     type: spec.type,
+    ...(spec.rangeOf === undefined ? {} : { rangeOf: spec.rangeOf }),
     isPrimaryKey,
     isUnique: boolKwarg(call, 'unique') && !isPrimaryKey,
     isNullable:
@@ -722,13 +991,35 @@ function parseScalarField(
     field.type = 'string';
   }
 
-  const defaultValue: IrDefault | undefined = resolveDefault(
+  let defaultValue: IrDefault | undefined = resolveDefault(
     location,
     call,
     spec,
     enumInfo,
-    context
+    context,
+    'default',
+    false
   );
+  if (call.kwargs['db_default'] !== undefined) {
+    if (defaultValue !== undefined) {
+      context.warnings.push(
+        `${location}: db_default was ignored because default= is also set.`
+      );
+    } else {
+      defaultValue = resolveDefault(
+        location,
+        call,
+        spec,
+        enumInfo,
+        context,
+        'db_default',
+        false
+      );
+      if (defaultValue !== undefined) {
+        field.isDbDefault = true;
+      }
+    }
+  }
   if (defaultValue !== undefined) {
     field.default = defaultValue;
   } else if (spec.isAutoIncrement === true) {
@@ -789,18 +1080,61 @@ function resolveChoices(
   return undefined;
 }
 
+/** Unwraps the expression forms db_default accepts (Value(x), Now(), RandomUUID()) into plain defaults. */
+function unwrapDbDefault(value: PyValue): PyValue {
+  if (value.kind !== 'call') {
+    return value;
+  }
+  const calleeName: string = lastSegment(value.callee);
+  const first: PyValue | undefined = value.args[0];
+  if (calleeName === 'Value' && first !== undefined) {
+    return first;
+  }
+  if (calleeName === 'Now' && value.args.length === 0) {
+    return { kind: 'name', value: 'now' };
+  }
+  if (calleeName === 'RandomUUID' && value.args.length === 0) {
+    return { kind: 'name', value: 'uuid.uuid4' };
+  }
+  return value;
+}
+
 function resolveDefault(
   location: string,
   call: PyCall,
   spec: ScalarSpec,
   enumInfo: EnumInfo | undefined,
-  context: FieldContext
+  context: FieldContext,
+  kwarg: 'default' | 'db_default',
+  isArray: boolean
 ): IrDefault | undefined {
-  const value: PyValue | undefined = call.kwargs['default'];
-  if (value === undefined || value.kind === 'none') {
+  const rawValue: PyValue | undefined = call.kwargs[kwarg];
+  if (rawValue === undefined || rawValue.kind === 'none') {
     return undefined;
   }
+  const value: PyValue =
+    kwarg === 'db_default' ? unwrapDbDefault(rawValue) : rawValue;
+  const emptyListAllowed: boolean = spec.type === 'json' || isArray;
   switch (value.kind) {
+    case 'list':
+      if (value.items.length === 0 && emptyListAllowed) {
+        return { kind: 'literal', value: '[]' };
+      }
+      context.warnings.push(
+        `${location}: ${kwarg}=[...] is not representable and was dropped.`
+      );
+      return undefined;
+    case 'other':
+      if (
+        value.text.replace(/\s+/g, '') === '{}' &&
+        (spec.type === 'json' || spec.type === 'hstore')
+      ) {
+        return { kind: 'literal', value: '{}' };
+      }
+      context.warnings.push(
+        `${location}: a computed ${kwarg} value was dropped (only literals and now/uuid are supported).`
+      );
+      return undefined;
     case 'bool':
     case 'number':
       return { kind: 'literal', value: value.value };
@@ -827,10 +1161,13 @@ function resolveDefault(
       if (NOW_CALLABLES.has(dotted) || dotted.endsWith('timezone.now')) {
         return { kind: 'now' };
       }
-      if (dotted === 'list' && spec.type === 'json') {
+      if (dotted === 'list' && emptyListAllowed) {
         return { kind: 'literal', value: '[]' };
       }
-      if (dotted === 'dict' && spec.type === 'json') {
+      if (
+        dotted === 'dict' &&
+        (spec.type === 'json' || spec.type === 'hstore')
+      ) {
         return { kind: 'literal', value: '{}' };
       }
       const segments: string[] = dotted.split('.');
@@ -849,7 +1186,7 @@ function resolveDefault(
         return undefined;
       }
       context.warnings.push(
-        `${location}: default=${dotted} is not representable and was dropped.`
+        `${location}: ${kwarg}=${dotted} is not representable and was dropped.`
       );
       return undefined;
     }
@@ -864,13 +1201,13 @@ function resolveDefault(
         }
       }
       context.warnings.push(
-        `${location}: default=${value.callee}(...) is not representable and was dropped.`
+        `${location}: ${kwarg}=${value.callee}(...) is not representable and was dropped.`
       );
       return undefined;
     }
     default:
       context.warnings.push(
-        `${location}: a computed default value was dropped (only literals and now/uuid are supported).`
+        `${location}: a computed ${kwarg} value was dropped (only literals and now/uuid are supported).`
       );
       return undefined;
   }
@@ -883,11 +1220,7 @@ function parseRelationField(
   context: FieldContext
 ): ParsedField {
   const location: string = `${context.modelName}.${fieldName}`;
-  const target: string | undefined = resolveRelationTarget(
-    location,
-    call,
-    context
-  );
+  const target: string | undefined = resolveRelationTarget(call, context);
   if (target === undefined) {
     context.warnings.push(
       `${location}: could not determine the target model of ${calleeName}(...); the field was skipped.`
@@ -939,7 +1272,6 @@ function parseRelationField(
 }
 
 function resolveRelationTarget(
-  location: string,
   call: PyCall,
   context: FieldContext
 ): string | undefined {
@@ -954,18 +1286,12 @@ function resolveRelationTarget(
         : lastSegment(targetValue.value);
     case 'name':
       if (lastSegment(targetValue.value) === 'AUTH_USER_MODEL') {
-        context.warnings.push(
-          `${location}: settings.AUTH_USER_MODEL was assumed to be a model named "User".`
-        );
-        return 'User';
+        return AUTH_USER_SETTING;
       }
       return lastSegment(targetValue.value);
     case 'call':
       if (lastSegment(targetValue.callee) === 'get_user_model') {
-        context.warnings.push(
-          `${location}: get_user_model() was assumed to return a model named "User".`
-        );
-        return 'User';
+        return GET_USER_MODEL_CALL;
       }
       return undefined;
     default:
@@ -1043,15 +1369,16 @@ function buildSchema(
     }
   }
 
+  retargetUserModel(rawByName, warnings);
+  retargetProxies(rawByName, warnings);
+
   const models: IrModel[] = [];
   for (const rawModel of rawByName.values()) {
-    if (rawModel.isAbstract || !isModelClass(rawModel, rawByName, new Set())) {
-      continue;
-    }
-    if (rawModel.isProxy) {
-      warnings.push(
-        `${rawModel.name}: proxy models have no table and were skipped.`
-      );
+    if (
+      rawModel.isAbstract ||
+      rawModel.isProxy ||
+      !isModelClass(rawModel, rawByName, new Set())
+    ) {
       continue;
     }
     const members: Members = collectMembers(
@@ -1065,6 +1392,111 @@ function buildSchema(
 
   addStubModels(models, rawByName, warnings, options);
   return { models, enums: [...enumsByName.values()], warnings };
+}
+
+/** Points relations at settings.AUTH_USER_MODEL / get_user_model() to the swappable model, or "User" with a warning. */
+function retargetUserModel(
+  rawByName: Map<string, RawModel>,
+  warnings: string[]
+): void {
+  let swappableName: string | undefined;
+  for (const rawModel of rawByName.values()) {
+    if (rawModel.swappable === 'AUTH_USER_MODEL' && !rawModel.isProxy) {
+      swappableName = rawModel.name;
+      break;
+    }
+  }
+  for (const rawModel of rawByName.values()) {
+    for (const relation of rawModel.relations) {
+      if (
+        relation.targetModel !== AUTH_USER_SETTING &&
+        relation.targetModel !== GET_USER_MODEL_CALL
+      ) {
+        continue;
+      }
+      if (swappableName !== undefined) {
+        relation.targetModel = swappableName;
+        continue;
+      }
+      warnings.push(
+        relation.targetModel === AUTH_USER_SETTING
+          ? `${rawModel.name}.${relation.name}: settings.AUTH_USER_MODEL was assumed to be a model named "User".`
+          : `${rawModel.name}.${relation.name}: get_user_model() was assumed to return a model named "User".`
+      );
+      relation.targetModel = 'User';
+    }
+  }
+}
+
+/** Names the concrete model a proxy model stands for, following chains of proxies. */
+function concreteModelOf(
+  proxy: RawModel,
+  rawByName: Map<string, RawModel>,
+  visiting: Set<string>
+): string | undefined {
+  visiting.add(proxy.name);
+  for (const baseName of proxy.bases) {
+    const shortName: string = lastSegment(baseName);
+    if (shortName === 'Model' || /Mixin$/.test(shortName)) {
+      continue;
+    }
+    const parent: RawModel | undefined = rawByName.get(shortName);
+    if (parent === undefined) {
+      return shortName;
+    }
+    if (parent.isAbstract || visiting.has(parent.name)) {
+      continue;
+    }
+    return parent.isProxy
+      ? concreteModelOf(parent, rawByName, visiting)
+      : parent.name;
+  }
+  return undefined;
+}
+
+/**
+ * A proxy model (Meta.proxy = True) shares its parent's table, so it is not a model of its
+ * own: relations that target it are pointed at the concrete model instead.
+ */
+function retargetProxies(
+  rawByName: Map<string, RawModel>,
+  warnings: string[]
+): void {
+  const concreteByProxy: Map<string, string> = new Map();
+  for (const rawModel of rawByName.values()) {
+    if (!rawModel.isProxy) {
+      continue;
+    }
+    const concrete: string | undefined = concreteModelOf(
+      rawModel,
+      rawByName,
+      new Set()
+    );
+    if (concrete === undefined) {
+      warnings.push(
+        `${rawModel.name}: proxy model has no concrete base model that could be found, so it was skipped.`
+      );
+      continue;
+    }
+    concreteByProxy.set(rawModel.name, concrete);
+    warnings.push(
+      `${rawModel.name}: proxy model of "${concrete}" has no table of its own and was merged into "${concrete}"; ` +
+        `relations that target "${rawModel.name}" now point to "${concrete}".`
+    );
+  }
+  if (concreteByProxy.size === 0) {
+    return;
+  }
+  for (const rawModel of rawByName.values()) {
+    for (const relation of rawModel.relations) {
+      const concrete: string | undefined = concreteByProxy.get(
+        relation.targetModel
+      );
+      if (concrete !== undefined) {
+        relation.targetModel = concrete;
+      }
+    }
+  }
 }
 
 function collectMembers(
@@ -1168,7 +1600,11 @@ function finalizeModel(
   members: Members,
   options: DjangoParseOptions
 ): IrModel {
+  const hasCompositeKey: boolean =
+    rawModel.compositePrimaryKey !== undefined &&
+    rawModel.compositePrimaryKey.length > 0;
   const hasPrimaryKey: boolean =
+    hasCompositeKey ||
     members.fields.some((field: IrField) => field.isPrimaryKey) ||
     members.relations.some(
       (relation: IrRelation) => relation.isPrimaryKey === true
@@ -1185,6 +1621,9 @@ function finalizeModel(
     fields,
     relations: members.relations,
     indexes: members.indexes,
+    ...(hasCompositeKey && rawModel.compositePrimaryKey !== undefined
+      ? { compositePrimaryKey: rawModel.compositePrimaryKey }
+      : {}),
   };
 }
 

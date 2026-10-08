@@ -18,7 +18,22 @@ export type IrScalarType =
   | 'time'
   | 'uuid'
   | 'json'
-  | 'bytes';
+  | 'bytes'
+  | 'duration'
+  | 'ipAddress'
+  | 'hstore'
+  | 'range';
+
+/** Element type of a `range` field (Django's django.contrib.postgres range fields). */
+export type IrRangeSubtype = 'int' | 'bigInt' | 'decimal' | 'date' | 'dateTime';
+
+/** A database-computed column (Django GeneratedField). */
+export interface IrGenerated {
+  /** Expression source as written in the input, e.g. `F("a") + F("b")`. */
+  expression: string;
+  /** True when the value is stored (db_persist=True), false when computed on read. */
+  isStored: boolean;
+}
 
 export type IrDefault =
   | { kind: 'literal'; value: string | number | boolean }
@@ -44,6 +59,17 @@ export interface IrField {
   isAutoUpdated: boolean;
   /** Name of an IrEnum when the field is enum-backed. */
   enumName?: string;
+  /**
+   * Number of array dimensions (Django ArrayField, nested ArrayFields add one each).
+   * When set, `type` (and maxLength, enumName, ...) describe the innermost element.
+   */
+  arrayDepth?: number;
+  /** Element type of the field when `type` is "range". */
+  rangeOf?: IrRangeSubtype;
+  /** Set when the column is computed by the database from an expression. */
+  generated?: IrGenerated;
+  /** True when `default` is a database-level default (Django db_default). */
+  isDbDefault?: boolean;
 }
 
 export type IrOnDelete =

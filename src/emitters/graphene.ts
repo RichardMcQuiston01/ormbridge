@@ -39,6 +39,17 @@ const INPUT_TYPES: Readonly<Partial<Record<IrScalarType, string>>> = {
   time: 'graphene.Time',
   uuid: 'graphene.UUID',
   json: 'graphene.JSONString',
+  duration: 'graphene.Float',
+  ipAddress: 'graphene.String',
+  hstore: 'graphene.JSONString',
+};
+
+const RANGE_BOUND_INPUT_TYPES: Readonly<Record<string, string>> = {
+  int: 'graphene.Int',
+  bigInt: 'graphene.BigInt',
+  decimal: 'graphene.Decimal',
+  date: 'graphene.Date',
+  dateTime: 'graphene.DateTime',
 };
 
 const MANY_TO_MANY_INPUT: string =
@@ -421,10 +432,26 @@ function buildInputEntries(
 ): InputEntry[] {
   const entries: InputEntry[] = [];
   for (const field of model.fields) {
-    if (isGeneratedKey(field) || field.isAutoUpdated) {
+    if (
+      isGeneratedKey(field) ||
+      field.isAutoUpdated ||
+      field.generated !== undefined
+    ) {
       continue;
     }
-    const graphType: string | undefined = INPUT_TYPES[field.type];
+    const elementType: string | undefined =
+      field.type === 'range'
+        ? RANGE_BOUND_INPUT_TYPES[field.rangeOf ?? 'int']
+        : INPUT_TYPES[field.type];
+    const isRange: boolean = field.type === 'range';
+    const depth: number = field.arrayDepth ?? 0;
+    let graphType: string | undefined = elementType;
+    if (graphType !== undefined && isRange) {
+      graphType = `graphene.List(${graphType})`;
+    }
+    if (graphType !== undefined && depth > 0) {
+      graphType = `${'graphene.List('.repeat(depth)}${field.enumName === undefined ? graphType : 'graphene.String'}${')'.repeat(depth)}`;
+    }
     if (graphType === undefined) {
       context.warnings.push(
         `${model.name}.${field.name}: the ${field.type} type has no GraphQL input scalar and was left out of the mutation inputs.`
@@ -438,8 +465,11 @@ function buildInputEntries(
     }
     entries.push({
       name: field.name,
-      graphType: field.enumName === undefined ? graphType : 'graphene.String',
-      isList: false,
+      graphType:
+        field.enumName === undefined || depth > 0
+          ? graphType
+          : 'graphene.String',
+      isList: depth > 0 || isRange,
       isKey: field.isPrimaryKey,
       isRequired: !field.isNullable && field.default === undefined,
     });

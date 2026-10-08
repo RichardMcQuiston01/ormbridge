@@ -20,6 +20,8 @@ export interface PyCall {
   callee: string;
   args: PyValue[];
   kwargs: Record<string, PyValue>;
+  /** Source text of the whole call, with line breaks collapsed to single spaces. */
+  text: string;
 }
 
 let cachedParser: Parser | undefined;
@@ -143,5 +145,11 @@ function evaluateCall(node: SyntaxNode): PyValue {
       }
     }
   }
-  return { kind: 'call', callee, args, kwargs };
+  return {
+    kind: 'call',
+    callee,
+    args,
+    kwargs,
+    text: node.text.replace(/\s*\n\s*/g, ' '),
+  };
 }
