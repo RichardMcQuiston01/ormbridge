@@ -35,6 +35,11 @@ export type {
 export { emitDjango } from './emitters/django.js';
 export { emitTypeorm } from './emitters/typeorm.js';
 export type { TypeormEmitOptions } from './emitters/typeorm.js';
+export { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
+export type {
+  TypescriptDateMode,
+  TypescriptInterfacesOptions,
+} from './emitters/typescriptInterfaces.js';
 export { expandManyToMany, normalizeSchema } from './transforms.js';
 export type { NamingMode } from './transforms.js';
 export type * from './ir.js';

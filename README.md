@@ -45,7 +45,7 @@ Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `
 | `-i, --input <paths...>` | required       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.              |
 | `-o, --output <path>`    | stdout         | File to write. Parent directories are created.                                                                                          |
 | `-f, --from <format>`    | inferred       | `django`, `prisma` or `typeorm`                                                                                                         |
-| `-t, --to <format>`      | inferred       | `django`, `prisma` or `typeorm`                                                                                                         |
+| `-t, --to <format>`      | inferred       | `django`, `prisma`, `typeorm` or `typescript` (output only)                                                                             |
 | `--naming <mode>`        | `preserve`     | `preserve` or `normalize` (see below)                                                                                                   |
 | `--provider <name>`      | `postgresql`   | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`. |
 | `--no-header`            | off            | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                 |
@@ -81,6 +81,17 @@ Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `
 TypeORM output is a single TypeScript file of entity classes. Relations use `Relation<T>` so entities declared in one file do not trip over circular references, and `--provider` picks the column types (`timestamptz` and `jsonb` for PostgreSQL, `datetime` and `json` for MySQL, `simple-json` for SQLite). Use `--naming normalize` for camelCase properties mapped to snake_case columns with `name:` options. `.ts` is not inferred as a format, so pass `--from typeorm` or `--to typeorm`. Reading uses decorators only (see Limitations). TypeORM entities are parsed statically with tree-sitter (no `reflect-metadata`, TypeScript compiler, or database needed), and the same naming modes apply to the result.
 
 Prisma → Django applies the reverse mapping. Field names are converted from camelCase to snake_case, with `db_column` set when the column name differs.
+
+### TypeScript interfaces (`--to typescript`)
+
+Writes plain TypeScript interfaces and enums for sharing models with a front end (for example an Angular app). It is output only, needs no parser, and `.ts` is not inferred, so pass `--to typescript`.
+
+- One `export interface` per model, with properties in the IR's order, and one string `export enum` per enum using the stored values (a Django choice label becomes a `/** ... */` comment). The IR carries no model or field help text, so no other doc comments are written.
+- Types follow what travels as JSON: `string`, `text`, `uuid`, `time`, `bigInt`, `decimal` (to keep precision) and `bytes` (base64) are `string`; `int` and `float` are `number`; `boolean` is `boolean`; `json` is `unknown`. `DateTime` and `Date` are `string` (ISO 8601). Programmatic callers can pass `dates: 'date'` to `emitTypescriptInterfaces` to type them as `Date`; the CLI always writes `string`.
+- Nullable fields get `| null`. Fields are never optional, because the interfaces describe the data a server returns, defaults included.
+- A foreign key is written as its scalar (`categoryId: number`, typed from the referenced primary key or `to_field`) plus an optional expanded relation (`category?: Category`). Reverse sides are optional (`comments?: Comment[]`, a one-to-one reverse side is `profile?: Profile | null`), as are many-to-many lists on both sides.
+- `--naming normalize` writes camelCase property names, `preserve` keeps the existing names. Names that are not valid identifiers are quoted.
+- Warnings name the model and field for relations to unknown models, composite-key targets (the foreign key becomes `unknown`), unknown enums or field types, and invalid or clashing type names.
 
 [Back to Table of Contents](#table-of-contents)
 
