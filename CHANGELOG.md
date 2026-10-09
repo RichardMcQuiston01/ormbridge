@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- CI: a second job, `real-tools` (`.github/workflows/ci.yml`), installs Django and graphene-django (Python 3.12 venv), TypeORM with better-sqlite3, pg, mysql2 and mssql (`test/tools/setup-verification-tools.sh`), PHP 8.3 with Doctrine ORM and Illuminate (Composer), Prisma 6 and 7 and Go, and runs the whole suite with `DJANGO_PYTHON`, `TYPEORM_DIR`, `DOCTRINE_DIR`, `LARAVEL_DIR` and `PRISMA_BIN` set, so the optional real-tool verification tests no longer skip there; the `check` job (lint, format, build, test) is unchanged and stays fast. The PHP `php -l`, Doctrine, Illuminate and `prisma validate` tests now carry an explicit 120 s timeout instead of vitest's 5 s default.
+
 ## 0.3.0 - 2026-10-09
 
 Adds GORM (Go) as a readable and writable format, a `--prisma-version` flag, a Doctrine parser that recovers lifecycle callbacks and constructor defaults, and optional verification of the Django, Graphene and TypeORM output against the real tools.

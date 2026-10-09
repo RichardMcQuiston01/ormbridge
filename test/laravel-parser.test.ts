@@ -2418,6 +2418,9 @@ function phpAvailable(): boolean {
 }
 
 const hasPhp: boolean = phpAvailable();
+
+/** Real PHP, Doctrine and Illuminate runs are slow on a busy CI runner, well past vitest's 5 s default. */
+const PHP_TOOL_TIMEOUT_MS: number = 120_000;
 const laravelDirectory: string | undefined = process.env.LARAVEL_DIR;
 const replayScript: string = fileURLToPath(
   new URL('./tools/replay-laravel-migrations.php', import.meta.url)
@@ -2458,7 +2461,8 @@ describe('laravel fixture: real PHP and Illuminate', () => {
         encoding: 'utf8',
       });
       expect(lint.status, lint.stdout + lint.stderr).toBe(0);
-    }
+    },
+    PHP_TOOL_TIMEOUT_MS
   );
 
   // Set LARAVEL_DIR to a directory where `composer require illuminate/database
@@ -2601,6 +2605,7 @@ describe('laravel fixture: real PHP and Illuminate', () => {
           .map((k) => `${k.column}->${k.table}:${k.onDelete}`)
           .sort()
       ).toEqual(['post_id->blog_post:CASCADE', 'tag_id->blog_tag:CASCADE']);
-    }
+    },
+    PHP_TOOL_TIMEOUT_MS
   );
 });

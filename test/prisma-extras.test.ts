@@ -799,6 +799,9 @@ describe('Prisma extras: degradation warnings', () => {
   });
 });
 
+/** `prisma validate` starts a CLI process, which is slow on a busy CI runner (vitest's default is 5 s). */
+const PRISMA_VALIDATE_TIMEOUT_MS: number = 120_000;
+
 /**
  * Real verification: set PRISMA_BIN to a prisma CLI (6.x or 7.x) and PRISMA_MAJOR to its major version
  * to run `prisma validate` on the emitted schemas. Skipped when it is not set.
@@ -836,7 +839,8 @@ describe.skipIf(process.env.PRISMA_BIN === undefined)(
             }
           )
         ).not.toThrow();
-      }
+      },
+      PRISMA_VALIDATE_TIMEOUT_MS
     );
   }
 );

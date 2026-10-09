@@ -20,3 +20,69 @@ jobs:
       - run: npm run format:check
       - run: npm run build
       - run: npm test
+
+  # The optional verification tests that load generated code with the real tools (Django,
+  # graphene-django, TypeORM, Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
+  # because the tools are not installed there. A separate job keeps `check` fast, and a package
+  # registry outage or a tool release then breaks only this job, not lint, build and tests.
+  real-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Choose the tools directory (outside the repository)
+        run: echo "TOOLS=$RUNNER_TEMP/verification-tools" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: test/tools/setup-verification-tools.sh
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          tools: composer
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Cache package downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/composer
+            ~/go/pkg/mod
+          key: real-tools-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
+          restore-keys: real-tools-${{ runner.os }}-
+      - run: npm ci
+      - name: Install Django, graphene-django and TypeORM
+        run: |
+          test/tools/setup-verification-tools.sh "$TOOLS" | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
+      - name: Install Doctrine ORM and Illuminate
+        run: |
+          mkdir -p "$TOOLS/doctrine" "$TOOLS/laravel"
+          (cd "$TOOLS/doctrine" && composer require --no-interaction --no-progress doctrine/orm symfony/cache)
+          (cd "$TOOLS/laravel" && composer require --no-interaction --no-progress illuminate/database illuminate/events illuminate/container illuminate/support ramsey/uuid symfony/uid)
+          echo "DOCTRINE_DIR=$TOOLS/doctrine" >> "$GITHUB_ENV"
+          echo "LARAVEL_DIR=$TOOLS/laravel" >> "$GITHUB_ENV"
+      - name: Install Prisma 6 and 7
+        run: |
+          for major in 6 7; do
+            mkdir -p "$TOOLS/prisma$major"
+            (cd "$TOOLS/prisma$major" && npm init -y > /dev/null && npm install --silent "prisma@$major")
+          done
+      - name: Tests with the real tools (Prisma 6)
+        run: npx vitest run --dir test
+        env:
+          PRISMA_BIN: ${{ env.TOOLS }}/prisma6/node_modules/.bin/prisma
+          PRISMA_MAJOR: '6'
+      - name: Prisma 7 validation
+        run: npx vitest run test/prisma-extras.test.ts
+        env:
+          PRISMA_BIN: ${{ env.TOOLS }}/prisma7/node_modules/.bin/prisma
+          PRISMA_MAJOR: '7'
