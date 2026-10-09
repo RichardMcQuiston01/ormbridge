@@ -202,8 +202,11 @@ const CHECK_KINDS: readonly string[] = [
 ];
 
 describe(titleWithReason('json-schema emitter: real Ajv', probe), () => {
-  // Views have no keys to speak of, but their rows validate like any other.
-  const sources: readonly VerifySource[] = VERIFY_SOURCES;
+  // Views have no keys to speak of, but their rows validate like any other. The converter rejects
+  // same-format conversion, so the JSON Schema fixtures are not sources here.
+  const sources: readonly VerifySource[] = VERIFY_SOURCES.filter(
+    (source: VerifySource) => source.format !== 'json-schema'
+  );
 
   it.skipIf(!probe.available).each(sources)(
     'validates the document generated from the $label schema and its sample rows',
