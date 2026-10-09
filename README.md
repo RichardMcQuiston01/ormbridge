@@ -60,23 +60,24 @@ ormbridge convert -i ./internal/models --from gorm -o ./prisma/schema.prisma
 
 Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `.ts` = TypeORM), or set explicitly with `--from` / `--to`. Passing a directory does not infer the format, so add `--from typeorm` (or `--from doctrine`, `--from laravel`, `--from gorm`) when reading a folder of entities; `.php` and `.go` are not inferred either. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
 
-| Flag                     | Default                    | Description                                                                                                                                 |
-| ------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-i, --input <paths...>` | required (or config)       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.                  |
-| `-o, --output <path>`    | stdout                     | File to write. Parent directories are created.                                                                                              |
-| `-f, --from <format>`    | inferred                   | `django`, `prisma`, `typeorm`, `doctrine`, `laravel` or `gorm`                                                                              |
-| `-t, --to <format>`      | inferred                   | `django`, `prisma`, `typeorm`, `doctrine`, `laravel` or `gorm` (the last three write a directory), `typescript` or `graphene` (output only) |
-| `--naming <mode>`        | `preserve`                 | `preserve` or `normalize` (see below)                                                                                                       |
-| `--provider <name>`      | `postgresql`               | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`.     |
-| `--no-header`            | off                        | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                     |
-| `--app-label <name>`     | directory name             | Django app label used for default table names (`<app>_<model>`).                                                                            |
-| `--auto-field <type>`    | `int`                      | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                              |
-| `--namespace <name>`     | `App\Entity`, `App\Models` | PHP namespace of the Doctrine entities or Laravel models (`--to doctrine` / `--to laravel` only). Enums go in a sibling namespace.          |
-| `--go-package <name>`    | `models`                   | Go package name of the GORM models, also the output sub-directory (`--to gorm` only). Must be a valid Go identifier.                        |
-| `--dry-run`              | off                        | Run the whole conversion and report what would be written, without touching the filesystem.                                                 |
-| `--check`                | off                        | Exit with code 3 if an output file is missing or differs from the conversion. Writes nothing. Needs an output path.                         |
-| `--config <path>`        | searched                   | Read settings from this JSON config file instead of searching for one.                                                                      |
-| `--no-config`            | off                        | Ignore any config file.                                                                                                                     |
+| Flag                      | Default                    | Description                                                                                                                                   |
+| ------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-i, --input <paths...>`  | required (or config)       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.                    |
+| `-o, --output <path>`     | stdout                     | File to write. Parent directories are created.                                                                                                |
+| `-f, --from <format>`     | inferred                   | `django`, `prisma`, `typeorm`, `doctrine`, `laravel` or `gorm`                                                                                |
+| `-t, --to <format>`       | inferred                   | `django`, `prisma`, `typeorm`, `doctrine`, `laravel` or `gorm` (the last three write a directory), `typescript` or `graphene` (output only)   |
+| `--naming <mode>`         | `preserve`                 | `preserve` or `normalize` (see below)                                                                                                         |
+| `--provider <name>`       | `postgresql`               | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`.       |
+| `--no-header`             | off                        | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                       |
+| `--app-label <name>`      | directory name             | Django app label used for default table names (`<app>_<model>`).                                                                              |
+| `--auto-field <type>`     | `int`                      | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                                |
+| `--namespace <name>`      | `App\Entity`, `App\Models` | PHP namespace of the Doctrine entities or Laravel models (`--to doctrine` / `--to laravel` only). Enums go in a sibling namespace.            |
+| `--go-package <name>`     | `models`                   | Go package name of the GORM models, also the output sub-directory (`--to gorm` only). Must be a valid Go identifier.                          |
+| `--prisma-version <6\|7>` | `6`                        | Prisma major version of the header (`--to prisma` only). `7` writes the `prisma-client` generator (with an `output`) and no datasource `url`. |
+| `--dry-run`               | off                        | Run the whole conversion and report what would be written, without touching the filesystem.                                                   |
+| `--check`                 | off                        | Exit with code 3 if an output file is missing or differs from the conversion. Writes nothing. Needs an output path.                           |
+| `--config <path>`         | searched                   | Read settings from this JSON config file instead of searching for one.                                                                        |
+| `--no-config`             | off                        | Ignore any config file.                                                                                                                       |
 
 ### Dry run and check
 
@@ -115,20 +116,21 @@ Instead of repeating flags, put them in `ormbridge.config.json` (or `.ormbridger
 }
 ```
 
-| Key           | Type                  | Same as                                                          |
-| ------------- | --------------------- | ---------------------------------------------------------------- |
-| `input`       | string or string list | `-i, --input`                                                    |
-| `output`      | string                | `-o, --output`                                                   |
-| `from`        | string                | `-f, --from`                                                     |
-| `to`          | string                | `-t, --to`                                                       |
-| `naming`      | string                | `--naming` (`preserve` or `normalize`)                           |
-| `provider`    | string                | `--provider`                                                     |
-| `header`      | boolean               | `--no-header` when `false`                                       |
-| `appLabel`    | string                | `--app-label`                                                    |
-| `autoField`   | string                | `--auto-field` (`int` or `bigint`)                               |
-| `namespace`   | string                | `--namespace` (Doctrine or Laravel output)                       |
-| `goPackage`   | string                | `--go-package` (GORM output)                                     |
-| `conversions` | list of objects       | Several named conversions; each takes the keys above plus `name` |
+| Key             | Type                  | Same as                                                          |
+| --------------- | --------------------- | ---------------------------------------------------------------- |
+| `input`         | string or string list | `-i, --input`                                                    |
+| `output`        | string                | `-o, --output`                                                   |
+| `from`          | string                | `-f, --from`                                                     |
+| `to`            | string                | `-t, --to`                                                       |
+| `naming`        | string                | `--naming` (`preserve` or `normalize`)                           |
+| `provider`      | string                | `--provider`                                                     |
+| `header`        | boolean               | `--no-header` when `false`                                       |
+| `appLabel`      | string                | `--app-label`                                                    |
+| `autoField`     | string                | `--auto-field` (`int` or `bigint`)                               |
+| `namespace`     | string                | `--namespace` (Doctrine or Laravel output)                       |
+| `goPackage`     | string                | `--go-package` (GORM output)                                     |
+| `prismaVersion` | number                | `--prisma-version` (`6` or `7`; Prisma output)                   |
+| `conversions`   | list of objects       | Several named conversions; each takes the keys above plus `name` |
 
 Top-level keys are defaults for every entry in `conversions`. Flags override config values. With no `-i`, `ormbridge convert` runs every conversion in the list (and `-o` is rejected, since the conversions write to different paths); with `-i`, it runs a single conversion from the top-level settings. Unknown keys and bad values fail with a message naming the key, such as `"conversions[1].naming" must be "preserve" or "normalize" (got "weird")`.
 
