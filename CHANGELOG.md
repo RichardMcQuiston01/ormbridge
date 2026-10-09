@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+
+- TypeORM emitter: a Prisma `view` block is written as `@ViewEntity({ name, expression })` with `@ViewColumn()` columns instead of a key-less `@Entity`, which TypeORM rejected when building its metadata. A Prisma view has no SQL definition, so the `expression` is the placeholder `'SELECT * FROM <view>'` (it selects from the view itself, so `synchronize` cannot create it) with a TODO comment and a warning that the expression must be completed. Primary key, unique and index information on a view and relations on a view are dropped with a warning. `prismaOnlyWarnings` takes an optional `viewsSupported` flag so the generic "written like a regular table" warning is not given for TypeORM; the other emitters are unchanged.
+- TypeORM parser: `@ViewEntity` classes are read as `isView` models (name from the first argument or the `name` option, columns from `@ViewColumn`) instead of being skipped, so a TypeORM-to-Prisma round trip returns a `view` block. The view `expression` is not converted (a warning says so), and a view without a key no longer warns about a missing primary key.
+- Real-tool verification: the prisma-extras fixture keeps its view for the TypeORM check, which builds TypeORM's metadata for it (all four providers) and checks the table type and columns; SQLite synchronization skips the view because of its self-referencing placeholder. Django and Graphene verification still strip views (`SOURCES_WITHOUT_VIEWS` in `test/realToolSupport.ts`). The `prisma-to-typeorm` extras golden is updated.
+
 ## 0.3.0 - 2026-10-09
 
 Adds GORM (Go) as a readable and writable format, a `--prisma-version` flag, a Doctrine parser that recovers lifecycle callbacks and constructor defaults, and optional verification of the Django, Graphene and TypeORM output against the real tools.
