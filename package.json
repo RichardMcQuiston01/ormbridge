@@ -1,7 +1,7 @@
 {
   "name": "ormbridge",
-  "version": "0.1.0",
-  "description": "Convert ORM models between frameworks and languages. Define your data model once and share typed schemas across your stack.",
+  "version": "0.2.0",
+  "description": "Convert ORM models between frameworks and languages (Django, Prisma, TypeORM, Doctrine, Laravel). Define your data model once and share typed schemas across your stack.",
   "author": {
     "name": "Richard McQuiston",
     "email": "richard.mcquiston01@gmail.com"
@@ -50,7 +50,12 @@
     "typescript",
     "python",
     "typeorm",
-    "graphene"
+    "graphene",
+    "doctrine",
+    "laravel",
+    "eloquent",
+    "php",
+    "graphql"
   ],
   "license": "MIT",
   "dependencies": {
@@ -68,5 +73,13 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.1",
     "vitest": "^5.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RichardMcQuiston01/ormbridge.git"
+  },
+  "homepage": "https://github.com/RichardMcQuiston01/ormbridge#readme",
+  "bugs": {
+    "url": "https://github.com/RichardMcQuiston01/ormbridge/issues"
   }
 }

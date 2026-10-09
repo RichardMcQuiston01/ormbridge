@@ -2,10 +2,20 @@
 
 Convert ORM models between frameworks and languages, so one data model can be shared across your whole stack, from the command line or from code.
 
-See [What is converted](#what-is-converted) for the formats currently supported.
+| Format                      | Read | Write | Notes                                                      |
+| --------------------------- | :--: | :---: | ---------------------------------------------------------- |
+| Django models               |  ✔   |   ✔   | `models.py` files or `models/` packages                    |
+| Prisma schema               |  ✔   |   ✔   | All six providers; Prisma 7 header via the API             |
+| TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                             |
+| Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; writes one file per entity               |
+| Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both         |
+| TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                  |
+| Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django |
 
-- **No Python needed.** Django models are parsed statically, so there is no Django install, virtualenv, or database connection.
-- **Safe for existing databases.** The default mode keeps your Django table and column names, so Prisma can sit on top of the database you already have.
+See [What is converted](#what-is-converted) for the field-level mapping and [docs/CONVERSION_MATRIX.md](docs/CONVERSION_MATRIX.md) for exactly what survives a round trip between the readable formats.
+
+- **Static parsing, no runtime needed.** Source files are read with [tree-sitter](https://tree-sitter.github.io/), so there is no Python, Django, PHP, Composer or database to install or connect to.
+- **Safe for existing databases.** The default `preserve` mode keeps your existing table and column names, so a new tool can sit on top of the database you already have.
 - **Honest output.** Anything that cannot be represented produces a warning naming the model and field.
 
 ## Table of Contents
