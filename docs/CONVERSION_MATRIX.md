@@ -587,6 +587,62 @@ Warnings when the output is read back: none.
 
 Stable: converting laravel → gorm → laravel again changes nothing further.
 
+## Write-only targets
+
+Some formats can be written but not read (json-schema), so the matrix cannot re-read their output and compare IRs. For these it checks the written output against the IR instead. GORM: every model has a struct for its table, every column has a field, every many-to-many relation has its join table and every enum has its type. JSON Schema: every model and enum has a `$defs` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
+
+| Pair | Files | Emit warnings | Missing |
+| --- | --- | --- | --- |
+| django → json-schema | 1 | 0 | none |
+| prisma → json-schema | 1 | 0 | none |
+| typeorm → json-schema | 1 | 0 | none |
+| doctrine → json-schema | 1 | 0 | none |
+| laravel → json-schema | 1 | 0 | none |
+| gorm → json-schema | 1 | 0 | none |
+
+### django → json-schema
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### prisma → json-schema
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### typeorm → json-schema
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### doctrine → json-schema
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### laravel → json-schema
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### gorm → json-schema
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### What json-schema approximates
+
+1. **Database constraints are not validation rules.** Unique, primary-key, index and foreign-key constraints, referential actions and table names have no JSON Schema keyword and are not written; the document only describes the shape of one row. Column comments do not exist in the IR, so `description` carries only enum labels and generated-column expressions.
+2. **Types follow what travels as JSON.** `bigInt` and `decimal` are strings (with a `pattern`, narrowed by the precision when the IR has `maxDigits` and `decimalPlaces`) so no precision is lost, binary columns are base64 strings, `json` accepts any value, and integers carry `minimum` / `maximum` only when a Prisma native type such as `@db.SmallInt` names the width. IP addresses and ranges have no JSON Schema format and are plain strings and `{ lower, upper, bounds }` objects.
+3. **Required and read-only are inferred.** A property is `required` when its column is not nullable and has no default and is not generated. Auto-increment, UUID, `now`, client-generated and database-expression defaults, auto-updated columns and generated columns are `readOnly`. Relations and reverse relations are optional properties; the foreign-key scalar is required when the relation is.
+4. **Enums are string enumerations.** An enum is `{ "type": "string", "enum": [...] }` with the stored values; member names and Django labels survive only as the `description` text, because the `enum` keyword has no place for them.
+
 ## Known issues
 
 - Writing a many-to-many to TypeORM emits `@JoinTable({ name, joinColumn, inverseJoinColumn })` so the join table matches the one Django creates. The TypeORM reader then warns that "custom @JoinTable settings (name, joinColumn, inverseJoinColumn) are not preserved" for ormbridge's own output. The names it would have read are the same ones it derives, so nothing is lost, but the warning is noise for generated code.

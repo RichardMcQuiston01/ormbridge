@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Installs the real tools that the optional verification tests use (Django, graphene-django and
-# TypeORM with SQLite) into a scratch directory outside this repository, then prints the
-# environment variables that switch the tests on.
+# Installs the real tools that the optional verification tests use (Django, graphene-django,
+# TypeORM with SQLite, and Ajv for JSON Schema) into a scratch directory outside this repository,
+# then prints the environment variables that switch the tests on.
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
 #   eval "$(test/tools/setup-verification-tools.sh /tmp/ormbridge-tools | grep '^export ')"
@@ -28,5 +28,14 @@ mkdir -p "${target}/typeorm"
     pg mysql2 mssql
 )
 
+echo "Installing Ajv and ajv-formats into ${target}/ajv" >&2
+mkdir -p "${target}/ajv"
+(
+  cd "${target}/ajv"
+  [ -f package.json ] || npm init -y > /dev/null
+  npm install --silent ajv ajv-formats
+)
+
 echo "export DJANGO_PYTHON=${target}/venv/bin/python"
 echo "export TYPEORM_DIR=${target}/typeorm"
+echo "export AJV_DIR=${target}/ajv"

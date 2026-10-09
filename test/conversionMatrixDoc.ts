@@ -95,6 +95,32 @@ export const LOSS_REASONS: readonly LossReason[] = [
  */
 export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
   {
+    'json-schema': [
+      {
+        id: 'json-schema-no-constraints',
+        title: 'Database constraints are not validation rules',
+        explanation:
+          'Unique, primary-key, index and foreign-key constraints, referential actions and table names have no JSON Schema keyword and are not written; the document only describes the shape of one row. Column comments do not exist in the IR, so `description` carries only enum labels and generated-column expressions.',
+      },
+      {
+        id: 'json-schema-types',
+        title: 'Types follow what travels as JSON',
+        explanation:
+          '`bigInt` and `decimal` are strings (with a `pattern`, narrowed by the precision when the IR has `maxDigits` and `decimalPlaces`) so no precision is lost, binary columns are base64 strings, `json` accepts any value, and integers carry `minimum` / `maximum` only when a Prisma native type such as `@db.SmallInt` names the width. IP addresses and ranges have no JSON Schema format and are plain strings and `{ lower, upper, bounds }` objects.',
+      },
+      {
+        id: 'json-schema-required',
+        title: 'Required and read-only are inferred',
+        explanation:
+          'A property is `required` when its column is not nullable and has no default and is not generated. Auto-increment, UUID, `now`, client-generated and database-expression defaults, auto-updated columns and generated columns are `readOnly`. Relations and reverse relations are optional properties; the foreign-key scalar is required when the relation is.',
+      },
+      {
+        id: 'json-schema-enums',
+        title: 'Enums are string enumerations',
+        explanation:
+          'An enum is `{ "type": "string", "enum": [...] }` with the stored values; member names and Django labels survive only as the `description` text, because the `enum` keyword has no place for them.',
+      },
+    ],
     gorm: [
       {
         id: 'gorm-integers',
@@ -414,7 +440,7 @@ function emitOnlySection(cells: EmitOnlyCell[]): string[] {
   const lines: string[] = [
     '## Write-only targets',
     '',
-    `Some formats can be written but not read (${targets.join(', ')}), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a struct for its table, every column has a field, every many-to-many relation has its join table and every enum has its type. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.`,
+    `Some formats can be written but not read (${targets.join(', ')}), so the matrix cannot re-read their output and compare IRs. For these it checks the written output against the IR instead. GORM: every model has a struct for its table, every column has a field, every many-to-many relation has its join table and every enum has its type. JSON Schema: every model and enum has a \`$defs\` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.`,
     '',
     '| Pair | Files | Emit warnings | Missing |',
     '| --- | --- | --- | --- |',
