@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Real-tool verification of the Graphene output now covers the canonical Django fixture (`test/graphene-verify.test.ts`, `test/tools/validate-graphene.py`, `test/realToolSupport.ts`). The fixture's models point their foreign keys at `settings.AUTH_USER_MODEL`, so the verification project installs `django.contrib.auth` and `contenttypes` (the user model is `auth.User`, the `auth_user` table the parser assumes) when the models file does not define its own `User`, and the test appends `User = get_user_model()` so the `User` the schema imports resolves; the fixture itself is used as written. The validator now creates rows in dependency order, so `Post` (author and category) and `Profile` (user) go through the create, get, list, update and delete round trip too, for every source. The django-extras fixture stays out (PostgreSQL fields).
+
 ### Changed
 
 - TypeORM emitter: a Prisma `view` block is written as `@ViewEntity({ name, expression })` with `@ViewColumn()` columns instead of a key-less `@Entity`, which TypeORM rejected when building its metadata. A Prisma view has no SQL definition, so the `expression` is the placeholder `'SELECT * FROM <view>'` (it selects from the view itself, so `synchronize` cannot create it) with a TODO comment and a warning that the expression must be completed. Primary key, unique and index information on a view and relations on a view are dropped with a warning. `prismaOnlyWarnings` takes an optional `viewsSupported` flag so the generic "written like a regular table" warning is not given for TypeORM; the other emitters are unchanged.
