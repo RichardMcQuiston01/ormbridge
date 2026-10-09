@@ -1,0 +1,11 @@
+Customer.Rank: the type "Priority" has integer constants, which the shared model cannot represent as an enum; the column was converted to a plain integer.
+Order.ModifiedAt: autoUpdateTime on an integer field stores Unix time; it was read as a plain integer column.
+Order.Comments: the polymorphic association "Owner" (the OwnerID and OwnerType columns of "Comment") points at several models, which the shared model cannot represent; the association was dropped and the columns stay ordinary fields.
+Customer.DeletedAt: gorm.DeletedAt is read as a nullable timestamp column; the soft-delete behavior (GORM hides rows with a deletion time from queries) has no equivalent in the shared model.
+Order.Labels: the join table "order_labels" (columns order_ref, label_ref) is not preserved by name; formats that derive join tables will use "shop_orders_labels" (columns order_id, label_id).
+Order.Note: the check constraint "length(note) < 500" has no equivalent in the shared model and was dropped.
+Order.Note: the column comment is not preserved.
+Product.Similar: the join table "product_similar" (columns product_sku, similar_sku) is not preserved by name; formats that derive join tables will use "products_similar" (columns from_product_id, to_product_id).
+Product: the index "idx_product_slug" has a where condition (a partial index), which is not preserved; it was read as a full index.
+Product.DeletedAt: gorm.DeletedAt is read as a nullable timestamp column; the soft-delete behavior (GORM hides rows with a deletion time from queries) has no equivalent in the shared model.
+Product index (title): postgresql has no @@fulltext index in Prisma; it was written as an ordinary @@index.

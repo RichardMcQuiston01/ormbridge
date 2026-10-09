@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import type { IrField, IrModel, IrSchema } from '../src/ir.js';
-import type { MatrixCell } from './conversionMatrix.js';
+import type { EmitOnlyCell, MatrixCell } from './conversionMatrix.js';
 import { formatDifference, type IrDifference } from './irCompare.js';
 
 /** Where the generated document is committed. */
@@ -36,19 +36,31 @@ export const LOSS_REASONS: readonly LossReason[] = [
     id: 'join-table',
     title: 'Many-to-many becomes an explicit join model in Prisma',
     explanation:
-      "In `preserve` naming mode the Prisma writer expands every many-to-many field with `expandManyToMany` (`src/transforms.ts`) into an explicit join model (`PostTags`) with a surrogate `id`, two cascading foreign keys and a unique pair. This mirrors the table Django creates, so existing Django databases stay compatible, and it avoids Prisma's implicit `_AToB` table. Prisma reads that model back as an ordinary model, so the relation `Post.tags` is not restored as a many-to-many. For TypeORM sources the join table is TypeORM's own, whose primary key is the composite of the two foreign keys, so the Prisma join model also gains a surrogate `id` column that the source table does not have.",
+      "In `preserve` naming mode the Prisma writer expands every many-to-many field with `expandManyToMany` (`src/transforms.ts`) into an explicit join model (`PostTags`) with a surrogate `id`, two cascading foreign keys and a unique pair. This mirrors the table Django creates, so existing Django databases stay compatible, and it avoids Prisma's implicit `_AToB` table. Prisma reads that model back as an ordinary model, so the relation `Post.tags` is not restored as a many-to-many. For TypeORM and GORM sources the join table is the ORM's own, whose primary key is the composite of the two foreign keys, so the Prisma join model also gains a surrogate `id` column that the source table does not have.",
   },
   {
-    id: 'doctrine-lifecycle-callback',
-    title: 'Auto-updated timestamps become Doctrine lifecycle callbacks',
+    id: 'php-empty-array-default',
+    title: 'Empty JSON defaults come back as a PHP array',
     explanation:
-      'Doctrine has no attribute that refreshes a column on update (Django `auto_now`, Prisma `@updatedAt`, TypeORM `@UpdateDateColumn`). The Doctrine writer therefore adds `#[ORM\\HasLifecycleCallbacks]` and a `#[ORM\\PreUpdate]` method that sets the property. The Doctrine reader ignores lifecycle callbacks (it reads mapping attributes only), so the "updated automatically" flag is not recovered when the output is read back.',
+      'The Doctrine writer sets a JSON or array default as a property initializer (`private array $metadata = [];`). PHP has a single empty array literal, so an empty JSON object default (`{}`, Django `default=dict`) and an empty JSON list default (`[]`) both become `[]`, and the Doctrine reader returns `[]`.',
   },
   {
-    id: 'doctrine-constructor-default',
-    title: 'UUID and JSON defaults are set in the Doctrine constructor',
+    id: 'gorm-empty-string-default',
+    title: 'GORM cannot keep an empty string default',
     explanation:
-      'Doctrine ORM 3 has no built-in UUID generator, and a column default for JSON or array columns is not portable, so the Doctrine writer assigns these defaults in the entity constructor (for example `$this->publicId = self::generateUuid();`). The Doctrine reader only sees the mapping attributes, not constructor statements, so these defaults are not recovered when the output is read back. Scalar defaults that can be written as a column option or property initializer survive.',
+      "The GORM writer puts a string default into the tag unquoted (`default:abc`), so an empty string default becomes a bare `default:`. GORM and the GORM reader treat that as no default, so a Doctrine property initializer such as `private string $body = '';` is lost on the way through GORM.",
+  },
+  {
+    id: 'gorm-reverse-name',
+    title: 'GORM names reverse relations in Go',
+    explanation:
+      'GORM has no related name: the reverse side of a relation is a field on the other struct, named after the plural of the model (`Posts`). A Django `related_name` or an ORM-specific default such as `postset` is therefore replaced by the GORM field name, and the GORM reader recovers that name rather than the original.',
+  },
+  {
+    id: 'gorm-auto-timestamps',
+    title: 'GORM refreshes `updated_at` columns itself',
+    explanation:
+      'A column named `updated_at` (or `UpdatedAt`) is maintained by GORM through `autoUpdateTime`, which the GORM writer adds and the reader reports as "updated automatically". A source format that cannot express the flag therefore gains it after a pass through GORM.',
   },
   {
     id: 'django-enum-length-floor',
@@ -75,6 +87,59 @@ export const LOSS_REASONS: readonly LossReason[] = [
       'A Django foreign key without `related_name` has the implicit reverse accessor `<model>_set`, which the IR records as no name. The Laravel writer needs a method name for the `hasMany` side and uses the plural of the model (`posts`), which the Laravel reader then reports as an explicit reverse name.',
   },
 ];
+
+/**
+ * What a write-only target cannot keep or has to approximate. They are listed
+ * in the matrix document next to the structural check, because the matrix
+ * cannot re-read the output to measure them. Keyed by format name.
+ */
+export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
+  {
+    gorm: [
+      {
+        id: 'gorm-integers',
+        title: 'Integer widths and signs',
+        explanation:
+          '`int` is written as `int32` and `bigInt` as `int64`, both signed. The IR has no unsigned or 16-bit integers (Django positive integer fields become plain `int`). A model that has exactly the `gorm.Model` columns embeds `gorm.Model`, whose `ID` is an unsigned `uint`.',
+      },
+      {
+        id: 'gorm-defaults',
+        title: 'Where defaults live',
+        explanation:
+          'A `now` default on a date-time column becomes `autoCreateTime` (GORM fills it in Go, so a raw SQL insert gets no default) and an auto-updated column becomes `autoUpdateTime`. UUID defaults are `default:gen_random_uuid()` on PostgreSQL and a generated `BeforeCreate` hook on every other provider; client-generated defaults (`cuid()`, `ulid()`) are dropped with a warning. Literal and enum defaults are written as `default:` tags.',
+      },
+      {
+        id: 'gorm-join-tables',
+        title: 'Many-to-many join tables',
+        explanation:
+          'GORM creates the join table itself, with a composite primary key of the two foreign keys and no surrogate `id`. The table and column names are written explicitly (`many2many:`, `joinForeignKey`, `joinReferences`) when they differ from what GORM would pick, so the table matches the one other formats create. An explicit join model (Prisma) stays an ordinary model.',
+      },
+      {
+        id: 'gorm-soft-delete',
+        title: 'Soft delete is inferred from a column name',
+        explanation:
+          'The IR has no soft-delete flag. A nullable date-time column named `deleted_at` is written as `gorm.DeletedAt`, which also changes how GORM queries the model (rows with a value are hidden), so the writer warns.',
+      },
+      {
+        id: 'gorm-enums',
+        title: 'Enums are Go constants',
+        explanation:
+          'An enum is a typed string with a `const` block, stored as text. GORM has no database enum type and no check constraint is written, so the database does not enforce the values. Member labels are kept as comments.',
+      },
+      {
+        id: 'gorm-unrepresentable',
+        title: 'Constructs without a GORM tag',
+        explanation:
+          'Arrays and hstore become JSON columns (`datatypes.JSONSlice`, `datatypes.JSON`), durations become `time.Duration` (nanoseconds in a bigint), ranges become strings, generated columns become regular columns, and composite foreign keys, index types and operator classes, full-text indexes, views and `@@schema` are written as plain tables and columns, each with a warning. The IR has no check constraints, column comments or polymorphic relations, so none are written.',
+      },
+      {
+        id: 'gorm-inverse-names',
+        title: 'Reverse relations get Go names',
+        explanation:
+          'An unnamed reverse relation is named after the plural of the model (`Posts`), and a one-to-one after the model (`Profile`). Has-one and belongs-to fields are pointers unless a required parent can be held by value without making the struct type recursive.',
+      },
+    ],
+  };
 
 /** True when either end of the pair is the given format. */
 function involves(cell: MatrixCell, format: string): boolean {
@@ -161,17 +226,29 @@ export function explainDifference(
         : undefined;
     }
     case 'fieldAutoUpdated':
-      return involves(cell, 'doctrine') &&
-        difference.before === 'true' &&
-        difference.after === 'false'
-        ? 'doctrine-lifecycle-callback'
-        : undefined;
+      if (
+        involves(cell, 'gorm') &&
+        difference.field === 'updated_at' &&
+        difference.before === 'false' &&
+        difference.after === 'true'
+      ) {
+        return 'gorm-auto-timestamps';
+      }
+      return undefined;
+    case 'relationRelatedName':
+      return involves(cell, 'gorm') ? 'gorm-reverse-name' : undefined;
     case 'fieldDefault':
+      if (
+        cell.target === 'gorm' &&
+        difference.before === 'literal ""' &&
+        difference.after === '(none)'
+      ) {
+        return 'gorm-empty-string-default';
+      }
       return involves(cell, 'doctrine') &&
-        difference.after === '(none)' &&
-        (difference.before === 'uuid' ||
-          difference.before.startsWith('literal'))
-        ? 'doctrine-constructor-default'
+        difference.before === 'literal "{}"' &&
+        difference.after === 'literal "[]"'
+        ? 'php-empty-array-default'
         : undefined;
     case 'enumValueLabel':
       return difference.after === '(none)' ? 'enum-label' : undefined;
@@ -226,13 +303,17 @@ function summaryCell(cell: MatrixCell | undefined): string {
     : `⚠ ${count} difference${count === 1 ? '' : 's'}`;
 }
 
-function summaryMatrix(cells: MatrixCell[], formats: string[]): string[] {
+function summaryMatrix(
+  cells: MatrixCell[],
+  sources: string[],
+  targets: string[]
+): string[] {
   const lines: string[] = [
-    `| from \\ to | ${formats.join(' | ')} |`,
-    `| --- | ${formats.map(() => '---').join(' | ')} |`,
+    `| from \\ to | ${targets.join(' | ')} |`,
+    `| --- | ${targets.map(() => '---').join(' | ')} |`,
   ];
-  for (const source of formats) {
-    const row: string[] = formats.map((target: string) =>
+  for (const source of sources) {
+    const row: string[] = targets.map((target: string) =>
       summaryCell(
         cells.find(
           (cell: MatrixCell) => cell.source === source && cell.target === target
@@ -251,7 +332,7 @@ function pairTable(cells: MatrixCell[]): string[] {
   ];
   for (const cell of cells) {
     lines.push(
-      `| ${pairLabel(cell)} | ${summaryCell(cell)} | ${cell.emitWarnings.length} | ${cell.reparseWarnings.length} | ${cell.idempotenceDifferences.length === 0 ? 'yes' : 'no'} |`
+      `| ${pairLabel(cell)} | ${summaryCell(cell)} | ${cell.emitWarnings.length} | ${cell.reparseWarnings.length} | ${cell.readOnlySource === true ? 'n/a (read only)' : cell.idempotenceDifferences.length === 0 ? 'yes' : 'no'} |`
     );
   }
   return lines;
@@ -293,6 +374,14 @@ function pairDetails(
       lines.push(`- ${warning}`);
     }
   }
+  if (cell.readOnlySource === true) {
+    lines.push(
+      '',
+      `Second trip not checked: ${cell.source} can only be read, so ${cell.target} → ${cell.source} → ${cell.target} cannot be run.`,
+      ''
+    );
+    return lines;
+  }
   const unexplainedSecondTrip: IrDifference[] =
     unexplainedIdempotenceDifferences(cell);
   lines.push(
@@ -315,8 +404,64 @@ function pairDetails(
   return lines;
 }
 
+function emitOnlySection(cells: EmitOnlyCell[]): string[] {
+  const targets: string[] = [];
+  for (const cell of cells) {
+    if (!targets.includes(cell.target)) {
+      targets.push(cell.target);
+    }
+  }
+  const lines: string[] = [
+    '## Write-only targets',
+    '',
+    `Some formats can be written but not read (${targets.join(', ')}), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a struct for its table, every column has a field, every many-to-many relation has its join table and every enum has its type. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.`,
+    '',
+    '| Pair | Files | Emit warnings | Missing |',
+    '| --- | --- | --- | --- |',
+  ];
+  for (const cell of cells) {
+    lines.push(
+      `| ${cell.source} → ${cell.target} | ${cell.files.length} | ${cell.emitWarnings.length} | ${cell.missing.length === 0 ? 'none' : cell.missing.length} |`
+    );
+  }
+  lines.push('');
+  for (const cell of cells) {
+    lines.push(`### ${cell.source} → ${cell.target}`, '');
+    lines.push(
+      cell.missing.length === 0
+        ? 'The output covers the canonical schema.'
+        : `Missing from the output: ${cell.missing.join('; ')}.`
+    );
+    lines.push('');
+    if (cell.emitWarnings.length === 0) {
+      lines.push('Emit warnings: none.');
+    } else {
+      lines.push('Emit warnings:', '');
+      for (const warning of cell.emitWarnings) {
+        lines.push(`- ${warning}`);
+      }
+    }
+    lines.push('');
+  }
+  for (const target of targets) {
+    const notes: readonly LossReason[] = EMIT_ONLY_NOTES[target] ?? [];
+    if (notes.length === 0) {
+      continue;
+    }
+    lines.push(`### What ${target} approximates`, '');
+    notes.forEach((note: LossReason, position: number): void => {
+      lines.push(`${position + 1}. **${note.title}.** ${note.explanation}`);
+    });
+    lines.push('');
+  }
+  return lines;
+}
+
 /** Renders the committed conversion matrix document. */
-export function renderMatrixMarkdown(cells: MatrixCell[]): string {
+export function renderMatrixMarkdown(
+  cells: MatrixCell[],
+  emitOnly: EmitOnlyCell[] = []
+): string {
   const formats: string[] = [];
   for (const cell of cells) {
     for (const name of [cell.source, cell.target]) {
@@ -325,6 +470,20 @@ export function renderMatrixMarkdown(cells: MatrixCell[]): string {
       }
     }
   }
+  // Formats that only appear as the source of read-only cells cannot be written.
+  const readOnly: string[] = formats.filter((name: string) =>
+    cells
+      .filter(
+        (cell: MatrixCell) => cell.source === name || cell.target === name
+      )
+      .every(
+        (cell: MatrixCell) =>
+          cell.readOnlySource === true && cell.source === name
+      )
+  );
+  const readWrite: string[] = formats.filter(
+    (name: string) => !readOnly.includes(name)
+  );
   const usedReasons: LossReason[] = LOSS_REASONS.filter((reason: LossReason) =>
     cells.some((cell: MatrixCell) =>
       [...cell.differences, ...cell.idempotenceDifferences].some(
@@ -345,7 +504,7 @@ export function renderMatrixMarkdown(cells: MatrixCell[]): string {
     '',
     '<!-- Generated by `npm run docs:matrix` (scripts/generate-conversion-matrix.ts). Do not edit by hand: the tests fail when this file is stale. -->',
     '',
-    `This page shows what survives a round trip between the formats ormbridge can both read and write (${formats.join(', ')}). It is generated from the canonical "blog" schema in \`test/fixtures/\`, so it describes the constructs that schema uses; the README's "Limitations and warnings" section lists constructs it does not cover.`,
+    `This page shows what survives a round trip between the formats ormbridge can both read and write (${readWrite.join(', ')})${readOnly.length === 0 ? '' : `, and what survives when a format that can only be read (${readOnly.join(', ')}) is written to each of them`}. It is generated from the canonical "blog" schema in \`test/fixtures/\`, so it describes the constructs that schema uses; the README's "Limitations and warnings" section lists constructs it does not cover.`,
     '',
     '## How a cell is computed',
     '',
@@ -360,13 +519,19 @@ export function renderMatrixMarkdown(cells: MatrixCell[]): string {
     '',
     "The comparison covers models, table names, fields, types, nullability, defaults, lengths and precision, primary and composite keys, relations (kind, target, nullability, `onDelete`, reverse accessor), enums, indexes and uniques. It ignores differences that mean nothing: ordering, case and underscore spelling of identifiers (`created_at` vs `createdAt`, `DRAFT` vs `Draft`), the Django app label, index and constraint names the target generated itself (an explicit name that is lost is reported), Django's implicit reverse accessor names (`post_set`), the nullability of many-to-many relations (they have no column), and values a target must invent (Django enum labels and the `max_length` Django requires on enum columns).",
     '',
+    ...(readOnly.length === 0
+      ? []
+      : [
+          `A format that can only be read (${readOnly.join(', ')}) has no writer yet, so its cells stop after step 4: the schema is read from its fixture, written to the target and read back, but it cannot be written back to the source for a second trip. These rows join the full matrix, with a second trip, once the format gains a writer.`,
+          '',
+        ]),
     'Text goldens in `test/golden/` pin the exact output and the `roundtrip-*.drift.txt` files pin the textual drift; this page is the semantic view of the same conversions.',
     '',
     '## Summary',
     '',
     'Rows are the source format, columns the target. ✔ means the canonical schema comes back unchanged; ⚠ gives the number of structural differences.',
     '',
-    ...summaryMatrix(cells, formats),
+    ...summaryMatrix(cells, formats, readWrite),
     '',
     ...pairTable(cells),
     '',
@@ -385,6 +550,10 @@ export function renderMatrixMarkdown(cells: MatrixCell[]): string {
   lines.push('## Details per pair', '');
   for (const cell of cells) {
     lines.push(...pairDetails(cell, reasonNumbers));
+  }
+
+  if (emitOnly.length > 0) {
+    lines.push(...emitOnlySection(emitOnly));
   }
 
   lines.push(

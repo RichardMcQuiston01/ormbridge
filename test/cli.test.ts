@@ -657,3 +657,190 @@ describe('doctrine output', () => {
     expect(stale.stderr).toMatch(/src[\\/]Entity[\\/]Tag\.php is out of date/);
   });
 });
+
+describe('gorm output', () => {
+  it('writes one Go file per model and enum into the package directory', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'gorm',
+      '-o',
+      'gen',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(
+      (await readdir(join(workDirectory, 'gen', 'models'))).sort()
+    ).toEqual([
+      'category.go',
+      'post.go',
+      'post_status.go',
+      'profile.go',
+      'tag.go',
+      'user.go',
+    ]);
+    const post: string = await readFile(
+      join(workDirectory, 'gen', 'models', 'post.go'),
+      'utf8'
+    );
+    expect(post.startsWith('package models\n')).toBe(true);
+  });
+
+  it('applies --go-package and the goPackage config key', async () => {
+    const flagged: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'gorm',
+      '--go-package',
+      'store',
+      '-o',
+      'flag',
+    ]);
+    expect(flagged.code).toBe(EXIT_OK);
+    expect(
+      (
+        await readFile(join(workDirectory, 'flag', 'store', 'tag.go'), 'utf8')
+      ).split('\n')[0]
+    ).toBe('package store');
+
+    await writeConfig({
+      input: BLOG_FIXTURE_PATH,
+      to: 'gorm',
+      output: 'conf',
+      goPackage: 'shop',
+    });
+    const configured: CliRun = await cli(['convert']);
+    expect(configured.code).toBe(EXIT_OK);
+    expect(
+      (
+        await readFile(join(workDirectory, 'conf', 'shop', 'tag.go'), 'utf8')
+      ).split('\n')[0]
+    ).toBe('package shop');
+  });
+
+  it('rejects an invalid Go package name with a conversion error', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'gorm',
+      '--go-package',
+      'my-models',
+      '-o',
+      'gen',
+    ]);
+    expect(run.code).toBe(EXIT_CONVERSION_ERROR);
+    expect(run.stderr).toContain('Invalid Go package name "my-models"');
+  });
+
+  it('writes the Prisma 7 header with --prisma-version 7', async () => {
+    const v7: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'prisma',
+      '--prisma-version',
+      '7',
+    ]);
+    expect(v7.code).toBe(EXIT_OK);
+    expect(v7.stdout.startsWith('generator client {\n')).toBe(true);
+    expect(v7.stdout).toContain('provider = "prisma-client"\n');
+    expect(v7.stdout).toContain('output   = "../generated/prisma"');
+    expect(v7.stdout).not.toContain('prisma-client-js');
+    expect(v7.stdout).not.toContain('url      = env("DATABASE_URL")');
+    expect(v7.stdout).toContain(
+      'datasource db {\n  provider = "postgresql"\n}'
+    );
+  });
+
+  it('keeps the Prisma 6 header by default and with --prisma-version 6', async () => {
+    const base: string[] = [
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'prisma',
+    ];
+    const defaulted: CliRun = await cli(base);
+    const explicit: CliRun = await cli([...base, '--prisma-version', '6']);
+    expect(defaulted.stdout).toContain('provider = "prisma-client-js"');
+    expect(defaulted.stdout).toContain('url      = env("DATABASE_URL")');
+    expect(explicit.stdout).toBe(defaulted.stdout);
+  });
+
+  it('applies the prismaVersion config key and lets the flag override it', async () => {
+    await writeConfig({
+      input: BLOG_FIXTURE_PATH,
+      to: 'prisma',
+      prismaVersion: 7,
+    });
+    const configured: CliRun = await cli(['convert']);
+    expect(configured.stdout).toContain('provider = "prisma-client"\n');
+    expect(configured.stdout).not.toContain('DATABASE_URL');
+    const overridden: CliRun = await cli(['convert', '--prisma-version', '6']);
+    expect(overridden.stdout).toContain('provider = "prisma-client-js"');
+    expect(overridden.stdout).toContain('url      = env("DATABASE_URL")');
+  });
+
+  it.each(['5', '8', 'abc', '7.5', ''])(
+    'rejects --prisma-version "%s" with a usage error',
+    async (value: string) => {
+      const run: CliRun = await cli([
+        'convert',
+        '-i',
+        BLOG_FIXTURE_PATH,
+        '--to',
+        'prisma',
+        '--prisma-version',
+        value,
+      ]);
+      expect(run.code).toBe(EXIT_USAGE_ERROR);
+      expect(run.stderr).toContain(
+        `Invalid --prisma-version value "${value}". Expected 6 or 7.`
+      );
+    }
+  );
+
+  it('rejects an invalid prismaVersion in the config file', async () => {
+    await writeConfig({ input: BLOG_FIXTURE_PATH, prismaVersion: 9 });
+    const run: CliRun = await cli(['convert']);
+    expect(run.code).toBe(EXIT_USAGE_ERROR);
+    expect(run.stderr).toContain('"prismaVersion" must be the number 6 or 7');
+  });
+
+  it('ignores --prisma-version for other targets', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'typescript',
+      '--prisma-version',
+      '7',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+  });
+
+  it('supports --check', async () => {
+    const args: string[] = [
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'gorm',
+      '-o',
+      'gen',
+    ];
+    expect((await cli(args)).code).toBe(EXIT_OK);
+    expect((await cli([...args, '--check'])).code).toBe(EXIT_OK);
+    await writeFile(join(workDirectory, 'gen', 'models', 'tag.go'), 'stale\n');
+    const stale: CliRun = await cli([...args, '--check']);
+    expect(stale.code).toBe(EXIT_CHECK_FAILED);
+    expect(stale.stderr).toMatch(/models[\\/]tag\.go is out of date/);
+  });
+});

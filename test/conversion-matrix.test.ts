@@ -3,12 +3,14 @@ import { dirname } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { listFormats, type FormatAdapter } from '../src/formats.js';
 import {
+  computeEmitOnlyMatrix,
   computeMatrix,
   emitWith,
   matrixFormats,
   matrixPairs,
   parseEmitted,
   parseWith,
+  type EmitOnlyCell,
   type MatrixCell,
 } from './conversionMatrix.js';
 import {
@@ -22,6 +24,7 @@ import { loadCanonicalSources } from './harness.js';
 
 // Computed once; every pair below reads from it.
 const cells: MatrixCell[] = await computeMatrix();
+const emitOnlyCells: EmitOnlyCell[] = await computeEmitOnlyMatrix();
 
 function cellFor(source: FormatAdapter, target: FormatAdapter): MatrixCell {
   const cell: MatrixCell | undefined = cells.find(
@@ -39,7 +42,7 @@ describe('conversion matrix coverage', () => {
     const formats: FormatAdapter[] = matrixFormats();
     expect(formats.length).toBeGreaterThanOrEqual(3);
     expect(cells).toHaveLength(formats.length * (formats.length - 1));
-    expect(matrixPairs()).toHaveLength(cells.length);
+    expect(matrixPairs()).toHaveLength(formats.length * (formats.length - 1));
   });
 });
 
@@ -105,7 +108,7 @@ describe('writable formats', () => {
 
 describe('docs/CONVERSION_MATRIX.md', () => {
   it('is up to date with the generated matrix', () => {
-    const generated: string = renderMatrixMarkdown(cells);
+    const generated: string = renderMatrixMarkdown(cells, emitOnlyCells);
     if (process.env.UPDATE_GOLDEN === '1') {
       mkdirSync(dirname(MATRIX_DOC_PATH), { recursive: true });
       writeFileSync(MATRIX_DOC_PATH, generated);

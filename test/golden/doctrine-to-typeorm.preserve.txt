@@ -69,7 +69,7 @@ export class Post {
   @Column({ type: 'varchar', length: 200 })
   title!: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', default: '' })
   body!: string;
 
   @Column({ type: 'enum', enum: PostStatus, default: PostStatus.Draft })

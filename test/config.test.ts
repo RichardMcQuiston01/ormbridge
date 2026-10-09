@@ -165,6 +165,18 @@ describe('loadConfigFile', () => {
   });
 });
 
+describe('parseConfig prismaVersion', () => {
+  it.each([6, 7] as const)('accepts %i, also per conversion', (version) => {
+    const result: Result<ConfigFile> = parseConfig(
+      { prismaVersion: version, conversions: [{ prismaVersion: 7 }] },
+      CONFIG_PATH
+    );
+    const config: ConfigFile = expectOk(result);
+    expect(config.defaults.prismaVersion).toBe(version);
+    expect(config.conversions[0]?.prismaVersion).toBe(7);
+  });
+});
+
 describe('parseConfig validation', () => {
   it('rejects a non-object', () => {
     expect(expectInvalid([])).toContain('must be a JSON object');
@@ -190,6 +202,12 @@ describe('parseConfig validation', () => {
     [{ output: 3 }, '"output" must be a non-empty path string'],
     [{ from: '' }, '"from" must be a non-empty string'],
     [{ appLabel: 4 }, '"appLabel" must be a non-empty string'],
+    [{ goPackage: '' }, '"goPackage" must be a non-empty string'],
+    [{ prismaVersion: 8 }, '"prismaVersion" must be the number 6 or 7 (got 8)'],
+    [
+      { prismaVersion: '7' },
+      '"prismaVersion" must be the number 6 or 7 (got "7")',
+    ],
     [{ conversions: {} }, '"conversions" must be a non-empty array'],
     [{ conversions: [] }, '"conversions" must be a non-empty array'],
     [{ conversions: ['x'] }, '"conversions[0]" must be an object'],

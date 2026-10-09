@@ -16,6 +16,7 @@ import { err, ok, type Result } from '../result.js';
 import {
   attributesOf,
   collectDeclarations,
+  evaluateNode,
   getPhpParser,
   lastNameSegment,
   readEnumDeclaration,
@@ -23,6 +24,7 @@ import {
   typeOf,
   type EnumInfo,
   type FileContext,
+  type PhpArrayItem,
   type PhpAttribute,
   type PhpNew,
   type PhpTypeInfo,
@@ -360,6 +362,14 @@ interface RawClass {
   discriminatorMapSize: number;
   /** True when the class carries at least one Doctrine mapping attribute on a property. */
   hasMappedProperties: boolean;
+  /** Property initialisers (`private int $views = 0;`), keyed by property name. */
+  initializers: Map<string, SyntaxNode>;
+  /** Plain `$this->name = value;` statements of `__construct`, keyed by property name. */
+  constructorAssignments: Map<string, SyntaxNode>;
+  /** Properties assigned a timestamp by a `#[ORM\PreUpdate]` method. */
+  preUpdateProperties: Set<string>;
+  /** Properties assigned a timestamp by a `#[ORM\PrePersist]` method. */
+  prePersistProperties: Set<string>;
 }
 
 interface Collected {
@@ -750,6 +760,10 @@ function parseClass(
     indexes: [],
     discriminatorMapSize: 0,
     hasMappedProperties: false,
+    initializers: new Map<string, SyntaxNode>(),
+    constructorAssignments: new Map<string, SyntaxNode>(),
+    preUpdateProperties: new Set<string>(),
+    prePersistProperties: new Set<string>(),
   };
 
   const baseClause: SyntaxNode | undefined = node.namedChildren.find(
@@ -778,8 +792,10 @@ function parseClass(
       parsePropertyDeclaration(member, rawClass, state);
     } else if (member.type === 'method_declaration') {
       parseConstructor(member, rawClass, state);
+      scanMethodBehaviour(member, rawClass, state);
     }
   }
+  applyBehaviour(rawClass, state);
 
   if (
     rawClass.role === 'plain' &&
@@ -1028,6 +1044,13 @@ function parsePropertyDeclaration(
     );
     if (variable === undefined) {
       continue;
+    }
+    const initializer: SyntaxNode | undefined = element.namedChildren.find(
+      (child: SyntaxNode) => child.type === 'property_initializer'
+    );
+    const initialValue: SyntaxNode | undefined = initializer?.namedChildren[0];
+    if (initialValue !== undefined) {
+      rawClass.initializers.set(variable.text.replace(/^\$/, ''), initialValue);
     }
     parseProperty(
       { name: variable.text.replace(/^\$/, ''), attributes, type },
@@ -1605,6 +1628,260 @@ function convertStringDefault(
       break;
   }
   return { kind: 'literal', value: text };
+}
+
+// ---------------------------------------------------------------------------
+// Behaviour outside the mapping attributes: lifecycle callbacks and defaults
+// ---------------------------------------------------------------------------
+
+interface ThisAssignment {
+  property: string;
+  value: SyntaxNode;
+}
+
+/** Reads a `$this->name = value;` statement. */
+function thisAssignment(statement: SyntaxNode): ThisAssignment | undefined {
+  if (statement.type !== 'expression_statement') {
+    return undefined;
+  }
+  const assignment: SyntaxNode | undefined = statement.namedChildren[0];
+  if (assignment === undefined || assignment.type !== 'assignment_expression') {
+    return undefined;
+  }
+  const target: SyntaxNode | null = assignment.childForFieldName('left');
+  const value: SyntaxNode | null = assignment.childForFieldName('right');
+  if (
+    target === null ||
+    value === null ||
+    target.type !== 'member_access_expression'
+  ) {
+    return undefined;
+  }
+  const owner: SyntaxNode | null = target.childForFieldName('object');
+  const name: SyntaxNode | null = target.childForFieldName('name');
+  if (owner === null || name === null || owner.text !== '$this') {
+    return undefined;
+  }
+  return { property: name.text, value };
+}
+
+/** True for `new DateTime()`, `new \DateTimeImmutable()` and `new DateTimeImmutable('now')`. */
+function isNowExpression(value: SyntaxNode): boolean {
+  if (value.type !== 'object_creation_expression') {
+    return false;
+  }
+  const evaluated: PhpValue = evaluateNode(value);
+  if (evaluated.kind !== 'new') {
+    return false;
+  }
+  const className: string = lastNameSegment(evaluated.className);
+  if (className !== 'DateTime' && className !== 'DateTimeImmutable') {
+    return false;
+  }
+  if (evaluated.args.length === 0) {
+    return true;
+  }
+  const first: PhpValue | undefined = evaluated.args[0];
+  return (
+    evaluated.args.length === 1 &&
+    first !== undefined &&
+    first.kind === 'string' &&
+    first.value.trim().toLowerCase() === 'now'
+  );
+}
+
+/** `self::generateUuid()` (as written by the emitter) and the common `Uuid::v4()` spellings. */
+const UUID_CALL: RegExp =
+  /^(?:(?:self|static|\$this)(?:::|->)generateUuid|\\?(?:[A-Za-z_]+\\)*Uuid::(?:uuid[47]|v[47]))\(\)(?:->(?:toRfc4122|toString)\(\))?$/i;
+
+/** Reads the lifecycle callbacks and `__construct` assignments of a method. */
+function scanMethodBehaviour(
+  node: SyntaxNode,
+  rawClass: RawClass,
+  state: ParseState
+): void {
+  const nameNode: SyntaxNode | null = node.childForFieldName('name');
+  const body: SyntaxNode | null = node.childForFieldName('body');
+  if (nameNode === null || body === null) {
+    return;
+  }
+  const methodName: string = nameNode.text;
+  if (methodName.toLowerCase() === '__construct') {
+    for (const statement of body.namedChildren) {
+      const assignment: ThisAssignment | undefined = thisAssignment(statement);
+      if (assignment !== undefined) {
+        rawClass.constructorAssignments.set(
+          assignment.property,
+          assignment.value
+        );
+      }
+    }
+    return;
+  }
+  const callbacks: string[] = toMappingAttributes(
+    attributesOf(node),
+    rawClass.ctx
+  )
+    .map((mapping: MappingAttribute) => mapping.name)
+    .filter((name: string) => name === 'PreUpdate' || name === 'PrePersist');
+  if (callbacks.length === 0) {
+    return;
+  }
+  for (const statement of body.namedChildren) {
+    if (statement.type === 'comment') {
+      continue;
+    }
+    const assignment: ThisAssignment | undefined = thisAssignment(statement);
+    if (assignment === undefined || !isNowExpression(assignment.value)) {
+      state.warnings.push(
+        `${rawClass.name}::${methodName}: the lifecycle callback statement \`${statement.text.replace(/\s+/g, ' ')}\` ` +
+          `is not a plain timestamp assignment (\`$this->property = new \\DateTimeImmutable();\`); it was ignored.`
+      );
+      continue;
+    }
+    for (const callback of callbacks) {
+      (callback === 'PreUpdate'
+        ? rawClass.preUpdateProperties
+        : rawClass.prePersistProperties
+      ).add(assignment.property);
+    }
+  }
+}
+
+/** Converts a statically known PHP value to a JSON value; undefined when part of it is dynamic. */
+function phpValueToJson(value: PhpValue): unknown {
+  switch (value.kind) {
+    case 'string':
+    case 'number':
+    case 'bool':
+      return value.value;
+    case 'null':
+      return null;
+    case 'array': {
+      const isList: boolean = value.items.every(
+        (item: PhpArrayItem) => item.key === undefined
+      );
+      if (isList) {
+        const list: unknown[] = value.items.map((item: PhpArrayItem) =>
+          phpValueToJson(item.value)
+        );
+        return list.includes(undefined) ? undefined : list;
+      }
+      const record: Record<string, unknown> = {};
+      for (const item of value.items) {
+        const key: PhpValue | undefined = item.key;
+        const converted: unknown = phpValueToJson(item.value);
+        if (
+          key === undefined ||
+          (key.kind !== 'string' && key.kind !== 'number') ||
+          converted === undefined
+        ) {
+          return undefined;
+        }
+        record[String(key.value)] = converted;
+      }
+      return record;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/** Converts the value a property starts with (initialiser or constructor) to an IR default. */
+function convertInitialValue(
+  node: SyntaxNode,
+  field: IrField,
+  enumInfo: EnumInfo | undefined,
+  location: string,
+  state: ParseState
+): IrDefault | undefined {
+  const compact: string = node.text.replace(/\s+/g, '');
+  if (UUID_CALL.test(compact)) {
+    return field.type === 'uuid' || field.type === 'string'
+      ? { kind: 'uuid' }
+      : undefined;
+  }
+  if (isNowExpression(node)) {
+    return field.type === 'dateTime' ||
+      field.type === 'date' ||
+      field.type === 'time'
+      ? { kind: 'now' }
+      : undefined;
+  }
+  const value: PhpValue = evaluateNode(node);
+  if (value.kind === 'null') {
+    return undefined;
+  }
+  if (value.kind === 'new') {
+    const className: string = lastNameSegment(value.className);
+    const first: PhpValue | undefined = value.args[0];
+    if (
+      (className === 'DateTime' || className === 'DateTimeImmutable') &&
+      first !== undefined &&
+      first.kind === 'string'
+    ) {
+      return { kind: 'literal', value: first.value };
+    }
+  }
+  if (value.kind === 'array') {
+    const json: unknown = phpValueToJson(value);
+    if (
+      (field.type === 'json' || field.arrayDepth !== undefined) &&
+      json !== undefined
+    ) {
+      return { kind: 'literal', value: JSON.stringify(json) };
+    }
+    state.warnings.push(
+      `${location}: the initial value ${describeValue(value)} cannot be evaluated statically and was skipped.`
+    );
+    return undefined;
+  }
+  return convertDefault(value, field, enumInfo, location, state);
+}
+
+/** Applies lifecycle callbacks, property initialisers and constructor assignments to the fields of a class. */
+function applyBehaviour(rawClass: RawClass, state: ParseState): void {
+  for (const member of rawClass.members) {
+    if (member.kind !== 'field') {
+      continue;
+    }
+    const field: IrField = member.field;
+    const location: string = `${rawClass.name}.${field.name}`;
+    if (rawClass.preUpdateProperties.has(field.name)) {
+      field.isAutoUpdated = true;
+    } else if (
+      rawClass.prePersistProperties.has(field.name) &&
+      field.default === undefined
+    ) {
+      // Set once on insert, which is what a "now" default means.
+      field.default = { kind: 'now' };
+    }
+    if (field.default !== undefined) {
+      continue;
+    }
+    const initial: SyntaxNode | undefined =
+      rawClass.constructorAssignments.get(field.name) ??
+      rawClass.initializers.get(field.name);
+    if (initial === undefined) {
+      continue;
+    }
+    const enumInfo: EnumInfo | undefined =
+      field.enumName === undefined
+        ? undefined
+        : [...state.enums.values()].find(
+            (candidate: EnumInfo) => candidate.name === field.enumName
+          );
+    const converted: IrDefault | undefined = convertInitialValue(
+      initial,
+      field,
+      enumInfo,
+      location,
+      state
+    );
+    if (converted !== undefined) {
+      field.default = converted;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -26,6 +26,10 @@ export interface ConversionConfig {
   autoField?: 'int' | 'bigint';
   /** PHP namespace of the Doctrine entities or Laravel models. */
   namespace?: string;
+  /** Go package name of the GORM models. */
+  goPackage?: string;
+  /** Prisma major version of the generated header (6 or 7). */
+  prismaVersion?: 6 | 7;
 }
 
 /** A parsed config file. Top-level settings are defaults shared by every entry in `conversions`. */
@@ -50,6 +54,8 @@ const CONVERSION_KEYS: readonly string[] = [
   'appLabel',
   'autoField',
   'namespace',
+  'goPackage',
+  'prismaVersion',
 ];
 
 /**
@@ -214,7 +220,14 @@ function parseConversion(
     }
   }
 
-  for (const key of ['name', 'from', 'to', 'appLabel', 'namespace'] as const) {
+  for (const key of [
+    'name',
+    'from',
+    'to',
+    'appLabel',
+    'namespace',
+    'goPackage',
+  ] as const) {
     const value: unknown = raw[key];
     if (value === undefined) {
       continue;
@@ -281,6 +294,17 @@ function parseConversion(
       );
     }
     config.provider = provider;
+  }
+
+  const prismaVersion: unknown = raw['prismaVersion'];
+  if (prismaVersion !== undefined) {
+    if (prismaVersion !== 6 && prismaVersion !== 7) {
+      return fail(
+        'prismaVersion',
+        `must be the number 6 or 7 (got ${describeValue(prismaVersion)}).`
+      );
+    }
+    config.prismaVersion = prismaVersion;
   }
 
   const header: unknown = raw['header'];

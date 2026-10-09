@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PostStatus {
+  Draft @map("draft")
+  Published @map("published")
+}
+
+model Category {
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id        Int        @id @default(autoincrement())
+  name      String     @unique @db.VarChar(100)
+  slug      String     @db.VarChar(50)
+  parent_id Int?
+  parent    Category?  @relation("Category_parent", fields: [parent_id], references: [id], onDelete: SetNull)
+  children  Category[] @relation("Category_parent")
+  post_set  Post[]
+
+  @@map("blog_category")
+}
+
+model Post {
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          Int        @id @default(autoincrement())
+  publicId    String     @default(uuid()) @unique @map("public_id") @db.Uuid
+  title       String     @db.VarChar(200)
+  body        String     @db.Text
+  status      PostStatus @default(Draft)
+  rating      Decimal?   @db.Decimal(4, 2)
+  viewCount   Int        @default(0) @map("view_count")
+  isFeatured  Boolean    @default(false) @map("is_featured")
+  publishedAt DateTime   @default(now()) @map("published_at") @db.Timestamptz(6)
+  metadata    Json       @default("{}")
+  author_id   Int
+  author      User       @relation("Post_author", fields: [author_id], references: [id], onDelete: Cascade)
+  editor_id   Int?
+  editor      User?      @relation("Post_editor", fields: [editor_id], references: [id], onDelete: SetNull)
+  category_id Int
+  category    Category   @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  tags        PostTags[]
+
+  @@index([title])
+  @@unique([author_id, title], map: "uniq_post_author_title")
+  @@index([publishedAt, status], map: "post_pub_status_idx")
+  @@map("blog_post")
+}
+
+model Tag {
+  id    Int        @id @default(autoincrement())
+  label String     @db.VarChar(50)
+  posts PostTags[]
+
+  @@map("blog_tag")
+}
+
+model Profile {
+  id      Int     @id @default(autoincrement())
+  bio     String? @db.Text
+  avatar  String? @db.VarChar(100)
+  user_id Int     @unique
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("blog_profile")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  posts       Post[]   @relation("Post_author")
+  editedPosts Post[]   @relation("Post_editor")
+  profile     Profile?
+
+  @@map("auth_user")
+}
+
+model PostTags {
+  id      Int  @id @default(autoincrement())
+  post_id Int
+  post    Post @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  tag_id  Int
+  tag     Tag  @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+
+  @@unique([post_id, tag_id])
+  @@map("blog_post_tags")
+}

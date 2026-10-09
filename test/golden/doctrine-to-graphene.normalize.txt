@@ -143,7 +143,7 @@ class PostInput(graphene.InputObjectType):
     updated_at = graphene.DateTime()
     public_id = graphene.UUID()
     title = graphene.String(required=True)
-    body = graphene.String(required=True)
+    body = graphene.String()
     status = graphene.String()
     rating = graphene.Decimal()
     view_count = graphene.Int()
