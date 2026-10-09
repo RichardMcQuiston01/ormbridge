@@ -515,7 +515,7 @@ export async function runCli(
     )
     .option(
       '--namespace <name>',
-      'PHP namespace of the Doctrine entities (default: App\\Entity)'
+      'PHP namespace of the Doctrine entities (default: App\\Entity) or Laravel models (default: App\\Models)'
     )
     .option(
       '--dry-run',
