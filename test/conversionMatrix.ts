@@ -6,6 +6,7 @@ import {
   type SourceText,
 } from '../src/formats.js';
 import type { IrSchema } from '../src/ir.js';
+import { checkGormOutput } from './gormCoverage.js';
 import { loadCanonicalSources } from './harness.js';
 import { DEFAULT_OPTIONS } from './helpers.js';
 import { compareIr, type IrDifference } from './irCompare.js';
@@ -167,6 +168,71 @@ export async function computeMatrix(): Promise<MatrixCell[]> {
   const cells: MatrixCell[] = [];
   for (const [source, target] of matrixPairs()) {
     cells.push(await computeCell(source, target));
+  }
+  return cells;
+}
+
+/**
+ * Structural checks for formats that can be written but not read. The matrix
+ * cannot re-read their output, so each check compares the written files with
+ * the IR and lists what is missing.
+ */
+const EMIT_ONLY_CHECKS: Readonly<
+  Record<string, (schema: IrSchema, files: Record<string, string>) => string[]>
+> = {
+  gorm: checkGormOutput,
+};
+
+/** Write-only formats the matrix can check structurally, in registration order. */
+export function emitOnlyFormats(): FormatAdapter[] {
+  return listFormats().filter(
+    (format: FormatAdapter) =>
+      format.parse === undefined &&
+      format.emit !== undefined &&
+      EMIT_ONLY_CHECKS[format.name] !== undefined
+  );
+}
+
+/** One source format written to a write-only target. */
+export interface EmitOnlyCell {
+  source: string;
+  target: string;
+  /** Relative paths of the files written. */
+  files: string[];
+  emitWarnings: string[];
+  /** What the structural check could not find in the output; empty when the output covers the IR. */
+  missing: string[];
+}
+
+/** Writes one readable format's canonical schema to a write-only target and checks the files. */
+export async function computeEmitOnlyCell(
+  source: FormatAdapter,
+  target: FormatAdapter
+): Promise<EmitOnlyCell> {
+  const sourceIr: IrSchema = await parseWith(
+    source,
+    loadCanonicalSources(source.name)
+  );
+  const emitted: EmittedText = emitWith(target, sourceIr);
+  const check:
+    | ((schema: IrSchema, files: Record<string, string>) => string[])
+    | undefined = EMIT_ONLY_CHECKS[target.name];
+  return {
+    source: source.name,
+    target: target.name,
+    files: Object.keys(emitted.files ?? {}).sort(),
+    emitWarnings: emitted.warnings,
+    missing: check === undefined ? [] : check(sourceIr, emitted.files ?? {}),
+  };
+}
+
+/** Every readable+writable source written to every checkable write-only target. */
+export async function computeEmitOnlyMatrix(): Promise<EmitOnlyCell[]> {
+  const cells: EmitOnlyCell[] = [];
+  for (const target of emitOnlyFormats()) {
+    for (const source of matrixFormats()) {
+      cells.push(await computeEmitOnlyCell(source, target));
+    }
   }
   return cells;
 }

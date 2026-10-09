@@ -1,5 +1,6 @@
 import { emitDjango } from './emitters/django.js';
 import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
+import { emitGorm, isValidGoPackageName } from './emitters/gorm.js';
 import { emitGraphene } from './emitters/graphene.js';
 import { emitLaravel } from './emitters/laravel.js';
 import {
@@ -53,6 +54,8 @@ export interface FormatOptions {
    * `Enum` namespace); Laravel models default to `App\Models` (enums in `App\Enums`).
    */
   namespace?: string;
+  /** Go package name of the generated GORM models (default `models`); also the output directory. */
+  goPackage?: string;
 }
 
 /**
@@ -376,6 +379,36 @@ const laravelAdapter: FormatAdapter = {
   },
 };
 
+const gormAdapter: FormatAdapter = {
+  name: 'gorm',
+  // No extension is claimed: ".go" is too generic to infer, so pass --to gorm.
+  extensions: [],
+  description: 'GORM models (Go structs with gorm tags)',
+  emit: (
+    schema: IrSchema,
+    options: FormatOptions
+  ): Result<FormatEmitOutput> => {
+    if (
+      options.goPackage !== undefined &&
+      !isValidGoPackageName(options.goPackage)
+    ) {
+      return err(
+        'INVALID_OPTION',
+        `Invalid Go package name "${options.goPackage}". Expected a Go identifier such as models.`
+      );
+    }
+    return ok(
+      emitGorm(schema, {
+        provider: options.provider,
+        naming: options.naming,
+        ...(options.goPackage === undefined
+          ? {}
+          : { goPackage: options.goPackage }),
+      })
+    );
+  },
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -383,6 +416,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(typeormAdapter),
   registerFormat(doctrineAdapter),
   registerFormat(laravelAdapter),
+  registerFormat(gormAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
 ];

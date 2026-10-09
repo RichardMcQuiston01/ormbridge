@@ -190,6 +190,7 @@ describe('parseConfig validation', () => {
     [{ output: 3 }, '"output" must be a non-empty path string'],
     [{ from: '' }, '"from" must be a non-empty string'],
     [{ appLabel: 4 }, '"appLabel" must be a non-empty string'],
+    [{ goPackage: '' }, '"goPackage" must be a non-empty string'],
     [{ conversions: {} }, '"conversions" must be a non-empty array'],
     [{ conversions: [] }, '"conversions" must be a non-empty array'],
     [{ conversions: ['x'] }, '"conversions[0]" must be an object'],

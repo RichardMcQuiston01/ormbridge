@@ -657,3 +657,101 @@ describe('doctrine output', () => {
     expect(stale.stderr).toMatch(/src[\\/]Entity[\\/]Tag\.php is out of date/);
   });
 });
+
+describe('gorm output', () => {
+  it('writes one Go file per model and enum into the package directory', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'gorm',
+      '-o',
+      'gen',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(
+      (await readdir(join(workDirectory, 'gen', 'models'))).sort()
+    ).toEqual([
+      'category.go',
+      'post.go',
+      'post_status.go',
+      'profile.go',
+      'tag.go',
+      'user.go',
+    ]);
+    const post: string = await readFile(
+      join(workDirectory, 'gen', 'models', 'post.go'),
+      'utf8'
+    );
+    expect(post.startsWith('package models\n')).toBe(true);
+  });
+
+  it('applies --go-package and the goPackage config key', async () => {
+    const flagged: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'gorm',
+      '--go-package',
+      'store',
+      '-o',
+      'flag',
+    ]);
+    expect(flagged.code).toBe(EXIT_OK);
+    expect(
+      (
+        await readFile(join(workDirectory, 'flag', 'store', 'tag.go'), 'utf8')
+      ).split('\n')[0]
+    ).toBe('package store');
+
+    await writeConfig({
+      input: BLOG_FIXTURE_PATH,
+      to: 'gorm',
+      output: 'conf',
+      goPackage: 'shop',
+    });
+    const configured: CliRun = await cli(['convert']);
+    expect(configured.code).toBe(EXIT_OK);
+    expect(
+      (
+        await readFile(join(workDirectory, 'conf', 'shop', 'tag.go'), 'utf8')
+      ).split('\n')[0]
+    ).toBe('package shop');
+  });
+
+  it('rejects an invalid Go package name with a conversion error', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'gorm',
+      '--go-package',
+      'my-models',
+      '-o',
+      'gen',
+    ]);
+    expect(run.code).toBe(EXIT_CONVERSION_ERROR);
+    expect(run.stderr).toContain('Invalid Go package name "my-models"');
+  });
+
+  it('supports --check', async () => {
+    const args: string[] = [
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'gorm',
+      '-o',
+      'gen',
+    ];
+    expect((await cli(args)).code).toBe(EXIT_OK);
+    expect((await cli([...args, '--check'])).code).toBe(EXIT_OK);
+    await writeFile(join(workDirectory, 'gen', 'models', 'tag.go'), 'stale\n');
+    const stale: CliRun = await cli([...args, '--check']);
+    expect(stale.code).toBe(EXIT_CHECK_FAILED);
+    expect(stale.stderr).toMatch(/models[\\/]tag\.go is out of date/);
+  });
+});

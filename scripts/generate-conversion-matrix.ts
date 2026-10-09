@@ -4,13 +4,19 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { computeMatrix } from '../test/conversionMatrix.js';
+import {
+  computeEmitOnlyMatrix,
+  computeMatrix,
+} from '../test/conversionMatrix.js';
 import {
   MATRIX_DOC_PATH,
   renderMatrixMarkdown,
 } from '../test/conversionMatrixDoc.js';
 
-const markdown: string = renderMatrixMarkdown(await computeMatrix());
+const markdown: string = renderMatrixMarkdown(
+  await computeMatrix(),
+  await computeEmitOnlyMatrix()
+);
 mkdirSync(dirname(MATRIX_DOC_PATH), { recursive: true });
 writeFileSync(MATRIX_DOC_PATH, markdown);
 console.log(`Wrote ${MATRIX_DOC_PATH}`);

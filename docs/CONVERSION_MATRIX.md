@@ -415,6 +415,58 @@ Not stable, but only for documented reasons: a second doctrine → laravel → d
 - `fieldType Tag.id: int -> bigInt` — see reason 7
 - `fieldType User.id: int -> bigInt` — see reason 7
 
+## Write-only targets
+
+Some formats can be written but not read (gorm), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a struct for its table, every column has a field, every many-to-many relation has its join table and every enum has its type. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
+
+| Pair | Files | Emit warnings | Missing |
+| --- | --- | --- | --- |
+| django → gorm | 6 | 0 | none |
+| prisma → gorm | 7 | 0 | none |
+| typeorm → gorm | 6 | 0 | none |
+| doctrine → gorm | 6 | 0 | none |
+| laravel → gorm | 6 | 0 | none |
+
+### django → gorm
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### prisma → gorm
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### typeorm → gorm
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### doctrine → gorm
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### laravel → gorm
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### What gorm approximates
+
+1. **Integer widths and signs.** `int` is written as `int32` and `bigInt` as `int64`, both signed. The IR has no unsigned or 16-bit integers (Django positive integer fields become plain `int`). A model that has exactly the `gorm.Model` columns embeds `gorm.Model`, whose `ID` is an unsigned `uint`.
+2. **Where defaults live.** A `now` default on a date-time column becomes `autoCreateTime` (GORM fills it in Go, so a raw SQL insert gets no default) and an auto-updated column becomes `autoUpdateTime`. UUID defaults are `default:gen_random_uuid()` on PostgreSQL and a generated `BeforeCreate` hook on every other provider; client-generated defaults (`cuid()`, `ulid()`) are dropped with a warning. Literal and enum defaults are written as `default:` tags.
+3. **Many-to-many join tables.** GORM creates the join table itself, with a composite primary key of the two foreign keys and no surrogate `id`. The table and column names are written explicitly (`many2many:`, `joinForeignKey`, `joinReferences`) when they differ from what GORM would pick, so the table matches the one other formats create. An explicit join model (Prisma) stays an ordinary model.
+4. **Soft delete is inferred from a column name.** The IR has no soft-delete flag. A nullable date-time column named `deleted_at` is written as `gorm.DeletedAt`, which also changes how GORM queries the model (rows with a value are hidden), so the writer warns.
+5. **Enums are Go constants.** An enum is a typed string with a `const` block, stored as text. GORM has no database enum type and no check constraint is written, so the database does not enforce the values. Member labels are kept as comments.
+6. **Constructs without a GORM tag.** Arrays and hstore become JSON columns (`datatypes.JSONSlice`, `datatypes.JSON`), durations become `time.Duration` (nanoseconds in a bigint), ranges become strings, generated columns become regular columns, and composite foreign keys, index types and operator classes, full-text indexes, views and `@@schema` are written as plain tables and columns, each with a warning. The IR has no check constraints, column comments or polymorphic relations, so none are written.
+7. **Reverse relations get Go names.** An unnamed reverse relation is named after the plural of the model (`Posts`), and a one-to-one after the model (`Profile`). Has-one and belongs-to fields are pointers unless a required parent can be held by value without making the struct type recursive.
+
 ## Known issues
 
 - Writing a many-to-many to TypeORM emits `@JoinTable({ name, joinColumn, inverseJoinColumn })` so the join table matches the one Django creates. The TypeORM reader then warns that "custom @JoinTable settings (name, joinColumn, inverseJoinColumn) are not preserved" for ormbridge's own output. The names it would have read are the same ones it derives, so nothing is lost, but the warning is noise for generated code.

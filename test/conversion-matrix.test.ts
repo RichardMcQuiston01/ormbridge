@@ -3,12 +3,15 @@ import { dirname } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { listFormats, type FormatAdapter } from '../src/formats.js';
 import {
+  computeEmitOnlyMatrix,
   computeMatrix,
+  emitOnlyFormats,
   emitWith,
   matrixFormats,
   matrixPairs,
   parseEmitted,
   parseWith,
+  type EmitOnlyCell,
   type MatrixCell,
 } from './conversionMatrix.js';
 import {
@@ -22,6 +25,7 @@ import { loadCanonicalSources } from './harness.js';
 
 // Computed once; every pair below reads from it.
 const cells: MatrixCell[] = await computeMatrix();
+const emitOnlyCells: EmitOnlyCell[] = await computeEmitOnlyMatrix();
 
 function cellFor(source: FormatAdapter, target: FormatAdapter): MatrixCell {
   const cell: MatrixCell | undefined = cells.find(
@@ -67,6 +71,25 @@ describe.each(
   });
 });
 
+describe('write-only targets', () => {
+  it('has one cell per readable format for every checkable write-only target', () => {
+    expect(emitOnlyFormats().map((format) => format.name)).toContain('gorm');
+    expect(emitOnlyCells).toHaveLength(
+      emitOnlyFormats().length * matrixFormats().length
+    );
+  });
+
+  it.each(
+    emitOnlyCells.map((cell: EmitOnlyCell): [string, EmitOnlyCell] => [
+      `${cell.source} -> ${cell.target}`,
+      cell,
+    ])
+  )('%s writes files that cover the canonical schema', (_name, cell) => {
+    expect(cell.files.length).toBeGreaterThan(0);
+    expect(cell.missing).toEqual([]);
+  });
+});
+
 describe('writable formats', () => {
   const writable: FormatAdapter[] = listFormats().filter(
     (format: FormatAdapter) => format.emit !== undefined
@@ -105,7 +128,7 @@ describe('writable formats', () => {
 
 describe('docs/CONVERSION_MATRIX.md', () => {
   it('is up to date with the generated matrix', () => {
-    const generated: string = renderMatrixMarkdown(cells);
+    const generated: string = renderMatrixMarkdown(cells, emitOnlyCells);
     if (process.env.UPDATE_GOLDEN === '1') {
       mkdirSync(dirname(MATRIX_DOC_PATH), { recursive: true });
       writeFileSync(MATRIX_DOC_PATH, generated);

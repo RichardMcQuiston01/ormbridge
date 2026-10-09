@@ -52,6 +52,8 @@ export { emitDoctrine } from './emitters/doctrine.js';
 export type { DoctrineEmitOptions } from './emitters/doctrine.js';
 export { emitLaravel } from './emitters/laravel.js';
 export type { LaravelEmitOptions } from './emitters/laravel.js';
+export { emitGorm } from './emitters/gorm.js';
+export type { GormEmitOptions } from './emitters/gorm.js';
 export { emitGraphene } from './emitters/graphene.js';
 export { emitTypeorm } from './emitters/typeorm.js';
 export type { TypeormEmitOptions } from './emitters/typeorm.js';
