@@ -15,9 +15,14 @@ import { toCamelCase, toSnakeCase } from '../naming.js';
 import { err, ok, type Result } from '../result.js';
 import {
   attributesOf,
+  collectDeclarations,
   getPhpParser,
   lastNameSegment,
+  readEnumDeclaration,
+  resolveClassName,
   typeOf,
+  type EnumInfo,
+  type FileContext,
   type PhpAttribute,
   type PhpNew,
   type PhpTypeInfo,
@@ -295,21 +300,6 @@ const ULID_GENERATORS: ReadonlySet<string> = new Set([
 // Intermediate (per-class) structures
 // ---------------------------------------------------------------------------
 
-interface FileContext {
-  path: string;
-  /** Namespace without a leading or trailing backslash; empty for the global namespace. */
-  namespace: string;
-  /** Imported names, keyed by lower case alias, valued by the fully qualified name. */
-  uses: Map<string, string>;
-}
-
-interface EnumInfo {
-  name: string;
-  fqn: string;
-  backing: 'string' | 'int' | 'none';
-  values: IrEnumValue[];
-}
-
 interface RawIndex {
   /** Database column names (`columns`) or property names (`fields`). */
   refs: string[];
@@ -501,115 +491,6 @@ function usesDocblockAnnotations(root: SyntaxNode): boolean {
     .some((comment: SyntaxNode) =>
       /@(ORM\\\w+|(?:Entity|MappedSuperclass|Embeddable)\b)/.test(comment.text)
     );
-}
-
-function collectDeclarations(
-  root: SyntaxNode,
-  filePath: string
-): { ctx: FileContext; node: SyntaxNode }[] {
-  const declarations: { ctx: FileContext; node: SyntaxNode }[] = [];
-  const walk = (nodes: SyntaxNode[], initial: FileContext): void => {
-    let current: FileContext = initial;
-    for (const node of nodes) {
-      switch (node.type) {
-        case 'namespace_definition': {
-          const nameNode: SyntaxNode | null = node.childForFieldName('name');
-          const scope: FileContext = {
-            path: filePath,
-            namespace: (nameNode?.text ?? '').replace(/\s+/g, ''),
-            uses: new Map(),
-          };
-          const body: SyntaxNode | null = node.childForFieldName('body');
-          if (body !== null) {
-            walk(body.namedChildren, scope);
-          } else {
-            current = scope;
-          }
-          break;
-        }
-        case 'namespace_use_declaration':
-          addUses(node, current);
-          break;
-        case 'class_declaration':
-        case 'trait_declaration':
-        case 'enum_declaration':
-          declarations.push({ ctx: current, node });
-          break;
-        default:
-          break;
-      }
-    }
-  };
-  walk(root.namedChildren, { path: filePath, namespace: '', uses: new Map() });
-  return declarations;
-}
-
-function compact(text: string): string {
-  return text.replace(/\s+/g, '').replace(/^\\/, '');
-}
-
-function addUses(declaration: SyntaxNode, ctx: FileContext): void {
-  if (/^use\s+(function|const)\b/i.test(declaration.text)) {
-    return;
-  }
-  const register = (name: string, alias: SyntaxNode | undefined): void => {
-    const fqn: string = compact(name);
-    const aliasName: string =
-      alias?.namedChildren[0]?.text ?? lastNameSegment(fqn);
-    ctx.uses.set(aliasName.toLowerCase(), fqn);
-  };
-  const aliasOf = (clause: SyntaxNode): SyntaxNode | undefined =>
-    clause.namedChildren.find(
-      (child: SyntaxNode) => child.type === 'namespace_aliasing_clause'
-    );
-  const group: SyntaxNode | undefined = declaration.namedChildren.find(
-    (child: SyntaxNode) => child.type === 'namespace_use_group'
-  );
-  if (group !== undefined) {
-    const prefixNode: SyntaxNode | undefined = declaration.namedChildren.find(
-      (child: SyntaxNode) => child.type === 'namespace_name'
-    );
-    const prefix: string = compact(prefixNode?.text ?? '');
-    for (const clause of group.namedChildren) {
-      const inner: SyntaxNode | undefined = clause.namedChildren.find(
-        (child: SyntaxNode) => child.type !== 'namespace_aliasing_clause'
-      );
-      if (inner !== undefined) {
-        register(`${prefix}\\${compact(inner.text)}`, aliasOf(clause));
-      }
-    }
-    return;
-  }
-  for (const clause of declaration.namedChildren) {
-    if (clause.type !== 'namespace_use_clause') {
-      continue;
-    }
-    const nameNode: SyntaxNode | undefined = clause.namedChildren.find(
-      (child: SyntaxNode) => child.type !== 'namespace_aliasing_clause'
-    );
-    if (nameNode !== undefined) {
-      register(nameNode.text, aliasOf(clause));
-    }
-  }
-}
-
-/** Resolves a class name as written in a file to its fully qualified name (no leading backslash). */
-function resolveClassName(raw: string, ctx: FileContext): string {
-  if (raw.startsWith('\\')) {
-    return raw.slice(1);
-  }
-  const segments: string[] = raw.split('\\');
-  const first: string = segments[0] ?? raw;
-  if (first.toLowerCase() === 'namespace') {
-    return [ctx.namespace, ...segments.slice(1)]
-      .filter((segment: string) => segment !== '')
-      .join('\\');
-  }
-  const imported: string | undefined = ctx.uses.get(first.toLowerCase());
-  if (imported !== undefined) {
-    return [imported, ...segments.slice(1)].join('\\');
-  }
-  return ctx.namespace === '' ? raw : `${ctx.namespace}\\${raw}`;
 }
 
 /** The Doctrine mapping attribute name (for example "Column") for an attribute, or undefined for other attributes. */
@@ -816,66 +697,21 @@ function registerEnum(
   ctx: FileContext,
   state: ParseState
 ): void {
-  const nameNode: SyntaxNode | null = node.childForFieldName('name');
-  const bodyNode: SyntaxNode | null = node.childForFieldName('body');
-  if (nameNode === null || bodyNode === null) {
+  const info: EnumInfo | undefined = readEnumDeclaration(
+    node,
+    ctx,
+    state.warnings
+  );
+  if (info === undefined) {
     return;
   }
-  const name: string = nameNode.text;
-  const fqn: string = ctx.namespace === '' ? name : `${ctx.namespace}\\${name}`;
-  const backingNode: SyntaxNode | undefined = node.namedChildren.find(
-    (child: SyntaxNode) =>
-      child.type === 'primitive_type' || child.type === 'named_type'
-  );
-  const backingText: string = backingNode?.text.toLowerCase() ?? '';
-  const backing: EnumInfo['backing'] =
-    backingText === 'string'
-      ? 'string'
-      : backingText === 'int'
-        ? 'int'
-        : 'none';
-  const values: IrEnumValue[] = [];
-  for (const member of bodyNode.namedChildren) {
-    if (member.type !== 'enum_case') {
-      continue;
-    }
-    const caseName: SyntaxNode | null = member.childForFieldName('name');
-    const caseValue: SyntaxNode | null = member.childForFieldName('value');
-    if (caseName === null) {
-      continue;
-    }
-    if (caseValue === null) {
-      continue;
-    }
-    const evaluated: PhpValue | undefined = evaluateCaseValue(caseValue);
-    if (evaluated !== undefined && evaluated.kind === 'string') {
-      values.push({ name: caseName.text, dbValue: evaluated.value });
-    } else if (backing === 'string') {
-      state.warnings.push(
-        `${name}.${caseName.text}: the enum case value "${caseValue.text}" could not be read statically and was skipped.`
-      );
-    }
-  }
-  if (state.enums.has(fqn)) {
+  if (state.enums.has(info.fqn)) {
     state.warnings.push(
-      `Duplicate enum name "${fqn}" (${ctx.path}); only the first definition was used.`
+      `Duplicate enum name "${info.fqn}" (${ctx.path}); only the first definition was used.`
     );
     return;
   }
-  state.enums.set(fqn, { name, fqn, backing, values });
-}
-
-function evaluateCaseValue(node: SyntaxNode): PhpValue | undefined {
-  if (node.type === 'string') {
-    return {
-      kind: 'string',
-      value: node.text.slice(1, -1).replace(/\\(['\\])/g, '$1'),
-    };
-  }
-  if (node.type === 'encapsed_string' && node.namedChildren.length <= 1) {
-    return { kind: 'string', value: node.text.slice(1, -1) };
-  }
-  return undefined;
+  state.enums.set(info.fqn, info);
 }
 
 // ---------------------------------------------------------------------------

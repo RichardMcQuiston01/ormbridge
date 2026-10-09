@@ -31,6 +31,11 @@ export type {
   DoctrineSourceFile,
   DoctrineParseOptions,
 } from './parsers/doctrine.js';
+export { parseLaravel } from './parsers/laravel.js';
+export type {
+  LaravelSourceFile,
+  LaravelParseOptions,
+} from './parsers/laravel.js';
 export { parseTypeorm } from './parsers/typeorm.js';
 export type {
   TypeormSourceFile,
