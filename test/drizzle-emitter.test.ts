@@ -1628,13 +1628,13 @@ describe('drizzle emitter: warnings from the shared checks', () => {
 });
 
 describe('drizzle emitter: the format adapter', () => {
-  it('is registered as a write-only format that claims no extension', () => {
+  it('is registered as a readable and writable format that claims no extension', () => {
     const adapter = expectOk(getFormat('drizzle'));
-    expect(adapter.parse).toBeUndefined();
+    expect(adapter.parse).toBeDefined();
     expect(adapter.emit).toBeDefined();
     expect(adapter.extensions).toEqual([]);
     expect(describeFormats(listFormats())).toMatch(
-      /drizzle\s+extensions: \(none\) {2}write {2}Drizzle ORM schema/
+      /drizzle\s+extensions: \(none\) {2}read \+ write {2}Drizzle ORM schema/
     );
   });
 
@@ -1722,25 +1722,27 @@ describe('drizzle emitter: golden files', () => {
   );
 
   describe.each(['mysql', 'sqlite'] as const)('%s', (provider) => {
-    describe.each(CANONICAL_FIXTURES.map((fixture) => fixture.format))(
-      '%s source',
-      (format) => {
-        it.each(['preserve', 'normalize'] as const)(
-          'matches the golden output (%s naming)',
-          async (naming) => {
-            const result = await convertCanonical(format, 'drizzle', {
-              naming,
-              provider,
-            });
-            expectFilesMatchGolden(
-              `drizzle-${provider}/${format}-to-drizzle.${naming}`,
-              result.files ?? {},
-              goldenRoot
-            );
-          }
-        );
-      }
-    );
+    // The converter rejects same-format conversion, so the Drizzle fixture is not a source here.
+    describe.each(
+      CANONICAL_FIXTURES.map((fixture) => fixture.format).filter(
+        (format: string) => format !== 'drizzle'
+      )
+    )('%s source', (format) => {
+      it.each(['preserve', 'normalize'] as const)(
+        'matches the golden output (%s naming)',
+        async (naming) => {
+          const result = await convertCanonical(format, 'drizzle', {
+            naming,
+            provider,
+          });
+          expectFilesMatchGolden(
+            `drizzle-${provider}/${format}-to-drizzle.${naming}`,
+            result.files ?? {},
+            goldenRoot
+          );
+        }
+      );
+    });
   });
 
   describe.each([

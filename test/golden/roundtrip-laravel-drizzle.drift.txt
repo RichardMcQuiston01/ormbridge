@@ -1,0 +1,56 @@
+@@ schema.ts
++ authorId: bigint('author_id', { mode: 'number' })
++ bigint,
++ bigserial,
++ categoryId: bigint('category_id', { mode: 'number' })
++ createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
++ createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
++ editorId: bigint('editor_id', { mode: 'number' })
++ export const postTag = pgTable(
++ export const postTagRelations = relations(postTag, ({ one }) => ({
++ export type NewPostTag = typeof postTag.$inferInsert;
++ export type PostTag = typeof postTag.$inferSelect;
++ fields: [postTag.postId],
++ fields: [postTag.tagId],
++ id: bigserial('id', { mode: 'number' }).primaryKey(),
++ id: bigserial('id', { mode: 'number' }).primaryKey(),
++ id: bigserial('id', { mode: 'number' }).primaryKey(),
++ id: bigserial('id', { mode: 'number' }).primaryKey(),
++ id: bigserial('id', { mode: 'number' }).primaryKey(),
++ id: bigserial('id', { mode: 'number' }).primaryKey(),
++ parentId: bigint('parent_id', { mode: 'number' })
++ postId: bigint('post_id', { mode: 'number' })
++ postTags: many(postTag),
++ postTags: many(postTag),
++ tagId: bigint('tag_id', { mode: 'number' })
++ userId: bigint('user_id', { mode: 'number' })
+- .defaultNow(),
+- .defaultNow(),
+- .notNull()
+- .notNull()
+- .notNull()
+- .notNull()
+- authorId: integer('author_id')
+- categoryId: integer('category_id')
+- createdAt: timestamp('created_at', { withTimezone: true })
+- createdAt: timestamp('created_at', { withTimezone: true })
+- editorId: integer('editor_id')
+- export const postTags = pgTable(
+- export const postTagsRelations = relations(postTags, ({ one }) => ({
+- export type NewPostTags = typeof postTags.$inferInsert;
+- export type PostTags = typeof postTags.$inferSelect;
+- fields: [postTags.postId],
+- fields: [postTags.tagId],
+- id: serial('id').primaryKey(),
+- id: serial('id').primaryKey(),
+- id: serial('id').primaryKey(),
+- id: serial('id').primaryKey(),
+- id: serial('id').primaryKey(),
+- id: serial('id').primaryKey(),
+- parentId: integer('parent_id')
+- postId: integer('post_id')
+- postTags: many(postTags),
+- postTags: many(postTags),
+- serial,
+- tagId: integer('tag_id')
+- userId: integer('user_id')

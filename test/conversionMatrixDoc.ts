@@ -63,6 +63,18 @@ export const LOSS_REASONS: readonly LossReason[] = [
       'A column named `updated_at` (or `UpdatedAt`) is maintained by GORM through `autoUpdateTime`, which the GORM writer adds and the reader reports as "updated automatically". A source format that cannot express the flag therefore gains it after a pass through GORM.',
   },
   {
+    id: 'drizzle-join-tables',
+    title: 'Many-to-many becomes an explicit join table in Drizzle',
+    explanation:
+      'Drizzle has no many-to-many field: a join table is an ordinary table with two foreign keys, and `relations()` describes each side of the pair. The Drizzle writer therefore writes an explicit join table (`PostTag`, named after the two models in the singular) in both naming modes, and the Drizzle reader reads it back as an ordinary model, the way the Prisma reader does, so the relation `Post.tags` is not restored as a many-to-many. A Prisma source that already has an explicit join model under another name (`PostTags`) is replaced by the one the writer derives.',
+  },
+  {
+    id: 'drizzle-reverse-name',
+    title: 'Drizzle names reverse relations in `relations()`',
+    explanation:
+      'Drizzle has no related name: each side of a relation is a key in `relations()`, named after the plural of the model (`posts`). A Django `related_name` or an ORM-specific default such as `postset` is therefore replaced by the Drizzle key, and the Drizzle reader recovers that name rather than the original.',
+  },
+  {
     id: 'django-enum-length-floor',
     title: 'Django enum columns are at least 32 characters',
     explanation:
@@ -280,6 +292,9 @@ export function explainDifference(
       }
       return undefined;
     case 'relationRelatedName':
+      if (involves(cell, 'drizzle')) {
+        return 'drizzle-reverse-name';
+      }
       return involves(cell, 'gorm') ? 'gorm-reverse-name' : undefined;
     case 'fieldDefault':
       if (
@@ -297,11 +312,33 @@ export function explainDifference(
     case 'enumValueLabel':
       return difference.after === '(none)' ? 'enum-label' : undefined;
     case 'relationRemoved':
+      if (
+        cell.target === 'drizzle' &&
+        difference.before.startsWith('manyToMany')
+      ) {
+        return 'drizzle-join-tables';
+      }
       return cell.target === 'prisma' &&
         difference.before.startsWith('manyToMany')
         ? 'join-table'
         : undefined;
+    case 'modelRemoved':
+      // The explicit join model of a Prisma source (`PostTags`) is replaced by the one Drizzle derives.
+      return cell.target === 'drizzle' && cell.source === 'prisma'
+        ? 'drizzle-join-tables'
+        : undefined;
     case 'modelAdded':
+      if (
+        cell.target === 'drizzle' &&
+        cell.differences.some(
+          (other: IrDifference) =>
+            (other.kind === 'relationRemoved' &&
+              other.before.startsWith('manyToMany')) ||
+            other.kind === 'modelRemoved'
+        )
+      ) {
+        return 'drizzle-join-tables';
+      }
       return cell.target === 'prisma' &&
         cell.differences.some(
           (other: IrDifference) =>

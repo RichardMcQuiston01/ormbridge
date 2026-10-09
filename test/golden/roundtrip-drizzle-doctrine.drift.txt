@@ -1,0 +1,5 @@
+@@ src/Entity/Post.php
++ #[ORM\Index(name: 'blog_post_title_idx', columns: ['title'])]
++ #[ORM\UniqueConstraint(name: 'blog_post_author_id_title_key', columns: ['author_id', 'title'])]
+- #[ORM\Index(columns: ['title'])]
+- #[ORM\UniqueConstraint(columns: ['author_id', 'title'])]
