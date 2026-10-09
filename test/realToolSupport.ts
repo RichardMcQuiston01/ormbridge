@@ -320,6 +320,24 @@ export function buildSpec(
   return { models };
 }
 
+/**
+ * Makes the project's user model importable from a Django models file as `User`.
+ *
+ * The models of a Django source point their foreign keys at `settings.AUTH_USER_MODEL` and do not
+ * define the user model, but the Graphene output imports every model of the IR (the parser adds
+ * the user model as a stub) from `.models`. The verification project installs
+ * `django.contrib.auth`, so the user model is `auth.User`; this appends the one line a real
+ * project would write to expose it. The source's own models stay as they are written.
+ */
+export function withProjectUserModel(models: string, schema: IrSchema): string {
+  const needsUser: boolean =
+    schema.models.some((model: IrModel) => model.name === 'User') &&
+    !/^class User\b/mu.test(models);
+  return needsUser
+    ? `${models.trimEnd()}\n\n\nfrom django.contrib.auth import get_user_model  # noqa: E402\n\nUser = get_user_model()\n`
+    : models;
+}
+
 /** Writes a file below a directory, creating the directories on the way. */
 export function writeProjectFile(
   directory: string,
