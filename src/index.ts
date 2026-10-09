@@ -33,6 +33,11 @@ export type {
 } from './parsers/doctrine.js';
 export { parseGorm } from './parsers/gorm.js';
 export type { GormSourceFile, GormParseOptions } from './parsers/gorm.js';
+export { parseJsonSchema } from './parsers/jsonSchema.js';
+export type {
+  JsonSchemaSourceFile,
+  JsonSchemaParseOptions,
+} from './parsers/jsonSchema.js';
 export { parseLaravel } from './parsers/laravel.js';
 export type {
   LaravelSourceFile,

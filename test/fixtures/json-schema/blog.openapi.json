@@ -1,0 +1,173 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Blog API", "version": "1.0.0" },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "PostStatus": {
+        "type": "string",
+        "enum": ["draft", "published"]
+      },
+      "Category": {
+        "type": "object",
+        "x-table-name": "blog_category",
+        "required": ["id", "created_at", "updated_at", "name", "slug"],
+        "properties": {
+          "id": { "type": "integer", "format": "int32", "readOnly": true },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "name": { "type": "string", "maxLength": 100, "x-unique": true },
+          "slug": { "type": "string", "maxLength": 50 },
+          "parent": {
+            "type": "object",
+            "allOf": [{ "$ref": "#/components/schemas/Category" }],
+            "nullable": true,
+            "x-related-name": "children"
+          },
+          "children": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Category" }
+          }
+        }
+      },
+      "Post": {
+        "type": "object",
+        "x-table-name": "blog_post",
+        "x-indexes": [
+          { "fields": ["title"] },
+          { "fields": ["author", "title"], "unique": true },
+          {
+            "fields": ["published_at", "status"],
+            "name": "post_pub_status_idx"
+          }
+        ],
+        "required": [
+          "id",
+          "created_at",
+          "updated_at",
+          "public_id",
+          "title",
+          "body",
+          "status",
+          "view_count",
+          "is_featured",
+          "published_at",
+          "metadata",
+          "author",
+          "category"
+        ],
+        "properties": {
+          "id": { "type": "integer", "format": "int32", "readOnly": true },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "public_id": {
+            "type": "string",
+            "format": "uuid",
+            "readOnly": true,
+            "x-unique": true
+          },
+          "title": { "type": "string", "maxLength": 200 },
+          "body": { "type": "string" },
+          "status": {
+            "allOf": [{ "$ref": "#/components/schemas/PostStatus" }],
+            "default": "draft"
+          },
+          "rating": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "x-precision": 4,
+            "x-scale": 2
+          },
+          "view_count": { "type": "integer", "format": "int32", "default": 0 },
+          "is_featured": { "type": "boolean", "default": false },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "default": "now"
+          },
+          "metadata": { "type": "object", "default": {} },
+          "author": {
+            "$ref": "#/components/schemas/User",
+            "x-on-delete": "cascade",
+            "x-related-name": "posts"
+          },
+          "editor": {
+            "type": "object",
+            "allOf": [{ "$ref": "#/components/schemas/User" }],
+            "nullable": true,
+            "x-related-name": "edited_posts"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category",
+            "x-on-delete": "restrict"
+          },
+          "tags": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Tag" }
+          }
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "x-table-name": "blog_tag",
+        "required": ["id", "label"],
+        "properties": {
+          "id": { "type": "integer", "format": "int32", "readOnly": true },
+          "label": { "type": "string", "maxLength": 50 },
+          "posts": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Post" }
+          }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "x-table-name": "blog_profile",
+        "required": ["id", "user"],
+        "properties": {
+          "id": { "type": "integer", "format": "int32", "readOnly": true },
+          "bio": { "type": "string", "nullable": true },
+          "avatar": { "type": "string", "maxLength": 100, "nullable": true },
+          "user": {
+            "$ref": "#/components/schemas/User",
+            "x-on-delete": "cascade"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "x-table-name": "auth_user",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "integer", "format": "int32", "readOnly": true },
+          "posts": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Post" }
+          },
+          "edited_posts": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Post" }
+          },
+          "profile": { "$ref": "#/components/schemas/Profile" }
+        }
+      }
+    }
+  }
+}

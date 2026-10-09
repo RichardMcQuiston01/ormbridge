@@ -14,6 +14,7 @@ import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parseGorm } from './parsers/gorm.js';
+import { parseJsonSchema } from './parsers/jsonSchema.js';
 import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
 import { parseTypeorm } from './parsers/typeorm.js';
@@ -421,6 +422,26 @@ const gormAdapter: FormatAdapter = {
   },
 };
 
+const jsonSchemaAdapter: FormatAdapter = {
+  name: 'json-schema',
+  // No extension is claimed: ".json" is too generic to infer, and extname() never yields ".schema.json", so pass --from json-schema.
+  extensions: [],
+  description: 'JSON Schema and OpenAPI components.schemas (JSON)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    Promise.resolve(
+      parseJsonSchema(
+        sources.map((source: SourceText) => ({
+          path: source.path,
+          text: source.text,
+        })),
+        { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+      )
+    ),
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -429,6 +450,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(doctrineAdapter),
   registerFormat(laravelAdapter),
   registerFormat(gormAdapter),
+  registerFormat(jsonSchemaAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
 ];

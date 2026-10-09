@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/shop.schema.json",
+  "title": "Shop",
+  "description": "Awkward constructs: composite keys, enums in several spellings, unions, maps, conditionals, nested objects, arrays and references that cannot be followed.",
+  "$defs": {
+    "Money": {
+      "type": "string",
+      "format": "decimal",
+      "x-precision": 12,
+      "x-scale": 2
+    },
+    "Sku": { "$ref": "#/$defs/SkuAlias" },
+    "SkuAlias": { "$ref": "#/$defs/Sku" },
+    "Role": {
+      "oneOf": [
+        { "const": "admin", "title": "Administrator" },
+        { "const": "staff", "title": "Staff member" },
+        { "const": "guest", "title": "Guest" }
+      ]
+    },
+    "Priority": { "type": "integer", "enum": [1, 2, 3] },
+    "Customer": {
+      "type": "object",
+      "x-table-name": "shop_customers",
+      "properties": {
+        "customerId": { "type": "integer", "format": "int64" },
+        "email": { "type": "string", "format": "email", "maxLength": 255 },
+        "role": { "$ref": "#/$defs/Role", "default": "guest" },
+        "tier": { "type": "string", "enum": ["basic", "plus", "pro", null] },
+        "nickname": { "type": ["string", "null"] },
+        "balance": { "$ref": "#/$defs/Money", "default": "0.00" },
+        "signup_ip": { "type": "string", "format": "ipv4" },
+        "avatar": { "type": "string", "contentEncoding": "base64" },
+        "address": {
+          "type": "object",
+          "properties": {
+            "street": { "type": "string" },
+            "city": { "type": "string" }
+          }
+        },
+        "preferences": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "flags": {
+          "type": "object",
+          "patternProperties": { "^x-": { "type": "boolean" } }
+        },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "scores": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "integer" } }
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": { "at": { "type": "string" } }
+          }
+        },
+        "priority": { "$ref": "#/$defs/Priority" },
+        "lucky": { "type": ["string", "integer"] },
+        "contact": {
+          "oneOf": [{ "type": "string" }, { "type": "integer" }]
+        },
+        "referrer": {
+          "$ref": "#/$defs/Customer",
+          "description": "Customer who referred this one (self reference without a reverse side)."
+        },
+        "orders": { "type": "array", "items": { "$ref": "#/$defs/Order" } },
+        "plan": {
+          "$ref": "https://example.com/schemas/billing.json#/$defs/Plan"
+        },
+        "legacy": { "$ref": "#/$defs/DoesNotExist" },
+        "code": { "$ref": "#/$defs/Sku" }
+      },
+      "required": ["customerId", "email", "role", "balance"],
+      "if": { "properties": { "role": { "const": "admin" } } },
+      "then": { "required": ["nickname"] },
+      "else": {}
+    },
+    "Order": {
+      "type": "object",
+      "x-table-name": "shop_orders",
+      "properties": {
+        "id": { "type": "string", "format": "uuid", "readOnly": true },
+        "placed_at": {
+          "type": "string",
+          "format": "date-time",
+          "default": "now()"
+        },
+        "customer": {
+          "$ref": "#/$defs/Customer",
+          "x-on-delete": "restrict",
+          "x-related-name": "orders"
+        },
+        "reviewer": {
+          "anyOf": [{ "$ref": "#/$defs/Customer" }, { "type": "null" }]
+        },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/OrderItem" } },
+        "notes": { "type": "string", "maxLength": 500, "default": "" }
+      },
+      "required": ["id", "placed_at", "customer"]
+    },
+    "OrderItem": {
+      "type": "object",
+      "properties": {
+        "order_no": {
+          "type": "string",
+          "maxLength": 20,
+          "x-primary-key": true
+        },
+        "line_no": { "type": "integer", "x-primary-key": true },
+        "product": { "$ref": "#/$defs/Product" },
+        "quantity": { "type": "integer", "default": 1 }
+      },
+      "required": ["order_no", "line_no", "product", "quantity"]
+    },
+    "Product": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "price": { "$ref": "#/$defs/Money" },
+        "labels": { "type": "array", "items": { "$ref": "#/$defs/Label" } }
+      },
+      "required": ["name", "price"]
+    },
+    "Label": {
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string", "x-primary-key": true },
+        "products": { "type": "array", "items": { "$ref": "#/$defs/Product" } }
+      },
+      "required": ["slug"]
+    },
+    "Shape": {
+      "oneOf": [{ "$ref": "#/$defs/Customer" }, { "$ref": "#/$defs/Order" }]
+    }
+  }
+}

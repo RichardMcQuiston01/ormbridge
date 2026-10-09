@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN @map("admin")
+  STAFF @map("staff")
+  GUEST @map("guest")
+}
+
+enum Tier {
+  BASIC @map("basic")
+  PLUS @map("plus")
+  PRO @map("pro")
+}
+
+model Customer {
+  customerId   BigInt     @id
+  email        String     @db.VarChar(255)
+  role         Role       @default(GUEST)
+  tier         Tier?
+  nickname     String?    @db.Text
+  balance      Decimal    @default("0.00") @db.Decimal(12, 2)
+  signup_ip    String?    @db.Inet
+  avatar       Bytes?
+  address      Json?
+  preferences  Json?
+  flags        Json?
+  tags         String[]   @db.Text
+  scores       Json?
+  history      Json?
+  priority     Int?
+  lucky        Json?
+  contact      Json?
+  plan         Json?
+  legacy       Json?
+  code         Json?
+  referrer_id  BigInt?
+  referrer     Customer?  @relation("Customer_referrer", fields: [referrer_id], references: [customerId], onDelete: SetNull)
+  customer_set Customer[] @relation("Customer_referrer")
+  orders       Order[]    @relation("Order_customer")
+  order_set    Order[]    @relation("Order_reviewer")
+  employee_set Employee[]
+
+  @@map("shop_customers")
+}
+
+model Order {
+  id          String      @id @default(uuid()) @db.Uuid
+  placed_at   DateTime    @default(now()) @db.Timestamptz(6)
+  notes       String      @default("") @db.VarChar(500)
+  customer_id BigInt
+  customer    Customer    @relation("Order_customer", fields: [customer_id], references: [customerId], onDelete: Restrict)
+  reviewer_id BigInt?
+  reviewer    Customer?   @relation("Order_reviewer", fields: [reviewer_id], references: [customerId], onDelete: SetNull)
+  items       OrderItem[]
+
+  @@map("shop_orders")
+}
+
+model OrderItem {
+  order_no   String  @db.VarChar(20)
+  line_no    Int
+  quantity   Int     @default(1)
+  product_id Int
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  order_id   String? @db.Uuid
+  order      Order?  @relation(fields: [order_id], references: [id], onDelete: SetNull)
+
+  @@id([order_no, line_no])
+}
+
+model Product {
+  id             Int             @id @default(autoincrement())
+  name           String          @db.VarChar(100)
+  price          Decimal         @db.Decimal(12, 2)
+  order_item_set OrderItem[]
+  labels         ProductLabels[]
+}
+
+model Label {
+  slug     String          @id @db.Text
+  products ProductLabels[]
+}
+
+model Person {
+  id        Int     @id @default(autoincrement())
+  name      String  @db.VarChar(80)
+  badge_set Badge[]
+}
+
+model Employee {
+  id           Int        @id @default(autoincrement())
+  name         String     @db.VarChar(80)
+  salary       Decimal
+  remote       Json?
+  manager_id   Int?
+  manager      Employee?  @relation("Employee_manager", fields: [manager_id], references: [id], onDelete: SetNull)
+  favourite_id BigInt?
+  favourite    Customer?  @relation(fields: [favourite_id], references: [customerId], onDelete: SetNull)
+  employee_set Employee[] @relation("Employee_manager")
+}
+
+model Badge {
+  id        Int    @id @default(autoincrement())
+  label     String @db.Text
+  holder_id Int
+  holder    Person @relation(fields: [holder_id], references: [id], onDelete: Restrict)
+}
+
+model ProductLabels {
+  id         Int     @id @default(autoincrement())
+  product_id Int
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  label_id   String  @db.Text
+  label      Label   @relation(fields: [label_id], references: [slug], onDelete: Cascade)
+
+  @@unique([product_id, label_id])
+  @@map("Product_labels")
+}

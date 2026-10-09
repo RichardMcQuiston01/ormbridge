@@ -40,6 +40,20 @@ const LARAVEL_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   '.git',
 ]);
 
+/** Directories skipped when reading JSON Schema documents. */
+const JSON_SCHEMA_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
+  'vendor',
+  'node_modules',
+  'dist',
+  'build',
+  'coverage',
+  '.git',
+]);
+
+/** JSON files that are tool configuration and never hold a schema. */
+const NON_SCHEMA_JSON_FILES: RegExp =
+  /^(package(-lock)?|npm-shrinkwrap|composer(\.lock)?|tsconfig(\..+)?|jsconfig|\.eslintrc|\.prettierrc|deno)\.json$/;
+
 const SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   'node_modules',
   'venv',
@@ -386,7 +400,9 @@ async function discoverInputFiles(
               ? 'PHP (.php) migration and model files (database/migrations and app/)'
               : format === 'gorm'
                 ? 'Go (.go) model files'
-                : '.prisma files';
+                : format === 'json-schema'
+                  ? 'JSON (.json) schema or OpenAPI files'
+                  : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -408,6 +424,12 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
   if (format === 'gorm') {
     return (
       extname(filePath) === '.go' && !/_test\.go$/.test(basename(filePath))
+    );
+  }
+  if (format === 'json-schema') {
+    return (
+      extname(filePath).toLowerCase() === '.json' &&
+      !NON_SCHEMA_JSON_FILES.test(basename(filePath))
     );
   }
   if (format === 'doctrine' || format === 'laravel') {
@@ -441,6 +463,9 @@ function isSkippedDirectory(
   }
   if (format === 'gorm') {
     return GO_SKIPPED_DIRECTORIES.has(name);
+  }
+  if (format === 'json-schema') {
+    return JSON_SCHEMA_SKIPPED_DIRECTORIES.has(name);
   }
   return (
     SKIPPED_DIRECTORIES.has(name) ||

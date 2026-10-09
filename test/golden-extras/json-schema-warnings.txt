@@ -1,0 +1,19 @@
+Shape: a oneOf/anyOf schema has no database meaning, so it was not converted to a model.
+Customer: if/then/else has no database meaning and was ignored.
+Customer.address: a nested inline object was stored as a json column; its properties are not modelled. Define it under $defs to make it a model.
+Customer.preferences: an object used as a map (additionalProperties) has no database meaning; it was stored as a json column.
+Customer.flags: patternProperties has no database meaning; the object was stored as a json column.
+Customer.history: a nested inline object was stored as a json column; its properties are not modelled. Define it under $defs to make it a model.
+Customer.priority: only enums of strings are supported, so the allowed values were dropped and the column keeps its plain type.
+Customer.lucky: the type union ["string","integer"] has no database meaning, so the property was kept as a json column.
+Customer.contact: a oneOf/anyOf union has no database meaning, so the property was kept as a json column.
+Customer.plan: the reference "https://example.com/schemas/billing.json#/$defs/Plan" points to https://example.com/schemas/billing.json, which is not one of the input files (remote references are not fetched); the property was kept as a json column.
+Customer.legacy: the reference "#/$defs/DoesNotExist" does not resolve to anything in shop.schema.json; the property was kept as a json column.
+Customer.code: the reference "#/$defs/Sku" is part of a reference cycle that never reaches an object schema; the property was kept as a json column.
+Product: no primary key property was found (an id, productId or x-primary-key property), so an integer "id" column was added.
+Employee: allOf composition was flattened; the properties of Person were copied into the model and the inheritance is not represented.
+Employee.remote: the reference "https://schemas.example.org/other.json#/definitions/Thing" points to https://schemas.example.org/other.json, which is not one of the input files (remote references are not fetched); the property was kept as a json column.
+Badge: no primary key property was found (an id, badgeId or x-primary-key property), so an integer "id" column was added.
+Order.items: OrderItem does not reference Order back, so a nullable foreign key "order" was added to OrderItem to hold the relation (many-to-many needs an array on both sides).
+Customer.tags: Prisma lists cannot be optional; the nullable array was written as a required list.
+Customer.scores: Prisma supports only one-dimensional scalar lists; the 2-dimensional array was written as Json.

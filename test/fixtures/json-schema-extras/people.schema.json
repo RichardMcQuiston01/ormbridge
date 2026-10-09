@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/people.schema.json",
+  "title": "People",
+  "description": "Draft 7 file that refers to the shop file by its $id and extends a base schema through allOf.",
+  "definitions": {
+    "Person": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "readOnly": true },
+        "name": { "type": "string", "maxLength": 80 }
+      },
+      "required": ["id", "name"]
+    },
+    "Employee": {
+      "description": "Inherits Person through allOf.",
+      "allOf": [
+        { "$ref": "#/definitions/Person" },
+        {
+          "type": "object",
+          "properties": {
+            "salary": {
+              "type": "number",
+              "multipleOf": 0.01,
+              "format": "decimal"
+            },
+            "manager": { "$ref": "#/definitions/Employee" },
+            "favourite": { "$ref": "shop.schema.json#/$defs/Customer" },
+            "remote": {
+              "$ref": "https://schemas.example.org/other.json#/definitions/Thing"
+            }
+          },
+          "required": ["salary"]
+        }
+      ]
+    },
+    "Badge": {
+      "type": "object",
+      "properties": {
+        "holder": { "$ref": "#/definitions/Person" },
+        "label": { "type": "string" }
+      },
+      "required": ["holder", "label"]
+    }
+  }
+}
