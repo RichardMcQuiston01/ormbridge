@@ -31,6 +31,11 @@ export type {
   DoctrineSourceFile,
   DoctrineParseOptions,
 } from './parsers/doctrine.js';
+export { parseDrizzle } from './parsers/drizzle.js';
+export type {
+  DrizzleSourceFile,
+  DrizzleParseOptions,
+} from './parsers/drizzle.js';
 export { parseGorm } from './parsers/gorm.js';
 export type { GormSourceFile, GormParseOptions } from './parsers/gorm.js';
 export { parseLaravel } from './parsers/laravel.js';

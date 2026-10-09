@@ -50,6 +50,7 @@
     "typescript",
     "python",
     "typeorm",
+    "drizzle",
     "graphene",
     "doctrine",
     "laravel",

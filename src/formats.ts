@@ -12,6 +12,7 @@ import { emitTypeorm } from './emitters/typeorm.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
+import { parseDrizzle } from './parsers/drizzle.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parseGorm } from './parsers/gorm.js';
 import { parseLaravel } from './parsers/laravel.js';
@@ -421,6 +422,24 @@ const gormAdapter: FormatAdapter = {
   },
 };
 
+const drizzleAdapter: FormatAdapter = {
+  name: 'drizzle',
+  // No extension is claimed: ".ts" is too generic to infer, so pass --from drizzle. Read only for now.
+  extensions: [],
+  description: 'Drizzle ORM schemas (TypeScript, PostgreSQL / MySQL / SQLite)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseDrizzle(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -429,6 +448,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(doctrineAdapter),
   registerFormat(laravelAdapter),
   registerFormat(gormAdapter),
+  registerFormat(drizzleAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
 ];
