@@ -19,6 +19,14 @@ import { describeThrown, err, ok, type Result } from './result.js';
 /** Directories skipped only when reading PHP projects: Composer packages and Symfony's cache/log directory. */
 const PHP_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set(['vendor', 'var']);
 
+/** Directories skipped when reading Go projects: vendored modules and Go's conventional test data. */
+const GO_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
+  'vendor',
+  'node_modules',
+  'testdata',
+  '.git',
+]);
+
 /**
  * Directories skipped when reading a Laravel project. The Django list does not
  * apply: `migrations` is where Laravel keeps its schema, and `build` / `env` /
@@ -376,7 +384,9 @@ async function discoverInputFiles(
             ? 'PHP (.php) entity files'
             : format === 'laravel'
               ? 'PHP (.php) migration and model files (database/migrations and app/)'
-              : '.prisma files';
+              : format === 'gorm'
+                ? 'Go (.go) model files'
+                : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -393,6 +403,11 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
     return (
       extname(filePath) === '.ts' &&
       !/\.(d|test|spec)\.ts$/.test(basename(filePath))
+    );
+  }
+  if (format === 'gorm') {
+    return (
+      extname(filePath) === '.go' && !/_test\.go$/.test(basename(filePath))
     );
   }
   if (format === 'doctrine' || format === 'laravel') {
@@ -423,6 +438,9 @@ function isSkippedDirectory(
       LARAVEL_SKIPPED_DIRECTORIES.has(name) ||
       (name === 'cache' && basename(parent) === 'bootstrap')
     );
+  }
+  if (format === 'gorm') {
+    return GO_SKIPPED_DIRECTORIES.has(name);
   }
   return (
     SKIPPED_DIRECTORIES.has(name) ||

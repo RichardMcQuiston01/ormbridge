@@ -9,6 +9,7 @@ import {
   matrixPairs,
   parseEmitted,
   parseWith,
+  readOnlyPairs,
   type MatrixCell,
 } from './conversionMatrix.js';
 import {
@@ -38,8 +39,10 @@ describe('conversion matrix coverage', () => {
   it('has one cell per ordered pair of readable and writable formats', () => {
     const formats: FormatAdapter[] = matrixFormats();
     expect(formats.length).toBeGreaterThanOrEqual(3);
-    expect(cells).toHaveLength(formats.length * (formats.length - 1));
-    expect(matrixPairs()).toHaveLength(cells.length);
+    expect(cells).toHaveLength(
+      formats.length * (formats.length - 1) + readOnlyPairs().length
+    );
+    expect(matrixPairs()).toHaveLength(formats.length * (formats.length - 1));
   });
 });
 
@@ -66,6 +69,24 @@ describe.each(
     ).toBe('');
   });
 });
+
+describe.each(
+  readOnlyPairs().map(
+    ([source, target]) => [source.name, target.name, source, target] as const
+  )
+)(
+  'matrix %s -> %s (read-only source)',
+  (_sourceName, _targetName, source, target) => {
+    it('writes text that reads back without errors', () => {
+      expect(cellFor(source, target).emitted.trim()).not.toBe('');
+    });
+
+    it('only loses information that is documented', () => {
+      const unexplained = unexplainedDifferences(cellFor(source, target));
+      expect(describeDifferences(unexplained)).toBe('');
+    });
+  }
+);
 
 describe('writable formats', () => {
   const writable: FormatAdapter[] = listFormats().filter(

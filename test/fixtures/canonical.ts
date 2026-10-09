@@ -47,6 +47,18 @@ export const CANONICAL_FIXTURES: readonly CanonicalFixture[] = [
     ].map(fixturePath),
   },
   {
+    format: 'gorm',
+    paths: [
+      './gorm/timestamped.go',
+      './gorm/poststatus.go',
+      './gorm/category.go',
+      './gorm/post.go',
+      './gorm/tag.go',
+      './gorm/profile.go',
+      './gorm/user.go',
+    ].map(fixturePath),
+  },
+  {
     // Laravel keeps the schema in migrations: they are listed in the order Laravel runs them,
     // followed by the backed enum and the Eloquent models that name the relations.
     format: 'laravel',
