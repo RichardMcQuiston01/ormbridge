@@ -16,6 +16,7 @@ import {
   describeDifferences,
   renderMatrixMarkdown,
   unexplainedDifferences,
+  unexplainedIdempotenceDifferences,
 } from './conversionMatrixDoc.js';
 import { loadCanonicalSources } from './harness.js';
 
@@ -57,9 +58,11 @@ describe.each(
     expect(describeDifferences(unexplained)).toBe('');
   });
 
-  it('is stable after a second trip (A -> B -> A -> B)', () => {
+  it('is stable after a second trip (A -> B -> A -> B), apart from documented reasons', () => {
     expect(
-      describeDifferences(cellFor(source, target).idempotenceDifferences)
+      describeDifferences(
+        unexplainedIdempotenceDifferences(cellFor(source, target))
+      )
     ).toBe('');
   });
 });
@@ -90,7 +93,7 @@ describe('writable formats', () => {
         ).not.toBe('');
         // A readable target must also be able to read its own output.
         if (target.parse !== undefined) {
-          const reread = await parseEmitted(target, emitted.text);
+          const reread = await parseEmitted(target, emitted);
           expect(reread.models.length).toBeGreaterThanOrEqual(
             schema.models.length
           );

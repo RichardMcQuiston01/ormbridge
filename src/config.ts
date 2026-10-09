@@ -24,6 +24,8 @@ export interface ConversionConfig {
   header?: boolean;
   appLabel?: string;
   autoField?: 'int' | 'bigint';
+  /** PHP namespace of the Doctrine entities. */
+  namespace?: string;
 }
 
 /** A parsed config file. Top-level settings are defaults shared by every entry in `conversions`. */
@@ -47,6 +49,7 @@ const CONVERSION_KEYS: readonly string[] = [
   'header',
   'appLabel',
   'autoField',
+  'namespace',
 ];
 
 /**
@@ -211,7 +214,7 @@ function parseConversion(
     }
   }
 
-  for (const key of ['name', 'from', 'to', 'appLabel'] as const) {
+  for (const key of ['name', 'from', 'to', 'appLabel', 'namespace'] as const) {
     const value: unknown = raw[key];
     if (value === undefined) {
       continue;

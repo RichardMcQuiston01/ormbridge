@@ -43,6 +43,8 @@ export type {
   PrismaProvider,
 } from './emitters/prisma.js';
 export { emitDjango } from './emitters/django.js';
+export { emitDoctrine } from './emitters/doctrine.js';
+export type { DoctrineEmitOptions } from './emitters/doctrine.js';
 export { emitGraphene } from './emitters/graphene.js';
 export { emitTypeorm } from './emitters/typeorm.js';
 export type { TypeormEmitOptions } from './emitters/typeorm.js';

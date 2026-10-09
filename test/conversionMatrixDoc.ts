@@ -38,7 +38,30 @@ export const LOSS_REASONS: readonly LossReason[] = [
     explanation:
       "In `preserve` naming mode the Prisma writer expands every many-to-many field with `expandManyToMany` (`src/transforms.ts`) into an explicit join model (`PostTags`) with a surrogate `id`, two cascading foreign keys and a unique pair. This mirrors the table Django creates, so existing Django databases stay compatible, and it avoids Prisma's implicit `_AToB` table. Prisma reads that model back as an ordinary model, so the relation `Post.tags` is not restored as a many-to-many. For TypeORM sources the join table is TypeORM's own, whose primary key is the composite of the two foreign keys, so the Prisma join model also gains a surrogate `id` column that the source table does not have.",
   },
+  {
+    id: 'doctrine-lifecycle-callback',
+    title: 'Auto-updated timestamps become Doctrine lifecycle callbacks',
+    explanation:
+      'Doctrine has no attribute that refreshes a column on update (Django `auto_now`, Prisma `@updatedAt`, TypeORM `@UpdateDateColumn`). The Doctrine writer therefore adds `#[ORM\\HasLifecycleCallbacks]` and a `#[ORM\\PreUpdate]` method that sets the property. The Doctrine reader ignores lifecycle callbacks (it reads mapping attributes only), so the "updated automatically" flag is not recovered when the output is read back.',
+  },
+  {
+    id: 'doctrine-constructor-default',
+    title: 'UUID and JSON defaults are set in the Doctrine constructor',
+    explanation:
+      'Doctrine ORM 3 has no built-in UUID generator, and a column default for JSON or array columns is not portable, so the Doctrine writer assigns these defaults in the entity constructor (for example `$this->publicId = self::generateUuid();`). The Doctrine reader only sees the mapping attributes, not constructor statements, so these defaults are not recovered when the output is read back. Scalar defaults that can be written as a column option or property initializer survive.',
+  },
+  {
+    id: 'django-enum-length-floor',
+    title: 'Django enum columns are at least 32 characters',
+    explanation:
+      'The Django writer ignores the stored length of an enum-backed field and writes `max_length` as the longer of 32 and the longest enum value (`src/emitters/django.ts`). A length kept by another format (for example 20 in a Doctrine `length: 20` column) therefore becomes 32 once the schema passes through Django, which is why a second trip through Django is not stable for that field.',
+  },
 ];
+
+/** True when either end of the pair is the given format. */
+function involves(cell: MatrixCell, format: string): boolean {
+  return cell.source === format || cell.target === format;
+}
 
 /** Returns the id of the reason that explains a difference, or undefined when it is unexplained. */
 export function explainDifference(
@@ -54,10 +77,29 @@ export function explainDifference(
       const field: IrField | undefined = model?.fields.find(
         (candidate: IrField) => candidate.columnName === difference.field
       );
-      return field?.enumName !== undefined && difference.after === '(none)'
-        ? 'enum-length'
+      if (field?.enumName === undefined) {
+        return undefined;
+      }
+      if (difference.after === '(none)') {
+        return 'enum-length';
+      }
+      return Number(difference.after) === 32 && Number(difference.before) < 32
+        ? 'django-enum-length-floor'
         : undefined;
     }
+    case 'fieldAutoUpdated':
+      return involves(cell, 'doctrine') &&
+        difference.before === 'true' &&
+        difference.after === 'false'
+        ? 'doctrine-lifecycle-callback'
+        : undefined;
+    case 'fieldDefault':
+      return involves(cell, 'doctrine') &&
+        difference.after === '(none)' &&
+        (difference.before === 'uuid' ||
+          difference.before.startsWith('literal'))
+        ? 'doctrine-constructor-default'
+        : undefined;
     case 'enumValueLabel':
       return difference.after === '(none)' ? 'enum-label' : undefined;
     case 'relationRemoved':
@@ -82,6 +124,16 @@ export function explainDifference(
 /** Differences that no documented reason explains. */
 export function unexplainedDifferences(cell: MatrixCell): IrDifference[] {
   return cell.differences.filter(
+    (difference: IrDifference) =>
+      explainDifference(difference, cell) === undefined
+  );
+}
+
+/** Second-trip differences that no documented reason explains. */
+export function unexplainedIdempotenceDifferences(
+  cell: MatrixCell
+): IrDifference[] {
+  return cell.idempotenceDifferences.filter(
     (difference: IrDifference) =>
       explainDifference(difference, cell) === undefined
   );
@@ -168,14 +220,23 @@ function pairDetails(
       lines.push(`- ${warning}`);
     }
   }
+  const unexplainedSecondTrip: IrDifference[] =
+    unexplainedIdempotenceDifferences(cell);
   lines.push(
     '',
     cell.idempotenceDifferences.length === 0
       ? `Stable: converting ${cell.target} → ${cell.source} → ${cell.target} again changes nothing further.`
-      : `Not stable: a second ${cell.target} → ${cell.source} → ${cell.target} trip changes:`
+      : unexplainedSecondTrip.length === 0
+        ? `Not stable, but only for documented reasons: a second ${cell.target} → ${cell.source} → ${cell.target} trip changes:`
+        : `Not stable: a second ${cell.target} → ${cell.source} → ${cell.target} trip changes:`
   );
   for (const difference of cell.idempotenceDifferences) {
-    lines.push(`- \`${formatDifference(difference)}\``);
+    const reason: string | undefined = explainDifference(difference, cell);
+    const number: number | undefined =
+      reason === undefined ? undefined : reasonNumbers.get(reason);
+    lines.push(
+      `- \`${formatDifference(difference)}\`${number === undefined ? ' (unexplained)' : ` — see reason ${number}`}`
+    );
   }
   lines.push('');
   return lines;
@@ -193,7 +254,7 @@ export function renderMatrixMarkdown(cells: MatrixCell[]): string {
   }
   const usedReasons: LossReason[] = LOSS_REASONS.filter((reason: LossReason) =>
     cells.some((cell: MatrixCell) =>
-      cell.differences.some(
+      [...cell.differences, ...cell.idempotenceDifferences].some(
         (difference: IrDifference) =>
           explainDifference(difference, cell) === reason.id
       )
@@ -222,7 +283,7 @@ export function renderMatrixMarkdown(cells: MatrixCell[]): string {
     '3. reads the written B text back into the IR, and',
     '4. compares the two IRs with `test/irCompare.ts`.',
     '',
-    "Each format is read from its own canonical fixture, and the three fixtures spell the same blog schema in their native styles (for example the Prisma fixture writes the post/tag join table as an explicit `PostTags` model while Django and TypeORM declare a many-to-many field). A cell therefore compares a source with its own fixture, not with the other formats' fixtures.",
+    "Each format is read from its own canonical fixture, and the fixtures spell the same blog schema in their native styles (for example the Prisma fixture writes the post/tag join table as an explicit `PostTags` model while Django and TypeORM declare a many-to-many field). A cell therefore compares a source with its own fixture, not with the other formats' fixtures.",
     '',
     "The comparison covers models, table names, fields, types, nullability, defaults, lengths and precision, primary and composite keys, relations (kind, target, nullability, `onDelete`, reverse accessor), enums, indexes and uniques. It ignores differences that mean nothing: ordering, case and underscore spelling of identifiers (`created_at` vs `createdAt`, `DRAFT` vs `Draft`), the Django app label, index and constraint names the target generated itself (an explicit name that is lost is reported), Django's implicit reverse accessor names (`post_set`), the nullability of many-to-many relations (they have no column), and values a target must invent (Django enum labels and the `max_length` Django requires on enum columns).",
     '',

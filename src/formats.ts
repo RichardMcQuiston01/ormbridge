@@ -1,4 +1,5 @@
 import { emitDjango } from './emitters/django.js';
+import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
 import { emitGraphene } from './emitters/graphene.js';
 import {
   emitPrisma,
@@ -45,6 +46,8 @@ export interface FormatOptions {
   appLabel?: string;
   /** Primary key type used for Django models without an explicit key. */
   autoField: 'int' | 'bigInt';
+  /** PHP namespace of the Doctrine entities (default `App\Entity`); enums go in the sibling `Enum` namespace. */
+  namespace?: string;
 }
 
 /**
@@ -262,24 +265,6 @@ const typeormAdapter: FormatAdapter = {
   },
 };
 
-const doctrineAdapter: FormatAdapter = {
-  name: 'doctrine',
-  // No extension is claimed: ".php" is too generic to infer, so pass --from doctrine.
-  extensions: [],
-  description: 'Doctrine ORM entities (PHP 8 attributes)',
-  parse: (
-    sources: SourceText[],
-    options: FormatOptions
-  ): Promise<Result<IrSchema>> =>
-    parseDoctrine(
-      sources.map((source: SourceText) => ({
-        path: source.path,
-        text: source.text,
-      })),
-      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
-    ),
-};
-
 const grapheneAdapter: FormatAdapter = {
   name: 'graphene',
   // No extension is claimed: ".py" belongs to Django, so pass --to graphene.
@@ -299,6 +284,48 @@ const typescriptAdapter: FormatAdapter = {
     return ok(
       emitTypescriptInterfaces(prepared, {
         camelFields: options.naming === 'normalize',
+      })
+    );
+  },
+};
+
+const doctrineAdapter: FormatAdapter = {
+  name: 'doctrine',
+  // No extension is claimed: ".php" is too generic to infer, so pass --from/--to doctrine.
+  extensions: [],
+  description: 'Doctrine ORM entities (PHP 8 attributes)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseDoctrine(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+  emit: (
+    schema: IrSchema,
+    options: FormatOptions
+  ): Result<FormatEmitOutput> => {
+    const namespace: string | undefined = options.namespace?.replace(
+      /^\\+|\\+$/g,
+      ''
+    );
+    if (namespace !== undefined && !isValidPhpNamespace(namespace)) {
+      return err(
+        'INVALID_OPTION',
+        `Invalid namespace "${options.namespace ?? ''}". Expected a PHP namespace such as App\\Entity.`
+      );
+    }
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitDoctrine(prepared, {
+        provider: options.provider,
+        camelFields: options.naming === 'normalize',
+        ...(namespace === undefined ? {} : { namespace }),
       })
     );
   },
