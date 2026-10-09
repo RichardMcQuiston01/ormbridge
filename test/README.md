@@ -24,6 +24,8 @@ Round trips (`roundTrip`) feed every emitted file back into the parser (`resultT
 
 The Doctrine tests (`doctrine-emitter.test.ts`) lint the generated PHP with `php -l` and skip when PHP is missing. Set `DOCTRINE_DIR` to a directory where `composer require doctrine/orm symfony/cache` has been run (outside this repository) to also load the entities with Doctrine's real metadata factory, validate the mapping and create the schema in SQLite (`test/tools/validate-doctrine.php`).
 
+The Laravel tests (`laravel-parser.test.ts`) lint the fixture project with `php -l` and skip when PHP is missing. Set `LARAVEL_DIR` to a directory where `composer require illuminate/database illuminate/events illuminate/container` has been run (outside this repository) to also run the fixture migrations in order against SQLite with the real Illuminate packages (`test/tools/replay-laravel-migrations.php`) and compare the resulting tables, keys and indexes with the parser's result.
+
 ## Conversion matrix
 
 `conversion-matrix.test.ts` adds a semantic layer on top of the text goldens: for every ordered pair of readable and writable formats it reads A's fixture, writes B, reads B back and compares the two IRs with `irCompare.ts`. New readable formats join automatically. Every difference must be explained in `conversionMatrixDoc.ts` (`LOSS_REASONS`), and `docs/CONVERSION_MATRIX.md` is generated from the results (`npm run docs:matrix`, or `UPDATE_GOLDEN=1 npm test`).

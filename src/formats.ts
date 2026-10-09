@@ -12,6 +12,7 @@ import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
+import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
 import { parseTypeorm } from './parsers/typeorm.js';
 import { err, ok, type Result } from './result.js';
@@ -337,9 +338,20 @@ const doctrineAdapter: FormatAdapter = {
 
 const laravelAdapter: FormatAdapter = {
   name: 'laravel',
-  // No extension is claimed: ".php" is too generic to infer, so pass --to laravel.
+  // No extension is claimed: ".php" is too generic to infer, so pass --from/--to laravel.
   extensions: [],
   description: 'Laravel migrations and Eloquent models',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseLaravel(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
   emit: (
     schema: IrSchema,
     options: FormatOptions

@@ -19,6 +19,19 @@ import { describeThrown, err, ok, type Result } from './result.js';
 /** Directories skipped only when reading PHP projects: Composer packages and Symfony's cache/log directory. */
 const PHP_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set(['vendor', 'var']);
 
+/**
+ * Directories skipped when reading a Laravel project. The Django list does not
+ * apply: `migrations` is where Laravel keeps its schema, and `build` / `env` /
+ * `dist` are ordinary names there.
+ */
+const LARAVEL_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
+  'vendor',
+  'storage',
+  'node_modules',
+  'tests',
+  '.git',
+]);
+
 const SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   'node_modules',
   'venv',
@@ -344,7 +357,11 @@ async function discoverInputFiles(
       );
     }
     if (inputStat.isDirectory()) {
-      files.push(...(await walkDirectory(input, format)));
+      const roots: string[] =
+        format === 'laravel' ? await laravelRoots(input) : [input];
+      for (const root of roots) {
+        files.push(...(await walkDirectory(root, format)));
+      }
     } else {
       files.push(input);
     }
@@ -357,7 +374,9 @@ async function discoverInputFiles(
           ? 'TypeScript (.ts) entity files'
           : format === 'doctrine'
             ? 'PHP (.php) entity files'
-            : '.prisma files';
+            : format === 'laravel'
+              ? 'PHP (.php) migration and model files (database/migrations and app/)'
+              : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -376,7 +395,7 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
       !/\.(d|test|spec)\.ts$/.test(basename(filePath))
     );
   }
-  if (format === 'doctrine') {
+  if (format === 'doctrine' || format === 'laravel') {
     return (
       extname(filePath) === '.php' && !/Test\.php$/.test(basename(filePath))
     );
@@ -393,6 +412,42 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
   );
 }
 
+function isSkippedDirectory(
+  name: string,
+  parent: string,
+  format: FormatName
+): boolean {
+  if (format === 'laravel') {
+    // bootstrap/cache holds generated files; the rest of bootstrap/ is ordinary code.
+    return (
+      LARAVEL_SKIPPED_DIRECTORIES.has(name) ||
+      (name === 'cache' && basename(parent) === 'bootstrap')
+    );
+  }
+  return (
+    SKIPPED_DIRECTORIES.has(name) ||
+    (format === 'doctrine' && PHP_SKIPPED_DIRECTORIES.has(name))
+  );
+}
+
+/**
+ * For a Laravel project root (it has `database/migrations` or `app`), only those
+ * two directories are read. Any other directory, such as `app/Models` or
+ * `database/migrations` passed on its own, is read as given.
+ */
+async function laravelRoots(directory: string): Promise<string[]> {
+  const roots: string[] = [];
+  for (const candidate of [
+    join(directory, 'database', 'migrations'),
+    join(directory, 'app'),
+  ]) {
+    if ((await classifyPath(candidate)) === 'directory') {
+      roots.push(candidate);
+    }
+  }
+  return roots.length > 0 ? roots : [directory];
+}
+
 async function walkDirectory(
   directory: string,
   format: FormatName
@@ -404,10 +459,7 @@ async function walkDirectory(
   )) {
     const entryPath: string = join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (
-        !SKIPPED_DIRECTORIES.has(entry.name) &&
-        !(format === 'doctrine' && PHP_SKIPPED_DIRECTORIES.has(entry.name))
-      ) {
+      if (!isSkippedDirectory(entry.name, directory, format)) {
         found.push(...(await walkDirectory(entryPath, format)));
       }
     } else if (isRelevantFile(entryPath, format)) {
