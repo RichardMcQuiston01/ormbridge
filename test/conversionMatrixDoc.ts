@@ -63,6 +63,18 @@ export const LOSS_REASONS: readonly LossReason[] = [
       'A column named `updated_at` (or `UpdatedAt`) is maintained by GORM through `autoUpdateTime`, which the GORM writer adds and the reader reports as "updated automatically". A source format that cannot express the flag therefore gains it after a pass through GORM.',
   },
   {
+    id: 'drizzle-join-tables',
+    title: 'Many-to-many becomes an explicit join table in Drizzle',
+    explanation:
+      'Drizzle has no many-to-many field: a join table is an ordinary table with two foreign keys, and `relations()` describes each side of the pair. The Drizzle writer therefore writes an explicit join table (`PostTag`, named after the two models in the singular) in both naming modes, and the Drizzle reader reads it back as an ordinary model, the way the Prisma reader does, so the relation `Post.tags` is not restored as a many-to-many. A Prisma source that already has an explicit join model under another name (`PostTags`) is replaced by the one the writer derives.',
+  },
+  {
+    id: 'drizzle-reverse-name',
+    title: 'Drizzle names reverse relations in `relations()`',
+    explanation:
+      'Drizzle has no related name: each side of a relation is a key in `relations()`, named after the plural of the model (`posts`). A Django `related_name` or an ORM-specific default such as `postset` is therefore replaced by the Drizzle key, and the Drizzle reader recovers that name rather than the original.',
+  },
+  {
     id: 'django-enum-length-floor',
     title: 'Django enum columns are at least 32 characters',
     explanation:
@@ -137,6 +149,50 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
         title: 'Reverse relations get Go names',
         explanation:
           'An unnamed reverse relation is named after the plural of the model (`Posts`), and a one-to-one after the model (`Profile`). Has-one and belongs-to fields are pointers unless a required parent can be held by value without making the struct type recursive.',
+      },
+    ],
+    drizzle: [
+      {
+        id: 'drizzle-dialects',
+        title: 'One dialect per output',
+        explanation:
+          "`--provider` picks `pg-core` (PostgreSQL, CockroachDB), `mysql-core` or `sqlite-core`. Drizzle has no SQL Server or MongoDB dialect, so those providers are written as PostgreSQL tables with a warning. The column builders follow the dialect: `timestamp({ withTimezone: true })` and `jsonb` on PostgreSQL, `datetime` and `json` on MySQL, and on SQLite `integer({ mode: 'timestamp' })`, `integer({ mode: 'boolean' })` and `text({ mode: 'json' })`.",
+      },
+      {
+        id: 'drizzle-keys',
+        title: 'Auto-increment keys and integer widths',
+        explanation:
+          'An auto-increment `int` key is `serial` (PostgreSQL), `int().autoincrement()` (MySQL) or `integer().primaryKey({ autoIncrement: true })` (SQLite); `bigInt` is `bigserial` or `bigint` in `number` mode, which loses precision above 2^53. SQLite integers are always 64 bits wide. A UUID key is `uuid().defaultRandom()`, `char(36)` with a `(UUID())` default or text.',
+      },
+      {
+        id: 'drizzle-defaults',
+        title: 'Where defaults live',
+        explanation:
+          'A `now` default is `.defaultNow()` (PostgreSQL), `CURRENT_TIMESTAMP` (MySQL) or `(unixepoch())` (SQLite), all evaluated by the database. Drizzle has no database default for a UUID on SQLite, so the writer uses `$defaultFn(() => crypto.randomUUID())`, which only runs for rows inserted through Drizzle, and warns. An auto-updated column gets `$onUpdate(() => new Date())`, which Drizzle applies in the client, not with a database trigger. Client-generated defaults (`cuid()`, `ulid()`) and database expressions are dropped with a warning.',
+      },
+      {
+        id: 'drizzle-join-tables',
+        title: 'Many-to-many join tables are explicit tables',
+        explanation:
+          'Drizzle has no many-to-many field. The writer expands every many-to-many relation into the join table Django creates (a surrogate `id`, two cascading foreign keys and a unique pair), in `preserve` and `normalize` naming alike, and both tables get a `many()` relation to it. The relation is therefore a one-to-many pair, not a many-to-many, when read back.',
+      },
+      {
+        id: 'drizzle-enums',
+        title: 'Enums by dialect',
+        explanation:
+          'PostgreSQL gets a `pgEnum` (a real database type). MySQL gets an inline `mysqlEnum` column. SQLite has no enum type, so the column is `text` with `{ enum: [...] }`, which narrows the TypeScript type but adds no check constraint. Every enum also exports its values as an `as const` array and a union type.',
+      },
+      {
+        id: 'drizzle-unrepresentable',
+        title: 'Constructs without a Drizzle builder',
+        explanation:
+          'Arrays, hstore and ranges outside PostgreSQL become JSON, text or varchar columns and durations become integers (microseconds), each with a warning. PostgreSQL columns without a builder (`bytea`, `hstore`, ranges) use small `customType` declarations at the top of the file. Generated columns (Python expressions), composite foreign keys, index types, sort orders and operator classes, full-text indexes, views and `@@schema` are written as plain tables and columns with a warning. Unique indexes are `uniqueIndex`, not unique constraints.',
+      },
+      {
+        id: 'drizzle-relations',
+        title: 'Both sides of every relation',
+        explanation:
+          'Every foreign key gets a `one()` relation on its table and the matching `many()` (or `one()` for a one-to-one) on the target. Two tables joined more than once, and self references, carry a `relationName` on both sides because Drizzle cannot pair them otherwise. An unnamed reverse relation is named after the plural of the model (`posts`). Tables are ordered so a table follows the tables it references; a reference to a table declared later (a cycle or a self reference) is annotated with `AnyPgColumn` (`AnyMySqlColumn`, `AnySQLiteColumn`).',
       },
     ],
   };
@@ -236,6 +292,9 @@ export function explainDifference(
       }
       return undefined;
     case 'relationRelatedName':
+      if (involves(cell, 'drizzle')) {
+        return 'drizzle-reverse-name';
+      }
       return involves(cell, 'gorm') ? 'gorm-reverse-name' : undefined;
     case 'fieldDefault':
       if (
@@ -253,11 +312,33 @@ export function explainDifference(
     case 'enumValueLabel':
       return difference.after === '(none)' ? 'enum-label' : undefined;
     case 'relationRemoved':
+      if (
+        cell.target === 'drizzle' &&
+        difference.before.startsWith('manyToMany')
+      ) {
+        return 'drizzle-join-tables';
+      }
       return cell.target === 'prisma' &&
         difference.before.startsWith('manyToMany')
         ? 'join-table'
         : undefined;
+    case 'modelRemoved':
+      // The explicit join model of a Prisma source (`PostTags`) is replaced by the one Drizzle derives.
+      return cell.target === 'drizzle' && cell.source === 'prisma'
+        ? 'drizzle-join-tables'
+        : undefined;
     case 'modelAdded':
+      if (
+        cell.target === 'drizzle' &&
+        cell.differences.some(
+          (other: IrDifference) =>
+            (other.kind === 'relationRemoved' &&
+              other.before.startsWith('manyToMany')) ||
+            other.kind === 'modelRemoved'
+        )
+      ) {
+        return 'drizzle-join-tables';
+      }
       return cell.target === 'prisma' &&
         cell.differences.some(
           (other: IrDifference) =>
@@ -414,7 +495,7 @@ function emitOnlySection(cells: EmitOnlyCell[]): string[] {
   const lines: string[] = [
     '## Write-only targets',
     '',
-    `Some formats can be written but not read (${targets.join(', ')}), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a struct for its table, every column has a field, every many-to-many relation has its join table and every enum has its type. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.`,
+    `Some formats can be written but not read (${targets.join(', ')}), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.`,
     '',
     '| Pair | Files | Emit warnings | Missing |',
     '| --- | --- | --- | --- |',

@@ -1043,7 +1043,13 @@ function registerEnum(
     );
     return;
   }
-  const name: string = toPascalCase(declarator.name);
+  // Drizzle code conventionally names the constant `statusEnum`; the enum itself is `Status`. The
+  // emitter appends the suffix again, so stripping one `Enum` keeps the round trip stable.
+  const pascalName: string = toPascalCase(declarator.name);
+  const name: string =
+    pascalName.length > 'Enum'.length && pascalName.endsWith('Enum')
+      ? pascalName.slice(0, -'Enum'.length)
+      : pascalName;
   project.enums.set(declarator.name, {
     varName: declarator.name,
     ir: {

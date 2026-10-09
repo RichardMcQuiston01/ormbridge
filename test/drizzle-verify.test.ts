@@ -1,112 +1,114 @@
-import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
+import { spawn, spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import {
-  copyFileSync,
   existsSync,
-  mkdirSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import type {
-  IrCompositeForeignKey,
-  IrEnum,
-  IrField,
-  IrIndex,
-  IrModel,
-  IrOnDelete,
-  IrRelation,
-  IrSchema,
-} from '../src/ir.js';
-import { parseDrizzle } from '../src/parsers/drizzle.js';
-import { CANONICAL_FIXTURES } from './fixtures/canonical.js';
-import { expectOk } from './helpers.js';
+import type { PrismaProvider } from '../src/emitters/prisma.js';
+import { getFormat, type FormatEmitOutput } from '../src/formats.js';
+import type { IrSchema } from '../src/ir.js';
 import {
+  expandManyToMany,
+  normalizeSchema,
+  type NamingMode,
+} from '../src/transforms.js';
+import { DRIZZLE_IR_FIXTURES } from './drizzleFixtures.js';
+import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
+import {
+  buildSpec,
+  parseSource,
   titleWithReason,
+  VERIFY_SOURCES,
   writeProjectFile,
   type ToolProbe,
+  type VerifySource,
 } from './realToolSupport.js';
 
 /**
- * Loads the Drizzle fixtures with the real tools: `tsc` type-checks them against drizzle-orm, and
- * `drizzle-kit generate` builds Drizzle's own snapshot of the schema (tables, columns, keys, foreign
- * keys, indexes, enums), which is compared with what the parser read. The comparison is one way for
- * constructs the parser deliberately drops (partial and expression indexes, check constraints).
+ * Compiles the generated Drizzle schemas with `tsc --strict`, runs `drizzle-kit generate` for the
+ * PostgreSQL, MySQL and SQLite output (no database server is needed for that), `drizzle-kit push`
+ * into a SQLite file, and compares what drizzle-kit and SQLite report (tables, columns,
+ * nullability, primary keys, unique constraints, indexes, foreign keys and referential actions)
+ * with the IR of every readable canonical fixture, the larger "extras" fixtures and the IR
+ * fixtures in `drizzleFixtures.ts`. The script `tools/validate-drizzle.ts` also builds Drizzle's
+ * relational configuration for each schema (so both sides of every relation must pair up) and runs
+ * a relational query over every relation through `drizzle-orm/better-sqlite3`.
  *
- * Set DRIZZLE_DIR to a directory where `npm install drizzle-orm drizzle-kit typescript @types/node`
- * has been run (see test/README.md and test/tools/setup-verification-tools.sh). The tests are
- * skipped when it is not set.
+ * Set DRIZZLE_DIR to a directory where `npm install drizzle-orm drizzle-kit typescript @types/node
+ * better-sqlite3 @types/better-sqlite3` has been run; see test/README.md and
+ * test/tools/setup-verification-tools.sh. The tests are skipped when it is not set.
  */
 
-type KitDialect = 'postgresql' | 'mysql' | 'sqlite';
-
-interface VerifyGroup {
-  label: string;
-  dialect: KitDialect;
-  /** Absolute paths of the files that make the schema. */
-  paths: string[];
+/** Directory name inside the scratch project, the ormbridge provider and the drizzle-kit dialect. */
+interface DialectCase {
+  directory: string;
+  provider: PrismaProvider;
 }
+
+const DIALECTS: readonly DialectCase[] = [
+  { directory: 'pg', provider: 'postgresql' },
+  { directory: 'mysql', provider: 'mysql' },
+  { directory: 'sqlite', provider: 'sqlite' },
+];
 
 const REQUIRED_PACKAGES: readonly string[] = [
   'drizzle-orm',
   'drizzle-kit',
   'typescript',
   '@types/node',
+  'better-sqlite3',
+  '@types/better-sqlite3',
 ];
 
-const EXTRAS_DIRECTORY: string = fileURLToPath(
-  new URL('./fixtures/drizzle-extras/', import.meta.url)
+/** drizzle-kit and tsc start slowly on a busy machine; every child process gets a generous limit. */
+const TOOL_TIMEOUT_MS: number = 240_000;
+const TEST_TIMEOUT_MS: number = 600_000;
+
+const BLOG_VALIDATOR_SOURCE: string = readFileSync(
+  fileURLToPath(new URL('./tools/validate-drizzle-blog.ts', import.meta.url)),
+  'utf8'
 );
 
-function extrasWith(suffix: string): string[] {
-  return readdirSync(EXTRAS_DIRECTORY)
-    .filter((name: string) => name.endsWith(suffix))
-    .sort()
-    .map((name: string) => join(EXTRAS_DIRECTORY, name));
-}
-
-const GROUPS: readonly VerifyGroup[] = [
-  {
-    label: 'canonical blog schema',
-    dialect: 'postgresql',
-    paths:
-      CANONICAL_FIXTURES.find((fixture) => fixture.format === 'drizzle')
-        ?.paths ?? [],
-  },
-  {
-    label: 'extras (PostgreSQL)',
-    dialect: 'postgresql',
-    paths: extrasWith('.pg.ts'),
-  },
-  { label: 'extras (MySQL)', dialect: 'mysql', paths: extrasWith('.mysql.ts') },
-  {
-    label: 'extras (SQLite)',
-    dialect: 'sqlite',
-    paths: extrasWith('.sqlite.ts'),
-  },
-];
+const VALIDATOR_SOURCE: string = readFileSync(
+  fileURLToPath(new URL('./tools/validate-drizzle.ts', import.meta.url)),
+  'utf8'
+);
 
 const TSCONFIG: string = JSON.stringify(
   {
     compilerOptions: {
       target: 'ES2022',
-      module: 'ESNext',
-      moduleResolution: 'Bundler',
+      module: 'nodenext',
+      moduleResolution: 'nodenext',
       strict: true,
-      noEmit: true,
+      esModuleInterop: true,
       skipLibCheck: true,
+      outDir: 'dist',
+      rootDir: '.',
       types: ['node'],
     },
-    include: ['schema'],
+    include: ['*.ts', '*/schema.ts', '*/drizzle.config.ts'],
   },
   null,
   2
 );
+
+const PUSH_CONFIG: string = [
+  `import { defineConfig } from 'drizzle-kit';`,
+  '',
+  'export default defineConfig({',
+  `  dialect: 'sqlite',`,
+  `  schema: './schema.ts',`,
+  `  dbCredentials: { url: './push.db' },`,
+  '});',
+  '',
+].join('\n');
 
 function probeDrizzle(): ToolProbe & { directory: string } {
   const directory: string = process.env.DRIZZLE_DIR ?? '';
@@ -114,7 +116,7 @@ function probeDrizzle(): ToolProbe & { directory: string } {
     return {
       available: false,
       reason:
-        'set DRIZZLE_DIR to a directory with drizzle-orm, drizzle-kit and typescript installed (see test/README.md)',
+        'set DRIZZLE_DIR to a directory with drizzle-orm, drizzle-kit, typescript and better-sqlite3 installed (see test/README.md)',
       directory,
     };
   }
@@ -133,6 +135,7 @@ function probeDrizzle(): ToolProbe & { directory: string } {
 }
 
 const probe: ReturnType<typeof probeDrizzle> = probeDrizzle();
+const toolDirectory: string = probe.directory;
 const directories: string[] = [];
 
 afterAll(() => {
@@ -141,7 +144,11 @@ afterAll(() => {
   }
 });
 
-function run(
+function binary(name: string): string {
+  return join(toolDirectory, 'node_modules', '.bin', name);
+}
+
+function runSync(
   directory: string,
   command: string,
   args: string[]
@@ -149,316 +156,171 @@ function run(
   return spawnSync(command, args, {
     cwd: directory,
     encoding: 'utf8',
-    timeout: 240_000,
+    timeout: TOOL_TIMEOUT_MS,
   });
 }
 
-// The parts of drizzle-kit's snapshot (versions 5 to 7) this test reads.
-interface SnapshotColumn {
-  name: string;
-  notNull: boolean;
-  primaryKey: boolean;
+interface ToolRun {
+  status: number | null;
+  output: string;
 }
 
-interface SnapshotForeignKey {
-  tableTo: string;
-  schemaTo?: string;
-  columnsFrom: string[];
-  columnsTo: string[];
-  onDelete?: string;
-  onUpdate?: string;
+/** Runs a command without blocking, so the three dialects can be processed side by side. */
+function run(
+  directory: string,
+  command: string,
+  args: string[]
+): Promise<ToolRun> {
+  return new Promise<ToolRun>((resolve) => {
+    const child = spawn(command, args, { cwd: directory });
+    let output: string = '';
+    child.stdout.on('data', (chunk: Buffer) => {
+      output += chunk.toString();
+    });
+    child.stderr.on('data', (chunk: Buffer) => {
+      output += chunk.toString();
+    });
+    const timer: NodeJS.Timeout = setTimeout(() => {
+      child.kill('SIGKILL');
+      output += `\ntimed out after ${TOOL_TIMEOUT_MS} ms`;
+    }, TOOL_TIMEOUT_MS);
+    child.on('close', (status: number | null) => {
+      clearTimeout(timer);
+      resolve({ status, output });
+    });
+  });
 }
 
-interface SnapshotIndex {
-  name: string;
-  columns: (string | { expression?: string; isExpression?: boolean })[];
-  isUnique: boolean;
+interface VerifyCase {
+  label: string;
+  load: () => Promise<IrSchema>;
 }
 
-interface SnapshotTable {
-  name: string;
-  schema?: string;
-  columns: Record<string, SnapshotColumn>;
-  indexes: Record<string, SnapshotIndex>;
-  foreignKeys: Record<string, SnapshotForeignKey>;
-  compositePrimaryKeys?: Record<string, { columns: string[] }>;
-  uniqueConstraints?: Record<string, { columns: string[] }>;
+const CASES: VerifyCase[] = [
+  ...VERIFY_SOURCES.map((source: VerifySource): VerifyCase => ({
+    label: source.label,
+    load: () => parseSource(source),
+  })),
+  ...DRIZZLE_IR_FIXTURES.map(([label, make]): VerifyCase => ({
+    label,
+    load: () => Promise.resolve(make()),
+  })),
+];
+
+/** The IR the emitter works from: many-to-many fields become join tables, then the naming mode applies. */
+function preparedSchema(schema: IrSchema, naming: NamingMode): IrSchema {
+  const expanded: IrSchema = expandManyToMany(schema);
+  return naming === 'normalize' ? normalizeSchema(expanded) : expanded;
 }
 
-interface Snapshot {
-  tables: Record<string, SnapshotTable>;
-  enums?: Record<string, { name: string; schema?: string; values: string[] }>;
-}
-
-const ACTIONS: Readonly<Record<IrOnDelete, string>> = {
-  cascade: 'cascade',
-  setNull: 'set null',
-  restrict: 'restrict',
-  noAction: 'no action',
-  setDefault: 'set default',
-};
-
-function tableKey(schema: string | undefined, name: string): string {
-  return schema === undefined || schema === 'public' || schema === ''
-    ? name
-    : `${schema}.${name}`;
-}
-
-/** Lists everything the snapshot disagrees with the IR about; empty when they match. */
-function compareWithSnapshot(ir: IrSchema, snapshot: Snapshot): string[] {
-  const problems: string[] = [];
-  const tables: Map<string, SnapshotTable> = new Map(
-    Object.values(snapshot.tables).map((table: SnapshotTable) => [
-      tableKey(table.schema, table.name),
-      table,
-    ])
+describe(titleWithReason('drizzle emitter: real Drizzle ORM', probe), () => {
+  const cases: (readonly [string, NamingMode, VerifyCase])[] = CASES.flatMap(
+    (verifyCase: VerifyCase): (readonly [string, NamingMode, VerifyCase])[] => [
+      [verifyCase.label, 'preserve', verifyCase],
+      [verifyCase.label, 'normalize', verifyCase],
+    ]
   );
-  const modelKeys: Set<string> = new Set(
-    ir.models.map((model: IrModel) => tableKey(model.schema, model.tableName))
-  );
-  for (const key of tables.keys()) {
-    if (!modelKeys.has(key)) {
-      problems.push(`drizzle-kit has the table ${key}, the parser does not`);
-    }
-  }
-  const columnOf = (model: IrModel, name: string): string => {
-    const found: IrField | IrRelation | undefined =
-      model.fields.find((item: IrField) => item.name === name) ??
-      model.relations.find((item: IrRelation) => item.name === name);
-    return found?.columnName ?? name;
-  };
 
-  for (const model of ir.models) {
-    const key: string = tableKey(model.schema, model.tableName);
-    const table: SnapshotTable | undefined = tables.get(key);
-    if (table === undefined) {
-      problems.push(`the parser has the table ${key}, drizzle-kit does not`);
-      continue;
-    }
-    const expectedColumns: Map<
-      string,
-      { nullable: boolean; primary: boolean }
-    > = new Map();
-    for (const field of model.fields) {
-      expectedColumns.set(field.columnName, {
-        nullable: field.isNullable,
-        primary: field.isPrimaryKey,
-      });
-    }
-    for (const relation of model.relations) {
-      expectedColumns.set(relation.columnName, {
-        nullable: relation.isNullable,
-        primary: relation.isPrimaryKey === true,
-      });
-    }
-    const actualNames: string[] = Object.values(table.columns).map(
-      (column: SnapshotColumn) => column.name
-    );
-    expect([...expectedColumns.keys()].sort(), `${key} columns`).toEqual(
-      actualNames.sort()
-    );
-    for (const column of Object.values(table.columns)) {
-      const expected = expectedColumns.get(column.name);
-      if (expected === undefined) {
-        continue;
-      }
-      if (column.notNull === expected.nullable) {
-        problems.push(
-          `${key}.${column.name}: notNull is ${String(column.notNull)} in drizzle-kit`
-        );
-      }
-      const isKeyColumn: boolean =
-        column.primaryKey ||
-        // MySQL lists even a single-column primary key as a (composite) constraint.
-        Object.values(table.compositePrimaryKeys ?? {}).some(
-          (entry) => entry.columns.join(',') === column.name
-        );
-      if (expected.primary && !isKeyColumn) {
-        problems.push(
-          `${key}.${column.name}: is not a primary key in drizzle-kit`
-        );
-      }
-    }
-    if (model.compositePrimaryKey !== undefined) {
-      const expected: string = model.compositePrimaryKey
-        .map((name: string) => columnOf(model, name))
-        .join(',');
-      const found: boolean = Object.values(
-        table.compositePrimaryKeys ?? {}
-      ).some((entry) => entry.columns.join(',') === expected);
-      if (!found) {
-        problems.push(`${key}: composite primary key (${expected}) not found`);
-      }
-    }
-
-    const foreignKeys: SnapshotForeignKey[] = Object.values(table.foreignKeys);
-    const targetKey = (name: string): string => {
-      const target: IrModel | undefined = ir.models.find(
-        (item: IrModel) => item.name === name
-      );
-      return target === undefined
-        ? name
-        : tableKey(target.schema, target.tableName);
-    };
-    const snapshotTarget = (foreignKey: SnapshotForeignKey): string =>
-      tableKey(foreignKey.schemaTo, foreignKey.tableTo);
-    for (const relation of model.relations) {
-      const found: SnapshotForeignKey | undefined = foreignKeys.find(
-        (candidate: SnapshotForeignKey) =>
-          candidate.columnsFrom.join(',') === relation.columnName &&
-          snapshotTarget(candidate) === targetKey(relation.targetModel)
-      );
-      if (found === undefined) {
-        problems.push(`${key}.${relation.columnName}: foreign key not found`);
-      } else if (
-        (found.onDelete ?? 'no action') !== ACTIONS[relation.onDelete] ||
-        (found.onUpdate ?? 'no action') !==
-          ACTIONS[relation.onUpdate ?? 'noAction']
-      ) {
-        problems.push(
-          `${key}.${relation.columnName}: actions are ${String(found.onDelete)}/${String(found.onUpdate)} in drizzle-kit`
-        );
-      }
-    }
-    for (const composite of model.compositeForeignKeys ??
-      ([] as IrCompositeForeignKey[])) {
-      const columns: string = composite.fields
-        .map((name: string) => columnOf(model, name))
-        .join(',');
-      if (
-        !foreignKeys.some(
-          (candidate: SnapshotForeignKey) =>
-            candidate.columnsFrom.join(',') === columns &&
-            snapshotTarget(candidate) === targetKey(composite.targetModel)
-        )
-      ) {
-        problems.push(`${key}: composite foreign key (${columns}) not found`);
-      }
-    }
-
-    const snapshotIndexes: { columns: string; isUnique: boolean }[] = [
-      ...Object.values(table.indexes).map((index: SnapshotIndex) => ({
-        columns: index.columns
-          .map((column) =>
-            typeof column === 'string' ? column : (column.expression ?? '?')
-          )
-          .join(','),
-        isUnique: index.isUnique,
-      })),
-      ...Object.values(table.uniqueConstraints ?? {}).map((entry) => ({
-        columns: entry.columns.join(','),
-        isUnique: true,
-      })),
-    ];
-    const expectedIndexes: { columns: string; isUnique: boolean }[] = [
-      ...model.indexes.map((index: IrIndex) => ({
-        columns: index.fields
-          .map((name: string) => columnOf(model, name))
-          .join(','),
-        isUnique: index.isUnique,
-      })),
-      ...model.fields
-        .filter((field: IrField) => field.isUnique)
-        .map((field: IrField) => ({
-          columns: field.columnName,
-          isUnique: true,
-        })),
-    ];
-    for (const index of expectedIndexes) {
-      if (
-        !snapshotIndexes.some(
-          (candidate) =>
-            candidate.columns === index.columns &&
-            candidate.isUnique === index.isUnique
-        )
-      ) {
-        problems.push(
-          `${key}: ${index.isUnique ? 'unique ' : ''}index on (${index.columns}) not found`
-        );
-      }
-    }
-  }
-
-  for (const enumeration of ir.enums.filter(
-    (item: IrEnum) => item.dbName !== undefined || item.schema !== undefined
-  )) {
-    const key: string = tableKey(
-      enumeration.schema,
-      enumeration.dbName ?? enumeration.name
-    );
-    const found = Object.values(snapshot.enums ?? {}).find(
-      (candidate) => tableKey(candidate.schema, candidate.name) === key
-    );
-    if (found === undefined) {
-      problems.push(`enum ${key} not found in drizzle-kit`);
-    } else if (
-      found.values.join(',') !==
-      enumeration.values.map((value) => value.dbValue).join(',')
-    ) {
-      problems.push(`enum ${key} has other values in drizzle-kit`);
-    }
-  }
-  return problems;
-}
-
-describe(titleWithReason('drizzle parser: real Drizzle', probe), () => {
-  it.skipIf(!probe.available).each(GROUPS)(
-    'type-checks the $label with tsc and agrees with drizzle-kit',
-    async (group: VerifyGroup) => {
-      const toolBin: string = join(probe.directory, 'node_modules', '.bin');
+  it.skipIf(!probe.available).each(cases)(
+    'compiles, generates SQL and pushes the schema generated from %s (%s naming)',
+    async (label: string, naming: NamingMode, verifyCase: VerifyCase) => {
+      const schema: IrSchema = await verifyCase.load();
       const directory: string = mkdtempSync(
         join(tmpdir(), 'ormbridge-drizzle-')
       );
       directories.push(directory);
       symlinkSync(
-        join(probe.directory, 'node_modules'),
+        join(toolDirectory, 'node_modules'),
         join(directory, 'node_modules'),
         'dir'
       );
-      mkdirSync(join(directory, 'schema'));
-      for (const path of group.paths) {
-        copyFileSync(path, join(directory, 'schema', basename(path)));
+      const adapter = expectOk(getFormat('drizzle'));
+      for (const dialect of DIALECTS) {
+        const emitted: FormatEmitOutput = expectOk(
+          adapter.emit?.(schema, {
+            ...DEFAULT_OPTIONS,
+            naming,
+            provider: dialect.provider,
+          }) ?? {
+            ok: false,
+            error: { code: 'EMIT_FAILED', message: 'no emit' },
+          }
+        );
+        expect(emitted.text, `${label} emits files`).toBeUndefined();
+        for (const [path, text] of Object.entries(emitted.files ?? {})) {
+          writeProjectFile(directory, join(dialect.directory, path), text);
+        }
       }
-      writeProjectFile(directory, 'tsconfig.json', TSCONFIG);
       writeProjectFile(
         directory,
-        'drizzle.config.ts',
-        `export default { dialect: '${group.dialect}', schema: './schema', out: './out' };\n`
+        join('sqlite', 'push.config.ts'),
+        PUSH_CONFIG
+      );
+      writeProjectFile(directory, 'tsconfig.json', TSCONFIG);
+      writeProjectFile(directory, 'validate-drizzle.ts', VALIDATOR_SOURCE);
+      // The Django blog schema is also run against a real SQLite database.
+      const runsBlog: boolean = label === 'django' && naming === 'preserve';
+      if (runsBlog) {
+        writeProjectFile(
+          directory,
+          'validate-drizzle-blog.ts',
+          BLOG_VALIDATOR_SOURCE
+        );
+      }
+      writeProjectFile(
+        directory,
+        'spec.json',
+        JSON.stringify(buildSpec(preparedSchema(schema, naming)))
       );
 
-      const compiled: SpawnSyncReturns<string> = run(
+      const compiled: SpawnSyncReturns<string> = runSync(
         directory,
-        join(toolBin, 'tsc'),
+        binary('tsc'),
         ['-p', 'tsconfig.json']
       );
-      expect(compiled.stdout + compiled.stderr, 'tsc').toBe('');
+      expect(compiled.stdout + compiled.stderr, `${label} tsc`).toBe('');
       expect(compiled.status).toBe(0);
 
-      const generated: SpawnSyncReturns<string> = run(
-        directory,
-        join(toolBin, 'drizzle-kit'),
-        ['generate', '--config', 'drizzle.config.ts']
+      const generated: ToolRun[] = await Promise.all(
+        DIALECTS.map((dialect: DialectCase) =>
+          run(join(directory, dialect.directory), binary('drizzle-kit'), [
+            'generate',
+          ])
+        )
       );
-      expect(generated.stderr, generated.stdout).toBe('');
-      expect(generated.status).toBe(0);
+      generated.forEach((result: ToolRun, position: number) => {
+        expect(
+          result.status,
+          `${label} drizzle-kit generate (${DIALECTS[position]?.directory}): ${result.output}`
+        ).toBe(0);
+      });
+      const pushed: ToolRun = await run(
+        join(directory, 'sqlite'),
+        binary('drizzle-kit'),
+        ['push', '--config=push.config.ts', '--force']
+      );
+      expect(pushed.status, `${label} drizzle-kit push: ${pushed.output}`).toBe(
+        0
+      );
 
-      const snapshot: Snapshot = JSON.parse(
-        readFileSync(
-          join(directory, 'out', 'meta', '0000_snapshot.json'),
-          'utf8'
-        )
-      ) as Snapshot;
-      const ir: IrSchema = expectOk(
-        await parseDrizzle(
-          group.paths.map((path: string) => ({
-            path,
-            text: readFileSync(path, 'utf8'),
-          })),
-          { appLabel: 'blog' }
-        )
-      );
-      expect(compareWithSnapshot(ir, snapshot)).toEqual([]);
+      const verified: SpawnSyncReturns<string> = runSync(directory, 'node', [
+        'dist/validate-drizzle.js',
+        'spec.json',
+        ...DIALECTS.map((dialect: DialectCase) => dialect.directory),
+      ]);
+      expect(verified.stderr, `${label}: ${verified.stdout}`).toBe('');
+      expect(verified.stdout).toContain('drizzle schema verified');
+      expect(verified.status).toBe(0);
+
+      if (runsBlog) {
+        const blog: SpawnSyncReturns<string> = runSync(directory, 'node', [
+          'dist/validate-drizzle-blog.js',
+        ]);
+        expect(blog.stderr, `${label}: ${blog.stdout}`).toBe('');
+        expect(blog.stdout).toContain('drizzle blog verified');
+        expect(blog.status).toBe(0);
+      }
     },
-    300_000
+    TEST_TIMEOUT_MS
   );
 });

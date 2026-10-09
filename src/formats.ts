@@ -1,5 +1,6 @@
 import { emitDjango } from './emitters/django.js';
 import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
+import { emitDrizzle } from './emitters/drizzle.js';
 import { emitGorm, isValidGoPackageName } from './emitters/gorm.js';
 import { emitGraphene } from './emitters/graphene.js';
 import { emitLaravel } from './emitters/laravel.js';
@@ -424,9 +425,9 @@ const gormAdapter: FormatAdapter = {
 
 const drizzleAdapter: FormatAdapter = {
   name: 'drizzle',
-  // No extension is claimed: ".ts" is too generic to infer, so pass --from drizzle. Read only for now.
+  // No extension is claimed: ".ts" is too generic to infer, so pass --from/--to drizzle.
   extensions: [],
-  description: 'Drizzle ORM schemas (TypeScript, PostgreSQL / MySQL / SQLite)',
+  description: 'Drizzle ORM schemas (TypeScript, pg/mysql/sqlite-core)',
   parse: (
     sources: SourceText[],
     options: FormatOptions
@@ -437,6 +438,13 @@ const drizzleAdapter: FormatAdapter = {
         text: source.text,
       })),
       { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+  emit: (schema: IrSchema, options: FormatOptions): Result<FormatEmitOutput> =>
+    ok(
+      emitDrizzle(schema, {
+        provider: options.provider,
+        naming: options.naming,
+      })
     ),
 };
 

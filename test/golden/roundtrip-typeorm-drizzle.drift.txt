@@ -1,0 +1,17 @@
+@@ schema.ts
++ export const postTag = pgTable(
++ export const postTagRelations = relations(postTag, ({ one }) => ({
++ export type NewPostTag = typeof postTag.$inferInsert;
++ export type PostTag = typeof postTag.$inferSelect;
++ fields: [postTag.postId],
++ fields: [postTag.tagId],
++ postTags: many(postTag),
++ postTags: many(postTag),
+- export const postTags = pgTable(
+- export const postTagsRelations = relations(postTags, ({ one }) => ({
+- export type NewPostTags = typeof postTags.$inferInsert;
+- export type PostTags = typeof postTags.$inferSelect;
+- fields: [postTags.postId],
+- fields: [postTags.tagId],
+- postTags: many(postTags),
+- postTags: many(postTags),
