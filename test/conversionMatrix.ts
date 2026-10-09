@@ -36,6 +36,29 @@ export function matrixPairs(): [FormatAdapter, FormatAdapter][] {
   return pairs;
 }
 
+/**
+ * Formats that can only be read (no writer yet, for example GORM). They join the
+ * matrix as sources: each is written to every readable and writable format and
+ * read back, but the second trip back through the source is not possible.
+ */
+export function readOnlyFormats(): FormatAdapter[] {
+  return listFormats().filter(
+    (format: FormatAdapter) =>
+      format.parse !== undefined && format.emit === undefined
+  );
+}
+
+/** Every pair (A, B) where A can only be read and B can be read and written. */
+export function readOnlyPairs(): [FormatAdapter, FormatAdapter][] {
+  const pairs: [FormatAdapter, FormatAdapter][] = [];
+  for (const source of readOnlyFormats()) {
+    for (const target of matrixFormats()) {
+      pairs.push([source, target]);
+    }
+  }
+  return pairs;
+}
+
 function unwrap<T>(
   result: { ok: true; value: T } | { ok: false; error: { message: string } },
   what: string
@@ -131,6 +154,8 @@ export interface MatrixCell {
   sourceSchema: IrSchema;
   /** Differences between the target IR after one and after two trips (A->B->A->B). */
   idempotenceDifferences: IrDifference[];
+  /** True when the source can only be read, so the second trip was not run. */
+  readOnlySource?: boolean;
 }
 
 /** Runs one cell: parse A's canonical fixture, emit B, re-parse B, compare. */
@@ -163,11 +188,38 @@ export async function computeCell(
   };
 }
 
-/** Computes every cell of the matrix. */
+/** Runs one cell for a source that can only be read: parse A, emit B, re-parse B, compare. */
+export async function computeReadOnlyCell(
+  source: FormatAdapter,
+  target: FormatAdapter
+): Promise<MatrixCell> {
+  const sourceIr: IrSchema = await parseWith(
+    source,
+    loadCanonicalSources(source.name)
+  );
+  const emitted: EmittedText = emitWith(target, sourceIr);
+  const targetIr: IrSchema = await parseEmitted(target, emitted);
+  return {
+    source: source.name,
+    target: target.name,
+    differences: compareIr(sourceIr, targetIr),
+    emitWarnings: emitted.warnings,
+    reparseWarnings: targetIr.warnings,
+    emitted: emitted.text,
+    sourceSchema: sourceIr,
+    idempotenceDifferences: [],
+    readOnlySource: true,
+  };
+}
+
+/** Computes every cell of the matrix: the read-write pairs first, then the read-only sources. */
 export async function computeMatrix(): Promise<MatrixCell[]> {
   const cells: MatrixCell[] = [];
   for (const [source, target] of matrixPairs()) {
     cells.push(await computeCell(source, target));
+  }
+  for (const [source, target] of readOnlyPairs()) {
+    cells.push(await computeReadOnlyCell(source, target));
   }
   return cells;
 }

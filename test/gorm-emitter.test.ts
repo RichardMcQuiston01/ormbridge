@@ -168,9 +168,9 @@ describe('gorm emitter: files and package', () => {
     );
   });
 
-  it('is registered as a write-only "gorm" format that does not claim .go', () => {
+  it('is registered as a "gorm" format that does not claim .go', () => {
     const adapter = expectOk(getFormat('gorm'));
-    expect(adapter.parse).toBeUndefined();
+    expect(adapter.parse).toBeDefined();
     expect(adapter.emit).toBeDefined();
     expect(adapter.extensions).toEqual([]);
   });

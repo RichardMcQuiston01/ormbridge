@@ -36,7 +36,7 @@ export const LOSS_REASONS: readonly LossReason[] = [
     id: 'join-table',
     title: 'Many-to-many becomes an explicit join model in Prisma',
     explanation:
-      "In `preserve` naming mode the Prisma writer expands every many-to-many field with `expandManyToMany` (`src/transforms.ts`) into an explicit join model (`PostTags`) with a surrogate `id`, two cascading foreign keys and a unique pair. This mirrors the table Django creates, so existing Django databases stay compatible, and it avoids Prisma's implicit `_AToB` table. Prisma reads that model back as an ordinary model, so the relation `Post.tags` is not restored as a many-to-many. For TypeORM sources the join table is TypeORM's own, whose primary key is the composite of the two foreign keys, so the Prisma join model also gains a surrogate `id` column that the source table does not have.",
+      "In `preserve` naming mode the Prisma writer expands every many-to-many field with `expandManyToMany` (`src/transforms.ts`) into an explicit join model (`PostTags`) with a surrogate `id`, two cascading foreign keys and a unique pair. This mirrors the table Django creates, so existing Django databases stay compatible, and it avoids Prisma's implicit `_AToB` table. Prisma reads that model back as an ordinary model, so the relation `Post.tags` is not restored as a many-to-many. For TypeORM and GORM sources the join table is the ORM's own, whose primary key is the composite of the two foreign keys, so the Prisma join model also gains a surrogate `id` column that the source table does not have.",
   },
   {
     id: 'doctrine-lifecycle-callback',
@@ -49,6 +49,18 @@ export const LOSS_REASONS: readonly LossReason[] = [
     title: 'UUID and JSON defaults are set in the Doctrine constructor',
     explanation:
       'Doctrine ORM 3 has no built-in UUID generator, and a column default for JSON or array columns is not portable, so the Doctrine writer assigns these defaults in the entity constructor (for example `$this->publicId = self::generateUuid();`). The Doctrine reader only sees the mapping attributes, not constructor statements, so these defaults are not recovered when the output is read back. Scalar defaults that can be written as a column option or property initializer survive.',
+  },
+  {
+    id: 'gorm-reverse-name',
+    title: 'GORM names reverse relations in Go',
+    explanation:
+      'GORM has no related name: the reverse side of a relation is a field on the other struct, named after the plural of the model (`Posts`). A Django `related_name` or an ORM-specific default such as `postset` is therefore replaced by the GORM field name, and the GORM reader recovers that name rather than the original.',
+  },
+  {
+    id: 'gorm-auto-timestamps',
+    title: 'GORM refreshes `updated_at` columns itself',
+    explanation:
+      'A column named `updated_at` (or `UpdatedAt`) is maintained by GORM through `autoUpdateTime`, which the GORM writer adds and the reader reports as "updated automatically". A source format that cannot express the flag (Doctrine lifecycle callbacks are not read) therefore gains it after a pass through GORM.',
   },
   {
     id: 'django-enum-length-floor',
@@ -214,11 +226,21 @@ export function explainDifference(
         : undefined;
     }
     case 'fieldAutoUpdated':
+      if (
+        involves(cell, 'gorm') &&
+        difference.field === 'updated_at' &&
+        difference.before === 'false' &&
+        difference.after === 'true'
+      ) {
+        return 'gorm-auto-timestamps';
+      }
       return involves(cell, 'doctrine') &&
         difference.before === 'true' &&
         difference.after === 'false'
         ? 'doctrine-lifecycle-callback'
         : undefined;
+    case 'relationRelatedName':
+      return involves(cell, 'gorm') ? 'gorm-reverse-name' : undefined;
     case 'fieldDefault':
       return involves(cell, 'doctrine') &&
         difference.after === '(none)' &&
@@ -279,13 +301,17 @@ function summaryCell(cell: MatrixCell | undefined): string {
     : `⚠ ${count} difference${count === 1 ? '' : 's'}`;
 }
 
-function summaryMatrix(cells: MatrixCell[], formats: string[]): string[] {
+function summaryMatrix(
+  cells: MatrixCell[],
+  sources: string[],
+  targets: string[]
+): string[] {
   const lines: string[] = [
-    `| from \\ to | ${formats.join(' | ')} |`,
-    `| --- | ${formats.map(() => '---').join(' | ')} |`,
+    `| from \\ to | ${targets.join(' | ')} |`,
+    `| --- | ${targets.map(() => '---').join(' | ')} |`,
   ];
-  for (const source of formats) {
-    const row: string[] = formats.map((target: string) =>
+  for (const source of sources) {
+    const row: string[] = targets.map((target: string) =>
       summaryCell(
         cells.find(
           (cell: MatrixCell) => cell.source === source && cell.target === target
@@ -304,7 +330,7 @@ function pairTable(cells: MatrixCell[]): string[] {
   ];
   for (const cell of cells) {
     lines.push(
-      `| ${pairLabel(cell)} | ${summaryCell(cell)} | ${cell.emitWarnings.length} | ${cell.reparseWarnings.length} | ${cell.idempotenceDifferences.length === 0 ? 'yes' : 'no'} |`
+      `| ${pairLabel(cell)} | ${summaryCell(cell)} | ${cell.emitWarnings.length} | ${cell.reparseWarnings.length} | ${cell.readOnlySource === true ? 'n/a (read only)' : cell.idempotenceDifferences.length === 0 ? 'yes' : 'no'} |`
     );
   }
   return lines;
@@ -345,6 +371,14 @@ function pairDetails(
     for (const warning of cell.reparseWarnings) {
       lines.push(`- ${warning}`);
     }
+  }
+  if (cell.readOnlySource === true) {
+    lines.push(
+      '',
+      `Second trip not checked: ${cell.source} can only be read, so ${cell.target} → ${cell.source} → ${cell.target} cannot be run.`,
+      ''
+    );
+    return lines;
   }
   const unexplainedSecondTrip: IrDifference[] =
     unexplainedIdempotenceDifferences(cell);
@@ -434,6 +468,20 @@ export function renderMatrixMarkdown(
       }
     }
   }
+  // Formats that only appear as the source of read-only cells cannot be written.
+  const readOnly: string[] = formats.filter((name: string) =>
+    cells
+      .filter(
+        (cell: MatrixCell) => cell.source === name || cell.target === name
+      )
+      .every(
+        (cell: MatrixCell) =>
+          cell.readOnlySource === true && cell.source === name
+      )
+  );
+  const readWrite: string[] = formats.filter(
+    (name: string) => !readOnly.includes(name)
+  );
   const usedReasons: LossReason[] = LOSS_REASONS.filter((reason: LossReason) =>
     cells.some((cell: MatrixCell) =>
       [...cell.differences, ...cell.idempotenceDifferences].some(
@@ -454,7 +502,7 @@ export function renderMatrixMarkdown(
     '',
     '<!-- Generated by `npm run docs:matrix` (scripts/generate-conversion-matrix.ts). Do not edit by hand: the tests fail when this file is stale. -->',
     '',
-    `This page shows what survives a round trip between the formats ormbridge can both read and write (${formats.join(', ')}). It is generated from the canonical "blog" schema in \`test/fixtures/\`, so it describes the constructs that schema uses; the README's "Limitations and warnings" section lists constructs it does not cover.`,
+    `This page shows what survives a round trip between the formats ormbridge can both read and write (${readWrite.join(', ')})${readOnly.length === 0 ? '' : `, and what survives when a format that can only be read (${readOnly.join(', ')}) is written to each of them`}. It is generated from the canonical "blog" schema in \`test/fixtures/\`, so it describes the constructs that schema uses; the README's "Limitations and warnings" section lists constructs it does not cover.`,
     '',
     '## How a cell is computed',
     '',
@@ -469,13 +517,19 @@ export function renderMatrixMarkdown(
     '',
     "The comparison covers models, table names, fields, types, nullability, defaults, lengths and precision, primary and composite keys, relations (kind, target, nullability, `onDelete`, reverse accessor), enums, indexes and uniques. It ignores differences that mean nothing: ordering, case and underscore spelling of identifiers (`created_at` vs `createdAt`, `DRAFT` vs `Draft`), the Django app label, index and constraint names the target generated itself (an explicit name that is lost is reported), Django's implicit reverse accessor names (`post_set`), the nullability of many-to-many relations (they have no column), and values a target must invent (Django enum labels and the `max_length` Django requires on enum columns).",
     '',
+    ...(readOnly.length === 0
+      ? []
+      : [
+          `A format that can only be read (${readOnly.join(', ')}) has no writer yet, so its cells stop after step 4: the schema is read from its fixture, written to the target and read back, but it cannot be written back to the source for a second trip. These rows join the full matrix, with a second trip, once the format gains a writer.`,
+          '',
+        ]),
     'Text goldens in `test/golden/` pin the exact output and the `roundtrip-*.drift.txt` files pin the textual drift; this page is the semantic view of the same conversions.',
     '',
     '## Summary',
     '',
     'Rows are the source format, columns the target. ✔ means the canonical schema comes back unchanged; ⚠ gives the number of structural differences.',
     '',
-    ...summaryMatrix(cells, formats),
+    ...summaryMatrix(cells, formats, readWrite),
     '',
     ...pairTable(cells),
     '',

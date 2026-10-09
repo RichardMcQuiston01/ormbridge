@@ -1,0 +1,5 @@
+@@ models/post.go
++ Metadata    datatypes.JSON   `gorm:"not null"`
++ PublicID    uuid.UUID        `gorm:"type:uuid;not null;unique"`
+- Metadata    datatypes.JSON   `gorm:"not null;default:'{}'"`
+- PublicID    uuid.UUID        `gorm:"type:uuid;not null;unique;default:gen_random_uuid()"`

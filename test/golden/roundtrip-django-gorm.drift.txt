@@ -1,0 +1,5 @@
+@@ models/post.go
++ Status      PostStatus       `gorm:"size:32;not null;default:draft;index:post_pub_status_idx,priority:2"`
++ Title       string           `gorm:"size:200;not null;uniqueIndex:uni_blog_post_author_id_title,priority:2;index:post_title_idx"`
+- Status      PostStatus       `gorm:"size:20;not null;default:draft;index:post_pub_status_idx,priority:2"`
+- Title       string           `gorm:"size:200;not null;index;uniqueIndex:uni_blog_post_author_id_title,priority:2"`

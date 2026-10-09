@@ -5,7 +5,6 @@ import { listFormats, type FormatAdapter } from '../src/formats.js';
 import {
   computeEmitOnlyMatrix,
   computeMatrix,
-  emitOnlyFormats,
   emitWith,
   matrixFormats,
   matrixPairs,
@@ -43,7 +42,7 @@ describe('conversion matrix coverage', () => {
     const formats: FormatAdapter[] = matrixFormats();
     expect(formats.length).toBeGreaterThanOrEqual(3);
     expect(cells).toHaveLength(formats.length * (formats.length - 1));
-    expect(matrixPairs()).toHaveLength(cells.length);
+    expect(matrixPairs()).toHaveLength(formats.length * (formats.length - 1));
   });
 });
 
@@ -68,25 +67,6 @@ describe.each(
         unexplainedIdempotenceDifferences(cellFor(source, target))
       )
     ).toBe('');
-  });
-});
-
-describe('write-only targets', () => {
-  it('has one cell per readable format for every checkable write-only target', () => {
-    expect(emitOnlyFormats().map((format) => format.name)).toContain('gorm');
-    expect(emitOnlyCells).toHaveLength(
-      emitOnlyFormats().length * matrixFormats().length
-    );
-  });
-
-  it.each(
-    emitOnlyCells.map((cell: EmitOnlyCell): [string, EmitOnlyCell] => [
-      `${cell.source} -> ${cell.target}`,
-      cell,
-    ])
-  )('%s writes files that cover the canonical schema', (_name, cell) => {
-    expect(cell.files.length).toBeGreaterThan(0);
-    expect(cell.missing).toEqual([]);
   });
 });
 

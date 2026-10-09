@@ -13,6 +13,7 @@ import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
+import { parseGorm } from './parsers/gorm.js';
 import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
 import { parseTypeorm } from './parsers/typeorm.js';
@@ -381,9 +382,20 @@ const laravelAdapter: FormatAdapter = {
 
 const gormAdapter: FormatAdapter = {
   name: 'gorm',
-  // No extension is claimed: ".go" is too generic to infer, so pass --to gorm.
+  // No extension is claimed: ".go" is too generic to infer, so pass --from/--to gorm.
   extensions: [],
   description: 'GORM models (Go structs with gorm tags)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseGorm(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
   emit: (
     schema: IrSchema,
     options: FormatOptions
