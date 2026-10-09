@@ -1,5 +1,6 @@
 import { emitDjango } from './emitters/django.js';
 import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
+import { emitDrizzle } from './emitters/drizzle.js';
 import { emitGorm, isValidGoPackageName } from './emitters/gorm.js';
 import { emitGraphene } from './emitters/graphene.js';
 import { emitLaravel } from './emitters/laravel.js';
@@ -13,6 +14,7 @@ import { emitJsonSchema } from './emitters/jsonSchema.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
+import { parseDrizzle } from './parsers/drizzle.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parseGorm } from './parsers/gorm.js';
 import { parseLaravel } from './parsers/laravel.js';
@@ -436,6 +438,31 @@ const gormAdapter: FormatAdapter = {
   },
 };
 
+const drizzleAdapter: FormatAdapter = {
+  name: 'drizzle',
+  // No extension is claimed: ".ts" is too generic to infer, so pass --from/--to drizzle.
+  extensions: [],
+  description: 'Drizzle ORM schemas (TypeScript, pg/mysql/sqlite-core)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseDrizzle(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+  emit: (schema: IrSchema, options: FormatOptions): Result<FormatEmitOutput> =>
+    ok(
+      emitDrizzle(schema, {
+        provider: options.provider,
+        naming: options.naming,
+      })
+    ),
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -444,6 +471,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(doctrineAdapter),
   registerFormat(laravelAdapter),
   registerFormat(gormAdapter),
+  registerFormat(drizzleAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
   registerFormat(jsonSchemaAdapter),

@@ -6,6 +6,7 @@ import {
   type SourceText,
 } from '../src/formats.js';
 import type { IrSchema } from '../src/ir.js';
+import { checkDrizzleOutput } from './drizzleCoverage.js';
 import { checkGormOutput } from './gormCoverage.js';
 import { checkJsonSchemaOutput } from './jsonSchemaCoverage.js';
 import { loadCanonicalSources } from './harness.js';
@@ -234,6 +235,7 @@ const EMIT_ONLY_CHECKS: Readonly<
   Record<string, (schema: IrSchema, files: Record<string, string>) => string[]>
 > = {
   gorm: checkGormOutput,
+  drizzle: checkDrizzleOutput,
   'json-schema': checkJsonSchemaOutput,
 };
 

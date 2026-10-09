@@ -1,0 +1,18 @@
+shop.pg.ts: "activeCustomers" defines views (pgView), which the shared model cannot represent; it was skipped.
+creator.pg.ts: table "gadgets", column "extra": the column type "macaddr" has no equivalent in the shared model and was kept as an unsupported column.
+forum.mysql.ts: table "accounts", column "karma": unsigned integers are not represented in the shared model; the column was read as a signed integer.
+notes.sqlite.ts: table "notes", column "createdAt": integer({ mode: 'timestamp' }) stores Unix time as an integer; it was read as a date-time column.
+shop.pg.ts: table "customers", column "location": the column type "point" has no equivalent in the shared model and was kept as an unsupported column.
+shop.pg.ts: table "customers", column "embedding": the column type "vector(3)" has no equivalent in the shared model and was kept as an unsupported column.
+shop.pg.ts: table "customers": the unique constraint "customers_active_email" has a where condition (a partial index), which the shared model cannot represent; it was dropped because a full unique index would reject rows the source accepts.
+shop.pg.ts: table "customers": the index "customers_lower_email" is built on an expression (sql`lower(${table.email})`) rather than plain columns; it was skipped.
+shop.pg.ts: table "orders", column "placedAt": $defaultFn(() => new Date()) is evaluated in application code; it was read as a "now" default, which the target applies in the database instead.
+shop.pg.ts: table "orders", column "reference": $defaultFn(() => crypto.randomUUID()) is a client-side default computed in application code; it has no equivalent in the shared model and was dropped.
+shop.pg.ts: table "orders", column "note": $defaultFn(() => 'none') is a client-side default computed in application code; it has no equivalent in the shared model and was dropped.
+shop.pg.ts: table "orders": the check constraint 'orders_total_positive' has no equivalent in the shared model and was dropped.
+Gadget.extra: Unsupported("macaddr") is kept as an opaque column; Prisma Client cannot read, filter or write it.
+Customer.fullName: the generated column expression first_name || ' ' || last_name has no Prisma equivalent; it was written as a regular column, so Prisma will try to write to it.
+Customer.labels: Prisma lists cannot be optional; the nullable array was written as a required list.
+Customer.grid: Prisma supports only one-dimensional scalar lists; the 2-dimensional array was written as Json.
+Customer.location: Unsupported("point") is kept as an opaque column; Prisma Client cannot read, filter or write it.
+Customer.embedding: Unsupported("vector(3)") is kept as an opaque column; Prisma Client cannot read, filter or write it.

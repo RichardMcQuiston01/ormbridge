@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["shop"]
+}
+
+enum Role {
+  CUSTOMER @map("customer")
+  STAFF @map("staff")
+  SUPER_ADMIN @map("super-admin")
+
+  @@map("customer_role")
+  @@schema("shop")
+}
+
+enum AccountKind {
+  MEMBER @map("member")
+  MODERATOR @map("moderator")
+}
+
+model Widget {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String    @db.Text
+  actor      String    @db.Text
+  at         DateTime? @default(now()) @db.Timestamptz(6)
+  gadget_set Gadget[]
+
+  @@map("acme_widgets")
+}
+
+model Gadget {
+  id        BigInt                  @id @default(autoincrement())
+  extra     Unsupported("macaddr")?
+  size      BigInt?                 @default(10)
+  actor     String                  @db.Text
+  at        DateTime?               @default(now()) @db.Timestamptz(6)
+  widget_id String?                 @db.Uuid
+  widget    Widget?                 @relation(fields: [widget_id], references: [id], onDelete: NoAction)
+
+  @@map("gadgets")
+}
+
+model Account {
+  id         Int         @id @default(autoincrement())
+  handle     String      @db.VarChar(40)
+  kind       AccountKind @default(MEMBER)
+  karma      Int         @default(0)
+  level      Int         @default(1)
+  isBanned   Boolean     @default(false) @map("is_banned")
+  settings   Json?
+  avatar     Bytes?
+  joinedYear Int?        @map("joined_year")
+  balance    Decimal?    @db.Decimal(8, 2)
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  threads    Thread[]
+
+  @@unique([handle], map: "forum_accounts_handle_uq")
+  @@index([kind, createdAt], map: "forum_accounts_kind_idx")
+  @@map("forum_accounts")
+}
+
+model Thread {
+  id         BigInt    @id @default(autoincrement())
+  title      String    @db.VarChar(200)
+  body       String?   @db.Text
+  closedAt   DateTime? @default(now()) @map("closed_at") @db.Timestamptz(6)
+  account_id Int
+  author     Account   @relation(fields: [account_id], references: [id], onDelete: Cascade)
+
+  @@map("forum_threads")
+}
+
+model Note {
+  id         Int         @id @default(autoincrement())
+  title      String      @db.VarChar(120)
+  body       String?     @db.Text
+  payload    Json?
+  done       Boolean     @default(false)
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  score      Float?      @default(0.5)
+  cost       Decimal?
+  thumbnail  Bytes?
+  parent_id  Int?
+  parent     Note?       @relation("Note_parent", fields: [parent_id], references: [id], onDelete: SetNull)
+  children   Note[]      @relation("Note_parent")
+  attachment Attachment?
+
+  @@index([title], map: "lite_notes_title_idx")
+  @@map("lite_notes")
+}
+
+model Attachment {
+  path    String @db.Text
+  note_id Int    @id
+  note    Note   @relation(fields: [note_id], references: [id], onDelete: Cascade)
+
+  @@map("lite_attachments")
+}
+
+model Customer {
+  id        Int                       @id @default(autoincrement())
+  email     String                    @unique(map: "customers_email_key") @db.VarChar(255)
+  firstName String                    @map("first_name") @db.Text
+  lastName  String                    @map("last_name") @db.Text
+  fullName  String?                   @map("full_name") @db.Text
+  role      Role                      @default(CUSTOMER)
+  balance   Decimal                   @default(0) @db.Decimal(12, 2)
+  labels    String[]                  @db.Text
+  grid      Json?
+  location  Unsupported("point")?
+  embedding Unsupported("vector(3)")?
+  createdAt DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt DateTime?                 @map("deleted_at") @db.Timestamptz(6)
+  orders    Order[]                   @relation("Order_customer")
+  order_set Order[]                   @relation("Order_customerEmail")
+
+  @@index([createdAt(sort: Desc)], map: "customers_created_idx")
+  @@index([labels], type: Gin, map: "customers_labels_idx")
+  @@index([lastName, firstName(sort: Desc)], map: "customers_name_idx")
+  @@map("customers")
+  @@schema("shop")
+}
+
+model Product {
+  sku            String      @id @db.VarChar(32)
+  title          String      @db.Text
+  price          Decimal     @db.Decimal(10, 2)
+  order_line_set OrderLine[]
+
+  @@map("products")
+  @@schema("shop")
+}
+
+model Order {
+  id             Int         @id @default(autoincrement())
+  placedAt       DateTime?   @default(now()) @map("placed_at") @db.Timestamptz(6)
+  reference      String?     @db.Text
+  note           String?     @db.Text
+  total          Decimal     @db.Decimal(10, 2)
+  customer_id    Int
+  customer       Customer    @relation("Order_customer", fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  customer_email String?     @db.VarChar(255)
+  customerEmail  Customer?   @relation("Order_customerEmail", fields: [customer_email], references: [email], onDelete: SetNull)
+  lines          OrderLine[]
+
+  @@index([customer_id], map: "orders_customer_idx")
+  @@map("orders")
+  @@schema("shop")
+}
+
+model OrderLine {
+  lineNo   Int     @map("line_no")
+  quantity Int     @default(1)
+  order_id Int
+  order    Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  sku      String  @db.VarChar(32)
+  product  Product @relation(fields: [sku], references: [sku], onDelete: NoAction)
+
+  @@id([order_id, lineNo], map: "order_lines_pk")
+  @@map("order_lines")
+  @@schema("shop")
+}
+
+model Bin {
+  aisle        Int
+  shelf        Int
+  label        String?    @db.Text
+  shipment_set Shipment[]
+
+  @@id([aisle, shelf])
+  @@map("bins")
+  @@schema("shop")
+}
+
+model Shipment {
+  id        Int       @id @default(autoincrement())
+  aisle     Int?
+  shelf     Int?
+  shippedAt DateTime? @map("shipped_at") @db.Timestamptz(6)
+  bin       Bin?      @relation(fields: [aisle, shelf], references: [aisle, shelf], onDelete: Cascade, onUpdate: Restrict, map: "shipments_bin_fk")
+
+  @@map("shipments")
+  @@schema("shop")
+}
