@@ -40,17 +40,93 @@ ormbridge convert -i ./src/entities --from typeorm -o ./prisma/schema.prisma
 
 Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `.ts` = TypeORM), or set explicitly with `--from` / `--to`. Passing a directory does not infer the format, so add `--from typeorm` when reading a folder of TypeORM entities. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
 
-| Flag                     | Default        | Description                                                                                                                             |
-| ------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `-i, --input <paths...>` | required       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.              |
-| `-o, --output <path>`    | stdout         | File to write. Parent directories are created.                                                                                          |
-| `-f, --from <format>`    | inferred       | `django`, `prisma` or `typeorm`                                                                                                         |
-| `-t, --to <format>`      | inferred       | `django`, `prisma`, `typeorm`, `typescript` or `graphene` (output only)                                                                 |
-| `--naming <mode>`        | `preserve`     | `preserve` or `normalize` (see below)                                                                                                   |
-| `--provider <name>`      | `postgresql`   | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`. |
-| `--no-header`            | off            | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                 |
-| `--app-label <name>`     | directory name | Django app label used for default table names (`<app>_<model>`).                                                                        |
-| `--auto-field <type>`    | `int`          | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                          |
+| Flag                     | Default              | Description                                                                                                                             |
+| ------------------------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `-i, --input <paths...>` | required (or config) | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.              |
+| `-o, --output <path>`    | stdout               | File to write. Parent directories are created.                                                                                          |
+| `-f, --from <format>`    | inferred             | `django`, `prisma` or `typeorm`                                                                                                         |
+| `-t, --to <format>`      | inferred             | `django`, `prisma`, `typeorm`, `typescript` or `graphene` (output only)                                                                 |
+| `--naming <mode>`        | `preserve`           | `preserve` or `normalize` (see below)                                                                                                   |
+| `--provider <name>`      | `postgresql`         | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`. |
+| `--no-header`            | off                  | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                 |
+| `--app-label <name>`     | directory name       | Django app label used for default table names (`<app>_<model>`).                                                                        |
+| `--auto-field <type>`    | `int`                | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                          |
+| `--dry-run`              | off                  | Run the whole conversion and report what would be written, without touching the filesystem.                                             |
+| `--check`                | off                  | Exit with code 3 if an output file is missing or differs from the conversion. Writes nothing. Needs an output path.                     |
+| `--config <path>`        | searched             | Read settings from this JSON config file instead of searching for one.                                                                  |
+| `--no-config`            | off                  | Ignore any config file.                                                                                                                 |
+
+### Dry run and check
+
+`--dry-run` converts everything exactly as a real run would and reports each file it would create or update (line count, size, and for an existing file a short diff summary such as `+3 -1 lines (first difference at line 12)`), plus all warnings. Nothing is written.
+
+`--check` is for CI. It compares the conversion with the existing output and exits `0` when every file is up to date. If a file is missing or differs, it exits `3` and names the file:
+
+```text
+error: prisma/schema.prisma is out of date: +3 -1 lines (first difference at line 12).
+Generated output is stale. Run "ormbridge convert" without --check to regenerate it.
+```
+
+Only the files the conversion produces are compared; extra files already in an output directory are ignored.
+
+### Config file
+
+Instead of repeating flags, put them in `ormbridge.config.json` (or `.ormbridgerc.json`). ormbridge looks in the current directory and each parent directory, and stops after the first directory that contains a `package.json` (or at the filesystem root). Use `--config <path>` to pick a file explicitly, or `--no-config` to ignore it. The file is plain JSON; no code is executed. Relative paths inside it resolve against the config file's directory, not the working directory.
+
+```json
+{
+  "naming": "normalize",
+  "provider": "postgresql",
+  "conversions": [
+    {
+      "name": "prisma",
+      "input": "backend",
+      "output": "prisma/schema.prisma"
+    },
+    {
+      "name": "types",
+      "input": "backend",
+      "to": "typescript",
+      "output": "web/src/models.ts"
+    }
+  ]
+}
+```
+
+| Key           | Type                  | Same as                                                          |
+| ------------- | --------------------- | ---------------------------------------------------------------- |
+| `input`       | string or string list | `-i, --input`                                                    |
+| `output`      | string                | `-o, --output`                                                   |
+| `from`        | string                | `-f, --from`                                                     |
+| `to`          | string                | `-t, --to`                                                       |
+| `naming`      | string                | `--naming` (`preserve` or `normalize`)                           |
+| `provider`    | string                | `--provider`                                                     |
+| `header`      | boolean               | `--no-header` when `false`                                       |
+| `appLabel`    | string                | `--app-label`                                                    |
+| `autoField`   | string                | `--auto-field` (`int` or `bigint`)                               |
+| `conversions` | list of objects       | Several named conversions; each takes the keys above plus `name` |
+
+Top-level keys are defaults for every entry in `conversions`. Flags override config values. With no `-i`, `ormbridge convert` runs every conversion in the list (and `-o` is rejected, since the conversions write to different paths); with `-i`, it runs a single conversion from the top-level settings. Unknown keys and bad values fail with a message naming the key, such as `"conversions[1].naming" must be "preserve" or "normalize" (got "weird")`.
+
+To fail CI when generated files are stale:
+
+```yaml
+# .github/workflows/ci.yml
+- run: npx ormbridge convert --check
+```
+
+### Exit codes
+
+| Code | Meaning                                                                                              |
+| ---- | ---------------------------------------------------------------------------------------------------- |
+| `0`  | Success (with `--check`: every output is up to date).                                                |
+| `1`  | A conversion failed: unreadable input, parse error, unwritable output. Other conversions still run.  |
+| `2`  | Usage or config error: bad flag or value, unknown format, invalid config file. Nothing is converted. |
+| `3`  | `--check` found an output file that is missing or stale.                                             |
+
+### Multi-file output
+
+Most formats produce one text, written to the `-o` file. A format can instead return several files (a map of relative path to text; the Laravel and Doctrine formats will do this). Then `-o` must be a directory: every file is written beneath it, creating folders as needed, and `--dry-run` and `--check` cover each file. If `-o` is an existing file or looks like a file path (it has an extension), ormbridge fails with a message listing the files and asking for a directory. See "Emitter output" under [Format registry](#format-registry) for the adapter side.
 
 [Back to Table of Contents](#table-of-contents)
 
@@ -195,6 +271,22 @@ registerFormat({
   emit: (schema, options) => ({ ok: true, value: { text: '', warnings: [] } }),
 });
 ```
+
+#### Emitter output
+
+`emit` returns `Result<FormatEmitOutput>`, which is either `{ text, warnings }` (one file, what every built-in emitter returns) or `{ files, warnings }`, where `files` maps a relative path (forward slashes, no leading slash, no `..`) to the file text. Return the second form when the format needs several files:
+
+```ts
+emit: (schema) => ({
+  ok: true,
+  value: {
+    files: { 'src/Entity/Post.php': '<?php ...', 'config/orm.yaml': '...' },
+    warnings: [],
+  },
+}),
+```
+
+`convertText` then returns `files` next to an empty `output`, and the CLI writes the map under the `-o` directory. A multi-file format cannot print to stdout.
 
 [Back to Table of Contents](#table-of-contents)
 

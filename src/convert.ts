@@ -1,9 +1,9 @@
-import type { EmitOutput } from './emitters/prisma.js';
 import {
   BUILT_IN_FORMAT_NAMES,
   DEFAULT_APP_LABEL,
   getFormat,
   type FormatAdapter,
+  type FormatEmitOutput,
   type FormatName,
   type FormatOptions,
   type SourceText,
@@ -23,7 +23,10 @@ export interface ConvertOptions extends FormatOptions {
 }
 
 export interface ConvertResult {
+  /** The converted text. Empty when the emitter produced several files; see `files`. */
   output: string;
+  /** Relative path to file text, present only when the emitter produced several files. */
+  files?: Record<string, string>;
   warnings: string[];
   modelCount: number;
 }
@@ -58,16 +61,23 @@ export async function convertText(
     return parsed;
   }
 
-  const emitted: Result<EmitOutput> = emitter.value(parsed.value, options);
+  const emitted: Result<FormatEmitOutput> = emitter.value(
+    parsed.value,
+    options
+  );
   if (!emitted.ok) {
     return emitted;
   }
 
-  return ok({
-    output: emitted.value.text,
-    warnings: [...parsed.value.warnings, ...emitted.value.warnings],
-    modelCount: parsed.value.models.length,
-  });
+  const warnings: string[] = [
+    ...parsed.value.warnings,
+    ...emitted.value.warnings,
+  ];
+  const modelCount: number = parsed.value.models.length;
+  if (emitted.value.text === undefined) {
+    return ok({ output: '', files: emitted.value.files, warnings, modelCount });
+  }
+  return ok({ output: emitted.value.text, warnings, modelCount });
 }
 
 type ParseFunction = NonNullable<FormatAdapter['parse']>;
