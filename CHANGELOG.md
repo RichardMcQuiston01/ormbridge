@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Real-tool verification of the Graphene output now covers the canonical Django fixture (`test/graphene-verify.test.ts`, `test/tools/validate-graphene.py`, `test/realToolSupport.ts`). The fixture's models point their foreign keys at `settings.AUTH_USER_MODEL`, so the verification project installs `django.contrib.auth` and `contenttypes` (the user model is `auth.User`, the `auth_user` table the parser assumes) when the models file does not define its own `User`, and the test appends `User = get_user_model()` so the `User` the schema imports resolves; the fixture itself is used as written. The validator now creates rows in dependency order, so `Post` (author and category) and `Profile` (user) go through the create, get, list, update and delete round trip too, for every source. The django-extras fixture stays out (PostgreSQL fields).
+
 ## 0.3.0 - 2026-10-09
 
 Adds GORM (Go) as a readable and writable format, a `--prisma-version` flag, a Doctrine parser that recovers lifecycle callbacks and constructor defaults, and optional verification of the Django, Graphene and TypeORM output against the real tools.

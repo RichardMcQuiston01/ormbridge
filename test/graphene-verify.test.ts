@@ -13,6 +13,7 @@ import {
   probePython,
   titleWithReason,
   VERIFY_SOURCES,
+  withProjectUserModel,
   writeProjectFile,
   type ToolProbe,
   type VerifySource,
@@ -70,10 +71,10 @@ function validate(
 describe(
   titleWithReason('graphene emitter: real graphene-django', probe),
   () => {
-    // Django sources are not used: their models import the project's user model, which the
-    // schema pairs with only when the models are generated (see the Django tests).
+    // django-extras uses django.contrib.postgres fields, which need psycopg and a PostgreSQL
+    // server to load.
     const sources: VerifySource[] = VERIFY_SOURCES.filter(
-      (source: VerifySource) => source.format !== 'django'
+      (source: VerifySource) => source.label !== 'django-extras'
     );
 
     it.skipIf(!probe.available).each(sources)(
@@ -89,8 +90,13 @@ describe(
         }
         expect(graphene[1]).toBe(graphene[0]);
 
-        // The schema pairs with the Django models generated from the same source.
-        const models: string = (await convertSource(source, 'django')).output;
+        // The schema pairs with the Django models generated from the same source. A Django
+        // source already is its models file: it is used as written, with the project's user
+        // model made importable as `User` (see withProjectUserModel).
+        const models: string =
+          source.format === 'django'
+            ? withProjectUserModel(source.sources[0]?.text ?? '', schema)
+            : (await convertSource(source, 'django')).output;
         const run: SpawnSyncReturns<string> = validate(
           models,
           graphene[0] ?? '',
@@ -99,6 +105,40 @@ describe(
         expect(run.stderr, `${source.label}: ${run.stdout}`).toBe('');
         expect(run.stdout).toContain('graphene schema verified');
         expect(run.status).toBe(0);
+      },
+      180_000
+    );
+
+    it.skipIf(!probe.available)(
+      'runs the whole round trip on the Django fixture, relations included',
+      async () => {
+        const source: VerifySource | undefined = VERIFY_SOURCES.find(
+          (candidate: VerifySource) => candidate.label === 'django'
+        );
+        expect(source).toBeDefined();
+        if (source === undefined) {
+          return;
+        }
+        const models: string = source.sources[0]?.text ?? '';
+        // The fixture is verified as written: its foreign keys use the project's user model.
+        expect(models).toContain('settings.AUTH_USER_MODEL');
+        const schema: IrSchema = await parseSource(source);
+        const graphene: string = (await convertSource(source, 'graphene'))
+          .output;
+        const run: SpawnSyncReturns<string> = validate(
+          withProjectUserModel(models, schema),
+          graphene,
+          schema
+        );
+        expect(run.stderr).toBe('');
+        expect(run.status).toBe(0);
+        // Post needs a User and a Category, Profile a User: the round trip creates the rows
+        // they point at first, then fetches, updates and deletes every row.
+        for (const model of ['Category', 'Tag', 'User', 'Post', 'Profile']) {
+          expect(run.stdout).toMatch(
+            new RegExp(`round trip:.*\\b${model}\\b`, 'u')
+          );
+        }
       },
       180_000
     );

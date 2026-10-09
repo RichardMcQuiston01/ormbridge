@@ -13,8 +13,13 @@ script
 3. looks for an object type, a ``Query`` single and list field and the ``Create`` /
    ``Update`` / ``Delete`` mutations of every model, the scalar and relation fields of
    every object type and the enum type behind every enum-backed field,
-4. creates the tables and runs every list query, and a create / query / update / delete
-   round trip on each model whose input needs no other row.
+4. creates the tables, runs every list query, then creates a row of every model that can
+   be created (a model whose input needs another row follows the model it points at),
+   fetches and updates each one and deletes them in reverse order.
+
+When the models file defines no ``User`` (the models of a Django source use the project's
+user model) the project also installs ``django.contrib.auth``, so ``auth.User`` is the
+user model.
 
 Every difference is printed to stderr and the exit code is 1; success prints
 "graphene schema verified" and exits with 0. Exit code 2 means Django or graphene-django
@@ -24,6 +29,7 @@ is not importable.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -48,14 +54,33 @@ SAMPLE_VALUES: dict[str, str] = {
 }
 
 
+def defines_user_model(project: Path) -> bool:
+    """True when the generated models file defines its own ``User`` model."""
+    models = (project / APP_LABEL / "models.py").read_text(encoding="utf8")
+    return re.search(r"^class User\b", models, re.MULTILINE) is not None
+
+
 def configure_django(project: Path) -> None:
-    """Configures Django for the scratch project with an in-memory SQLite database."""
+    """Configures Django for the scratch project with an in-memory SQLite database.
+
+    The models of a Django source point their foreign keys at ``settings.AUTH_USER_MODEL``
+    and do not define the user model, so the project installs ``django.contrib.auth``
+    (``auth.User``, the default user model, in the table ``auth_user``). Models generated
+    from another format define their own ``User`` in the app, which would clash with it.
+    """
     sys.path.insert(0, str(project))
     import django
     from django.conf import settings
 
+    installed_apps = ["graphene_django", APP_LABEL]
+    if not defines_user_model(project):
+        installed_apps = [
+            "django.contrib.contenttypes",
+            "django.contrib.auth",
+            *installed_apps,
+        ]
     settings.configure(
-        INSTALLED_APPS=["graphene_django", APP_LABEL],
+        INSTALLED_APPS=installed_apps,
         DATABASES={
             "default": {
                 "ENGINE": "django.db.backends.sqlite3",
@@ -186,19 +211,39 @@ def execute(schema: Any, query: str) -> dict[str, Any]:
     return result.data or {}
 
 
-def required_input(schema: Any, input_name: str) -> str | None:
-    """Builds the input literal of a mutation, or None when it needs other rows."""
+def required_input(
+    schema: Any,
+    input_name: str,
+    model: dict[str, Any],
+    created: dict[str, str],
+) -> str | None:
+    """Builds the input literal of a mutation, or None when it needs rows not created yet.
+
+    A required relation is filled with the id of a row of its target model, taken from
+    ``created`` (the ids of the rows the round trip created so far).
+    """
     fields = type_fields(schema, input_name)
     if fields is None:
         return None
+    # The emitter names the input of a relation `<relation>_id`.
+    targets = {
+        camel(f"{relation['name']}_id"): relation["target"]
+        for relation in model["relations"]
+    }
     values: list[str] = []
     for name, field in fields.items():
         if not str(field.type).endswith("!"):
             continue
         scalar = getattr(unwrap(field.type), "name", "")
-        if scalar not in SAMPLE_VALUES or scalar == "ID":
+        if scalar == "ID":
+            target = targets.get(name)
+            if target is None or target not in created:
+                return None
+            values.append(f'{name}: "{created[target]}"')
+        elif scalar in SAMPLE_VALUES:
+            values.append(f"{name}: {SAMPLE_VALUES[scalar]}")
+        else:
             return None
-        values.append(f"{name}: {SAMPLE_VALUES[scalar]}")
     return "{" + ", ".join(values) + "}"
 
 
@@ -209,59 +254,114 @@ def key_field(model: dict[str, Any]) -> str | None:
     return camel(names[0]) if len(names) == 1 else None
 
 
-def run_queries(schema: Any, spec: Spec, problems: list[str]) -> None:
-    """Creates the tables, runs every list query and a CRUD round trip where possible."""
+def create_row(
+    schema: Any, model: dict[str, Any], created: dict[str, str]
+) -> str | None:
+    """Creates one row through the Create mutation and returns its id.
+
+    Returns None when the model cannot be created yet: its input needs a row of another
+    model that does not exist, or its columns take values samples cannot satisfy.
+    """
+    name = model["name"]
+    base = camel(snake(name))
+    key = key_field(model)
+    # Sample values cannot satisfy columns with a database-specific type (an Inet
+    # column validates as an IP address).
+    if (
+        len(model["primaryKey"]) > 1
+        or key is None
+        or any(c.get("nativeType") for c in model["columns"])
+    ):
+        return None
+    selection = f"{{ {base} {{ {key} }} }}"
+    if type_fields(schema, f"{name}Input") is None:
+        # A model without writable fields has a Create mutation without arguments.
+        mutation = f"mutation {{ create{name} {selection} }}"
+    else:
+        literal = required_input(schema, f"{name}Input", model, created)
+        if literal is None:
+            return None
+        mutation = f"mutation {{ create{name}(input: {literal}) {selection} }}"
+    created_row = execute(schema, mutation)
+    return str(created_row[f"create{name}"][base][key])
+
+
+def run_queries(schema: Any, spec: Spec, problems: list[str]) -> list[str]:
+    """Creates the tables, runs every list query and a CRUD round trip where possible.
+
+    Rows are created in passes, so a model whose input needs another row (a post needs its
+    author and category) follows the models it points at. Every created row is then fetched
+    and updated, and the rows are deleted in the reverse order of their creation. Returns
+    the names of the models that went through the round trip.
+    """
     from django.core.management import call_command
 
     call_command("migrate", run_syncdb=True, verbosity=0)
-    for model in spec["models"]:
-        name = model["name"]
+    models = {model["name"]: model for model in spec["models"]}
+    for name, model in models.items():
         base = camel(snake(name))
-        composite = len(model["primaryKey"]) > 1
         try:
             data = execute(schema, f"{{ {base}List {{ __typename }} }}")
             if data[f"{base}List"] != []:
                 problems.append(f"{base}List is not empty on a new database")
         except RuntimeError as error:
             problems.append(str(error))
-            continue
+
+    created: dict[str, str] = {}
+    pending = list(models)
+    progress = True
+    while pending and progress:
+        progress = False
+        for name in list(pending):
+            try:
+                identifier = create_row(schema, models[name], created)
+            except RuntimeError as error:
+                problems.append(str(error))
+                pending.remove(name)
+                continue
+            if identifier is not None:
+                created[name] = identifier
+                pending.remove(name)
+                progress = True
+
+    for name, identifier in created.items():
+        model = models[name]
+        base = camel(snake(name))
         key = key_field(model)
-        # Sample values cannot satisfy columns with a database-specific type (an Inet
-        # column validates as an IP address), so those models only get the list query.
-        if (
-            composite
-            or key is None
-            or any(c.get("nativeType") for c in model["columns"])
-        ):
-            continue
-        literal = required_input(schema, f"{name}Input")
-        if literal is None:
-            continue
         try:
-            created = execute(
-                schema,
-                f"mutation {{ create{name}(input: {literal}) "
-                f"{{ {base} {{ {key} }} }} }}",
+            fetched = execute(
+                schema, f'{{ {base}(id: "{identifier}") {{ {key} }} }}'
             )
-            identifier = created[f"create{name}"][base][key]
-            fetched = execute(schema, f'{{ {base}(id: "{identifier}") {{ {key} }} }}')
             if fetched[base] is None:
                 problems.append(f"{base}(id) did not find the created {name}")
+            listed = execute(schema, f"{{ {base}List {{ {key} }} }}")
+            if [str(row[key]) for row in listed[f"{base}List"]] != [identifier]:
+                problems.append(f"{base}List does not list the created {name}")
             if type_fields(schema, f"{name}UpdateInput") is not None:
-                updated = required_input(schema, f"{name}UpdateInput")
-                if updated is not None:
+                literal = required_input(schema, f"{name}UpdateInput", model, created)
+                if literal is not None:
                     execute(
                         schema,
                         f'mutation {{ update{name}(id: "{identifier}", '
-                        f"input: {updated}) {{ {base} {{ {key} }} }} }}",
+                        f"input: {literal}) {{ {base} {{ {key} }} }} }}",
                     )
+        except RuntimeError as error:
+            problems.append(str(error))
+
+    for name, identifier in reversed(created.items()):
+        try:
             deleted = execute(
                 schema, f'mutation {{ delete{name}(id: "{identifier}") {{ ok }} }}'
             )
             if deleted[f"delete{name}"]["ok"] is not True:
                 problems.append(f"delete{name} did not report ok")
+            base = camel(snake(name))
+            gone = execute(schema, f'{{ {base}(id: "{identifier}") {{ __typename }} }}')
+            if gone[base] is not None:
+                problems.append(f"{name} {identifier} still exists after delete{name}")
         except RuntimeError as error:
             problems.append(str(error))
+    return list(created)
 
 
 def main(argv: list[str]) -> int:
@@ -306,14 +406,15 @@ def main(argv: list[str]) -> int:
         problems.append(f"the introspection query failed: {introspection.errors[0]}")
     check_types(schema, spec, problems)
     check_operations(schema, spec, problems)
-    run_queries(schema, spec, problems)
+    round_trip = run_queries(schema, spec, problems)
 
     if problems:
         for problem in problems:
             print(f"- {problem}", file=sys.stderr)
         return 1
     print(
-        f"graphene schema verified: {len(spec['models'])} models, {len(sdl.splitlines())} SDL lines"
+        f"graphene schema verified: {len(spec['models'])} models, "
+        f"{len(sdl.splitlines())} SDL lines, round trip: {', '.join(round_trip)}"
     )
     return 0
 
