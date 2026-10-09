@@ -24,7 +24,7 @@ export interface ConversionConfig {
   header?: boolean;
   appLabel?: string;
   autoField?: 'int' | 'bigint';
-  /** PHP namespace of the Doctrine entities. */
+  /** PHP namespace of the Doctrine entities or Laravel models. */
   namespace?: string;
 }
 

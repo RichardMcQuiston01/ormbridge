@@ -1,6 +1,7 @@
 import { emitDjango } from './emitters/django.js';
 import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
 import { emitGraphene } from './emitters/graphene.js';
+import { emitLaravel } from './emitters/laravel.js';
 import {
   emitPrisma,
   type EmitOutput,
@@ -46,7 +47,10 @@ export interface FormatOptions {
   appLabel?: string;
   /** Primary key type used for Django models without an explicit key. */
   autoField: 'int' | 'bigInt';
-  /** PHP namespace of the Doctrine entities (default `App\Entity`); enums go in the sibling `Enum` namespace. */
+  /**
+   * PHP namespace of the generated classes. Doctrine entities default to `App\Entity` (enums in the sibling
+   * `Enum` namespace); Laravel models default to `App\Models` (enums in `App\Enums`).
+   */
   namespace?: string;
 }
 
@@ -331,12 +335,42 @@ const doctrineAdapter: FormatAdapter = {
   },
 };
 
+const laravelAdapter: FormatAdapter = {
+  name: 'laravel',
+  // No extension is claimed: ".php" is too generic to infer, so pass --to laravel.
+  extensions: [],
+  description: 'Laravel migrations and Eloquent models',
+  emit: (
+    schema: IrSchema,
+    options: FormatOptions
+  ): Result<FormatEmitOutput> => {
+    const namespace: string | undefined = options.namespace?.replace(
+      /^\\+|\\+$/g,
+      ''
+    );
+    if (namespace !== undefined && !isValidPhpNamespace(namespace)) {
+      return err(
+        'INVALID_OPTION',
+        `Invalid namespace "${options.namespace ?? ''}". Expected a PHP namespace such as App\\Models.`
+      );
+    }
+    return ok(
+      emitLaravel(schema, {
+        provider: options.provider,
+        naming: options.naming,
+        ...(namespace === undefined ? {} : { namespace }),
+      })
+    );
+  },
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
   registerFormat(prismaAdapter),
   registerFormat(typeormAdapter),
   registerFormat(doctrineAdapter),
+  registerFormat(laravelAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
 ];
