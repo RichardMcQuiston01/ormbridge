@@ -8,6 +8,7 @@ import {
 import { emitTypeorm } from './emitters/typeorm.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import type { IrSchema } from './ir.js';
+import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
 import { parseTypeorm } from './parsers/typeorm.js';
@@ -261,6 +262,24 @@ const typeormAdapter: FormatAdapter = {
   },
 };
 
+const doctrineAdapter: FormatAdapter = {
+  name: 'doctrine',
+  // No extension is claimed: ".php" is too generic to infer, so pass --from doctrine.
+  extensions: [],
+  description: 'Doctrine ORM entities (PHP 8 attributes)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseDoctrine(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+};
+
 const grapheneAdapter: FormatAdapter = {
   name: 'graphene',
   // No extension is claimed: ".py" belongs to Django, so pass --to graphene.
@@ -290,6 +309,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
   registerFormat(prismaAdapter),
   registerFormat(typeormAdapter),
+  registerFormat(doctrineAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
 ];

@@ -26,6 +26,11 @@ export { parseDjango } from './parsers/django.js';
 export type { DjangoSourceFile, DjangoParseOptions } from './parsers/django.js';
 export { parsePrisma } from './parsers/prisma.js';
 export type { PrismaSourceFile, PrismaParseOptions } from './parsers/prisma.js';
+export { parseDoctrine } from './parsers/doctrine.js';
+export type {
+  DoctrineSourceFile,
+  DoctrineParseOptions,
+} from './parsers/doctrine.js';
 export { parseTypeorm } from './parsers/typeorm.js';
 export type {
   TypeormSourceFile,
