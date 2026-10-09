@@ -2,16 +2,16 @@
 
 Convert ORM models between frameworks and languages, so one data model can be shared across your whole stack, from the command line or from code.
 
-| Format                      | Read | Write | Notes                                                      |
-| --------------------------- | :--: | :---: | ---------------------------------------------------------- |
-| Django models               |  ✔   |   ✔   | `models.py` files or `models/` packages                    |
-| Prisma schema               |  ✔   |   ✔   | All six providers; Prisma 7 header via the API             |
-| TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                             |
-| Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; writes one file per entity               |
-| Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both         |
-| GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; writes one file per model        |
-| TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                  |
-| Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django |
+| Format                      | Read | Write | Notes                                                       |
+| --------------------------- | :--: | :---: | ----------------------------------------------------------- |
+| Django models               |  ✔   |   ✔   | `models.py` files or `models/` packages                     |
+| Prisma schema               |  ✔   |   ✔   | All six providers; Prisma 7 header via `--prisma-version 7` |
+| TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                              |
+| Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; writes one file per entity                |
+| Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both          |
+| GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; writes one file per model         |
+| TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                   |
+| Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django  |
 
 See [What is converted](#what-is-converted) for the field-level mapping and [docs/CONVERSION_MATRIX.md](docs/CONVERSION_MATRIX.md) for exactly what survives a round trip between the readable formats.
 

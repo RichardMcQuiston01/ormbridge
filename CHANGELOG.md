@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-10-09
+
+Adds GORM (Go) as a readable and writable format, a `--prisma-version` flag, a Doctrine parser that recovers lifecycle callbacks and constructor defaults, and optional verification of the Django, Graphene and TypeORM output against the real tools.
+
 ### Added
 
 - Real-tool verification of the Django, Graphene and TypeORM output, in the same optional style as Doctrine, Laravel, Prisma and GORM (`test/django-verify.test.ts`, `test/graphene-verify.test.ts`, `test/typeorm-verify.test.ts`, `test/realToolSupport.ts`, `test/tools/validate-django.py`, `validate-graphene.py`, `validate-typeorm.ts` and `setup-verification-tools.sh`). Django: `check`, `makemigrations --dry-run`, `makemigrations`, `sqlmigrate` and `migrate` on in-memory SQLite, then model metadata and the migrated database are compared with the IR. Graphene: the generated schema is imported next to the generated models, built, introspected and queried (list queries and a create, get, update, delete round trip). TypeORM: the entities of every provider are compiled with `tsc`, TypeORM's metadata is built and compared, and the SQLite entities are synchronized into in-memory SQLite and compared (tables, columns, foreign keys, unique constraints, indexes). The canonical blog schema read from every other format and the prisma, django and gorm extras fixtures are covered, in both naming modes. Set `DJANGO_PYTHON` and `TYPEORM_DIR` (see `test/README.md`); each test is skipped with a reason when its tool is missing, and CI is unchanged.
