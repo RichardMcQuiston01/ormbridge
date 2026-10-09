@@ -1,0 +1,117 @@
+// Prisma constructs beyond the canonical blog schema. PostgreSQL, multiSchema, views.
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["views"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public", "audit"]
+}
+
+enum Role {
+  ADMIN @map("admin")
+  USER  @map("user")
+
+  @@map("role_t")
+  @@schema("public")
+}
+
+model Order {
+  region String
+  number Int
+  total  Decimal     @db.Money
+  lines  OrderLine[]
+
+  @@id([region, number], map: "order_pkey")
+  @@schema("public")
+}
+
+model OrderLine {
+  id          Int    @id @default(autoincrement())
+  orderRegion String
+  orderNumber Int
+  order       Order  @relation(fields: [orderRegion, orderNumber], references: [region, number], onDelete: Cascade, onUpdate: Restrict, map: "fk_line_order")
+  sku         String @db.VarChar(32)
+
+  @@index([orderRegion, orderNumber])
+  @@schema("public")
+}
+
+model Account {
+  id       Int      @id(map: "account_pk") @default(autoincrement())
+  email    String   @unique(map: "uq_account_email")
+  tenantId Int
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: Cascade, map: "fk_account_tenant")
+  profile  Profile?
+
+  @@schema("public")
+}
+
+model Tenant {
+  id       Int       @id @default(autoincrement())
+  accounts Account[]
+
+  @@schema("public")
+}
+
+model Profile {
+  region    String
+  number    Int
+  accountId Int     @unique
+  account   Account @relation(fields: [accountId], references: [id])
+
+  @@id([region, number])
+  @@schema("public")
+}
+
+model Document {
+  id       String   @id @default(cuid())
+  ulid     String   @unique(map: "uq_document_ulid") @default(ulid())
+  short    String   @default(nanoid(12))
+  uid      String   @default(uuid(7)) @db.Uuid
+  token    String   @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title    String   @db.Citext
+  body     String   @db.Text
+  tags     String[]
+  scores   Int[]    @default([])
+  role     Role     @default(USER)
+  small    Int      @db.SmallInt
+  ratio    Float    @db.Real
+  price    Decimal  @db.Decimal(10, 2)
+  cost     Decimal  @db.Money
+  views    BigInt
+  blob     Bytes    @db.ByteA
+  meta     Json     @db.JsonB
+  created  DateTime @default(now()) @db.Timestamptz(3)
+  updated  DateTime @updatedAt @db.Timestamp(0)
+  day      DateTime @db.Date
+  at       DateTime @db.Timetz(3)
+  ip       String   @db.Inet
+  area     Unsupported("circle")?
+  place    Unsupported("geometry(Point, 4326)") @default(dbgenerated("'POINT(0 0)'::geometry"))
+  window   Unsupported("int4range")?
+  internal Int      @ignore
+  legacy   String   @map("legacy_name")
+
+  @@index([title(sort: Desc), created], type: BTree, map: "ix_document_title")
+  @@index([meta(ops: JsonbPathOps)], type: Gin)
+  @@unique([title, day], map: "uq_document_title_day")
+  @@map("documents")
+  @@schema("audit")
+}
+
+model Scratch {
+  id Int @id
+
+  @@ignore
+  @@schema("audit")
+}
+
+view DocumentSummary {
+  id    String @unique
+  title String
+
+  @@schema("audit")
+}

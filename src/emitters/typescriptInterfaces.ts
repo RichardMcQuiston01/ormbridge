@@ -1,3 +1,4 @@
+import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
 import type {
   IrEnum,
   IrEnumValue,
@@ -61,7 +62,7 @@ export function emitTypescriptInterfaces(
     schema,
     options,
     dates: options.dates ?? 'string',
-    warnings: [],
+    warnings: prismaOnlyWarnings(schema),
     names: new Map<string, ModelNames>(),
     inverseNames: new Map<string, string>(),
     typeNames: new Map<string, string>(),

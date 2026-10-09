@@ -1,3 +1,4 @@
+import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
 import type {
   IrDefault,
   IrEnum,
@@ -88,7 +89,7 @@ export function emitDjango(schema: IrSchema): EmitOutput {
   const prepared: IrSchema = toDjangoNaming(schema);
   const context: EmitContext = {
     schema: prepared,
-    warnings: [],
+    warnings: prismaOnlyWarnings(schema),
     postgresFields: new Set(),
     expressions: [],
   };

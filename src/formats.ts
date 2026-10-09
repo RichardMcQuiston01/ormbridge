@@ -38,6 +38,8 @@ export interface FormatOptions {
   provider: PrismaProvider;
   /** Emit Prisma generator and datasource blocks. */
   header: boolean;
+  /** Prisma major version the generated header targets: 6 (default) or 7 (`prisma-client`, no datasource url). */
+  prismaVersion?: 6 | 7;
   /** Overrides the Django app label (otherwise derived from the models.py directory). */
   appLabel?: string;
   /** Primary key type used for Django models without an explicit key. */
@@ -223,6 +225,9 @@ const prismaAdapter: FormatAdapter = {
         provider: options.provider,
         header: options.header,
         camelFields: options.naming === 'normalize',
+        ...(options.prismaVersion === undefined
+          ? {}
+          : { prismaVersion: options.prismaVersion }),
       })
     );
   },

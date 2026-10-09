@@ -1,3 +1,4 @@
+import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
 import type {
   IrField,
   IrModel,
@@ -103,7 +104,7 @@ def _save_instance(instance, data, many_to_many):
 
 /** Writes the IR as a graphene-django schema module. */
 export function emitGraphene(schema: IrSchema): EmitOutput {
-  const context: EmitContext = { warnings: [] };
+  const context: EmitContext = { warnings: prismaOnlyWarnings(schema) };
   const models: IrModel[] = toDjangoNaming(schema.models);
   const modelNames: ReadonlySet<string> = new Set(
     models.map((model: IrModel) => model.name)

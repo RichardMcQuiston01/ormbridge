@@ -1,3 +1,4 @@
+import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
 import type {
   IrDefault,
   IrEnum,
@@ -74,7 +75,7 @@ export function emitTypeorm(
     schema,
     options,
     dialect: dialectOf(options.provider),
-    warnings: [],
+    warnings: prismaOnlyWarnings(schema),
     imports: new Set<string>(),
     names: new Map<string, ModelNames>(),
     inverseNames: new Map<string, string>(),
