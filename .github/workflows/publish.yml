@@ -1,0 +1,62 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag matches package.json version
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version="$(node -p "require('./package.json').version")"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} (version ${tag_version}) does not match package.json version ${pkg_version}. Bump package.json or retag."
+            exit 1
+          fi
+          echo "Tag ${GITHUB_REF_NAME} matches package.json version ${pkg_version}."
+
+      - name: Verify tagged commit is on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Commit ${GITHUB_SHA} is not an ancestor of origin/main. Merge the release into main before tagging."
+            exit 1
+          fi
+          echo "Commit ${GITHUB_SHA} is on main."
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run build
+      - run: npm test
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [[ "$version" == *-* ]]; then
+            echo "Prerelease ${version}: publishing with dist-tag 'next'."
+            npm publish --provenance --access public --tag next
+          else
+            echo "Stable release ${version}: publishing with dist-tag 'latest'."
+            npm publish --provenance --access public
+          fi

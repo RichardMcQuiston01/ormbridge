@@ -1,0 +1,192 @@
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryColumn, PrimaryGeneratedColumn, type Relation } from 'typeorm';
+
+export enum ItemKind {
+  TOOL = 'tool',
+  TOY = 'toy',
+}
+
+@Entity('shop_item')
+export class Item {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @Column({ type: 'varchar', length: 40 })
+  first_name!: string;
+
+  @Column({ type: 'varchar', length: 40 })
+  last_name!: string;
+
+  @Column({ type: 'varchar', length: 81 })
+  full_name!: string;
+
+  @Column({ type: 'int', default: 1 })
+  quantity!: number;
+
+  @Column({ type: 'int' })
+  total_cents!: number;
+
+  @Column({ type: 'varchar', length: 20, array: true, default: () => "'{}'" })
+  tags!: string[];
+
+  @Column({ type: 'int', array: true, nullable: true })
+  grid!: number[][] | null;
+
+  @Column({ type: 'enum', enum: ItemKind, array: true, default: () => "'{}'" })
+  kinds!: ItemKind[];
+
+  @Column({ type: 'hstore', default: () => "''" })
+  attributes!: Record<string, string | null>;
+
+  @Column({ type: 'int4range', nullable: true })
+  stock_range!: string | null;
+
+  @Column({ type: 'int8range', nullable: true })
+  big_range!: string | null;
+
+  @Column({ type: 'numrange', nullable: true })
+  price_range!: string | null;
+
+  @Column({ type: 'daterange', nullable: true })
+  available!: string | null;
+
+  @Column({ type: 'tstzrange', nullable: true })
+  valid_during!: string | null;
+
+  @Column({ type: 'inet', nullable: true })
+  last_ip!: string | null;
+
+  @Column({ type: 'inet', nullable: true, unique: true })
+  legacy_ip!: string | null;
+
+  @Column({ type: 'interval', nullable: true })
+  shelf_life!: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  source_path!: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  manual!: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  photo!: string | null;
+
+  @Column({ type: 'int', default: 0 })
+  small_count!: number;
+
+  @Column({ type: 'int', default: 0 })
+  tiny_count!: number;
+
+  @Column({ type: 'boolean', default: true })
+  is_active!: boolean;
+
+  @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  stocked_at!: Date;
+
+  @Column({ type: 'int', default: 5 })
+  priority!: number;
+
+  @Column({ type: 'varchar', length: 20, default: 'none' })
+  note!: string;
+
+  @OneToMany(() => Shipment, (entity) => entity.item)
+  shipments!: Shipment[];
+
+  @OneToMany(() => Shipment, (entity) => entity.other)
+  other_shipments!: Shipment[];
+
+  @OneToMany(() => Assignment, (entity) => entity.item)
+  assignment_set!: Assignment[];
+}
+
+@Entity('shop_counter')
+export class Counter {
+  @PrimaryGeneratedColumn('increment')
+  small_id!: number;
+
+  @Column({ type: 'varchar', length: 20 })
+  label!: string;
+}
+
+@Entity('shop_shipment')
+export class Shipment {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @Column({ type: 'int' })
+  object_id!: number;
+
+  @ManyToOne(() => Item, (entity) => entity.shipments, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'item_id' })
+  item!: Relation<Item>;
+
+  @ManyToOne(() => Item, (entity) => entity.other_shipments, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'other_id' })
+  other!: Relation<Item>;
+
+  @ManyToOne(() => ContentType, (entity) => entity.shipment_set, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'content_type_id' })
+  content_type!: Relation<ContentType>;
+
+  @ManyToOne(() => Account, (entity) => entity.shipment_set, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'created_by_id' })
+  created_by!: Relation<Account>;
+}
+
+@Entity('shop_account')
+export class Account {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @Column({ type: 'varchar', length: 254, unique: true })
+  email!: string;
+
+  @OneToMany(() => Shipment, (entity) => entity.created_by)
+  shipment_set!: Shipment[];
+
+  @OneToMany(() => Assignment, (entity) => entity.account)
+  assignment_set!: Assignment[];
+}
+
+@Entity('shop_assignment')
+export class Assignment {
+  @PrimaryColumn({ name: 'item_id', type: 'int' })
+  item_id!: number;
+
+  @ManyToOne(() => Item, (entity) => entity.assignment_set, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'item_id' })
+  item!: Relation<Item>;
+
+  @PrimaryColumn({ name: 'account_id', type: 'int' })
+  account_id!: number;
+
+  @ManyToOne(() => Account, (entity) => entity.assignment_set, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'account_id' })
+  account!: Relation<Account>;
+}
+
+@Entity('shop_contenttype')
+export class ContentType {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @OneToMany(() => Shipment, (entity) => entity.content_type)
+  shipment_set!: Shipment[];
+}

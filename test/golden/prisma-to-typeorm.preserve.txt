@@ -1,0 +1,170 @@
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, type Relation, Unique, UpdateDateColumn } from 'typeorm';
+
+export enum PostStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+}
+
+@Entity('blog_category')
+export class Category {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  created_at!: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
+  updated_at!: Date;
+
+  @Column({ type: 'varchar', length: 100, unique: true })
+  name!: string;
+
+  @Column({ type: 'varchar', length: 50 })
+  slug!: string;
+
+  @ManyToOne(() => Category, (entity) => entity.children, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'parent_id' })
+  parent!: Relation<Category> | null;
+
+  @OneToMany(() => Category, (entity) => entity.parent)
+  children!: Category[];
+
+  @OneToMany(() => Post, (entity) => entity.category)
+  post_set!: Post[];
+}
+
+@Entity('blog_post')
+@Index(['title'])
+@Unique(['author', 'title'])
+@Index('post_pub_status_idx', ['published_at', 'status'])
+export class Post {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  created_at!: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
+  updated_at!: Date;
+
+  @Column({ type: 'uuid', unique: true, default: () => 'gen_random_uuid()' })
+  public_id!: string;
+
+  @Column({ type: 'varchar', length: 200 })
+  title!: string;
+
+  @Column({ type: 'text' })
+  body!: string;
+
+  @Column({ type: 'enum', enum: PostStatus, default: PostStatus.DRAFT })
+  status!: PostStatus;
+
+  @Column({ type: 'decimal', precision: 4, scale: 2, nullable: true })
+  rating!: string | null;
+
+  @Column({ type: 'int', default: 0 })
+  view_count!: number;
+
+  @Column({ type: 'boolean', default: false })
+  is_featured!: boolean;
+
+  @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  published_at!: Date;
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  metadata!: unknown;
+
+  @ManyToOne(() => User, (entity) => entity.posts, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'author_id' })
+  author!: Relation<User>;
+
+  @ManyToOne(() => User, (entity) => entity.edited_posts, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'editor_id' })
+  editor!: Relation<User> | null;
+
+  @ManyToOne(() => Category, (entity) => entity.post_set, {
+    onDelete: 'RESTRICT',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'category_id' })
+  category!: Relation<Category>;
+
+  @OneToMany(() => PostTags, (entity) => entity.post)
+  tags!: PostTags[];
+}
+
+@Entity('blog_tag')
+export class Tag {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @Column({ type: 'varchar', length: 50 })
+  label!: string;
+
+  @OneToMany(() => PostTags, (entity) => entity.tag)
+  posts!: PostTags[];
+}
+
+@Entity('blog_profile')
+export class Profile {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @Column({ type: 'text', nullable: true })
+  bio!: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  avatar!: string | null;
+
+  @OneToOne(() => User, (entity) => entity.profile, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'user_id' })
+  user!: Relation<User>;
+}
+
+@Entity('auth_user')
+export class User {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @OneToMany(() => Post, (entity) => entity.author)
+  posts!: Post[];
+
+  @OneToMany(() => Post, (entity) => entity.editor)
+  edited_posts!: Post[];
+
+  @OneToOne(() => Profile, (entity) => entity.user)
+  profile!: Relation<Profile> | null;
+}
+
+@Entity('blog_post_tags')
+@Unique(['post', 'tag'])
+export class PostTags {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @ManyToOne(() => Post, (entity) => entity.tags, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'post_id' })
+  post!: Relation<Post>;
+
+  @ManyToOne(() => Tag, (entity) => entity.posts, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'tag_id' })
+  tag!: Relation<Tag>;
+}

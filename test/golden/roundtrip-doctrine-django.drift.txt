@@ -1,0 +1,8 @@
++ category = models.ForeignKey("Category", on_delete=models.PROTECT, related_name="post_set")
++ metadata = models.JSONField()
++ public_id = models.UUIDField(unique=True)
+- 
+- category = models.ForeignKey("Category", on_delete=models.PROTECT)
+- import uuid
+- metadata = models.JSONField(default=dict)
+- public_id = models.UUIDField(unique=True, default=uuid.uuid4)

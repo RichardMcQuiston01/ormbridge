@@ -1,0 +1,5 @@
+@@ database/migrations/2024_01_01_000004_create_blog_post_table.php
++ $table->index('title', 'post_title_idx');
++ $table->unique(['author_id', 'title'], 'blog_post_author_title_uniq');
+- $table->index('title');
+- $table->unique(['author_id', 'title']);

@@ -1,0 +1,85 @@
+{
+  "name": "ormbridge",
+  "version": "0.2.0",
+  "description": "Convert ORM models between frameworks and languages (Django, Prisma, TypeORM, Doctrine, Laravel). Define your data model once and share typed schemas across your stack.",
+  "author": {
+    "name": "Richard McQuiston",
+    "email": "richard.mcquiston01@gmail.com"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ormbridge": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && npm test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "docs:matrix": "tsx scripts/generate-conversion-matrix.ts"
+  },
+  "keywords": [
+    "django",
+    "prisma",
+    "orm",
+    "schema",
+    "schema-converter",
+    "django-to-prisma",
+    "prisma-to-django",
+    "django-models",
+    "prisma-schema",
+    "models.py",
+    "migration",
+    "database",
+    "code-generation",
+    "codegen",
+    "cli",
+    "tree-sitter",
+    "typescript",
+    "python",
+    "typeorm",
+    "graphene",
+    "doctrine",
+    "laravel",
+    "eloquent",
+    "php",
+    "graphql"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^15.0.0",
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "0.22.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.4",
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RichardMcQuiston01/ormbridge.git"
+  },
+  "homepage": "https://github.com/RichardMcQuiston01/ormbridge#readme",
+  "bugs": {
+    "url": "https://github.com/RichardMcQuiston01/ormbridge/issues"
+  }
+}
