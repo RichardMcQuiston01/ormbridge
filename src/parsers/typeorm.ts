@@ -186,6 +186,7 @@ const COLUMN_DECORATORS: ReadonlySet<string> = new Set([
   'UpdateDateColumn',
   'DeleteDateColumn',
   'VersionColumn',
+  'ViewColumn',
 ]);
 
 /** Property decorators that define schema we cannot represent; each produces a warning. */
@@ -197,7 +198,6 @@ const UNSUPPORTED_PROPERTY_DECORATORS: Readonly<Record<string, string>> = {
   TreeParent: 'tree entities (closure/materialized path) are not supported',
   TreeLevelColumn:
     'tree entities (closure/materialized path) are not supported',
-  ViewColumn: 'view columns are not supported',
 };
 
 /** Column options that change the database schema but have no IR equivalent. */
@@ -259,6 +259,8 @@ interface RawClass {
   filePath: string;
   isAbstract: boolean;
   isEntity: boolean;
+  /** True for a `@ViewEntity` class (a database view). */
+  isView: boolean;
   isChildEntity: boolean;
   tableName?: string;
   baseName?: string;
@@ -762,11 +764,15 @@ function parseClass(
   const entityDecorator: TsDecorator | undefined = decorators.find(
     (decorator: TsDecorator) => decorator.name === 'Entity'
   );
+  const viewDecorator: TsDecorator | undefined = decorators.find(
+    (decorator: TsDecorator) => decorator.name === 'ViewEntity'
+  );
   const rawClass: RawClass = {
     name: className,
     filePath: context.filePath,
     isAbstract: node.type === 'abstract_class_declaration',
-    isEntity: entityDecorator !== undefined,
+    isEntity: entityDecorator !== undefined || viewDecorator !== undefined,
+    isView: viewDecorator !== undefined,
     isChildEntity: decorators.some(
       (decorator: TsDecorator) => decorator.name === 'ChildEntity'
     ),
@@ -857,12 +863,21 @@ function parseClassDecorators(
           `${className}: @TableInheritance (single-table inheritance) is not supported; the discriminator column was not added and each class is converted as its own table.`
         );
         break;
-      case 'ViewEntity':
+      case 'ViewEntity': {
+        const options: TsObject | undefined = objectArgument(decorator.args);
+        const first: TsValue | undefined = decorator.args[0];
+        const viewName: string | undefined =
+          first !== undefined && first.kind === 'string'
+            ? first.value
+            : stringOption(options, 'name');
+        if (viewName !== undefined) {
+          rawClass.tableName = viewName;
+        }
         context.warnings.push(
-          `${className}: @ViewEntity views are not supported and were skipped.`
+          `${className}: @ViewEntity expression is not converted; the view is read as a model with its @ViewColumn columns only.`
         );
-        rawClass.isEntity = false;
         break;
+      }
       case 'Tree':
         context.warnings.push(
           `${className}: @Tree (tree entities) is not supported; the closure/materialized-path table was not generated.`
@@ -1243,7 +1258,9 @@ function parseColumn(
   const isNullable: boolean =
     !isPrimaryKey &&
     (boolOption(options, 'nullable') === true ||
-      decorator.name === 'DeleteDateColumn');
+      decorator.name === 'DeleteDateColumn' ||
+      // A view column has no nullable option; the property type (`string | null`) says it.
+      (decorator.name === 'ViewColumn' && typeInfo.nullable));
   const field: IrField = {
     name: propertyName,
     columnName,
@@ -2160,9 +2177,11 @@ function finalizeModel(
   const keyCount: number = primaryFields.length + primaryRelations.length;
   let compositePrimaryKey: string[] | undefined;
   if (keyCount === 0) {
-    warnings.push(
-      `${rawClass.name}: the entity has no primary key column; TypeORM requires one, so add @PrimaryGeneratedColumn() or @PrimaryColumn().`
-    );
+    if (!rawClass.isView) {
+      warnings.push(
+        `${rawClass.name}: the entity has no primary key column; TypeORM requires one, so add @PrimaryGeneratedColumn() or @PrimaryColumn().`
+      );
+    }
   } else if (keyCount > 1) {
     compositePrimaryKey = [
       ...primaryFields.map((field: IrField) => field.name),
@@ -2185,6 +2204,7 @@ function finalizeModel(
     relations,
     indexes,
     ...(compositePrimaryKey === undefined ? {} : { compositePrimaryKey }),
+    ...(rawClass.isView ? { isView: true } : {}),
   };
 }
 
