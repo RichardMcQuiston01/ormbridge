@@ -202,6 +202,29 @@ describe('typeorm emitter: columns', () => {
     );
   });
 
+  it('writes an auto-increment bigint key as a plain integer on SQLite', () => {
+    // SQLite rejects `bigint PRIMARY KEY AUTOINCREMENT`; INTEGER PRIMARY KEY is 64 bits wide.
+    const schema: IrSchema = schemaOf([
+      model('B', {
+        fields: [
+          field('id', {
+            type: 'bigInt',
+            isPrimaryKey: true,
+            default: { kind: 'autoIncrement' },
+          }),
+        ],
+      }),
+    ]);
+    const sqlite: EmitOutput = emit(schema, { provider: 'sqlite' });
+    expect(sqlite.text).toContain(
+      "@PrimaryGeneratedColumn('increment')\n  id!: number;"
+    );
+    expect(sqlite.text).not.toContain('bigint');
+    expect(emit(schema, { provider: 'mysql' }).text).toContain(
+      "@PrimaryGeneratedColumn('increment', { type: 'bigint' })\n  id!: string;"
+    );
+  });
+
   it('uses CreateDateColumn and UpdateDateColumn for timestamps', () => {
     const output: EmitOutput = emit(
       schemaOf([

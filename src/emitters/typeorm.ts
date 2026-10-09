@@ -778,9 +778,15 @@ function buildFieldMember(
       generated.kind === 'autoIncrement' &&
       (field.type === 'int' || field.type === 'bigInt')
     ) {
+      // SQLite only allows AUTOINCREMENT on an INTEGER PRIMARY KEY (which is already 64 bits
+      // wide and read as a number), so a bigint key there is written as a plain integer.
+      const sqliteInteger: boolean =
+        context.dialect === 'sqlite' && field.type === 'bigInt';
       const options: string[] = compact([
         nameOption,
-        field.type === 'bigInt' ? `type: 'bigint'` : undefined,
+        field.type === 'bigInt' && !sqliteInteger
+          ? `type: 'bigint'`
+          : undefined,
       ]);
       return {
         lines: [
@@ -789,7 +795,7 @@ function buildFieldMember(
             [`'increment'`],
             options
           ),
-          property,
+          sqliteInteger ? `  ${propName}!: number;` : property,
         ],
       };
     }
