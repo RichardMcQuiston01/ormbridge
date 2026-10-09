@@ -380,13 +380,15 @@ async function discoverInputFiles(
         ? 'models.py files (or a models/ package)'
         : format === 'typeorm'
           ? 'TypeScript (.ts) entity files'
-          : format === 'doctrine'
-            ? 'PHP (.php) entity files'
-            : format === 'laravel'
-              ? 'PHP (.php) migration and model files (database/migrations and app/)'
-              : format === 'gorm'
-                ? 'Go (.go) model files'
-                : '.prisma files';
+          : format === 'drizzle'
+            ? 'TypeScript (.ts) Drizzle schema files'
+            : format === 'doctrine'
+              ? 'PHP (.php) entity files'
+              : format === 'laravel'
+                ? 'PHP (.php) migration and model files (database/migrations and app/)'
+                : format === 'gorm'
+                  ? 'Go (.go) model files'
+                  : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -399,7 +401,7 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
   if (format === 'prisma') {
     return extname(filePath) === '.prisma';
   }
-  if (format === 'typeorm') {
+  if (format === 'typeorm' || format === 'drizzle') {
     return (
       extname(filePath) === '.ts' &&
       !/\.(d|test|spec)\.ts$/.test(basename(filePath))

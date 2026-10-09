@@ -59,6 +59,21 @@ export const CANONICAL_FIXTURES: readonly CanonicalFixture[] = [
     ].map(fixturePath),
   },
   {
+    // Drizzle has no implicit many-to-many: the join table (post-tag.schema.ts) is an ordinary table.
+    format: 'drizzle',
+    paths: [
+      './drizzle/time-stamped.ts',
+      './drizzle/post-status.enum.ts',
+      './drizzle/user.schema.ts',
+      './drizzle/category.schema.ts',
+      './drizzle/post.schema.ts',
+      './drizzle/tag.schema.ts',
+      './drizzle/post-tag.schema.ts',
+      './drizzle/profile.schema.ts',
+      './drizzle/relations.ts',
+    ].map(fixturePath),
+  },
+  {
     // Laravel keeps the schema in migrations: they are listed in the order Laravel runs them,
     // followed by the backed enum and the Eloquent models that name the relations.
     format: 'laravel',

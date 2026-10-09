@@ -31,6 +31,11 @@ export type {
   DoctrineSourceFile,
   DoctrineParseOptions,
 } from './parsers/doctrine.js';
+export { parseDrizzle } from './parsers/drizzle.js';
+export type {
+  DrizzleSourceFile,
+  DrizzleParseOptions,
+} from './parsers/drizzle.js';
 export { parseGorm } from './parsers/gorm.js';
 export type { GormSourceFile, GormParseOptions } from './parsers/gorm.js';
 export { parseLaravel } from './parsers/laravel.js';
@@ -56,6 +61,8 @@ export { emitLaravel } from './emitters/laravel.js';
 export type { LaravelEmitOptions } from './emitters/laravel.js';
 export { emitGorm } from './emitters/gorm.js';
 export type { GormEmitOptions } from './emitters/gorm.js';
+export { emitDrizzle } from './emitters/drizzle.js';
+export type { DrizzleEmitOptions } from './emitters/drizzle.js';
 export { emitGraphene } from './emitters/graphene.js';
 export { emitTypeorm } from './emitters/typeorm.js';
 export type { TypeormEmitOptions } from './emitters/typeorm.js';
@@ -64,6 +71,8 @@ export type {
   TypescriptDateMode,
   TypescriptInterfacesOptions,
 } from './emitters/typescriptInterfaces.js';
+export { emitJsonSchema } from './emitters/jsonSchema.js';
+export type { JsonSchemaOptions } from './emitters/jsonSchema.js';
 export { emitZod } from './emitters/zod.js';
 export type {
   ZodBigIntMode,

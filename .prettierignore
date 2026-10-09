@@ -3,3 +3,5 @@ node_modules
 out
 package-lock.json
 docs/CONVERSION_MATRIX.md
+test/golden/**/*.ts
+test/golden-extras/**/*.ts

@@ -6,7 +6,9 @@ import {
   type SourceText,
 } from '../src/formats.js';
 import type { IrSchema } from '../src/ir.js';
+import { checkDrizzleOutput } from './drizzleCoverage.js';
 import { checkGormOutput } from './gormCoverage.js';
+import { checkJsonSchemaOutput } from './jsonSchemaCoverage.js';
 import { checkZodOutput } from './zodCoverage.js';
 import { loadCanonicalSources } from './harness.js';
 import { DEFAULT_OPTIONS } from './helpers.js';
@@ -234,6 +236,8 @@ const EMIT_ONLY_CHECKS: Readonly<
   Record<string, (schema: IrSchema, files: Record<string, string>) => string[]>
 > = {
   gorm: checkGormOutput,
+  drizzle: checkDrizzleOutput,
+  'json-schema': checkJsonSchemaOutput,
   zod: checkZodOutput,
 };
 
@@ -268,13 +272,13 @@ export async function computeEmitOnlyCell(
     loadCanonicalSources(source.name)
   );
   const emitted: EmittedText = emitWith(target, sourceIr);
+  // A single-text format is checked as one file named after the format.
+  const files: Record<string, string> = emitted.files ?? {
+    [target.name]: emitted.text,
+  };
   const check:
     | ((schema: IrSchema, files: Record<string, string>) => string[])
     | undefined = EMIT_ONLY_CHECKS[target.name];
-  // A single-file emitter has no file list: its text counts as one file.
-  const files: Record<string, string> = emitted.files ?? {
-    [`${target.name}.txt`]: emitted.text,
-  };
   return {
     source: source.name,
     target: target.name,

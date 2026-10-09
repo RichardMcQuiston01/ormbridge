@@ -1,0 +1,205 @@
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryColumn, PrimaryGeneratedColumn, type Relation, Unique, UpdateDateColumn } from 'typeorm';
+
+export enum PostStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+}
+
+@Entity('user')
+export class User {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt!: Date;
+
+  @OneToMany(() => Post, (entity) => entity.author)
+  posts!: Post[];
+
+  @OneToMany(() => Post, (entity) => entity.editor)
+  editedPosts!: Post[];
+
+  @OneToOne(() => Profile, (entity) => entity.user)
+  profile!: Relation<Profile> | null;
+}
+
+@Entity('category')
+export class Category {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt!: Date;
+
+  @Column({ type: 'varchar', length: 100, unique: true })
+  name!: string;
+
+  @Column({ type: 'varchar', length: 50 })
+  slug!: string;
+
+  @ManyToOne(() => Category, (entity) => entity.children, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'parent_id' })
+  parent!: Relation<Category> | null;
+
+  @OneToMany(() => Category, (entity) => entity.parent)
+  children!: Category[];
+
+  @OneToMany(() => Post, (entity) => entity.category)
+  posts!: Post[];
+}
+
+@Entity('post')
+@Unique(['author', 'title'])
+@Index('post_pub_status_idx', ['publishedAt', 'status'])
+@Index(['title'])
+export class Post {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt!: Date;
+
+  @Column({
+    name: 'public_id',
+    type: 'uuid',
+    unique: true,
+    default: () => 'gen_random_uuid()',
+  })
+  publicId!: string;
+
+  @Column({ type: 'varchar', length: 200 })
+  title!: string;
+
+  @Column({ type: 'text' })
+  body!: string;
+
+  @Column({ type: 'enum', enum: PostStatus, default: PostStatus.DRAFT })
+  status!: PostStatus;
+
+  @Column({ type: 'decimal', precision: 4, scale: 2, nullable: true })
+  rating!: string | null;
+
+  @Column({ name: 'view_count', type: 'int', default: 0 })
+  viewCount!: number;
+
+  @Column({ name: 'is_featured', type: 'boolean', default: false })
+  isFeatured!: boolean;
+
+  @Column({
+    name: 'published_at',
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  publishedAt!: Date;
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  metadata!: unknown;
+
+  @ManyToOne(() => User, (entity) => entity.posts, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'author_id' })
+  author!: Relation<User>;
+
+  @ManyToOne(() => User, (entity) => entity.editedPosts, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'editor_id' })
+  editor!: Relation<User> | null;
+
+  @ManyToOne(() => Category, (entity) => entity.posts, {
+    onDelete: 'RESTRICT',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'category_id' })
+  category!: Relation<Category>;
+
+  @OneToMany(() => PostTag, (entity) => entity.post)
+  tags!: PostTag[];
+}
+
+@Entity('tag')
+export class Tag {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column({ type: 'varchar', length: 50 })
+  label!: string;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt!: Date;
+
+  @OneToMany(() => PostTag, (entity) => entity.tag)
+  posts!: PostTag[];
+}
+
+@Entity('post_tag')
+export class PostTag {
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt!: Date;
+
+  @PrimaryColumn({ name: 'post_id', type: 'uuid' })
+  postId!: string;
+
+  @ManyToOne(() => Post, (entity) => entity.tags, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'post_id' })
+  post!: Relation<Post>;
+
+  @PrimaryColumn({ name: 'tag_id', type: 'uuid' })
+  tagId!: string;
+
+  @ManyToOne(() => Tag, (entity) => entity.posts, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'tag_id' })
+  tag!: Relation<Tag>;
+}
+
+@Entity('profile')
+export class Profile {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column({ type: 'text', nullable: true })
+  bio!: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  avatar!: string | null;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt!: Date;
+
+  @OneToOne(() => User, (entity) => entity.profile, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'user_id' })
+  user!: Relation<User>;
+}
