@@ -16,6 +16,9 @@ import {
 } from './convert.js';
 import { describeThrown, err, ok, type Result } from './result.js';
 
+/** Directories skipped only when reading PHP projects: Composer packages and Symfony's cache/log directory. */
+const PHP_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set(['vendor', 'var']);
+
 const SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   'node_modules',
   'venv',
@@ -352,7 +355,9 @@ async function discoverInputFiles(
         ? 'models.py files (or a models/ package)'
         : format === 'typeorm'
           ? 'TypeScript (.ts) entity files'
-          : '.prisma files';
+          : format === 'doctrine'
+            ? 'PHP (.php) entity files'
+            : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -369,6 +374,11 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
     return (
       extname(filePath) === '.ts' &&
       !/\.(d|test|spec)\.ts$/.test(basename(filePath))
+    );
+  }
+  if (format === 'doctrine') {
+    return (
+      extname(filePath) === '.php' && !/Test\.php$/.test(basename(filePath))
     );
   }
   const parentName: string = basename(dirname(filePath));
@@ -394,7 +404,10 @@ async function walkDirectory(
   )) {
     const entryPath: string = join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (!SKIPPED_DIRECTORIES.has(entry.name)) {
+      if (
+        !SKIPPED_DIRECTORIES.has(entry.name) &&
+        !(format === 'doctrine' && PHP_SKIPPED_DIRECTORIES.has(entry.name))
+      ) {
         found.push(...(await walkDirectory(entryPath, format)));
       }
     } else if (isRelevantFile(entryPath, format)) {

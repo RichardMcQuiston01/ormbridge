@@ -34,4 +34,16 @@ export const CANONICAL_FIXTURES: readonly CanonicalFixture[] = [
       './typeorm/user.entity.ts',
     ].map(fixturePath),
   },
+  {
+    format: 'doctrine',
+    paths: [
+      './doctrine/TimeStamped.php',
+      './doctrine/PostStatus.php',
+      './doctrine/Category.php',
+      './doctrine/Post.php',
+      './doctrine/Tag.php',
+      './doctrine/Profile.php',
+      './doctrine/User.php',
+    ].map(fixturePath),
+  },
 ];
