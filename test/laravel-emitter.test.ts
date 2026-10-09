@@ -1202,6 +1202,9 @@ function phpAvailable(): boolean {
 }
 
 const hasPhp: boolean = phpAvailable();
+
+/** Real PHP, Doctrine and Illuminate runs are slow on a busy CI runner, well past vitest's 5 s default. */
+const PHP_TOOL_TIMEOUT_MS: number = 120_000;
 const scratch: string[] = [];
 
 afterAll(() => {
@@ -1402,9 +1405,13 @@ describe('laravel emitter: PHP syntax', () => {
     }
   };
 
-  it.skipIf(!hasPhp).each(cases)('%s passes php -l', (name, output) => {
-    lintAll(name, output.files);
-  });
+  it.skipIf(!hasPhp).each(cases)(
+    '%s passes php -l',
+    (name, output) => {
+      lintAll(name, output.files);
+    },
+    PHP_TOOL_TIMEOUT_MS
+  );
 
   it.skipIf(!hasPhp).each(['django', 'prisma', 'typeorm', 'doctrine'])(
     'the %s blog conversion passes php -l in both naming modes',
@@ -1413,7 +1420,8 @@ describe('laravel emitter: PHP syntax', () => {
         const result = await convertCanonical(from, 'laravel', { naming });
         lintAll(`${from} ${naming}`, result.files ?? {});
       }
-    }
+    },
+    PHP_TOOL_TIMEOUT_MS
   );
 });
 
@@ -1447,7 +1455,8 @@ describe('laravel emitter: real Illuminate', () => {
         );
         expect(run1.status, `${from} ${naming}: ${run1.stdout}`).toBe(0);
       }
-    }
+    },
+    PHP_TOOL_TIMEOUT_MS
   );
 
   it
@@ -1458,6 +1467,7 @@ describe('laravel emitter: real Illuminate', () => {
       const run1 = run(writeFiles(emit(stressSchema(), { naming }).files));
       expect(run1.stdout + run1.stderr).toContain('laravel output verified');
       expect(run1.status, run1.stdout + run1.stderr).toBe(0);
-    }
+    },
+    PHP_TOOL_TIMEOUT_MS
   );
 });

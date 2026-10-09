@@ -1034,6 +1034,9 @@ function phpAvailable(): boolean {
 }
 
 const hasPhp: boolean = phpAvailable();
+
+/** Real PHP, Doctrine and Illuminate runs are slow on a busy CI runner, well past vitest's 5 s default. */
+const PHP_TOOL_TIMEOUT_MS: number = 120_000;
 const scratch: string[] = [];
 
 afterAll(() => {
@@ -1161,17 +1164,21 @@ describe('doctrine emitter: PHP syntax', () => {
     ],
   ];
 
-  it.skipIf(!hasPhp).each(cases)('%s passes php -l', (_name, output) => {
-    const directory: string = writeFiles(output.files);
-    for (const path of Object.keys(output.files)) {
-      const lint: SpawnSyncReturns<string> = spawnSync(
-        'php',
-        ['-l', join(directory, path)],
-        { encoding: 'utf8' }
-      );
-      expect(lint.stdout + lint.stderr, path).toContain('No syntax errors');
-    }
-  });
+  it.skipIf(!hasPhp).each(cases)(
+    '%s passes php -l',
+    (_name, output) => {
+      const directory: string = writeFiles(output.files);
+      for (const path of Object.keys(output.files)) {
+        const lint: SpawnSyncReturns<string> = spawnSync(
+          'php',
+          ['-l', join(directory, path)],
+          { encoding: 'utf8' }
+        );
+        expect(lint.stdout + lint.stderr, path).toContain('No syntax errors');
+      }
+    },
+    PHP_TOOL_TIMEOUT_MS
+  );
 
   it.skipIf(!hasPhp).each(['django', 'prisma', 'typeorm'])(
     'the %s blog conversion passes php -l in both naming modes',
@@ -1192,7 +1199,8 @@ describe('doctrine emitter: PHP syntax', () => {
           ).toContain('No syntax errors');
         }
       }
-    }
+    },
+    PHP_TOOL_TIMEOUT_MS
   );
 });
 
@@ -1227,7 +1235,8 @@ describe('doctrine emitter: real Doctrine ORM', () => {
         );
         expect(run1.status, `${from} ${naming}: ${run1.stdout}`).toBe(0);
       }
-    }
+    },
+    PHP_TOOL_TIMEOUT_MS
   );
 
   it.skipIf(!hasPhp || doctrineDirectory === undefined)(
@@ -1235,6 +1244,7 @@ describe('doctrine emitter: real Doctrine ORM', () => {
     () => {
       const run1 = run(writeFiles(emit(stressSchema()).files), 'App');
       expect(run1.status, run1.stdout + run1.stderr).toBe(0);
-    }
+    },
+    PHP_TOOL_TIMEOUT_MS
   );
 });
