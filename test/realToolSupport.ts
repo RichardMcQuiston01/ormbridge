@@ -79,6 +79,8 @@ export interface SpecIndex {
 export interface SpecModel {
   name: string;
   table: string;
+  /** True for a database view, which TypeORM reads as a @ViewEntity. */
+  isView?: boolean;
   columns: SpecColumn[];
   relations: SpecRelation[];
   manyToMany: SpecManyToMany[];
@@ -129,15 +131,14 @@ export const EXTRA_SOURCES: readonly VerifySource[] = [
   {
     label: 'prisma-extras',
     format: 'prisma',
-    // Left out because no real tool can load them here: views (written like tables without a
-    // key, with a warning, which TypeORM rejects) and the PostgreSQL-only array and
+    // Left out because no real tool can load them here: the PostgreSQL-only array and
     // Unsupported(...) columns (Django needs django.contrib.postgres and a PostgreSQL server).
+    // Views stay in; the TypeORM verification checks them as @ViewEntity classes and the other
+    // verifications strip them through withoutViews().
     sources: readSources(['./fixtures/prisma-extras/schema.prisma']).map(
       (source: SourceText): SourceText => ({
         ...source,
-        text: source.text
-          .replace(/^view [^{]*\{[^}]*\}\n?/gmu, '')
-          .replace(/^.*(?:\[\]|Unsupported\().*\n/gmu, ''),
+        text: source.text.replace(/^.*(?:\[\]|Unsupported\().*\n/gmu, ''),
       })
     ),
   },
@@ -158,6 +159,22 @@ export const VERIFY_SOURCES: readonly VerifySource[] = [
   ...CANONICAL_SOURCES,
   ...EXTRA_SOURCES,
 ];
+
+/**
+ * The verification sources without Prisma `view` blocks, for the tools that cannot load a view
+ * (Django and graphene would need a table with a key). Only the TypeORM verification keeps them.
+ */
+export const SOURCES_WITHOUT_VIEWS: readonly VerifySource[] =
+  VERIFY_SOURCES.map((source: VerifySource): VerifySource => ({
+    ...source,
+    sources: source.sources.map((file: SourceText): SourceText => ({
+      ...file,
+      text:
+        source.format === 'prisma'
+          ? file.text.replace(/^view [^{]*\{[^}]*\}\n?/gmu, '')
+          : file.text,
+    })),
+  }));
 
 /** The options the verification tests give the converter. */
 export function verifyOptions(
@@ -278,6 +295,7 @@ export function buildSpec(
     return {
       name: model.name,
       table: model.tableName,
+      ...(model.isView === true ? { isView: true } : {}),
       columns,
       relations,
       manyToMany: model.relations

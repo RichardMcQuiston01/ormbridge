@@ -12,7 +12,7 @@ import {
   parseSource,
   probePython,
   titleWithReason,
-  VERIFY_SOURCES,
+  SOURCES_WITHOUT_VIEWS,
   withProjectUserModel,
   writeProjectFile,
   type ToolProbe,
@@ -73,7 +73,7 @@ describe(
   () => {
     // django-extras uses django.contrib.postgres fields, which need psycopg and a PostgreSQL
     // server to load.
-    const sources: VerifySource[] = VERIFY_SOURCES.filter(
+    const sources: VerifySource[] = SOURCES_WITHOUT_VIEWS.filter(
       (source: VerifySource) => source.label !== 'django-extras'
     );
 
@@ -112,7 +112,7 @@ describe(
     it.skipIf(!probe.available)(
       'runs the whole round trip on the Django fixture, relations included',
       async () => {
-        const source: VerifySource | undefined = VERIFY_SOURCES.find(
+        const source: VerifySource | undefined = SOURCES_WITHOUT_VIEWS.find(
           (candidate: VerifySource) => candidate.label === 'django'
         );
         expect(source).toBeDefined();

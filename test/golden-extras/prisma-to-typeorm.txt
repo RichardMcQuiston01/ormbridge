@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryColumn, PrimaryGeneratedColumn, type Relation, Unique, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryColumn, PrimaryGeneratedColumn, type Relation, Unique, UpdateDateColumn, ViewColumn, ViewEntity } from 'typeorm';
 
 export enum Role {
   ADMIN = 'admin',
@@ -170,12 +170,17 @@ export class Scratch {
   id!: number;
 }
 
-@Entity('DocumentSummary')
+// TODO: DocumentSummary is a database view. Its SQL definition is not part of the source schema,
+// so replace the placeholder expression below with the query that defines the view.
+@ViewEntity({
+  name: 'DocumentSummary',
+  expression: 'SELECT * FROM DocumentSummary',
+})
 export class DocumentSummary {
-  @Column({ type: 'varchar', unique: true })
+  @ViewColumn()
   id!: string;
 
-  @Column({ type: 'varchar' })
+  @ViewColumn()
   title!: string;
 }
 
@@ -201,8 +206,8 @@ export class DocumentSummary {
 # Document index (meta): the index type, clustering, sort order, prefix length and operator class options were dropped.
 # Scratch: @@ignore has no equivalent here; the model was written as a normal model.
 # Scratch: the database schema "audit" (@@schema) was ignored.
-# DocumentSummary: this is a database view; it was written like a regular table model, so migrations would try to create a table.
 # DocumentSummary: the database schema "audit" (@@schema) was ignored.
 # Document.area: unknown field type "unsupported"; it was written as varchar.
 # Document.place: unknown field type "unsupported"; it was written as varchar.
-# DocumentSummary: the model has no primary key; TypeORM requires at least one primary column.
+# DocumentSummary.id: a view column cannot carry a unique constraint in TypeORM; the constraint was dropped.
+# DocumentSummary: a Prisma view has no SQL definition, so the @ViewEntity expression is a placeholder ("SELECT * FROM DocumentSummary", which selects from the view itself); replace it with the query that defines the view.
