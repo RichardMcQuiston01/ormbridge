@@ -22,7 +22,7 @@ An emitter that returns a file map (such as `doctrine`) is compared file by file
 
 Round trips (`roundTrip`) feed every emitted file back into the parser (`resultToSources`) and `describeResultDrift` lists drift per file (`@@ path`, `+ file path`, `- file path`). The matrix helpers do the same (`emitWith` keeps the file map next to the joined text, `parseEmitted` reads all of the files). `harness.test.ts` covers this with a test-only readable multi-file format, so a multi-file format that also gets a parser (Doctrine, Laravel) joins the round trips and the matrix without further changes.
 
-The Doctrine tests (`doctrine-emitter.test.ts`) lint the generated PHP with `php -l` and skip when PHP is missing. Set `DOCTRINE_DIR` to a directory where `composer require doctrine/orm symfony/cache` has been run (outside this repository) to also load the entities with Doctrine's real metadata factory, validate the mapping and create the schema in SQLite (`test/fixtures/doctrine/validate.php`).
+The Doctrine tests (`doctrine-emitter.test.ts`) lint the generated PHP with `php -l` and skip when PHP is missing. Set `DOCTRINE_DIR` to a directory where `composer require doctrine/orm symfony/cache` has been run (outside this repository) to also load the entities with Doctrine's real metadata factory, validate the mapping and create the schema in SQLite (`test/tools/validate-doctrine.php`).
 
 ## Conversion matrix
 

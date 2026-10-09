@@ -1201,7 +1201,7 @@ describe('doctrine emitter: PHP syntax', () => {
 // Doctrine's real metadata factory, validated, and created in SQLite.
 const doctrineDirectory: string | undefined = process.env.DOCTRINE_DIR;
 const validateScript: string = fileURLToPath(
-  new URL('./fixtures/doctrine/validate.php', import.meta.url)
+  new URL('./tools/validate-doctrine.php', import.meta.url)
 );
 
 describe('doctrine emitter: real Doctrine ORM', () => {
