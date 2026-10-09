@@ -2,17 +2,18 @@
 
 Convert ORM models between frameworks and languages, so one data model can be shared across your whole stack, from the command line or from code.
 
-| Format                      | Read | Write | Notes                                                       |
-| --------------------------- | :--: | :---: | ----------------------------------------------------------- |
-| Django models               |  ✔   |   ✔   | `models.py` files or `models/` packages                     |
-| Prisma schema               |  ✔   |   ✔   | All six providers; Prisma 7 header via `--prisma-version 7` |
-| TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                              |
-| Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; writes one file per entity                |
-| Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both          |
-| GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; writes one file per model         |
-| Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable` / `mysqlTable` / `sqliteTable` plus `relations()` |
-| TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                   |
-| Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django  |
+| Format                      | Read | Write | Notes                                                        |
+| --------------------------- | :--: | :---: | ------------------------------------------------------------ |
+| Django models               |  ✔   |   ✔   | `models.py` files or `models/` packages                      |
+| Prisma schema               |  ✔   |   ✔   | All six providers; Prisma 7 header via `--prisma-version 7`  |
+| TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                               |
+| Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; writes one file per entity                 |
+| Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both           |
+| GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; writes one file per model          |
+| Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable` / `mysqlTable` / `sqliteTable` plus `relations()`  |
+| TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                    |
+| Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django   |
+| JSON Schema (draft 2020-12) |      |   ✔   | One `$defs` document; usable in OpenAPI `components.schemas` |
 
 See [What is converted](#what-is-converted) for the field-level mapping and [docs/CONVERSION_MATRIX.md](docs/CONVERSION_MATRIX.md) for exactly what survives a round trip between the readable formats.
 
@@ -64,24 +65,24 @@ ormbridge convert -i ./src/db/schema --from drizzle -o ./prisma/schema.prisma
 
 Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `.ts` = TypeORM), or set explicitly with `--from` / `--to`. Passing a directory does not infer the format, so add `--from typeorm` (or `--from drizzle`, `--from doctrine`, `--from laravel`, `--from gorm`) when reading a folder of entities; `.php` and `.go` are not inferred either, and `.ts` always means TypeORM, so Drizzle needs `--from drizzle`. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
 
-| Flag                      | Default                    | Description                                                                                                                                           |
-| ------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-i, --input <paths...>`  | required (or config)       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.                            |
-| `-o, --output <path>`     | stdout                     | File to write. Parent directories are created.                                                                                                        |
-| `-f, --from <format>`     | inferred                   | `django`, `prisma`, `typeorm`, `drizzle`, `doctrine`, `laravel` or `gorm`                                                                             |
-| `-t, --to <format>`       | inferred                   | `django`, `prisma`, `typeorm`, `drizzle`, `doctrine`, `laravel` or `gorm` (the last four write a directory), `typescript` or `graphene` (output only) |
-| `--naming <mode>`         | `preserve`                 | `preserve` or `normalize` (see below)                                                                                                                 |
-| `--provider <name>`       | `postgresql`               | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`.               |
-| `--no-header`             | off                        | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                               |
-| `--app-label <name>`      | directory name             | Django app label used for default table names (`<app>_<model>`).                                                                                      |
-| `--auto-field <type>`     | `int`                      | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                                        |
-| `--namespace <name>`      | `App\Entity`, `App\Models` | PHP namespace of the Doctrine entities or Laravel models (`--to doctrine` / `--to laravel` only). Enums go in a sibling namespace.                    |
-| `--go-package <name>`     | `models`                   | Go package name of the GORM models, also the output sub-directory (`--to gorm` only). Must be a valid Go identifier.                                  |
-| `--prisma-version <6\|7>` | `6`                        | Prisma major version of the header (`--to prisma` only). `7` writes the `prisma-client` generator (with an `output`) and no datasource `url`.         |
-| `--dry-run`               | off                        | Run the whole conversion and report what would be written, without touching the filesystem.                                                           |
-| `--check`                 | off                        | Exit with code 3 if an output file is missing or differs from the conversion. Writes nothing. Needs an output path.                                   |
-| `--config <path>`         | searched                   | Read settings from this JSON config file instead of searching for one.                                                                                |
-| `--no-config`             | off                        | Ignore any config file.                                                                                                                               |
+| Flag                      | Default                    | Description                                                                                                                                                          |
+| ------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-i, --input <paths...>`  | required (or config)       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.                                           |
+| `-o, --output <path>`     | stdout                     | File to write. Parent directories are created.                                                                                                                       |
+| `-f, --from <format>`     | inferred                   | `django`, `prisma`, `typeorm`, `drizzle`, `doctrine`, `laravel` or `gorm`                                                                                            |
+| `-t, --to <format>`       | inferred                   | `django`, `prisma`, `typeorm`, `drizzle`, `doctrine`, `laravel` or `gorm` (the last four write a directory), `typescript`, `json-schema` or `graphene` (output only) |
+| `--naming <mode>`         | `preserve`                 | `preserve` or `normalize` (see below)                                                                                                                                |
+| `--provider <name>`       | `postgresql`               | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`.                              |
+| `--no-header`             | off                        | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                                              |
+| `--app-label <name>`      | directory name             | Django app label used for default table names (`<app>_<model>`).                                                                                                     |
+| `--auto-field <type>`     | `int`                      | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                                                       |
+| `--namespace <name>`      | `App\Entity`, `App\Models` | PHP namespace of the Doctrine entities or Laravel models (`--to doctrine` / `--to laravel` only). Enums go in a sibling namespace.                                   |
+| `--go-package <name>`     | `models`                   | Go package name of the GORM models, also the output sub-directory (`--to gorm` only). Must be a valid Go identifier.                                                 |
+| `--prisma-version <6\|7>` | `6`                        | Prisma major version of the header (`--to prisma` only). `7` writes the `prisma-client` generator (with an `output`) and no datasource `url`.                        |
+| `--dry-run`               | off                        | Run the whole conversion and report what would be written, without touching the filesystem.                                                                          |
+| `--check`                 | off                        | Exit with code 3 if an output file is missing or differs from the conversion. Writes nothing. Needs an output path.                                                  |
+| `--config <path>`         | searched                   | Read settings from this JSON config file instead of searching for one.                                                                                               |
+| `--no-config`             | off                        | Ignore any config file.                                                                                                                                              |
 
 ### Dry run and check
 
@@ -388,6 +389,20 @@ Writes plain TypeScript interfaces and enums for sharing models with a front end
 - A foreign key is written as its scalar (`categoryId: number`, typed from the referenced primary key or `to_field`) plus an optional expanded relation (`category?: Category`). Reverse sides are optional (`comments?: Comment[]`, a one-to-one reverse side is `profile?: Profile | null`), as are many-to-many lists on both sides.
 - `--naming normalize` writes camelCase property names, `preserve` keeps the existing names. Names that are not valid identifiers are quoted.
 - Warnings name the model and field for relations to unknown models, composite-key targets (the foreign key becomes `unknown`), unknown enums or field types, and invalid or clashing type names.
+
+### JSON Schema (`--to json-schema`)
+
+Writes one JSON Schema (draft 2020-12) document describing the rows of every model, for validating API payloads or generating forms and clients. It is output only, needs no parser, and `.json` is not claimed as an extension (the registry matches the last extension and `.json` is far too generic), so pass `--to json-schema` and name the file yourself (for example `-o schema.json`).
+
+- The document has `$schema`, `$id` (`urn:ormbridge:schema`; programmatic callers can pass `id` to `emitJsonSchema`) and `$defs` with one entry per enum and per model. Every model is `type: "object"` with `additionalProperties: false`. Property names match the TypeScript interfaces output, so the two can be used together: `preserve` keeps names, `normalize` writes camelCase.
+- **Types.** `string` / `text` are `string` (`maxLength` from the column length), `int` is `integer`, `float` is `number`, `boolean` is `boolean`, `dateTime` / `date` / `time` / `uuid` / `duration` are strings with `format` `date-time` / `date` / `time` / `uuid` / `duration` (a name such as `email` never adds `format: email`), `json` accepts any value, `bytes` is a base64 string (`contentEncoding`). `bigInt` and `decimal` are strings so no precision is lost: `bigInt` has the pattern `^-?[0-9]+$`, and `decimal` has `^-?[0-9]+(\.[0-9]+)?$`, narrowed to the allowed digits when the column has a precision and scale (`decimal(8,2)` is `^-?[0-9]{1,6}(\.[0-9]{1,2})?$`). The IR carries no integer sizes, so `minimum` / `maximum` are written only when a Prisma native type names the width (`@db.SmallInt`, `@db.TinyInt`, `@db.UnsignedInt`, ...). Arrays nest `type: "array"`, HStore is an object of nullable strings and ranges are `{ lower, upper, bounds }` objects.
+- **Nullable columns** are `type: ["string", "null"]`. A nullable enum or relation is `anyOf` with `{ "type": "null" }`.
+- **Required.** A property is in `required` when its column is not nullable, has no default and is not generated, and a foreign-key scalar is required when its relation is. Columns the database or ORM fills in (auto-increment, UUID, `now`, client-generated and database-expression defaults, auto-updated and generated columns) are `readOnly: true` and not required; a literal or enum default is written as `default` and makes the column optional. Relation and reverse properties are always optional.
+- **Relations.** A foreign key keeps its scalar (`author_id`, typed from the referenced key) and gets an optional expanded property that is a `$ref` to the target (`anyOf` with null when nullable). Reverse sides and many-to-many relations are optional arrays of `$ref` (a one-to-one reverse side is nullable), exactly as in the TypeScript output.
+- **Enums** are `{ "type": "string", "enum": [stored values] }`. The IR has no column comments, so `description` carries only enum labels (`draft: Draft`) and generated-column expressions.
+- **OpenAPI.** An OpenAPI 3.1 document uses JSON Schema 2020-12, so the entries can be copied into `components.schemas`. References point at `#/$defs/<Name>` by default; pass `refPrefix: '#/components/schemas/'` to `emitJsonSchema` and copy the `$defs` entries over (or rewrite the prefix with a text replace). Generating an OpenAPI document itself (paths, `--to openapi`) is not part of this format.
+- Warnings name the model and field for relations to unknown models, composite-key targets (the foreign key accepts any value), unknown enums or field types, duplicate enum values, and definition names that cannot be used in a `$ref` (they are renamed). Database constraints (unique, indexes, referential actions) have no JSON Schema form and are not written.
+- The tests check every canonical fixture's output structurally and, when Ajv is installed (`AJV_DIR`, see `test/README.md`), load it with the real draft 2020-12 validator and validate IR-generated sample rows.
 
 [Back to Table of Contents](#table-of-contents)
 

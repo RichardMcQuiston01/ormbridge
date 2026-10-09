@@ -157,6 +157,9 @@ describe('formats command output', () => {
       /graphene\s+extensions: \(none\) {2}write {2}Graphene \(graphene-django\) GraphQL schema\n/
     );
     expect(text).toMatch(
+      /json-schema\s+extensions: \(none\) {2}write {2}JSON Schema \(draft 2020-12\) document\n/
+    );
+    expect(text).toMatch(
       /typescript\s+extensions: \(none\) {2}write {2}Plain TypeScript interfaces and enums\n/
     );
   });

@@ -71,6 +71,8 @@ export type {
   TypescriptDateMode,
   TypescriptInterfacesOptions,
 } from './emitters/typescriptInterfaces.js';
+export { emitJsonSchema } from './emitters/jsonSchema.js';
+export type { JsonSchemaOptions } from './emitters/jsonSchema.js';
 export { expandManyToMany, normalizeSchema } from './transforms.js';
 export type { NamingMode } from './transforms.js';
 export type * from './ir.js';

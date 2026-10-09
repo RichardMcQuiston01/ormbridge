@@ -10,6 +10,7 @@ import {
   type PrismaProvider,
 } from './emitters/prisma.js';
 import { emitTypeorm } from './emitters/typeorm.js';
+import { emitJsonSchema } from './emitters/jsonSchema.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
@@ -300,6 +301,20 @@ const typescriptAdapter: FormatAdapter = {
   },
 };
 
+const jsonSchemaAdapter: FormatAdapter = {
+  name: 'json-schema',
+  // No extension is claimed: the registry matches the last extension only, and ".json" is too generic, so pass --to json-schema.
+  extensions: [],
+  description: 'JSON Schema (draft 2020-12) document',
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitJsonSchema(prepared, { camelFields: options.naming === 'normalize' })
+    );
+  },
+};
+
 const doctrineAdapter: FormatAdapter = {
   name: 'doctrine',
   // No extension is claimed: ".php" is too generic to infer, so pass --from/--to doctrine.
@@ -459,6 +474,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(drizzleAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
+  registerFormat(jsonSchemaAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>
