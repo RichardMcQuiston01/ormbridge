@@ -75,7 +75,7 @@ export function emitTypeorm(
     schema,
     options,
     dialect: dialectOf(options.provider),
-    warnings: prismaOnlyWarnings(schema),
+    warnings: prismaOnlyWarnings(schema, true),
     imports: new Set<string>(),
     names: new Map<string, ModelNames>(),
     inverseNames: new Map<string, string>(),
@@ -948,6 +948,10 @@ function buildForwardMembers(
   const members: Member[] = [];
   const names: ModelNames = namesOf(context, model);
 
+  if (model.isView === true) {
+    return buildViewMembers(context, model, names);
+  }
+
   for (const field of model.fields) {
     members.push(
       buildFieldMember(
@@ -982,6 +986,46 @@ function buildForwardMembers(
         inverseMembers
       );
     }
+  }
+  return members;
+}
+
+/**
+ * Builds the members of a database view: every field becomes a `@ViewColumn()`. Views have no
+ * primary key, relations, unique constraints or indexes in TypeORM, so those are dropped with a
+ * warning.
+ */
+function buildViewMembers(
+  context: EmitContext,
+  model: IrModel,
+  names: ModelNames
+): Member[] {
+  const members: Member[] = [];
+  for (const field of model.fields) {
+    const label: string = `${model.name}.${field.name}`;
+    const propName: string = names.fields.get(field.name) ?? field.name;
+    const spec: ColumnSpec = columnSpecOf(context, label, field);
+    const nameOption: string | undefined = nameEntry(
+      field.columnName,
+      propName
+    );
+    if (field.isUnique || field.isPrimaryKey) {
+      context.warnings.push(
+        `${label}: a view column cannot carry a ${field.isPrimaryKey ? 'primary key' : 'unique'} constraint in TypeORM; the constraint was dropped.`
+      );
+    }
+    const nullableSuffix: string = field.isNullable ? ' | null' : '';
+    members.push({
+      lines: [
+        ...decorator(use(context, 'ViewColumn'), [], compact([nameOption])),
+        `  ${propName}!: ${spec.tsType}${nullableSuffix};`,
+      ],
+    });
+  }
+  for (const relation of model.relations) {
+    context.warnings.push(
+      `${model.name}.${relation.name}: relations on a view are not supported by TypeORM; the relation was skipped.`
+    );
   }
   return members;
 }
@@ -1221,11 +1265,48 @@ function indexDecorator(
   );
 }
 
+function emitViewClass(
+  context: EmitContext,
+  model: IrModel,
+  members: Member[]
+): string {
+  context.warnings.push(
+    `${model.name}: a Prisma view has no SQL definition, so the @ViewEntity expression is a placeholder ("SELECT * FROM ${model.tableName}", which selects from the view itself); replace it with the query that defines the view.`
+  );
+  if (model.indexes.length > 0) {
+    context.warnings.push(
+      `${model.name}: indexes on a view are not supported by TypeORM and were skipped.`
+    );
+  }
+  const body: string[] = members.flatMap((member: Member, position: number) =>
+    position === 0 ? member.lines : ['', ...member.lines]
+  );
+  return [
+    `// TODO: ${model.name} is a database view. Its SQL definition is not part of the source schema,`,
+    '// so replace the placeholder expression below with the query that defines the view.',
+    ...decorator(
+      use(context, 'ViewEntity'),
+      [],
+      [
+        `name: ${quote(model.tableName)}`,
+        `expression: ${quote(`SELECT * FROM ${model.tableName}`)}`,
+      ],
+      ''
+    ),
+    `export class ${model.name} {`,
+    ...body,
+    '}',
+  ].join('\n');
+}
+
 function emitClass(
   context: EmitContext,
   model: IrModel,
   members: Member[]
 ): string {
+  if (model.isView === true) {
+    return emitViewClass(context, model, members);
+  }
   const hasPrimaryKey: boolean =
     model.fields.some((field: IrField) => field.isPrimaryKey) ||
     model.relations.some(

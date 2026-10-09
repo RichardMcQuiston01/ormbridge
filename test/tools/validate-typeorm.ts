@@ -70,6 +70,7 @@ interface SpecIndex {
 interface SpecModel {
   name: string;
   table: string;
+  isView?: boolean;
   columns: SpecColumn[];
   relations: SpecRelation[];
   manyToMany: SpecManyToMany[];
@@ -172,6 +173,12 @@ function compareMetadata(
       );
     }
 
+    if ((metadata.tableType === 'view') !== (model.isView === true)) {
+      problems.push(
+        `${where}: table type is ${metadata.tableType}, expected ${model.isView === true ? 'view' : 'regular table'}`
+      );
+    }
+
     const expectedColumns: Set<string> = new Set([
       ...model.columns.map((column: SpecColumn) => column.column),
       ...model.relations.map((relation: SpecRelation) => relation.column),
@@ -183,6 +190,11 @@ function compareMetadata(
       problems.push(
         `${where}: columns are [${joined(sorted(actualColumns))}], expected [${joined(sorted(expectedColumns))}]`
       );
+    }
+
+    if (model.isView === true) {
+      // A view has no key, constraints or column details in TypeORM; the names are all it keeps.
+      continue;
     }
 
     const primary: string[] = metadata.primaryColumns.map(
@@ -538,27 +550,48 @@ async function verify(
   const entities: EntityClass[] = Object.values(loaded).filter(
     (value: unknown): value is EntityClass => typeof value === 'function'
   );
-  const options: DataSourceOptions =
-    provider === 'sqlite'
-      ? {
-          type: 'better-sqlite3',
-          database: ':memory:',
-          entities,
-          synchronize: true,
-        }
-      : ({
-          type: DRIVER_TYPES[provider],
-          database: 'ormbridge',
-          entities,
-        } as DataSourceOptions);
-  const dataSource: DataSource = new DataSource(options);
   if (provider === 'sqlite') {
-    await dataSource.initialize();
-    compareMetadata(spec, dataSource.entityMetadatas, provider, problems);
-    await compareDatabase(spec, dataSource, problems);
-    await dataSource.destroy();
+    // The placeholder expression of a generated view selects from the view itself, so SQLite
+    // cannot create it. The metadata of every entity is built first (which validates the
+    // views), then the tables are synchronized without the views.
+    const metadataOnly: DataSource = new DataSource({
+      type: 'better-sqlite3',
+      database: ':memory:',
+      entities,
+    });
+    await (
+      metadataOnly as unknown as { buildMetadatas(): Promise<void> }
+    ).buildMetadatas();
+    compareMetadata(spec, metadataOnly.entityMetadatas, provider, problems);
+
+    const viewClasses: Set<string> = new Set(
+      metadataOnly.entityMetadatas
+        .filter((metadata: EntityMetadata) => metadata.tableType === 'view')
+        .map((metadata: EntityMetadata) => metadata.targetName)
+    );
+    const synchronized: DataSource = new DataSource({
+      type: 'better-sqlite3',
+      database: ':memory:',
+      entities: entities.filter(
+        (entity: EntityClass) => !viewClasses.has(entity.name)
+      ),
+      synchronize: true,
+    });
+    await synchronized.initialize();
+    await compareDatabase(
+      { models: spec.models.filter((model: SpecModel) => !model.isView) },
+      synchronized,
+      problems
+    );
+    await synchronized.destroy();
     return;
   }
+  const options: DataSourceOptions = {
+    type: DRIVER_TYPES[provider],
+    database: 'ormbridge',
+    entities,
+  } as DataSourceOptions;
+  const dataSource: DataSource = new DataSource(options);
   // No server is available, so only TypeORM's metadata building and validation run.
   await (
     dataSource as unknown as { buildMetadatas(): Promise<void> }

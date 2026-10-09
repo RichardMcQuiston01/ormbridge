@@ -12,7 +12,7 @@ import {
   parseSource,
   probePython,
   titleWithReason,
-  VERIFY_SOURCES,
+  SOURCES_WITHOUT_VIEWS,
   writeProjectFile,
   type ToolProbe,
   type VerifySource,
@@ -72,7 +72,7 @@ describe(
   () => {
     // Django sources are not used: their models import the project's user model, which the
     // schema pairs with only when the models are generated (see the Django tests).
-    const sources: VerifySource[] = VERIFY_SOURCES.filter(
+    const sources: VerifySource[] = SOURCES_WITHOUT_VIEWS.filter(
       (source: VerifySource) => source.format !== 'django'
     );
 

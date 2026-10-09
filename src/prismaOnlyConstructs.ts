@@ -9,9 +9,12 @@ import type {
 /**
  * Describes the IR constructs that only the Prisma emitter can write (views, composite foreign keys,
  * `Unsupported(...)` columns, full-text indexes, database schemas, ...). Every other emitter starts
- * its warning list with this, so a conversion never drops one of them silently.
+ * its warning list with this (an emitter that has a view construct of its own passes `viewsSupported`), so a conversion never drops one of them silently.
  */
-export function prismaOnlyWarnings(schema: IrSchema): string[] {
+export function prismaOnlyWarnings(
+  schema: IrSchema,
+  viewsSupported: boolean = false
+): string[] {
   const warnings: string[] = [];
   for (const enumDefinition of schema.enums) {
     if (enumDefinition.schema !== undefined) {
@@ -21,13 +24,17 @@ export function prismaOnlyWarnings(schema: IrSchema): string[] {
     }
   }
   for (const model of schema.models) {
-    describeModel(model, warnings);
+    describeModel(model, warnings, viewsSupported);
   }
   return warnings;
 }
 
-function describeModel(model: IrModel, warnings: string[]): void {
-  if (model.isView === true) {
+function describeModel(
+  model: IrModel,
+  warnings: string[],
+  viewsSupported: boolean
+): void {
+  if (model.isView === true && !viewsSupported) {
     warnings.push(
       `${model.name}: this is a database view; it was written like a regular table model, so migrations would try to create a table.`
     );
