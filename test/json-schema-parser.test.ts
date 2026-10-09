@@ -117,10 +117,10 @@ function readFixture(directory: string, name: string) {
 }
 
 describe('registration', () => {
-  it('registers a read-only json-schema format that claims no extension', () => {
+  it('registers a readable and writable json-schema format that claims no extension', () => {
     const adapter = expectOk(getFormat('json-schema'));
     expect(adapter.parse).toBeDefined();
-    expect(adapter.emit).toBeUndefined();
+    expect(adapter.emit).toBeDefined();
     expect(adapter.extensions).toEqual([]);
     expect(getFormatByExtension('.json')).toBeUndefined();
   });

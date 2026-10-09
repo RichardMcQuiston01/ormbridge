@@ -1,0 +1,4 @@
++ "id": {
++ "readOnly": true
++ "type": "integer",
++ },

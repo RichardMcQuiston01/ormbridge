@@ -1,5 +1,6 @@
 import { emitDjango } from './emitters/django.js';
 import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
+import { emitDrizzle } from './emitters/drizzle.js';
 import { emitGorm, isValidGoPackageName } from './emitters/gorm.js';
 import { emitGraphene } from './emitters/graphene.js';
 import { emitLaravel } from './emitters/laravel.js';
@@ -9,9 +10,11 @@ import {
   type PrismaProvider,
 } from './emitters/prisma.js';
 import { emitTypeorm } from './emitters/typeorm.js';
+import { emitJsonSchema } from './emitters/jsonSchema.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
+import { parseDrizzle } from './parsers/drizzle.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parseGorm } from './parsers/gorm.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
@@ -299,6 +302,34 @@ const typescriptAdapter: FormatAdapter = {
   },
 };
 
+const jsonSchemaAdapter: FormatAdapter = {
+  name: 'json-schema',
+  // No extension is claimed: the registry matches the last extension only, and ".json" is too generic, so pass --from/--to json-schema.
+  extensions: [],
+  description:
+    'JSON Schema (draft 2020-12) and OpenAPI components.schemas (JSON)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    Promise.resolve(
+      parseJsonSchema(
+        sources.map((source: SourceText) => ({
+          path: source.path,
+          text: source.text,
+        })),
+        { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+      )
+    ),
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitJsonSchema(prepared, { camelFields: options.naming === 'normalize' })
+    );
+  },
+};
+
 const doctrineAdapter: FormatAdapter = {
   name: 'doctrine',
   // No extension is claimed: ".php" is too generic to infer, so pass --from/--to doctrine.
@@ -422,23 +453,28 @@ const gormAdapter: FormatAdapter = {
   },
 };
 
-const jsonSchemaAdapter: FormatAdapter = {
-  name: 'json-schema',
-  // No extension is claimed: ".json" is too generic to infer, and extname() never yields ".schema.json", so pass --from json-schema.
+const drizzleAdapter: FormatAdapter = {
+  name: 'drizzle',
+  // No extension is claimed: ".ts" is too generic to infer, so pass --from/--to drizzle.
   extensions: [],
-  description: 'JSON Schema and OpenAPI components.schemas (JSON)',
+  description: 'Drizzle ORM schemas (TypeScript, pg/mysql/sqlite-core)',
   parse: (
     sources: SourceText[],
     options: FormatOptions
   ): Promise<Result<IrSchema>> =>
-    Promise.resolve(
-      parseJsonSchema(
-        sources.map((source: SourceText) => ({
-          path: source.path,
-          text: source.text,
-        })),
-        { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
-      )
+    parseDrizzle(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+  emit: (schema: IrSchema, options: FormatOptions): Result<FormatEmitOutput> =>
+    ok(
+      emitDrizzle(schema, {
+        provider: options.provider,
+        naming: options.naming,
+      })
     ),
 };
 
@@ -450,9 +486,10 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(doctrineAdapter),
   registerFormat(laravelAdapter),
   registerFormat(gormAdapter),
-  registerFormat(jsonSchemaAdapter),
+  registerFormat(drizzleAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
+  registerFormat(jsonSchemaAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

@@ -10,7 +10,6 @@ import {
   matrixPairs,
   parseEmitted,
   parseWith,
-  readOnlyFormats,
   readOnlyPairs,
   type EmitOnlyCell,
   type MatrixCell,
@@ -43,12 +42,10 @@ describe('conversion matrix coverage', () => {
   it('has one cell per ordered pair of readable and writable formats', () => {
     const formats: FormatAdapter[] = matrixFormats();
     expect(formats.length).toBeGreaterThanOrEqual(3);
-    const readOnlyCount: number = readOnlyFormats().length * formats.length;
     expect(cells).toHaveLength(
-      formats.length * (formats.length - 1) + readOnlyCount
+      formats.length * (formats.length - 1) + readOnlyPairs().length
     );
     expect(matrixPairs()).toHaveLength(formats.length * (formats.length - 1));
-    expect(readOnlyPairs()).toHaveLength(readOnlyCount);
   });
 });
 
@@ -76,7 +73,6 @@ describe.each(
   });
 });
 
-// A format that can only be read joins as a source: it is written to every target and read back.
 describe.each(
   readOnlyPairs().map(
     ([source, target]) => [source.name, target.name, source, target] as const

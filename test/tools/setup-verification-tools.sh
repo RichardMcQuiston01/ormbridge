@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs the real tools that the optional verification tests use (Django, graphene-django,
-# TypeORM with SQLite and Ajv) into a scratch directory outside this repository, then prints the
-# environment variables that switch the tests on.
+# TypeORM with SQLite, Drizzle ORM with drizzle-kit and Ajv for JSON Schema) into a scratch directory outside this
+# repository, then prints the environment variables that switch the tests on.
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
 #   eval "$(test/tools/setup-verification-tools.sh /tmp/ormbridge-tools | grep '^export ')"
@@ -28,7 +28,7 @@ mkdir -p "${target}/typeorm"
     pg mysql2 mssql
 )
 
-echo "Installing Ajv (JSON Schema validator) into ${target}/ajv" >&2
+echo "Installing Ajv and ajv-formats into ${target}/ajv" >&2
 mkdir -p "${target}/ajv"
 (
   cd "${target}/ajv"
@@ -36,6 +36,18 @@ mkdir -p "${target}/ajv"
   npm install --silent ajv ajv-formats
 )
 
+echo "Installing Drizzle ORM, drizzle-kit and SQLite into ${target}/drizzle" >&2
+mkdir -p "${target}/drizzle"
+(
+  cd "${target}/drizzle"
+  [ -f package.json ] || npm init -y > /dev/null
+  # drizzle-kit generate needs no database; better-sqlite3 lets drizzle-kit push into SQLite and
+  # lets the tests inspect the result. PostgreSQL and MySQL output is compiled and turned into SQL.
+  npm install --silent drizzle-orm drizzle-kit typescript @types/node better-sqlite3 \
+    @types/better-sqlite3
+)
+
 echo "export DJANGO_PYTHON=${target}/venv/bin/python"
 echo "export TYPEORM_DIR=${target}/typeorm"
+echo "export DRIZZLE_DIR=${target}/drizzle"
 echo "export AJV_DIR=${target}/ajv"

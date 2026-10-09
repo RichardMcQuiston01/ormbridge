@@ -1,0 +1,46 @@
++ "null"
++ "null"
++ "null"
++ "null"
++ "pattern": "^-?[0-9]+$"
++ "pattern": "^-?[0-9]+$"
++ "pattern": "^-?[0-9]+$"
++ "pattern": "^-?[0-9]+$"
++ "pattern": "^-?[0-9]+$"
++ "pattern": "^-?[0-9]+$",
++ "pattern": "^-?[0-9]+$",
++ "pattern": "^-?[0-9]+$",
++ "pattern": "^-?[0-9]+$",
++ "pattern": "^-?[0-9]+$",
++ "string",
++ "string",
++ "string",
++ "string",
++ "string",
++ "string",
++ "type": "string",
++ "type": "string",
++ "type": "string",
++ "type": "string",
++ "type": [
++ "type": [
++ "type": [
++ "type": [
++ ],
++ ],
++ ],
++ ],
++ ],
++ ],
+- "integer",
+- "integer",
+- "type": "integer"
+- "type": "integer"
+- "type": "integer"
+- "type": "integer",
+- "type": "integer",
+- "type": "integer",
+- "type": "integer",
+- "type": "integer",
+- ]
+- ]

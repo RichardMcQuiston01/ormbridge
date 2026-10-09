@@ -6,7 +6,9 @@ import {
   type SourceText,
 } from '../src/formats.js';
 import type { IrSchema } from '../src/ir.js';
+import { checkDrizzleOutput } from './drizzleCoverage.js';
 import { checkGormOutput } from './gormCoverage.js';
+import { checkJsonSchemaOutput } from './jsonSchemaCoverage.js';
 import { loadCanonicalSources } from './harness.js';
 import { DEFAULT_OPTIONS } from './helpers.js';
 import { compareIr, type IrDifference } from './irCompare.js';
@@ -233,6 +235,8 @@ const EMIT_ONLY_CHECKS: Readonly<
   Record<string, (schema: IrSchema, files: Record<string, string>) => string[]>
 > = {
   gorm: checkGormOutput,
+  drizzle: checkDrizzleOutput,
+  'json-schema': checkJsonSchemaOutput,
 };
 
 /** Write-only formats the matrix can check structurally, in registration order. */
@@ -266,15 +270,19 @@ export async function computeEmitOnlyCell(
     loadCanonicalSources(source.name)
   );
   const emitted: EmittedText = emitWith(target, sourceIr);
+  // A single-text format is checked as one file named after the format.
+  const files: Record<string, string> = emitted.files ?? {
+    [target.name]: emitted.text,
+  };
   const check:
     | ((schema: IrSchema, files: Record<string, string>) => string[])
     | undefined = EMIT_ONLY_CHECKS[target.name];
   return {
     source: source.name,
     target: target.name,
-    files: Object.keys(emitted.files ?? {}).sort(),
+    files: Object.keys(files).sort(),
     emitWarnings: emitted.warnings,
-    missing: check === undefined ? [] : check(sourceIr, emitted.files ?? {}),
+    missing: check === undefined ? [] : check(sourceIr, files),
   };
 }
 

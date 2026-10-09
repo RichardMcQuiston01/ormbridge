@@ -60,7 +60,7 @@ jobs:
           key: real-tools-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
           restore-keys: real-tools-${{ runner.os }}-
       - run: npm ci
-      - name: Install Django, graphene-django and TypeORM
+      - name: Install Django, graphene-django, TypeORM and Drizzle
         run: |
           test/tools/setup-verification-tools.sh "$TOOLS" | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
       - name: Install Doctrine ORM and Illuminate
