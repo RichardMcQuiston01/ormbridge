@@ -64,12 +64,24 @@ Tracks G and H run in parallel, as do I and J. After they land, extend the conve
 2. Open the `dev` → `main` release PR; update `CHANGELOG.md` and the README.
 3. Tag from `main` (`npm version minor && git push --follow-tags`); the workflow publishes.
 
+## Phase 5: Go ORMs (after Phase 2)
+
+GORM is the first Go ORM. Go has no decorators, so the schema lives in struct tags (`gorm:"..."`), which the tree-sitter Go grammar (`tree-sitter-go.wasm` in `tree-sitter-wasms`) can read statically, the same way the TypeORM and Doctrine parsers read decorators and attributes.
+
+| Track           | Branch                 | Owns                                             | Work                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Blocked by                        |
+| --------------- | ---------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| K. GORM parser  | `feature/gorm-parser`  | `src/parsers/gorm.ts`, `src/parsers/goSyntax.ts` | Read Go structs with tree-sitter: `gorm:"column:...;type:...;size:...;primaryKey;autoIncrement;uniqueIndex;index;not null;default:..."` tags, embedded `gorm.Model`, `autoCreateTime` / `autoUpdateTime`, soft delete (`gorm.DeletedAt`), the association tags (`foreignKey`, `references`, `many2many`, `polymorphic`) for has one, has many, belongs to and many to many, composite keys and indexes, custom `TableName()` methods, and typed string constants as enums. Honour GORM naming conventions (snake_case columns, plural table names, `ID` primary key, `<Field>ID` foreign keys) in `preserve` mode. | 0.3, 0.4                          |
+| L. GORM emitter | `feature/gorm-emitter` | `src/emitters/gorm.ts`                           | Emit Go structs with typed fields (`time.Time`, pointers or `sql.Null*` for nullable columns, `uuid.UUID`, `decimal.Decimal`), GORM tags, association fields on both sides, join tables, `TableName()` methods and typed string constants for enums. One file per model through the multi-file contract. Tests against IR fixtures; verify with `go vet` and a SQLite `AutoMigrate` run when Go is available.                                                                                                                                                                                                      | 0.3, 0.4, multi-file output (2.2) |
+
+Tracks K and L run in parallel. After they land, extend the conversion matrix (2.1) to cover GORM and document what is lossy.
+
 ## Parallel work plan
 
 - **Now (one agent each, parallel):** 0.1, then 0.2 and 0.3 together, then 0.4.
 - **After 0.4 (up to six agents):** tracks A, B, C, D, E, F.
 - **After A and B:** 2.1. 2.2 and 2.3 can run any time their blockers are merged.
 - **After Phase 2 (up to four agents):** tracks G, H, I, J. Start G and H first; I and J need the multi-file work from 2.2.
+- **After Phase 2 (two agents):** tracks K and L. They are independent of the PHP tracks and can run alongside them.
 
 ## Backlog (unscheduled)
 
