@@ -587,6 +587,65 @@ Warnings when the output is read back: none.
 
 Stable: converting laravel → gorm → laravel again changes nothing further.
 
+## Write-only targets
+
+Some formats can be written but not read (drizzle), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
+
+| Pair | Files | Emit warnings | Missing |
+| --- | --- | --- | --- |
+| django → drizzle | 2 | 0 | none |
+| prisma → drizzle | 2 | 0 | none |
+| typeorm → drizzle | 2 | 0 | none |
+| doctrine → drizzle | 2 | 0 | none |
+| laravel → drizzle | 2 | 0 | none |
+| gorm → drizzle | 2 | 0 | none |
+
+### django → drizzle
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### prisma → drizzle
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### typeorm → drizzle
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### doctrine → drizzle
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### laravel → drizzle
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### gorm → drizzle
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### What drizzle approximates
+
+1. **One dialect per output.** `--provider` picks `pg-core` (PostgreSQL, CockroachDB), `mysql-core` or `sqlite-core`. Drizzle has no SQL Server or MongoDB dialect, so those providers are written as PostgreSQL tables with a warning. The column builders follow the dialect: `timestamp({ withTimezone: true })` and `jsonb` on PostgreSQL, `datetime` and `json` on MySQL, and on SQLite `integer({ mode: 'timestamp' })`, `integer({ mode: 'boolean' })` and `text({ mode: 'json' })`.
+2. **Auto-increment keys and integer widths.** An auto-increment `int` key is `serial` (PostgreSQL), `int().autoincrement()` (MySQL) or `integer().primaryKey({ autoIncrement: true })` (SQLite); `bigInt` is `bigserial` or `bigint` in `number` mode, which loses precision above 2^53. SQLite integers are always 64 bits wide. A UUID key is `uuid().defaultRandom()`, `char(36)` with a `(UUID())` default or text.
+3. **Where defaults live.** A `now` default is `.defaultNow()` (PostgreSQL), `CURRENT_TIMESTAMP` (MySQL) or `(unixepoch())` (SQLite), all evaluated by the database. Drizzle has no database default for a UUID on SQLite, so the writer uses `$defaultFn(() => crypto.randomUUID())`, which only runs for rows inserted through Drizzle, and warns. An auto-updated column gets `$onUpdate(() => new Date())`, which Drizzle applies in the client, not with a database trigger. Client-generated defaults (`cuid()`, `ulid()`) and database expressions are dropped with a warning.
+4. **Many-to-many join tables are explicit tables.** Drizzle has no many-to-many field. The writer expands every many-to-many relation into the join table Django creates (a surrogate `id`, two cascading foreign keys and a unique pair), in `preserve` and `normalize` naming alike, and both tables get a `many()` relation to it. The relation is therefore a one-to-many pair, not a many-to-many, when read back.
+5. **Enums by dialect.** PostgreSQL gets a `pgEnum` (a real database type). MySQL gets an inline `mysqlEnum` column. SQLite has no enum type, so the column is `text` with `{ enum: [...] }`, which narrows the TypeScript type but adds no check constraint. Every enum also exports its values as an `as const` array and a union type.
+6. **Constructs without a Drizzle builder.** Arrays, hstore and ranges outside PostgreSQL become JSON, text or varchar columns and durations become integers (microseconds), each with a warning. PostgreSQL columns without a builder (`bytea`, `hstore`, ranges) use small `customType` declarations at the top of the file. Generated columns (Python expressions), composite foreign keys, index types, sort orders and operator classes, full-text indexes, views and `@@schema` are written as plain tables and columns with a warning. Unique indexes are `uniqueIndex`, not unique constraints.
+7. **Both sides of every relation.** Every foreign key gets a `one()` relation on its table and the matching `many()` (or `one()` for a one-to-one) on the target. Two tables joined more than once, and self references, carry a `relationName` on both sides because Drizzle cannot pair them otherwise. An unnamed reverse relation is named after the plural of the model (`posts`). Tables are ordered so a table follows the tables it references; a reference to a table declared later (a cycle or a self reference) is annotated with `AnyPgColumn` (`AnyMySqlColumn`, `AnySQLiteColumn`).
+
 ## Known issues
 
 - Writing a many-to-many to TypeORM emits `@JoinTable({ name, joinColumn, inverseJoinColumn })` so the join table matches the one Django creates. The TypeORM reader then warns that "custom @JoinTable settings (name, joinColumn, inverseJoinColumn) are not preserved" for ormbridge's own output. The names it would have read are the same ones it derives, so nothing is lost, but the warning is noise for generated code.

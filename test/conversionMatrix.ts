@@ -6,6 +6,7 @@ import {
   type SourceText,
 } from '../src/formats.js';
 import type { IrSchema } from '../src/ir.js';
+import { checkDrizzleOutput } from './drizzleCoverage.js';
 import { checkGormOutput } from './gormCoverage.js';
 import { loadCanonicalSources } from './harness.js';
 import { DEFAULT_OPTIONS } from './helpers.js';
@@ -233,6 +234,7 @@ const EMIT_ONLY_CHECKS: Readonly<
   Record<string, (schema: IrSchema, files: Record<string, string>) => string[]>
 > = {
   gorm: checkGormOutput,
+  drizzle: checkDrizzleOutput,
 };
 
 /** Write-only formats the matrix can check structurally, in registration order. */

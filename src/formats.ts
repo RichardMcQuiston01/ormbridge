@@ -1,5 +1,6 @@
 import { emitDjango } from './emitters/django.js';
 import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
+import { emitDrizzle } from './emitters/drizzle.js';
 import { emitGorm, isValidGoPackageName } from './emitters/gorm.js';
 import { emitGraphene } from './emitters/graphene.js';
 import { emitLaravel } from './emitters/laravel.js';
@@ -421,6 +422,20 @@ const gormAdapter: FormatAdapter = {
   },
 };
 
+const drizzleAdapter: FormatAdapter = {
+  name: 'drizzle',
+  // Write-only for now, and no extension is claimed: ".ts" is too generic, so pass --to drizzle.
+  extensions: [],
+  description: 'Drizzle ORM schema (TypeScript, pg/mysql/sqlite-core)',
+  emit: (schema: IrSchema, options: FormatOptions): Result<FormatEmitOutput> =>
+    ok(
+      emitDrizzle(schema, {
+        provider: options.provider,
+        naming: options.naming,
+      })
+    ),
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -431,6 +446,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(gormAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
+  registerFormat(drizzleAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>
