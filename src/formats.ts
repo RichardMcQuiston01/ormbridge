@@ -10,6 +10,7 @@ import {
 } from './emitters/prisma.js';
 import { emitTypeorm } from './emitters/typeorm.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
+import { emitZod } from './emitters/zod.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
@@ -298,6 +299,20 @@ const typescriptAdapter: FormatAdapter = {
   },
 };
 
+const zodAdapter: FormatAdapter = {
+  name: 'zod',
+  // Output only, and no extension is claimed: ".ts" belongs to no single format, so pass --to zod.
+  extensions: [],
+  description: 'Zod schemas (TypeScript, Zod 4)',
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitZod(prepared, { camelFields: options.naming === 'normalize' })
+    );
+  },
+};
+
 const doctrineAdapter: FormatAdapter = {
   name: 'doctrine',
   // No extension is claimed: ".php" is too generic to infer, so pass --from/--to doctrine.
@@ -431,6 +446,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(gormAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
+  registerFormat(zodAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

@@ -64,6 +64,12 @@ export type {
   TypescriptDateMode,
   TypescriptInterfacesOptions,
 } from './emitters/typescriptInterfaces.js';
+export { emitZod } from './emitters/zod.js';
+export type {
+  ZodBigIntMode,
+  ZodDateMode,
+  ZodEmitOptions,
+} from './emitters/zod.js';
 export { expandManyToMany, normalizeSchema } from './transforms.js';
 export type { NamingMode } from './transforms.js';
 export type * from './ir.js';

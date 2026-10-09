@@ -139,6 +139,32 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
           'An unnamed reverse relation is named after the plural of the model (`Posts`), and a one-to-one after the model (`Profile`). Has-one and belongs-to fields are pointers unless a required parent can be held by value without making the struct type recursive.',
       },
     ],
+    zod: [
+      {
+        id: 'zod-wire-types',
+        title: 'Types that JSON cannot carry',
+        explanation:
+          'Big integers and decimals are validated as strings of digits (a decimal with `max_digits` and `decimal_places` gets a pattern sized to them), UUIDs with `z.uuid()` (which only accepts RFC 9562 versions and variants), binary data as base64 text, durations and times as plain strings, and JSON columns as `z.unknown()`. Date columns use `z.coerce.date()`, which also accepts `null` and numbers, so a null in a required date column is not rejected; the `dates: "string"` option validates ISO text strictly instead.',
+      },
+      {
+        id: 'zod-create-update',
+        title: 'Create and update schemas are inferred',
+        explanation:
+          'The IR has no notion of an API payload. `<Model>CreateSchema` leaves out auto-increment keys, generated columns and auto-updated timestamps, and makes columns with a default (or a database default) and nullable columns optional. `<Model>UpdateSchema` is the create schema made partial, so it cannot change a generated column. Views get neither.',
+      },
+      {
+        id: 'zod-relations',
+        title: 'Relations are a separate schema',
+        explanation:
+          'Relation fields are not part of `<Model>Schema`; the foreign-key scalar is. A model that takes part in a relation also gets `<Model>WithRelationsSchema`, where every related row is optional and resolved lazily. Referential actions (`onDelete`), `related_name` collisions and composite foreign keys are not validation rules, so they are dropped (a composite key stays as its scalar columns).',
+      },
+      {
+        id: 'zod-database-rules',
+        title: 'Database-only rules are not checked',
+        explanation:
+          'Unique constraints, indexes, check constraints, string lengths below the database limit, integer ranges, enum value order and column names are not validated or kept; only string `max_length`, enum membership, nullability and the types above are. Enum labels are kept as comments. Ranges become an object with `lower`, `upper` and `bounds`, and hstore a record of nullable strings.',
+      },
+    ],
   };
 
 /** True when either end of the pair is the given format. */
@@ -414,7 +440,7 @@ function emitOnlySection(cells: EmitOnlyCell[]): string[] {
   const lines: string[] = [
     '## Write-only targets',
     '',
-    `Some formats can be written but not read (${targets.join(', ')}), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a struct for its table, every column has a field, every many-to-many relation has its join table and every enum has its type. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.`,
+    `Some formats can be written but not read (${targets.join(', ')}), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a schema, every column and foreign key has a property, every relation is in the relations schema, every model has its create and update schemas (views have none) and every enum has its schema and values. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.`,
     '',
     '| Pair | Files | Emit warnings | Missing |',
     '| --- | --- | --- | --- |',

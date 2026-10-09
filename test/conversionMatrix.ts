@@ -7,6 +7,7 @@ import {
 } from '../src/formats.js';
 import type { IrSchema } from '../src/ir.js';
 import { checkGormOutput } from './gormCoverage.js';
+import { checkZodOutput } from './zodCoverage.js';
 import { loadCanonicalSources } from './harness.js';
 import { DEFAULT_OPTIONS } from './helpers.js';
 import { compareIr, type IrDifference } from './irCompare.js';
@@ -233,6 +234,7 @@ const EMIT_ONLY_CHECKS: Readonly<
   Record<string, (schema: IrSchema, files: Record<string, string>) => string[]>
 > = {
   gorm: checkGormOutput,
+  zod: checkZodOutput,
 };
 
 /** Write-only formats the matrix can check structurally, in registration order. */
@@ -269,12 +271,16 @@ export async function computeEmitOnlyCell(
   const check:
     | ((schema: IrSchema, files: Record<string, string>) => string[])
     | undefined = EMIT_ONLY_CHECKS[target.name];
+  // A single-file emitter has no file list: its text counts as one file.
+  const files: Record<string, string> = emitted.files ?? {
+    [`${target.name}.txt`]: emitted.text,
+  };
   return {
     source: source.name,
     target: target.name,
-    files: Object.keys(emitted.files ?? {}).sort(),
+    files: Object.keys(files).sort(),
     emitWarnings: emitted.warnings,
-    missing: check === undefined ? [] : check(sourceIr, emitted.files ?? {}),
+    missing: check === undefined ? [] : check(sourceIr, files),
   };
 }
 

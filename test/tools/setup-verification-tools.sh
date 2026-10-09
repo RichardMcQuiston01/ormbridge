@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installs the real tools that the optional verification tests use (Django, graphene-django and
-# TypeORM with SQLite) into a scratch directory outside this repository, then prints the
+# TypeORM with SQLite, Zod) into a scratch directory outside this repository, then prints the
 # environment variables that switch the tests on.
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
@@ -28,5 +28,14 @@ mkdir -p "${target}/typeorm"
     pg mysql2 mssql
 )
 
+echo "Installing Zod 4, TypeScript and tsx into ${target}/zod" >&2
+mkdir -p "${target}/zod"
+(
+  cd "${target}/zod"
+  [ -f package.json ] || npm init -y > /dev/null
+  npm install --silent zod@4 typescript tsx @types/node
+)
+
 echo "export DJANGO_PYTHON=${target}/venv/bin/python"
 echo "export TYPEORM_DIR=${target}/typeorm"
+echo "export ZOD_DIR=${target}/zod"
