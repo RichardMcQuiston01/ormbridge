@@ -1,6 +1,7 @@
 import {
   listFormats,
   type FormatAdapter,
+  type FormatEmitOutput,
   type FormatOptions,
   type SourceText,
 } from '../src/formats.js';
@@ -59,7 +60,13 @@ export async function parseWith(
 }
 
 export interface EmittedText {
+  /**
+   * The emitted text. For a multi-file emitter this is every file joined in
+   * path order (useful for emptiness checks); the files themselves are in `files`.
+   */
   text: string;
+  /** The emitted files (relative path to text), present only for multi-file emitters. */
+  files?: Record<string, string>;
   warnings: string[];
 }
 
@@ -68,15 +75,44 @@ export function emitWith(format: FormatAdapter, schema: IrSchema): EmittedText {
   if (format.emit === undefined) {
     throw new Error(`The format "${format.name}" cannot be written.`);
   }
-  return unwrap(format.emit(schema, MATRIX_OPTIONS), `Emitting ${format.name}`);
+  const emitted: FormatEmitOutput = unwrap(
+    format.emit(schema, MATRIX_OPTIONS),
+    `Emitting ${format.name}`
+  );
+  if (emitted.text === undefined) {
+    const files: Record<string, string> = emitted.files;
+    return {
+      text: Object.keys(files)
+        .sort()
+        .map((path: string) => files[path] ?? '')
+        .join('\n'),
+      files,
+      warnings: emitted.warnings,
+    };
+  }
+  return { text: emitted.text, warnings: emitted.warnings };
 }
 
-/** Re-parses text that `format` emitted, as a user would feed it back in. */
+/**
+ * Re-parses what `format` emitted, as a user would feed it back in: the text
+ * as one source, or every emitted file as its own source.
+ */
 export function parseEmitted(
   format: FormatAdapter,
-  text: string
+  emitted: EmittedText
 ): Promise<IrSchema> {
-  return parseWith(format, [{ path: `roundtrip.${format.name}`, text }]);
+  if (emitted.files !== undefined) {
+    const files: Record<string, string> = emitted.files;
+    return parseWith(
+      format,
+      Object.keys(files)
+        .sort()
+        .map((path: string): SourceText => ({ path, text: files[path] ?? '' }))
+    );
+  }
+  return parseWith(format, [
+    { path: `roundtrip.${format.name}`, text: emitted.text },
+  ]);
 }
 
 export interface MatrixCell {
@@ -106,13 +142,13 @@ export async function computeCell(
     loadCanonicalSources(source.name)
   );
   const emitted: EmittedText = emitWith(target, sourceIr);
-  const targetIr: IrSchema = await parseEmitted(target, emitted.text);
+  const targetIr: IrSchema = await parseEmitted(target, emitted);
 
   // Second trip: B -> A -> B, starting from the IR that B read back.
   const backEmitted: EmittedText = emitWith(source, targetIr);
-  const sourceAgain: IrSchema = await parseEmitted(source, backEmitted.text);
+  const sourceAgain: IrSchema = await parseEmitted(source, backEmitted);
   const emittedAgain: EmittedText = emitWith(target, sourceAgain);
-  const targetAgain: IrSchema = await parseEmitted(target, emittedAgain.text);
+  const targetAgain: IrSchema = await parseEmitted(target, emittedAgain);
 
   return {
     source: source.name,

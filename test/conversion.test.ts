@@ -3,8 +3,10 @@ import { listFormats, type FormatAdapter } from '../src/formats.js';
 import { CANONICAL_FIXTURES } from './fixtures/canonical.js';
 import {
   convertCanonical,
-  describeDrift,
+  describeResultDrift,
+  expectConversionMatchesGolden,
   expectMatchesGolden,
+  listGoldenEntries,
   roundTrip,
   type RoundTripResult,
 } from './harness.js';
@@ -45,6 +47,30 @@ describe('canonical fixtures', () => {
   });
 });
 
+describe('golden files', () => {
+  it('has no stale entries', () => {
+    // Every golden file or directory must belong to a pair that is still
+    // converted (text goldens are files, multi-file goldens are directories).
+    const expected: Set<string> = new Set<string>();
+    for (const [source, target] of conversionPairs()) {
+      for (const naming of NAMING_MODES) {
+        expected.add(`${source.name}-to-${target.name}.${naming}.txt`);
+        expected.add(`${source.name}-to-${target.name}.${naming}`);
+      }
+    }
+    for (const [source, target] of roundTripPairs()) {
+      expected.add(`roundtrip-${source.name}-${target.name}.drift.txt`);
+    }
+    const stale: string[] = listGoldenEntries().filter(
+      (entry: string) => !expected.has(entry)
+    );
+    expect(
+      stale,
+      'Delete these goldens from test/golden/ (no format pair produces them any more).'
+    ).toEqual([]);
+  });
+});
+
 describe.each(
   conversionPairs().map(
     ([source, target]) => [source.name, target.name, source, target] as const
@@ -55,9 +81,10 @@ describe.each(
       const result = await convertCanonical(source.name, target.name, {
         naming,
       });
-      expectMatchesGolden(
-        `${source.name}-to-${target.name}.${naming}.txt`,
-        result.output
+      expectConversionMatchesGolden(
+        `${source.name}-to-${target.name}`,
+        naming,
+        result
       );
     });
   });
@@ -82,7 +109,7 @@ describe.each(
     // other content lists exactly what the trip changes.
     expectMatchesGolden(
       `roundtrip-${source.name}-${target.name}.drift.txt`,
-      describeDrift(trip.forward.output, trip.forwardAgain.output)
+      describeResultDrift(trip.forward, trip.forwardAgain)
     );
   });
 });

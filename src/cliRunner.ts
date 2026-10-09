@@ -53,6 +53,7 @@ interface ConvertFlags {
   header: boolean;
   appLabel?: string;
   autoField?: string;
+  namespace?: string;
   /** A path, or false when --no-config was given. */
   config?: string | boolean;
   dryRun?: boolean;
@@ -103,6 +104,7 @@ interface MergedSettings {
   header?: boolean;
   appLabel?: string;
   autoField?: string;
+  namespace?: string;
 }
 
 /** Validates merged settings and builds the options for one conversion. */
@@ -186,6 +188,9 @@ function buildRunOptions(
       ...(settings.appLabel === undefined
         ? {}
         : { appLabel: settings.appLabel }),
+      ...(settings.namespace === undefined
+        ? {}
+        : { namespace: settings.namespace }),
     },
   };
 }
@@ -276,6 +281,9 @@ function planRuns(
     }
     if (flags.autoField !== undefined) {
       settings.autoField = flags.autoField;
+    }
+    if (flags.namespace !== undefined) {
+      settings.namespace = flags.namespace;
     }
     const options: Result<RunOptions> = buildRunOptions(settings, mode);
     if (!options.ok) {
@@ -504,6 +512,10 @@ export async function runCli(
     .option(
       '--auto-field <type>',
       'primary key type for Django models without one (int | bigint) (default: int)'
+    )
+    .option(
+      '--namespace <name>',
+      'PHP namespace of the Doctrine entities (default: App\\Entity)'
     )
     .option(
       '--dry-run',

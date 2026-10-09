@@ -90,7 +90,7 @@ describe('writable formats', () => {
         ).not.toBe('');
         // A readable target must also be able to read its own output.
         if (target.parse !== undefined) {
-          const reread = await parseEmitted(target, emitted.text);
+          const reread = await parseEmitted(target, emitted);
           expect(reread.models.length).toBeGreaterThanOrEqual(
             schema.models.length
           );

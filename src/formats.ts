@@ -1,4 +1,5 @@
 import { emitDjango } from './emitters/django.js';
+import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
 import { emitGraphene } from './emitters/graphene.js';
 import {
   emitPrisma,
@@ -44,6 +45,8 @@ export interface FormatOptions {
   appLabel?: string;
   /** Primary key type used for Django models without an explicit key. */
   autoField: 'int' | 'bigInt';
+  /** PHP namespace of the Doctrine entities (default `App\Entity`); enums go in the sibling `Enum` namespace. */
+  namespace?: string;
 }
 
 /**
@@ -285,6 +288,37 @@ const typescriptAdapter: FormatAdapter = {
   },
 };
 
+const doctrineAdapter: FormatAdapter = {
+  name: 'doctrine',
+  // No extension is claimed: ".php" is too generic to infer, so pass --to doctrine.
+  extensions: [],
+  description: 'Doctrine ORM entities (PHP 8 attributes)',
+  emit: (
+    schema: IrSchema,
+    options: FormatOptions
+  ): Result<FormatEmitOutput> => {
+    const namespace: string | undefined = options.namespace?.replace(
+      /^\\+|\\+$/g,
+      ''
+    );
+    if (namespace !== undefined && !isValidPhpNamespace(namespace)) {
+      return err(
+        'INVALID_OPTION',
+        `Invalid namespace "${options.namespace ?? ''}". Expected a PHP namespace such as App\\Entity.`
+      );
+    }
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitDoctrine(prepared, {
+        provider: options.provider,
+        camelFields: options.naming === 'normalize',
+        ...(namespace === undefined ? {} : { namespace }),
+      })
+    );
+  },
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -292,6 +326,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(typeormAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
+  registerFormat(doctrineAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

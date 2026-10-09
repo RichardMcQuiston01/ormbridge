@@ -16,6 +16,14 @@ A test fails if a readable format has no canonical fixture.
 - `expectMatchesGolden(name, text)` compares text with `test/golden/<name>`. Set `UPDATE_GOLDEN=1` to write it instead.
 - `roundTrip(from, via)` converts `from -> via -> from -> via`. `describeDrift(before, after)` lists the lines that changed.
 
+## Multi-file formats
+
+An emitter that returns a file map (such as `doctrine`) is compared file by file: its golden is the directory `test/golden/<pair>.<naming>/` with one golden file per generated file at the same relative path, instead of `<pair>.<naming>.txt`. `expectConversionMatchesGolden(pair, naming, result)` picks the right form; `expectFilesMatchGolden(name, files)` is the directory form. A file that is generated without a golden, or a golden that is no longer generated, fails the test and is named; `UPDATE_GOLDEN=1` rewrites the whole directory, so goldens of removed files disappear. `conversion.test.ts` also fails when `test/golden/` contains an entry that no format pair produces.
+
+Round trips (`roundTrip`) feed every emitted file back into the parser (`resultToSources`) and `describeResultDrift` lists drift per file (`@@ path`, `+ file path`, `- file path`). The matrix helpers do the same (`emitWith` keeps the file map next to the joined text, `parseEmitted` reads all of the files). `harness.test.ts` covers this with a test-only readable multi-file format, so a multi-file format that also gets a parser (Doctrine, Laravel) joins the round trips and the matrix without further changes.
+
+The Doctrine tests (`doctrine-emitter.test.ts`) lint the generated PHP with `php -l` and skip when PHP is missing. Set `DOCTRINE_DIR` to a directory where `composer require doctrine/orm symfony/cache` has been run (outside this repository) to also load the entities with Doctrine's real metadata factory, validate the mapping and create the schema in SQLite (`test/fixtures/doctrine/validate.php`).
+
 ## Conversion matrix
 
 `conversion-matrix.test.ts` adds a semantic layer on top of the text goldens: for every ordered pair of readable and writable formats it reads A's fixture, writes B, reads B back and compares the two IRs with `irCompare.ts`. New readable formats join automatically. Every difference must be explained in `conversionMatrixDoc.ts` (`LOSS_REASONS`), and `docs/CONVERSION_MATRIX.md` is generated from the results (`npm run docs:matrix`, or `UPDATE_GOLDEN=1 npm test`).

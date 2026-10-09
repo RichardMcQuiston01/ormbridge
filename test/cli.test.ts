@@ -542,3 +542,118 @@ describe('built CLI', () => {
     expect(run.stderr).toContain('schema.prisma is out of date');
   });
 });
+
+describe('doctrine output', () => {
+  it('writes one PHP file per entity and enum into the output directory', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'doctrine',
+      '-o',
+      'gen',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(
+      (await readdir(join(workDirectory, 'gen', 'src', 'Entity'))).sort()
+    ).toEqual([
+      'Category.php',
+      'Post.php',
+      'Profile.php',
+      'Tag.php',
+      'User.php',
+    ]);
+    expect(await readdir(join(workDirectory, 'gen', 'src', 'Enum'))).toEqual([
+      'PostStatus.php',
+    ]);
+    const post: string = await readFile(
+      join(workDirectory, 'gen', 'src', 'Entity', 'Post.php'),
+      'utf8'
+    );
+    expect(post).toContain('namespace App\\Entity;');
+  });
+
+  it('applies --namespace and the namespace config key', async () => {
+    const flagged: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'doctrine',
+      '--namespace',
+      'Acme\\Blog\\Entity',
+      '-o',
+      'flag',
+    ]);
+    expect(flagged.code).toBe(EXIT_OK);
+    expect(
+      await readFile(
+        join(workDirectory, 'flag', 'src', 'Blog', 'Entity', 'Post.php'),
+        'utf8'
+      )
+    ).toContain('namespace Acme\\Blog\\Entity;');
+
+    await writeConfig({
+      input: BLOG_FIXTURE_PATH,
+      to: 'doctrine',
+      output: 'conf',
+      namespace: 'Shop\\Entity',
+    });
+    const configured: CliRun = await cli(['convert']);
+    expect(configured.code).toBe(EXIT_OK);
+    expect(
+      await readFile(
+        join(workDirectory, 'conf', 'src', 'Entity', 'Post.php'),
+        'utf8'
+      )
+    ).toContain('namespace Shop\\Entity;');
+  });
+
+  it('rejects an invalid namespace with a conversion error', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'doctrine',
+      '--namespace',
+      'not valid',
+      '-o',
+      'gen',
+    ]);
+    expect(run.code).toBe(EXIT_CONVERSION_ERROR);
+    expect(run.stderr).toContain('Invalid namespace "not valid"');
+  });
+
+  it('needs an output directory and supports --check', async () => {
+    const missing: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'doctrine',
+    ]);
+    expect(missing.code).toBe(EXIT_CONVERSION_ERROR);
+    expect(missing.stderr).toContain('needs an output directory');
+
+    const args: string[] = [
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'doctrine',
+      '-o',
+      'gen',
+    ];
+    expect((await cli(args)).code).toBe(EXIT_OK);
+    expect((await cli([...args, '--check'])).code).toBe(EXIT_OK);
+    await writeFile(
+      join(workDirectory, 'gen', 'src', 'Entity', 'Tag.php'),
+      'stale\n'
+    );
+    const stale: CliRun = await cli([...args, '--check']);
+    expect(stale.code).toBe(EXIT_CHECK_FAILED);
+    expect(stale.stderr).toMatch(/src[\\/]Entity[\\/]Tag\.php is out of date/);
+  });
+});
