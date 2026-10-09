@@ -7,7 +7,7 @@ Work is split into tracks that can be built by separate agents in parallel. Each
 - **Branches:** every task is a feature branch cut from `dev`, named `feature/<track>-<short-description>` (for example `feature/typeorm-emitter`). Nobody commits directly to `dev` or `main`.
 - **Pull requests into `dev`:** a PR may merge only after lint, build, and tests pass in CI. Prefer small PRs and squash merges. Rebase on `dev` before opening the PR.
 - **Release:** once `dev` is fully tested, open one `dev` → `main` PR (same checks required).
-- **Publishing:** after the release PR merges, bump the version on `main` (`npm version <patch|minor|major>`) and push the tag (`git push --follow-tags`). The publish workflow runs from the tag, confirms the tagged commit is on `main`, then publishes to npm.
+- **Publishing:** the release PR bumps the version (`npm version <patch|minor|major> --no-git-tag-version`), so nothing is committed to `main` directly. After it merges, tag the merge commit on `main` (`git tag vX.Y.Z <sha>` and `git push origin vX.Y.Z`). The publish workflow runs from the tag, confirms the tag matches `package.json` and the tagged commit is on `main`, then publishes to npm.
 - **Every PR** updates `CHANGELOG.md`, and the README "What is converted" section when it adds a format or field type.
 - **Shared files** (`src/ir.ts`, `src/index.ts`, `src/formats.ts`, README tables) are conflict hotspots. Change them in the smallest PR possible and merge it before dependent work starts.
 
@@ -61,8 +61,8 @@ Tracks G and H run in parallel, as do I and J. After they land, extend the conve
 ## Phase 4: Release
 
 1. Merge all finished tracks into `dev`; run the full suite there.
-2. Open the `dev` → `main` release PR; update `CHANGELOG.md` and the README.
-3. Tag from `main` (`npm version minor && git push --follow-tags`); the workflow publishes.
+2. Open the `dev` → `main` release PR; bump the version, update `CHANGELOG.md` and the README.
+3. After it merges, tag the merge commit on `main` (`git tag vX.Y.Z` and `git push origin vX.Y.Z`); the workflow publishes. The repository needs an `NPM_TOKEN` secret (a token allowed to publish `ormbridge`) before the first tag.
 
 ## Phase 5: Go ORMs (after Phase 2)
 

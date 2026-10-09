@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-10-09
+
+First public release. ormbridge converts ORM models between Django, Prisma, TypeORM, Doctrine and Laravel (all readable and writable), and writes TypeScript interfaces and Graphene schemas. See the README for usage and `docs/CONVERSION_MATRIX.md` for what survives a round trip.
+
 ### Added
 
 - ROADMAP: Phase 5 (Go ORMs) with GORM parser and emitter tracks.
