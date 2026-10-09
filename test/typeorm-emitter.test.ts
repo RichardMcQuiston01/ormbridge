@@ -501,6 +501,9 @@ describe('typeorm emitter: warnings', () => {
   });
 });
 
+/** Each test builds several TypeScript programs, which exceeds vitest's 5 s default on a busy CI runner. */
+const TYPE_CHECK_TIMEOUT_MS: number = 60_000;
+
 describe('typeorm emitter: generated code type-checks', () => {
   const TYPEORM_STUB: string = `
 declare module 'typeorm' {
@@ -579,44 +582,52 @@ declare module 'typeorm' {
       );
   }
 
-  it('compiles the emitted blog schema in both naming modes', async () => {
-    for (const naming of ['preserve', 'normalize'] as const) {
-      for (const from of ['django', 'prisma']) {
-        const result = await convertCanonical(from, 'typeorm', { naming });
-        const diagnostics: string[] = diagnose({
-          'typeorm-stub.d.ts': TYPEORM_STUB,
-          'entities.ts': result.output,
-        });
-        expect(diagnostics, `${from} ${naming}`).toEqual([]);
+  it(
+    'compiles the emitted blog schema in both naming modes',
+    async () => {
+      for (const naming of ['preserve', 'normalize'] as const) {
+        for (const from of ['django', 'prisma']) {
+          const result = await convertCanonical(from, 'typeorm', { naming });
+          const diagnostics: string[] = diagnose({
+            'typeorm-stub.d.ts': TYPEORM_STUB,
+            'entities.ts': result.output,
+          });
+          expect(diagnostics, `${from} ${naming}`).toEqual([]);
+        }
       }
-    }
-  });
+    },
+    TYPE_CHECK_TIMEOUT_MS
+  );
 
-  it('compiles an IR schema that uses every decorator', () => {
-    const output: EmitOutput = emit(
-      schemaOf([
-        model('User'),
-        model('Post', {
-          fields: [idField(), field('title')],
-          relations: [
-            relation('author', 'User', { relatedName: 'posts' }),
-            relation('tags', 'Tag', {
-              kind: 'manyToMany',
-              relatedName: 'posts',
-            }),
-          ],
-          indexes: [{ fields: ['title'], isUnique: true }],
-        }),
-        model('Tag'),
-      ])
-    );
-    expect(
-      diagnose({
-        'typeorm-stub.d.ts': TYPEORM_STUB,
-        'entities.ts': output.text,
-      })
-    ).toEqual([]);
-  });
+  it(
+    'compiles an IR schema that uses every decorator',
+    () => {
+      const output: EmitOutput = emit(
+        schemaOf([
+          model('User'),
+          model('Post', {
+            fields: [idField(), field('title')],
+            relations: [
+              relation('author', 'User', { relatedName: 'posts' }),
+              relation('tags', 'Tag', {
+                kind: 'manyToMany',
+                relatedName: 'posts',
+              }),
+            ],
+            indexes: [{ fields: ['title'], isUnique: true }],
+          }),
+          model('Tag'),
+        ])
+      );
+      expect(
+        diagnose({
+          'typeorm-stub.d.ts': TYPEORM_STUB,
+          'entities.ts': output.text,
+        })
+      ).toEqual([]);
+    },
+    TYPE_CHECK_TIMEOUT_MS
+  );
 
   it('reports errors in broken code (sanity check for the harness)', () => {
     expect(
