@@ -7,7 +7,11 @@ import {
   type ConfigFile,
   type ConversionConfig,
 } from './config.js';
-import { PRISMA_PROVIDERS, type PrismaProvider } from './emitters/prisma.js';
+import {
+  PRISMA_PROVIDERS,
+  type PrismaProvider,
+  type PrismaVersion,
+} from './emitters/prisma.js';
 import {
   describeFormats,
   getFormat,
@@ -55,6 +59,7 @@ interface ConvertFlags {
   autoField?: string;
   namespace?: string;
   goPackage?: string;
+  prismaVersion?: string;
   /** A path, or false when --no-config was given. */
   config?: string | boolean;
   dryRun?: boolean;
@@ -107,6 +112,8 @@ interface MergedSettings {
   autoField?: string;
   namespace?: string;
   goPackage?: string;
+  /** A number from the config file or the raw text of the flag. */
+  prismaVersion?: number | string;
 }
 
 /** Validates merged settings and builds the options for one conversion. */
@@ -174,6 +181,18 @@ function buildRunOptions(
     );
   }
 
+  let prismaVersion: PrismaVersion | undefined;
+  if (settings.prismaVersion !== undefined) {
+    const versionText: string = String(settings.prismaVersion).trim();
+    if (versionText !== '6' && versionText !== '7') {
+      return failure(
+        'INVALID_OPTION',
+        `Invalid --prisma-version value "${String(settings.prismaVersion)}". Expected 6 or 7.`
+      );
+    }
+    prismaVersion = versionText === '7' ? 7 : 6;
+  }
+
   return {
     ok: true,
     value: {
@@ -196,6 +215,7 @@ function buildRunOptions(
       ...(settings.goPackage === undefined
         ? {}
         : { goPackage: settings.goPackage }),
+      ...(prismaVersion === undefined ? {} : { prismaVersion }),
     },
   };
 }
@@ -292,6 +312,9 @@ function planRuns(
     }
     if (flags.goPackage !== undefined) {
       settings.goPackage = flags.goPackage;
+    }
+    if (flags.prismaVersion !== undefined) {
+      settings.prismaVersion = flags.prismaVersion;
     }
     const options: Result<RunOptions> = buildRunOptions(settings, mode);
     if (!options.ok) {
@@ -528,6 +551,10 @@ export async function runCli(
     .option(
       '--go-package <name>',
       'Go package name of the GORM models (default: models)'
+    )
+    .option(
+      '--prisma-version <version>',
+      'Prisma major version of the generator and datasource blocks (6 | 7) (default: 6; 7 writes the prisma-client generator and no datasource url)'
     )
     .option(
       '--dry-run',
