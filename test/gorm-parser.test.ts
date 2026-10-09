@@ -92,10 +92,10 @@ function warningsMatching(schema: IrSchema, text: string): string[] {
 }
 
 describe('gorm adapter registration', () => {
-  it('is registered as a readable format that does not claim .go', () => {
+  it('is registered as a readable and writable format that does not claim .go', () => {
     const adapter = expectOk(getFormat('gorm'));
     expect(adapter.parse).toBeDefined();
-    expect(adapter.emit).toBeUndefined();
+    expect(adapter.emit).toBeDefined();
     expect(adapter.extensions).toEqual([]);
     expect(getFormatByExtension('.go')).toBeUndefined();
   });

@@ -54,6 +54,7 @@ interface ConvertFlags {
   appLabel?: string;
   autoField?: string;
   namespace?: string;
+  goPackage?: string;
   /** A path, or false when --no-config was given. */
   config?: string | boolean;
   dryRun?: boolean;
@@ -105,6 +106,7 @@ interface MergedSettings {
   appLabel?: string;
   autoField?: string;
   namespace?: string;
+  goPackage?: string;
 }
 
 /** Validates merged settings and builds the options for one conversion. */
@@ -191,6 +193,9 @@ function buildRunOptions(
       ...(settings.namespace === undefined
         ? {}
         : { namespace: settings.namespace }),
+      ...(settings.goPackage === undefined
+        ? {}
+        : { goPackage: settings.goPackage }),
     },
   };
 }
@@ -284,6 +289,9 @@ function planRuns(
     }
     if (flags.namespace !== undefined) {
       settings.namespace = flags.namespace;
+    }
+    if (flags.goPackage !== undefined) {
+      settings.goPackage = flags.goPackage;
     }
     const options: Result<RunOptions> = buildRunOptions(settings, mode);
     if (!options.ok) {
@@ -516,6 +524,10 @@ export async function runCli(
     .option(
       '--namespace <name>',
       'PHP namespace of the Doctrine entities (default: App\\Entity) or Laravel models (default: App\\Models)'
+    )
+    .option(
+      '--go-package <name>',
+      'Go package name of the GORM models (default: models)'
     )
     .option(
       '--dry-run',

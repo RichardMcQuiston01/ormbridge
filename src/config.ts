@@ -26,6 +26,8 @@ export interface ConversionConfig {
   autoField?: 'int' | 'bigint';
   /** PHP namespace of the Doctrine entities or Laravel models. */
   namespace?: string;
+  /** Go package name of the GORM models. */
+  goPackage?: string;
 }
 
 /** A parsed config file. Top-level settings are defaults shared by every entry in `conversions`. */
@@ -50,6 +52,7 @@ const CONVERSION_KEYS: readonly string[] = [
   'appLabel',
   'autoField',
   'namespace',
+  'goPackage',
 ];
 
 /**
@@ -214,7 +217,14 @@ function parseConversion(
     }
   }
 
-  for (const key of ['name', 'from', 'to', 'appLabel', 'namespace'] as const) {
+  for (const key of [
+    'name',
+    'from',
+    'to',
+    'appLabel',
+    'namespace',
+    'goPackage',
+  ] as const) {
     const value: unknown = raw[key];
     if (value === undefined) {
       continue;

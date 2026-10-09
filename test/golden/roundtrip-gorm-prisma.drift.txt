@@ -1,0 +1,4 @@
++ @@unique([post_id, tag_id], map: "uni_blog_post_tags_post_id_tag_id")
++ postSet   Post[]
+- @@unique([post_id, tag_id])
+- post_set  Post[]

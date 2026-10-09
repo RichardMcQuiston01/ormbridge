@@ -9,7 +9,7 @@ Convert ORM models between frameworks and languages, so one data model can be sh
 | TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                             |
 | Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; writes one file per entity               |
 | Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both         |
-| GORM (Go)                   |  ✔   |       | Go structs with `gorm:"..."` tags; read only for now       |
+| GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; writes one file per model        |
 | TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                  |
 | Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django |
 
@@ -60,22 +60,23 @@ ormbridge convert -i ./internal/models --from gorm -o ./prisma/schema.prisma
 
 Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `.ts` = TypeORM), or set explicitly with `--from` / `--to`. Passing a directory does not infer the format, so add `--from typeorm` (or `--from doctrine`, `--from laravel`, `--from gorm`) when reading a folder of entities; `.php` and `.go` are not inferred either. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
 
-| Flag                     | Default                    | Description                                                                                                                             |
-| ------------------------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `-i, --input <paths...>` | required (or config)       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.              |
-| `-o, --output <path>`    | stdout                     | File to write. Parent directories are created.                                                                                          |
-| `-f, --from <format>`    | inferred                   | `django`, `prisma`, `typeorm`, `doctrine`, `laravel` or `gorm`                                                                          |
-| `-t, --to <format>`      | inferred                   | `django`, `prisma`, `typeorm`, `doctrine` or `laravel` (both write a directory), `typescript` or `graphene` (output only)               |
-| `--naming <mode>`        | `preserve`                 | `preserve` or `normalize` (see below)                                                                                                   |
-| `--provider <name>`      | `postgresql`               | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`. |
-| `--no-header`            | off                        | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                 |
-| `--app-label <name>`     | directory name             | Django app label used for default table names (`<app>_<model>`).                                                                        |
-| `--auto-field <type>`    | `int`                      | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                          |
-| `--namespace <name>`     | `App\Entity`, `App\Models` | PHP namespace of the Doctrine entities or Laravel models (`--to doctrine` / `--to laravel` only). Enums go in a sibling namespace.      |
-| `--dry-run`              | off                        | Run the whole conversion and report what would be written, without touching the filesystem.                                             |
-| `--check`                | off                        | Exit with code 3 if an output file is missing or differs from the conversion. Writes nothing. Needs an output path.                     |
-| `--config <path>`        | searched                   | Read settings from this JSON config file instead of searching for one.                                                                  |
-| `--no-config`            | off                        | Ignore any config file.                                                                                                                 |
+| Flag                     | Default                    | Description                                                                                                                                 |
+| ------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-i, --input <paths...>` | required (or config)       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.                  |
+| `-o, --output <path>`    | stdout                     | File to write. Parent directories are created.                                                                                              |
+| `-f, --from <format>`    | inferred                   | `django`, `prisma`, `typeorm`, `doctrine`, `laravel` or `gorm`                                                                              |
+| `-t, --to <format>`      | inferred                   | `django`, `prisma`, `typeorm`, `doctrine`, `laravel` or `gorm` (the last three write a directory), `typescript` or `graphene` (output only) |
+| `--naming <mode>`        | `preserve`                 | `preserve` or `normalize` (see below)                                                                                                       |
+| `--provider <name>`      | `postgresql`               | Prisma datasource: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Controls native types such as `@db.VarChar`.     |
+| `--no-header`            | off                        | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                     |
+| `--app-label <name>`     | directory name             | Django app label used for default table names (`<app>_<model>`).                                                                            |
+| `--auto-field <type>`    | `int`                      | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                              |
+| `--namespace <name>`     | `App\Entity`, `App\Models` | PHP namespace of the Doctrine entities or Laravel models (`--to doctrine` / `--to laravel` only). Enums go in a sibling namespace.          |
+| `--go-package <name>`    | `models`                   | Go package name of the GORM models, also the output sub-directory (`--to gorm` only). Must be a valid Go identifier.                        |
+| `--dry-run`              | off                        | Run the whole conversion and report what would be written, without touching the filesystem.                                                 |
+| `--check`                | off                        | Exit with code 3 if an output file is missing or differs from the conversion. Writes nothing. Needs an output path.                         |
+| `--config <path>`        | searched                   | Read settings from this JSON config file instead of searching for one.                                                                      |
+| `--no-config`            | off                        | Ignore any config file.                                                                                                                     |
 
 ### Dry run and check
 
@@ -125,7 +126,8 @@ Instead of repeating flags, put them in `ormbridge.config.json` (or `.ormbridger
 | `header`      | boolean               | `--no-header` when `false`                                       |
 | `appLabel`    | string                | `--app-label`                                                    |
 | `autoField`   | string                | `--auto-field` (`int` or `bigint`)                               |
-| `namespace`   | string                | `--namespace` (Doctrine output)                                  |
+| `namespace`   | string                | `--namespace` (Doctrine or Laravel output)                       |
+| `goPackage`   | string                | `--go-package` (GORM output)                                     |
 | `conversions` | list of objects       | Several named conversions; each takes the keys above plus `name` |
 
 Top-level keys are defaults for every entry in `conversions`. Flags override config values. With no `-i`, `ormbridge convert` runs every conversion in the list (and `-o` is rejected, since the conversions write to different paths); with `-i`, it runs a single conversion from the top-level settings. Unknown keys and bad values fail with a message naming the key, such as `"conversions[1].naming" must be "preserve" or "normalize" (got "weird")`.
@@ -148,7 +150,7 @@ To fail CI when generated files are stale:
 
 ### Multi-file output
 
-Most formats produce one text, written to the `-o` file. A format can instead return several files (a map of relative path to text; the Doctrine and Laravel formats do this). Then `-o` must be a directory (for example `ormbridge convert -i ./models.py --to doctrine -o ./`, or `--to laravel -o ./` to write `app/` and `database/migrations/` into a Laravel project): every file is written beneath it, creating folders as needed, and `--dry-run` and `--check` cover each file. If `-o` is an existing file or looks like a file path (it has an extension), ormbridge fails with a message listing the files and asking for a directory. See "Emitter output" under [Format registry](#format-registry) for the adapter side.
+Most formats produce one text, written to the `-o` file. A format can instead return several files (a map of relative path to text; the Doctrine, Laravel and GORM formats do this). Then `-o` must be a directory (for example `ormbridge convert -i ./models.py --to doctrine -o ./`, or `--to laravel -o ./` to write `app/` and `database/migrations/` into a Laravel project): every file is written beneath it, creating folders as needed, and `--dry-run` and `--check` cover each file. If `-o` is an existing file or looks like a file path (it has an extension), ormbridge fails with a message listing the files and asking for a directory. See "Emitter output" under [Format registry](#format-registry) for the adapter side.
 
 [Back to Table of Contents](#table-of-contents)
 
@@ -156,7 +158,7 @@ Most formats produce one text, written to the `-o` file. A format can instead re
 
 **`preserve`** (default) keeps the existing database working unchanged: Django table names (`blog_post`) are kept via `@@map`, columns keep their names, and each Django many-to-many field becomes an explicit join model that matches the table Django already created.
 
-**`normalize`** produces a fresh-schema style: singular snake_case table names (`post`), UUID primary keys in place of auto-increment ids, camelCase Prisma fields mapped to snake_case columns, `created_at` / `updated_at` added to models that lack them, and implicit many-to-many relations.
+**`normalize`** produces a fresh-schema style: singular snake_case table names (`post`), UUID primary keys in place of auto-increment ids, camelCase Prisma fields mapped to snake_case columns, `created_at` / `updated_at` added to models that lack them, and implicit many-to-many relations. Laravel and GORM output apply their own frameworks' conventions instead (plural snake_case tables, keys keep their type); see their sections below.
 
 ## What is converted
 
@@ -232,6 +234,18 @@ Laravel output (`--to laravel`) writes a directory, so pass `-o <directory>` (th
 - **Naming.** `preserve` keeps table and column names exactly (written as `$table` and in the migrations); `normalize` uses plural snake_case tables (`blog_posts`), snake_case columns, `<relation>_id` keys, adds `created_at` / `updated_at` where missing and keeps auto-increment keys as they are. Relationship methods are always camelCase (`editedPosts()`).
 - **Lossy or unsupported.** Arrays and HStore become `json` columns, ranges and durations become strings, `GeneratedField` expressions (Python, not SQL), views, composite foreign keys, `Unsupported(...)` types, full-text indexes, index options, `@@schema` and other Prisma-only constructs are written as plain tables and columns; a relation to a model without a single-column primary key is skipped; each case warns with the model and field. Eloquent has no composite primary keys: the migration gets `primary([...])` and the model a warning. An auto-updated column that is not part of `timestamps()` is only refreshed by MySQL (`useCurrentOnUpdate()`). Laravel does not map PostgreSQL-specific types, so `--provider` only chooses `jsonb` versus `json` and the MySQL form of JSON defaults.
 - **Not converted.** Policies, factories, seeders, observers, morph relations and anything else outside the schema are not generated, and the models extend `Illuminate\Database\Eloquent\Model` (not `Authenticatable`).
+
+GORM output (`--to gorm`) is write-only and writes a directory, so pass `-o <directory>`: one Go file per model (`models/post.go`, snake_case) and one per enum (`models/post_status.go`), all in the same package, each importing only what it uses and formatted exactly as `gofmt` would (the tests run `gofmt -l`, `go vet` and a SQLite `AutoMigrate` with the real GORM when Go is installed). `.go` is not inferred, so pass `--to gorm`.
+
+- **Package and paths.** The package is `models` and the files go in a directory of that name; `--go-package store` (or `goPackage` in the config file, or the `goPackage` option of `emitGorm` / `convertText`) writes `store/post.go` with `package store`. The name must be a Go identifier that is not a keyword.
+- **Fields.** Exported, typed fields with a `gorm:"..."` tag: `string` (`size:n`), `string` with `type:text`, `int32`, `int64`, `float64`, `bool`, `time.Time` (`type:date` for dates), `uuid.UUID` ([google/uuid](https://github.com/google/uuid), `type:uuid` on PostgreSQL, `char(36)` on MySQL), `decimal.Decimal` ([shopspring/decimal](https://github.com/shopspring/decimal) with `type:decimal(p,s)`), `datatypes.JSON` ([gorm.io/datatypes](https://github.com/go-gorm/datatypes)) and `[]byte`. A nullable column is a pointer (`*string`, `*time.Time`, `*uuid.UUID`); `datatypes.JSON` and `[]byte` hold nil themselves. Tags use `column:` (only when GORM would derive another name from the field), `size:`, `primaryKey`, `autoIncrement` (`autoIncrement:false` for a lone integer key without one, because GORM would otherwise add it), `not null`, `unique`, `default:`, `autoCreateTime` / `autoUpdateTime` and the index tags below. A field name is the IR name in Go style (`public_id` becomes `PublicID`).
+- **Defaults.** Literal and enum defaults are `default:` tags. A `now` default is `autoCreateTime` and an auto-updated column is `autoUpdateTime`. A UUID default is `default:gen_random_uuid()` on PostgreSQL and a generated `BeforeCreate` hook (`uuid.New()`, or `uuid.NewV7()` for version 7) everywhere else, so the key is known after `Create` on every database.
+- **gorm.Model and soft delete.** A model with exactly the `gorm.Model` columns (a big-integer auto-increment `id`, date-time `created_at` and an auto-updated `updated_at`, and a nullable, indexed `deleted_at`) embeds `gorm.Model`, with its other fields after it. A nullable date-time named `deleted_at` on any other model is a `gorm.DeletedAt` field, with a warning, because GORM then hides rows where it is set.
+- **Relations.** Every relation is written on both sides. A foreign key is a typed `<Relation><Key>` field (`AuthorID`) plus the association (`Author User` for a required parent that cannot make the type recursive, otherwise `*User`), tagged `foreignKey:AuthorID` (and `references:` for a non-key target) and `constraint:OnDelete:CASCADE` / `OnUpdate:...`, on both the belongs-to and the has-one (`*Profile`) or has-many (`[]Post`) side. Reverse names come from `related_name` or the plural of the model (`Posts`). Many-to-many is `[]Tag` with `many2many:<table>_<relation>`, plus `joinForeignKey` / `joinReferences` when the join columns differ from GORM's (always for a self relation), and `OnDelete:CASCADE` on both sides, since GORM builds the join table from whichever struct it migrates first. Keys that are relations (multi-table inheritance, composite keys of foreign keys) get `primaryKey` on the foreign key field.
+- **Tables and indexes.** `func (Post) TableName() string` only when the table is not what GORM derives from the type name (`blog_post`, but not `posts`), using GORM's own naming and pluralization rules (checked against `gorm.io/gorm` in the tests). Indexes are tags on the fields: `index` / `uniqueIndex`, `index:name`, and for composite indexes a shared name with `priority:n` (`idx_<table>_<columns>` when the source has no name).
+- **Enums.** A typed string (`type PostStatus string`) with a `const` block in its own file; labels become trailing comments. The column has the enum type and a `default:` for an enum default.
+- **Naming.** `preserve` keeps the source's table and column names (explicit `TableName()` / `column:` wherever GORM's convention would differ). `normalize` applies GORM's conventions: plural snake_case tables (`posts`, join tables keep their names), snake_case columns, and `created_at` / `updated_at` where missing; primary keys keep their type (unlike Prisma output, no UUID keys are introduced).
+- **Lossy or unsupported.** Integers are signed `int32` / `int64` (the IR has no unsigned types). Arrays become `datatypes.JSONSlice[T]`, HStore `datatypes.JSON`, durations `time.Duration` (nanoseconds in a bigint), ranges strings; generated columns, views, composite foreign keys, `Unsupported(...)` columns (written as `string` with `type:<name>`), full-text indexes and index options, `@@schema` and other Prisma-only constructs are written as plain tables and columns; a relation to a model without a single-column primary key is skipped; each case warns with the model and field. The IR has no check constraints, column comments or polymorphic relations, so no `check:`, `comment:` or `polymorphic:` tags are written. GORM is relational, so `--provider mongodb` only warns. The output needs `gorm.io/gorm`, plus `github.com/google/uuid`, `github.com/shopspring/decimal` and `gorm.io/datatypes` for the types that use them (`go get` them in your module).
 
 Graphene output (`--to graphene`) is write-only and pairs with Django models: it writes one Python file that imports every model from `.models` (generate it with `--to django`, or use your own models) and defines a `DjangoObjectType` per model with an explicit `Meta.fields` list (forward and reverse relations included), a `Query` with a single-item field (`post(id)`) and a list field (`post_list`) per model, `Create`/`Update`/`Delete` mutations built on `graphene.Mutation`, and a final `schema = graphene.Schema(query=Query, mutation=Mutation)`. Inputs map the scalar types to `String`, `Int`, `BigInt`, `Float`, `Decimal`, `Boolean`, `DateTime`, `Date`, `Time`, `UUID` and `JSONString`; a field is required when it is not nullable and has no default, and relations are `ID` inputs (`author_id`, many-to-many `tags_ids`). Enum-backed fields rely on graphene-django's choice conversion for output and are `String` inputs validated by the model. Binary columns and relations to models outside the schema are left out, and models with a composite primary key get only a list query and a create mutation; each case produces a warning naming the model and field. Field names are snake_case like the Django output, `.py` stays owned by Django so pass `--to graphene`, and the naming mode has no effect. Requires graphene-django 3.x at runtime.
 
@@ -355,7 +369,7 @@ Always review the output and run your own migrations/`prisma validate` before ap
 
 ### Conversion matrix
 
-[docs/CONVERSION_MATRIX.md](./docs/CONVERSION_MATRIX.md) shows, for every pair of readable and writable formats (Django, Prisma, TypeORM, Doctrine, Laravel), whether the schema survives a round trip and exactly what is lost when it does not (for example enum labels and column lengths, and Prisma's explicit join model for many-to-many fields). GORM, which can only be read for now, is listed as a source. It is generated from the test fixtures with `npm run docs:matrix`, and the tests fail if it is out of date.
+[docs/CONVERSION_MATRIX.md](./docs/CONVERSION_MATRIX.md) shows, for every pair of readable and writable formats (Django, Prisma, TypeORM, Doctrine, Laravel, GORM), whether the schema survives a round trip and exactly what is lost when it does not (for example enum labels and column lengths, and Prisma's explicit join model for many-to-many fields). It is generated from the test fixtures with `npm run docs:matrix`, and the tests fail if it is out of date.
 
 Django models are read with a static [tree-sitter](https://tree-sitter.github.io/) parser, so **no Python, Django install, or database is needed**.
 
@@ -384,7 +398,7 @@ if (!result.ok) {
 }
 ```
 
-All functions return a `Result` (`{ ok: true, value } | { ok: false, error }`) instead of throwing, with a descriptive error code and message. Parsers and emitters are exported too (`parseDjango`, `parsePrisma`, `parseTypeorm`, `parseDoctrine`, `parseLaravel`, `emitPrisma`, `emitDjango`, `emitDoctrine`, `emitLaravel`), all built on a shared intermediate representation, which is how new formats plug in.
+All functions return a `Result` (`{ ok: true, value } | { ok: false, error }`) instead of throwing, with a descriptive error code and message. Parsers and emitters are exported too (`parseDjango`, `parsePrisma`, `parseTypeorm`, `parseDoctrine`, `parseLaravel`, `emitPrisma`, `emitDjango`, `emitDoctrine`, `emitLaravel`, `emitGorm`), all built on a shared intermediate representation, which is how new formats plug in.
 
 ### Format registry
 
