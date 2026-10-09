@@ -25,44 +25,44 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 
 | from \ to | django | prisma | typeorm | doctrine | laravel | gorm |
 | --- | --- | --- | --- | --- | --- | --- |
-| **django** | — | ⚠ 5 differences | ⚠ 3 differences | ⚠ 6 differences | ⚠ 13 differences | ⚠ 3 differences |
-| **prisma** | ✔ lossless | — | ✔ lossless | ⚠ 4 differences | ⚠ 10 differences | ✔ lossless |
-| **typeorm** | ✔ lossless | ⚠ 2 differences | — | ⚠ 4 differences | ⚠ 10 differences | ⚠ 1 difference |
-| **doctrine** | ✔ lossless | ⚠ 2 differences | ✔ lossless | — | ⚠ 14 differences | ⚠ 3 differences |
-| **laravel** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 4 differences | — | ✔ lossless |
-| **gorm** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 4 differences | ⚠ 10 differences | — |
+| **django** | — | ⚠ 5 differences | ⚠ 3 differences | ⚠ 3 differences | ⚠ 13 differences | ⚠ 3 differences |
+| **prisma** | ✔ lossless | — | ✔ lossless | ⚠ 1 difference | ⚠ 10 differences | ✔ lossless |
+| **typeorm** | ✔ lossless | ⚠ 2 differences | — | ⚠ 1 difference | ⚠ 10 differences | ⚠ 1 difference |
+| **doctrine** | ✔ lossless | ⚠ 2 differences | ✔ lossless | — | ⚠ 14 differences | ⚠ 4 differences |
+| **laravel** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | — | ✔ lossless |
+| **gorm** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | ⚠ 10 differences | — |
 
 | Pair | Result | Emit warnings | Re-read warnings | Stable after a second trip |
 | --- | --- | --- | --- | --- |
 | django → prisma | ⚠ 5 differences | 0 | 0 | yes |
 | django → typeorm | ⚠ 3 differences | 0 | 1 | yes |
-| django → doctrine | ⚠ 6 differences | 0 | 1 | no |
+| django → doctrine | ⚠ 3 differences | 0 | 1 | no |
 | django → laravel | ⚠ 13 differences | 0 | 0 | yes |
 | django → gorm | ⚠ 3 differences | 0 | 5 | no |
 | prisma → django | ✔ lossless | 0 | 0 | yes |
 | prisma → typeorm | ✔ lossless | 0 | 0 | yes |
-| prisma → doctrine | ⚠ 4 differences | 0 | 0 | yes |
+| prisma → doctrine | ⚠ 1 difference | 0 | 0 | yes |
 | prisma → laravel | ⚠ 10 differences | 0 | 0 | yes |
 | prisma → gorm | ✔ lossless | 0 | 7 | yes |
 | typeorm → django | ✔ lossless | 0 | 0 | yes |
 | typeorm → prisma | ⚠ 2 differences | 0 | 0 | yes |
-| typeorm → doctrine | ⚠ 4 differences | 0 | 1 | yes |
+| typeorm → doctrine | ⚠ 1 difference | 0 | 1 | yes |
 | typeorm → laravel | ⚠ 10 differences | 0 | 0 | yes |
 | typeorm → gorm | ⚠ 1 difference | 0 | 5 | yes |
 | doctrine → django | ✔ lossless | 0 | 0 | no |
 | doctrine → prisma | ⚠ 2 differences | 0 | 0 | no |
 | doctrine → typeorm | ✔ lossless | 0 | 1 | no |
 | doctrine → laravel | ⚠ 14 differences | 0 | 0 | no |
-| doctrine → gorm | ⚠ 3 differences | 0 | 5 | no |
+| doctrine → gorm | ⚠ 4 differences | 0 | 5 | no |
 | laravel → django | ✔ lossless | 0 | 0 | no |
 | laravel → prisma | ⚠ 2 differences | 0 | 0 | no |
 | laravel → typeorm | ✔ lossless | 0 | 1 | no |
-| laravel → doctrine | ⚠ 4 differences | 0 | 1 | no |
+| laravel → doctrine | ⚠ 1 difference | 0 | 1 | no |
 | laravel → gorm | ✔ lossless | 0 | 5 | no |
 | gorm → django | ✔ lossless | 0 | 0 | no |
 | gorm → prisma | ⚠ 2 differences | 0 | 0 | yes |
 | gorm → typeorm | ✔ lossless | 0 | 1 | yes |
-| gorm → doctrine | ⚠ 4 differences | 0 | 1 | yes |
+| gorm → doctrine | ⚠ 1 difference | 0 | 1 | yes |
 | gorm → laravel | ⚠ 10 differences | 0 | 0 | yes |
 
 ## Why information is lost
@@ -70,10 +70,10 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 1. **Enum column length.** Django stores an enum-backed field as `CharField(max_length=N, choices=...)`, so the IR keeps `N`. A Prisma `enum` and a TypeORM `enum` column have no length, so it is dropped when writing them. Writing the enum back to Django invents a new length (the longest member value, but at least 32: `src/emitters/django.ts`), which is why the original 20 does not return.
 2. **Enum member labels.** Django `TextChoices` members carry a human-readable label (`DRAFT = "draft", "Draft"`). Prisma enum members and TypeORM string-enum members have no label, so it is dropped. Django output derives a label from the member name, so the label may look the same but was not preserved.
 3. **Many-to-many becomes an explicit join model in Prisma.** In `preserve` naming mode the Prisma writer expands every many-to-many field with `expandManyToMany` (`src/transforms.ts`) into an explicit join model (`PostTags`) with a surrogate `id`, two cascading foreign keys and a unique pair. This mirrors the table Django creates, so existing Django databases stay compatible, and it avoids Prisma's implicit `_AToB` table. Prisma reads that model back as an ordinary model, so the relation `Post.tags` is not restored as a many-to-many. For TypeORM and GORM sources the join table is the ORM's own, whose primary key is the composite of the two foreign keys, so the Prisma join model also gains a surrogate `id` column that the source table does not have.
-4. **Auto-updated timestamps become Doctrine lifecycle callbacks.** Doctrine has no attribute that refreshes a column on update (Django `auto_now`, Prisma `@updatedAt`, TypeORM `@UpdateDateColumn`). The Doctrine writer therefore adds `#[ORM\HasLifecycleCallbacks]` and a `#[ORM\PreUpdate]` method that sets the property. The Doctrine reader ignores lifecycle callbacks (it reads mapping attributes only), so the "updated automatically" flag is not recovered when the output is read back.
-5. **UUID and JSON defaults are set in the Doctrine constructor.** Doctrine ORM 3 has no built-in UUID generator, and a column default for JSON or array columns is not portable, so the Doctrine writer assigns these defaults in the entity constructor (for example `$this->publicId = self::generateUuid();`). The Doctrine reader only sees the mapping attributes, not constructor statements, so these defaults are not recovered when the output is read back. Scalar defaults that can be written as a column option or property initializer survive.
+4. **Empty JSON defaults come back as a PHP array.** The Doctrine writer sets a JSON or array default as a property initializer (`private array $metadata = [];`). PHP has a single empty array literal, so an empty JSON object default (`{}`, Django `default=dict`) and an empty JSON list default (`[]`) both become `[]`, and the Doctrine reader returns `[]`.
+5. **GORM cannot keep an empty string default.** The GORM writer puts a string default into the tag unquoted (`default:abc`), so an empty string default becomes a bare `default:`. GORM and the GORM reader treat that as no default, so a Doctrine property initializer such as `private string $body = '';` is lost on the way through GORM.
 6. **GORM names reverse relations in Go.** GORM has no related name: the reverse side of a relation is a field on the other struct, named after the plural of the model (`Posts`). A Django `related_name` or an ORM-specific default such as `postset` is therefore replaced by the GORM field name, and the GORM reader recovers that name rather than the original.
-7. **GORM refreshes `updated_at` columns itself.** A column named `updated_at` (or `UpdatedAt`) is maintained by GORM through `autoUpdateTime`, which the GORM writer adds and the reader reports as "updated automatically". A source format that cannot express the flag (Doctrine lifecycle callbacks are not read) therefore gains it after a pass through GORM.
+7. **GORM refreshes `updated_at` columns itself.** A column named `updated_at` (or `UpdatedAt`) is maintained by GORM through `autoUpdateTime`, which the GORM writer adds and the reader reports as "updated automatically". A source format that cannot express the flag therefore gains it after a pass through GORM.
 8. **Django enum columns are at least 32 characters.** The Django writer ignores the stored length of an enum-backed field and writes `max_length` as the longer of 32 and the longest enum value (`src/emitters/django.ts`). A length kept by another format (for example 20 in a Doctrine `length: 20` column) therefore becomes 32 once the schema passes through Django, which is why a second trip through Django is not stable for that field.
 9. **Laravel keys are big integers.** The Laravel writer spells an auto-increment key as `$table->id()`, which is an unsigned big integer, and writes the foreign keys that point at it as `foreignId()`. An `int` key therefore comes back as `bigInt` when the migrations are read again. Reading Laravel migrations written with `increments()` (the canonical Laravel fixture does) keeps `int`, so this only appears when the schema passes through the Laravel writer.
 10. **Laravel timestamps are nullable and maintained by Eloquent.** The Laravel writer uses `$table->timestamps()` for `created_at` / `updated_at`, which creates nullable columns without a database default, because Eloquent fills them in. The Laravel reader reports them as nullable, treats `updated_at` of a model with `$timestamps` as auto-updated and `created_at` as defaulting to now. A source that has these columns as required, with a different default or without the auto-update flag (Doctrine keeps the default and sets the value in a lifecycle callback), therefore changes when it passes through Laravel; TypeORM only treats a column as `@UpdateDateColumn` while it is required, so the flag is lost on the way back from there.
@@ -117,10 +117,7 @@ Stable: converting typeorm → django → typeorm again changes nothing further.
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 4
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 4
-- `fieldDefault Post.public_id: uuid -> (none)` — see reason 5
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 5
+- `fieldDefault Post.metadata: literal "{}" -> literal "[]"` — see reason 4
 - `enumValueLabel PostStatus.draft: Draft -> (none)` — see reason 2
 - `enumValueLabel PostStatus.published: Published -> (none)` — see reason 2
 
@@ -202,10 +199,7 @@ Stable: converting typeorm → prisma → typeorm again changes nothing further.
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 4
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 4
-- `fieldDefault Post.public_id: uuid -> (none)` — see reason 5
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 5
+- `fieldDefault Post.metadata: literal "{}" -> literal "[]"` — see reason 4
 
 Emit warnings: none.
 
@@ -279,10 +273,7 @@ Stable: converting prisma → typeorm → prisma again changes nothing further.
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 4
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 4
-- `fieldDefault Post.public_id: uuid -> (none)` — see reason 5
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 5
+- `fieldDefault Post.metadata: literal "{}" -> literal "[]"` — see reason 4
 
 Emit warnings: none.
 
@@ -340,8 +331,7 @@ Emit warnings: none.
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second django → doctrine → django trip changes:
-- `fieldDefault Post.public_id: uuid -> (none)` — see reason 5
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 5
+- `fieldDefault Post.metadata: literal "{}" -> literal "[]"` — see reason 4
 
 ### doctrine → prisma
 
@@ -355,8 +345,7 @@ Emit warnings: none.
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second prisma → doctrine → prisma trip changes:
-- `fieldDefault Post.public_id: uuid -> (none)` — see reason 5
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 5
+- `fieldDefault Post.metadata: literal "{}" -> literal "[]"` — see reason 4
 
 ### doctrine → typeorm
 
@@ -369,8 +358,7 @@ Warnings when the output is read back:
 - Post.tags: custom @JoinTable settings (name, joinColumn, inverseJoinColumn) are not preserved; the join table name and columns are derived from the models.
 
 Not stable, but only for documented reasons: a second typeorm → doctrine → typeorm trip changes:
-- `fieldDefault Post.public_id: uuid -> (none)` — see reason 5
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 5
+- `fieldDefault Post.metadata: literal "{}" -> literal "[]"` — see reason 4
 
 ### doctrine → laravel
 
@@ -396,8 +384,7 @@ Emit warnings: none.
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second laravel → doctrine → laravel trip changes:
-- `fieldDefault Post.public_id: uuid -> (none)` — see reason 5
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 5
+- `fieldDefault Post.metadata: literal "{}" -> literal "[]"` — see reason 4
 
 ### doctrine → gorm
 
@@ -405,6 +392,7 @@ Differences found:
 
 - `fieldAutoUpdated Category.updated_at: false -> true` — see reason 7
 - `fieldAutoUpdated Post.updated_at: false -> true` — see reason 7
+- `fieldDefault Post.body: literal "" -> (none)` — see reason 5
 - `relationRelatedName Post.category: postset -> posts` — see reason 6
 
 Emit warnings: none.
@@ -418,8 +406,7 @@ Warnings when the output is read back:
 - Profile.User: GORM ignores the constraint:... tag of a belongs-to field when User.Profile describes the same foreign key; set the constraint on that field instead.
 
 Not stable, but only for documented reasons: a second gorm → doctrine → gorm trip changes:
-- `fieldDefault Post.public_id: uuid -> (none)` — see reason 5
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 5
+- `fieldDefault Post.metadata: literal "{}" -> literal "[]"` — see reason 4
 
 ### laravel → django
 
@@ -485,10 +472,7 @@ Not stable, but only for documented reasons: a second typeorm → laravel → ty
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 10
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 10
-- `fieldDefault Post.public_id: uuid -> (none)` — see reason 5
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 5
+- `fieldDefault Post.metadata: literal "{}" -> literal "[]"` — see reason 4
 
 Emit warnings: none.
 
@@ -572,10 +556,7 @@ Stable: converting typeorm → gorm → typeorm again changes nothing further.
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 4
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 4
-- `fieldDefault Post.public_id: uuid -> (none)` — see reason 5
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 5
+- `fieldDefault Post.metadata: literal "{}" -> literal "[]"` — see reason 4
 
 Emit warnings: none.
 

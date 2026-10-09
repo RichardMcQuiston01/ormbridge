@@ -1,9 +1,2 @@
-+ @Column({ name: 'public_id', type: 'uuid', unique: true })
-+ @Column({ type: 'jsonb' })
-- @Column({
++ @Column({ type: 'jsonb', default: () => "'[]'" })
 - @Column({ type: 'jsonb', default: () => "'{}'" })
-- default: () => 'gen_random_uuid()',
-- name: 'public_id',
-- type: 'uuid',
-- unique: true,
-- })

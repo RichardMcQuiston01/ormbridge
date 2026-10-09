@@ -15,7 +15,7 @@ type Post struct {
 	ID          int32            `gorm:"primaryKey;autoIncrement"`
 	PublicID    uuid.UUID        `gorm:"type:uuid;not null;unique;default:gen_random_uuid()"`
 	Title       string           `gorm:"size:200;not null;uniqueIndex:uni_blog_post_author_id_title,priority:2;index"`
-	Body        string           `gorm:"type:text;not null"`
+	Body        string           `gorm:"type:text;not null;default:"`
 	Status      PostStatus       `gorm:"not null;default:draft;index:post_pub_status_idx,priority:2"`
 	Rating      *decimal.Decimal `gorm:"type:decimal(4,2)"`
 	ViewCount   int32            `gorm:"not null;default:0"`

@@ -1,4 +1,2 @@
-+ metadata    Json
-+ publicId    String     @unique @map("public_id") @db.Uuid
++ metadata    Json       @default("[]")
 - metadata    Json       @default("{}")
-- publicId    String     @default(uuid()) @unique @map("public_id") @db.Uuid
