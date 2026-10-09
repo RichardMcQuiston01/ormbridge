@@ -32,7 +32,7 @@ model Post {
   id          Int        @id @default(autoincrement())
   publicId    String     @default(uuid()) @unique @map("public_id") @db.Uuid
   title       String     @db.VarChar(200)
-  body        String     @db.Text
+  body        String     @default("") @db.Text
   status      PostStatus @default(Draft)
   rating      Decimal?   @db.Decimal(4, 2)
   viewCount   Int        @default(0) @map("view_count")

@@ -27,33 +27,21 @@
 + private ?DateTimeImmutable $created_at = null;
 + private ?DateTimeImmutable $updated_at = null;
 + private ?string $id = null;
-+ private mixed $metadata;
 + public function getCreatedAt(): ?DateTimeImmutable
 + public function getId(): ?string
 + public function getUpdatedAt(): ?DateTimeImmutable
 + public function setCreatedAt(?DateTimeImmutable $createdAt): static
 + public function setUpdatedAt(?DateTimeImmutable $updatedAt): static
-- 
-- 
 - #[ORM\Column(name: 'id', type: 'integer')]
 - #[ORM\Column(name: 'updated_at', type: 'datetimetz_immutable')]
-- $bytes = random_bytes(16);
-- $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
-- $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
-- $this->public_id = self::generateUuid();
 - private ?int $id = null;
 - private DateTimeImmutable $created_at;
 - private DateTimeImmutable $updated_at;
-- private mixed $metadata = [];
-- private static function generateUuid(): string
 - public function getCreatedAt(): DateTimeImmutable
 - public function getId(): ?int
 - public function getUpdatedAt(): DateTimeImmutable
 - public function setCreatedAt(DateTimeImmutable $createdAt): static
 - public function setUpdatedAt(DateTimeImmutable $updatedAt): static
-- return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
-- {
-- }
 @@ src/Entity/Profile.php
 + #[ORM\Column(name: 'id', type: 'bigint')]
 + private ?string $id = null;

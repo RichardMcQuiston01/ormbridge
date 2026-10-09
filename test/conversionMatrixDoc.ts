@@ -39,16 +39,16 @@ export const LOSS_REASONS: readonly LossReason[] = [
       "In `preserve` naming mode the Prisma writer expands every many-to-many field with `expandManyToMany` (`src/transforms.ts`) into an explicit join model (`PostTags`) with a surrogate `id`, two cascading foreign keys and a unique pair. This mirrors the table Django creates, so existing Django databases stay compatible, and it avoids Prisma's implicit `_AToB` table. Prisma reads that model back as an ordinary model, so the relation `Post.tags` is not restored as a many-to-many. For TypeORM and GORM sources the join table is the ORM's own, whose primary key is the composite of the two foreign keys, so the Prisma join model also gains a surrogate `id` column that the source table does not have.",
   },
   {
-    id: 'doctrine-lifecycle-callback',
-    title: 'Auto-updated timestamps become Doctrine lifecycle callbacks',
+    id: 'php-empty-array-default',
+    title: 'Empty JSON defaults come back as a PHP array',
     explanation:
-      'Doctrine has no attribute that refreshes a column on update (Django `auto_now`, Prisma `@updatedAt`, TypeORM `@UpdateDateColumn`). The Doctrine writer therefore adds `#[ORM\\HasLifecycleCallbacks]` and a `#[ORM\\PreUpdate]` method that sets the property. The Doctrine reader ignores lifecycle callbacks (it reads mapping attributes only), so the "updated automatically" flag is not recovered when the output is read back.',
+      'The Doctrine writer sets a JSON or array default as a property initializer (`private array $metadata = [];`). PHP has a single empty array literal, so an empty JSON object default (`{}`, Django `default=dict`) and an empty JSON list default (`[]`) both become `[]`, and the Doctrine reader returns `[]`.',
   },
   {
-    id: 'doctrine-constructor-default',
-    title: 'UUID and JSON defaults are set in the Doctrine constructor',
+    id: 'gorm-empty-string-default',
+    title: 'GORM cannot keep an empty string default',
     explanation:
-      'Doctrine ORM 3 has no built-in UUID generator, and a column default for JSON or array columns is not portable, so the Doctrine writer assigns these defaults in the entity constructor (for example `$this->publicId = self::generateUuid();`). The Doctrine reader only sees the mapping attributes, not constructor statements, so these defaults are not recovered when the output is read back. Scalar defaults that can be written as a column option or property initializer survive.',
+      "The GORM writer puts a string default into the tag unquoted (`default:abc`), so an empty string default becomes a bare `default:`. GORM and the GORM reader treat that as no default, so a Doctrine property initializer such as `private string $body = '';` is lost on the way through GORM.",
   },
   {
     id: 'gorm-reverse-name',
@@ -60,7 +60,7 @@ export const LOSS_REASONS: readonly LossReason[] = [
     id: 'gorm-auto-timestamps',
     title: 'GORM refreshes `updated_at` columns itself',
     explanation:
-      'A column named `updated_at` (or `UpdatedAt`) is maintained by GORM through `autoUpdateTime`, which the GORM writer adds and the reader reports as "updated automatically". A source format that cannot express the flag (Doctrine lifecycle callbacks are not read) therefore gains it after a pass through GORM.',
+      'A column named `updated_at` (or `UpdatedAt`) is maintained by GORM through `autoUpdateTime`, which the GORM writer adds and the reader reports as "updated automatically". A source format that cannot express the flag therefore gains it after a pass through GORM.',
   },
   {
     id: 'django-enum-length-floor',
@@ -234,19 +234,21 @@ export function explainDifference(
       ) {
         return 'gorm-auto-timestamps';
       }
-      return involves(cell, 'doctrine') &&
-        difference.before === 'true' &&
-        difference.after === 'false'
-        ? 'doctrine-lifecycle-callback'
-        : undefined;
+      return undefined;
     case 'relationRelatedName':
       return involves(cell, 'gorm') ? 'gorm-reverse-name' : undefined;
     case 'fieldDefault':
+      if (
+        cell.target === 'gorm' &&
+        difference.before === 'literal ""' &&
+        difference.after === '(none)'
+      ) {
+        return 'gorm-empty-string-default';
+      }
       return involves(cell, 'doctrine') &&
-        difference.after === '(none)' &&
-        (difference.before === 'uuid' ||
-          difference.before.startsWith('literal'))
-        ? 'doctrine-constructor-default'
+        difference.before === 'literal "{}"' &&
+        difference.after === 'literal "[]"'
+        ? 'php-empty-array-default'
         : undefined;
     case 'enumValueLabel':
       return difference.after === '(none)' ? 'enum-label' : undefined;

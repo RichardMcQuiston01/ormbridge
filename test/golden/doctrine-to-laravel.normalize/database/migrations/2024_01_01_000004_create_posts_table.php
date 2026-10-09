@@ -14,7 +14,7 @@ return new class extends Migration
             $table->id();
             $table->uuid('public_id')->unique();
             $table->string('title', 200);
-            $table->text('body');
+            $table->text('body')->default('');
             $table->enum('status', ['draft', 'published'])->default('draft');
             $table->decimal('rating', 4, 2)->nullable();
             $table->integer('view_count')->default(0);
