@@ -56,11 +56,75 @@ export const LOSS_REASONS: readonly LossReason[] = [
     explanation:
       'The Django writer ignores the stored length of an enum-backed field and writes `max_length` as the longer of 32 and the longest enum value (`src/emitters/django.ts`). A length kept by another format (for example 20 in a Doctrine `length: 20` column) therefore becomes 32 once the schema passes through Django, which is why a second trip through Django is not stable for that field.',
   },
+  {
+    id: 'laravel-big-integer-keys',
+    title: 'Laravel keys are big integers',
+    explanation:
+      'The Laravel writer spells an auto-increment key as `$table->id()`, which is an unsigned big integer, and writes the foreign keys that point at it as `foreignId()`. An `int` key therefore comes back as `bigInt` when the migrations are read again. Reading Laravel migrations written with `increments()` (the canonical Laravel fixture does) keeps `int`, so this only appears when the schema passes through the Laravel writer.',
+  },
+  {
+    id: 'laravel-timestamps',
+    title: 'Laravel timestamps are nullable and maintained by Eloquent',
+    explanation:
+      'The Laravel writer uses `$table->timestamps()` for `created_at` / `updated_at`, which creates nullable columns without a database default, because Eloquent fills them in. The Laravel reader reports them as nullable, treats `updated_at` of a model with `$timestamps` as auto-updated and `created_at` as defaulting to now. A source that has these columns as required, with a different default or without the auto-update flag (Doctrine keeps the default and sets the value in a lifecycle callback), therefore changes when it passes through Laravel; TypeORM only treats a column as `@UpdateDateColumn` while it is required, so the flag is lost on the way back from there.',
+  },
+  {
+    id: 'laravel-reverse-name',
+    title: 'Laravel names unnamed reverse relations in the plural',
+    explanation:
+      'A Django foreign key without `related_name` has the implicit reverse accessor `<model>_set`, which the IR records as no name. The Laravel writer needs a method name for the `hasMany` side and uses the plural of the model (`posts`), which the Laravel reader then reports as an explicit reverse name.',
+  },
 ];
 
 /** True when either end of the pair is the given format. */
 function involves(cell: MatrixCell, format: string): boolean {
   return cell.source === format || cell.target === format;
+}
+
+/** The column names Eloquent maintains itself. */
+const LARAVEL_TIMESTAMP_COLUMNS: ReadonlySet<string> = new Set([
+  'created_at',
+  'updated_at',
+]);
+
+/** Differences that come from how the Laravel writer and reader treat keys, timestamps and reverse names. */
+function explainLaravelDifference(
+  difference: IrDifference,
+  cell: MatrixCell
+): string | undefined {
+  const field: string = difference.field ?? '';
+  switch (difference.kind) {
+    case 'fieldType': {
+      const model: IrModel | undefined = cell.sourceSchema.models.find(
+        (candidate: IrModel) => candidate.name === difference.model
+      );
+      const source: IrField | undefined = model?.fields.find(
+        (candidate: IrField) => candidate.columnName === field
+      );
+      // A join model synthesized for Prisma is not in the source schema; its key is called id.
+      return (source?.isPrimaryKey === true || field === 'id') &&
+        difference.before === 'int' &&
+        difference.after === 'bigInt'
+        ? 'laravel-big-integer-keys'
+        : undefined;
+    }
+    case 'fieldNullability':
+      return LARAVEL_TIMESTAMP_COLUMNS.has(field) &&
+        difference.before === 'required' &&
+        difference.after === 'nullable'
+        ? 'laravel-timestamps'
+        : undefined;
+    case 'fieldDefault':
+      return field === 'updated_at' && difference.after === '(none)'
+        ? 'laravel-timestamps'
+        : undefined;
+    case 'fieldAutoUpdated':
+      return field === 'updated_at' ? 'laravel-timestamps' : undefined;
+    case 'relationRelatedName':
+      return cell.target === 'laravel' ? 'laravel-reverse-name' : undefined;
+    default:
+      return undefined;
+  }
 }
 
 /** Returns the id of the reason that explains a difference, or undefined when it is unexplained. */
@@ -69,6 +133,15 @@ export function explainDifference(
   cell: MatrixCell
 ): string | undefined {
   const schema: IrSchema = cell.sourceSchema;
+  if (involves(cell, 'laravel')) {
+    const laravelReason: string | undefined = explainLaravelDifference(
+      difference,
+      cell
+    );
+    if (laravelReason !== undefined) {
+      return laravelReason;
+    }
+  }
   switch (difference.kind) {
     case 'fieldMaxLength': {
       const model: IrModel | undefined = schema.models.find(

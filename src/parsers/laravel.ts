@@ -363,6 +363,8 @@ interface ModelClass {
   createdAt?: string | null;
   updatedAt?: string | null;
   deletedAt?: string;
+  /** Columns named by an overridden `uniqueIds()` (HasUuids / HasUlids). */
+  uniqueIds?: string[];
   casts: Map<string, PhpValue>;
   traits: string[];
   relations: RelationMethod[];
@@ -379,6 +381,8 @@ interface EffectiveModel {
   createdAt: string | null;
   updatedAt: string | null;
   deletedAt: string;
+  /** Columns that get a generated UUID / ULID: `uniqueIds()` when overridden, otherwise the primary key. */
+  uniqueIds?: string[];
   casts: Map<string, PhpValue>;
   usesSoftDeletes: boolean;
   usesUuids: boolean;
@@ -2531,6 +2535,21 @@ function readModelClass(
         for (const [key, value] of castsFromArray(returned?.namedChildren[0])) {
           model.casts.set(key, value);
         }
+      } else if (memberName === 'uniqueIds') {
+        const returned: SyntaxNode | undefined = member
+          .childForFieldName('body')
+          ?.namedChildren.find(
+            (child: SyntaxNode) => child.type === 'return_statement'
+          );
+        const list: PhpValue | undefined =
+          returned?.namedChildren[0] === undefined
+            ? undefined
+            : evaluateNode(returned.namedChildren[0]);
+        if (list !== undefined && list.kind === 'array') {
+          model.uniqueIds = list.items.flatMap((item): string[] =>
+            item.value.kind === 'string' ? [item.value.value] : []
+          );
+        }
       } else if (
         !isStatic &&
         (visibility === undefined || visibility === 'public')
@@ -2759,6 +2778,9 @@ function resolveModel(
   const incrementing: boolean | undefined = firstDefined(
     (cls: ModelClass) => cls.incrementing
   );
+  const uniqueIds: string[] | undefined = firstDefined(
+    (cls: ModelClass) => cls.uniqueIds
+  );
   return {
     source: model,
     table: model.table ?? conventionalTableName(model.name),
@@ -2769,6 +2791,7 @@ function resolveModel(
     createdAt: createdAt === undefined ? 'created_at' : createdAt,
     updatedAt: updatedAt === undefined ? 'updated_at' : updatedAt,
     deletedAt: firstDefined((cls: ModelClass) => cls.deletedAt) ?? 'deleted_at',
+    ...(uniqueIds === undefined ? {} : { uniqueIds }),
     casts,
     usesSoftDeletes: hasTrait('SoftDeletes'),
     usesUuids: hasTrait('HasUuids', 'HasVersion4Uuids', 'HasVersion7Uuids'),
@@ -3549,7 +3572,11 @@ function buildField(
     ) {
       field.default = { kind: 'now' };
     }
-    if (isPrimary && field.default === undefined) {
+    const generatesId: boolean =
+      effective.uniqueIds === undefined
+        ? isPrimary
+        : effective.uniqueIds.includes(column.name);
+    if (generatesId && field.default === undefined) {
       if (
         effective.usesUuids &&
         (field.type === 'uuid' || field.type === 'string')
@@ -3563,6 +3590,12 @@ function buildField(
     if (cast !== undefined) {
       applyCast(field, column, cast, effective, label, input);
     }
+  }
+
+  // A column that refreshes on every save is also set when the row is created, which is
+  // how the other formats spell it (`auto_now`, `@updatedAt`): no separate default.
+  if (field.isAutoUpdated && field.default?.kind === 'now') {
+    delete field.default;
   }
 
   // An `enum` column without a backed enum cast becomes an enum of its own.

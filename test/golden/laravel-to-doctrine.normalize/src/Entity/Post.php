@@ -29,11 +29,7 @@ class Post
     )]
     private DateTimeImmutable $createdAt;
 
-    #[ORM\Column(
-        name: 'updated_at',
-        type: 'datetimetz_immutable',
-        options: ['default' => 'CURRENT_TIMESTAMP'],
-    )]
+    #[ORM\Column(name: 'updated_at', type: 'datetimetz_immutable')]
     private DateTimeImmutable $updatedAt;
 
     #[ORM\Column(name: 'public_id', type: 'guid', unique: true)]
@@ -110,7 +106,6 @@ class Post
     {
         $this->id = self::generateUuid();
         $this->createdAt = new DateTimeImmutable();
-        $this->updatedAt = new DateTimeImmutable();
         $this->publicId = self::generateUuid();
         $this->publishedAt = new DateTimeImmutable();
         $this->tags = new ArrayCollection();

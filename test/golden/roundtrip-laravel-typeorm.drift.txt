@@ -1,0 +1,46 @@
++ @Column({
++ @Column({
++ @Column({ type: 'timestamptz', nullable: true })
++ @Column({ type: 'timestamptz', nullable: true })
++ @PrimaryGeneratedColumn('increment', { type: 'bigint' })
++ @PrimaryGeneratedColumn('increment', { type: 'bigint' })
++ @PrimaryGeneratedColumn('increment', { type: 'bigint' })
++ @PrimaryGeneratedColumn('increment', { type: 'bigint' })
++ @PrimaryGeneratedColumn('increment', { type: 'bigint' })
++ created_at!: Date | null;
++ created_at!: Date | null;
++ default: () => 'CURRENT_TIMESTAMP',
++ default: () => 'CURRENT_TIMESTAMP',
++ id!: string;
++ id!: string;
++ id!: string;
++ id!: string;
++ id!: string;
++ import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, type Relation, Unique } from 'typeorm';
++ nullable: true,
++ nullable: true,
++ type: 'timestamptz',
++ type: 'timestamptz',
++ updated_at!: Date | null;
++ updated_at!: Date | null;
++ })
++ })
+- @CreateDateColumn({ type: 'timestamptz' })
+- @CreateDateColumn({ type: 'timestamptz' })
+- @PrimaryGeneratedColumn('increment')
+- @PrimaryGeneratedColumn('increment')
+- @PrimaryGeneratedColumn('increment')
+- @PrimaryGeneratedColumn('increment')
+- @PrimaryGeneratedColumn('increment')
+- @UpdateDateColumn({ type: 'timestamptz' })
+- @UpdateDateColumn({ type: 'timestamptz' })
+- created_at!: Date;
+- created_at!: Date;
+- id!: number;
+- id!: number;
+- id!: number;
+- id!: number;
+- id!: number;
+- import { Column, CreateDateColumn, Entity, Index, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, type Relation, Unique, UpdateDateColumn } from 'typeorm';
+- updated_at!: Date;
+- updated_at!: Date;

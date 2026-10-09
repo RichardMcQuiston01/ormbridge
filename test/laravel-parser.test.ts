@@ -963,10 +963,9 @@ describe('column modifiers', () => {
             $table->id();
             $table->timestamp('changed')->useCurrent()->useCurrentOnUpdate();
         });`);
-    expect(field(schema, 'Post', 'changed')).toMatchObject({
-      isAutoUpdated: true,
-      default: { kind: 'now' },
-    });
+    // Auto-updated columns are also set on insert, so they carry no separate default.
+    expect(field(schema, 'Post', 'changed').isAutoUpdated).toBe(true);
+    expect(field(schema, 'Post', 'changed').default).toBeUndefined();
   });
 
   it('reads generated columns and warns about identity columns', async () => {
@@ -1601,6 +1600,33 @@ enum Status: string { case Draft = 'draft'; }
     expect(field(schema, 'Note', 'id').default).toEqual({
       kind: 'clientGenerated',
       generator: 'ulid',
+    });
+  });
+
+  it('applies HasUuids to the columns named by uniqueIds()', async () => {
+    const schema: IrSchema = await parse({
+      '2024_01_01_000000_create.php': migration(`
+        Schema::create('posts', function (Blueprint $table) {
+            $table->id();
+            $table->uuid('public_id')->unique();
+            $table->uuid('token');
+        });`),
+      'Post.php': modelClass(
+        'Post',
+        `use \\Illuminate\\Database\\Eloquent\\Concerns\\HasUuids;
+
+    public function uniqueIds(): array
+    {
+        return ['public_id'];
+    }`
+      ),
+    });
+    expect(field(schema, 'Post', 'public_id').default).toEqual({
+      kind: 'uuid',
+    });
+    expect(field(schema, 'Post', 'token').default).toBeUndefined();
+    expect(field(schema, 'Post', 'id').default).toEqual({
+      kind: 'autoIncrement',
     });
   });
 

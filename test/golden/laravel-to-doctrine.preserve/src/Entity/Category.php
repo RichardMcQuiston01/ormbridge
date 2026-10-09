@@ -26,11 +26,7 @@ class Category
     )]
     private DateTimeImmutable $created_at;
 
-    #[ORM\Column(
-        name: 'updated_at',
-        type: 'datetimetz_immutable',
-        options: ['default' => 'CURRENT_TIMESTAMP'],
-    )]
+    #[ORM\Column(name: 'updated_at', type: 'datetimetz_immutable')]
     private DateTimeImmutable $updated_at;
 
     #[ORM\Column(name: 'name', type: 'string', length: 100, unique: true)]
@@ -59,7 +55,6 @@ class Category
     public function __construct()
     {
         $this->created_at = new DateTimeImmutable();
-        $this->updated_at = new DateTimeImmutable();
         $this->children = new ArrayCollection();
         $this->posts = new ArrayCollection();
     }
