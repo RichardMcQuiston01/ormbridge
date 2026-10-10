@@ -1,0 +1,26 @@
+@@ schema.ts
++ .defaultRandom(),
++ .notNull()
++ .notNull()
++ .unique('blog_category_name_key'),
++ .unique('blog_post_public_id_key')
++ blogPostTags: many(blogPostTag),
++ blogPostTags: many(blogPostTag),
++ export const blogPostTag = pgTable(
++ export const blogPostTagRelations = relations(blogPostTag, ({ one }) => ({
++ export type BlogPostTag = typeof blogPostTag.$inferSelect;
++ export type NewBlogPostTag = typeof blogPostTag.$inferInsert;
++ fields: [blogPostTag.blogPostId],
++ fields: [blogPostTag.blogTagId],
++ name: varchar('name', { length: 100 })
++ publicId: uuid('public_id')
+- blogPostTags: many(blogPostTags),
+- blogPostTags: many(blogPostTags),
+- export const blogPostTags = pgTable(
+- export const blogPostTagsRelations = relations(blogPostTags, ({ one }) => ({
+- export type BlogPostTags = typeof blogPostTags.$inferSelect;
+- export type NewBlogPostTags = typeof blogPostTags.$inferInsert;
+- fields: [blogPostTags.blogPostId],
+- fields: [blogPostTags.blogTagId],
+- name: varchar('name', { length: 100 }).notNull().unique(),
+- publicId: uuid('public_id').notNull().unique().defaultRandom(),

@@ -1,0 +1,3 @@
+Category.parent: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.
+Post.editor: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.
+SQL Server cannot refresh a column on update from the DDL (Category.updated_at, Post.updated_at, Tag.updated_at, Profile.updated_at, User.updated_at, PostTags.updated_at); the application or a trigger has to set it.

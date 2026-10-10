@@ -1,0 +1,2 @@
++ metadata JSONB NOT NULL DEFAULT '[]'::jsonb,
+- metadata JSONB NOT NULL DEFAULT '{}'::jsonb,

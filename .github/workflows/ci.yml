@@ -22,12 +22,32 @@ jobs:
       - run: npm test
 
   # The optional verification tests that load generated code with the real tools (Django,
-  # graphene-django, TypeORM, Zod, Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
+  # graphene-django, TypeORM, Zod, SQL databases, Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
   # because the tools are not installed there. A separate job keeps `check` fast, and a package
   # registry outage or a tool release then breaks only this job, not lint, build and tests.
   real-tools:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Real servers for the SQL DDL tests, which execute the emitted SQL (SQLite needs none).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s
+          --health-retries 10
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot" --health-interval 5s
+          --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - name: Choose the tools directory (outside the repository)
@@ -60,9 +80,16 @@ jobs:
           key: real-tools-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
           restore-keys: real-tools-${{ runner.os }}-
       - run: npm ci
-      - name: Install Django, graphene-django, TypeORM, Drizzle, Ajv and Zod
+      - name: Install Django, graphene-django, TypeORM, Drizzle, Ajv, Zod and better-sqlite3
         run: |
           test/tools/setup-verification-tools.sh "$TOOLS" | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
+      - name: Point the SQL DDL tests at the PostgreSQL and MySQL services
+        run: |
+          # The psql and mysql clients ship with the runner image; install them if that ever changes.
+          command -v psql > /dev/null || sudo apt-get install -y --no-install-recommends postgresql-client
+          command -v mysql > /dev/null || sudo apt-get install -y --no-install-recommends mysql-client
+          echo "SQL_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres" >> "$GITHUB_ENV"
+          echo "SQL_MYSQL_URL=mysql://root:root@127.0.0.1:3306" >> "$GITHUB_ENV"
       - name: Install Doctrine ORM and Illuminate
         run: |
           mkdir -p "$TOOLS/doctrine" "$TOOLS/laravel"

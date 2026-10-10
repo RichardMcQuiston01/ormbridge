@@ -1,0 +1,7 @@
+Post.author: settings.AUTH_USER_MODEL was assumed to be a model named "User".
+Post.editor: settings.AUTH_USER_MODEL was assumed to be a model named "User".
+Profile.user: settings.AUTH_USER_MODEL was assumed to be a model named "User".
+Post.author references model "User", which was not found in the input. A stub model with an auto-increment id was generated; replace it with the real definition.
+Category.parent: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.
+Post.editor: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.
+SQL Server cannot refresh a column on update from the DDL (Category.updated_at, Post.updated_at, Tag.updated_at, Profile.updated_at, User.updated_at); the application or a trigger has to set it.

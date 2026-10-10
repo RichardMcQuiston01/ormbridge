@@ -22,7 +22,7 @@ import { titleWithReason, type ToolProbe } from './realToolSupport.js';
  * (tables, columns, nullability, type affinity, primary keys, generated columns, foreign keys and their
  * actions, unique constraints and indexes) with what the SQL parser read from the same text.
  *
- * SQLite comes from better-sqlite3 (set SQLITE_DIR to a directory where `npm install better-sqlite3` has
+ * SQLite comes from better-sqlite3 (set SQL_DIR to a directory where `npm install better-sqlite3` has
  * been run; DRIZZLE_DIR and TYPEORM_DIR already have it) or, when that is missing, from the `sqlite3`
  * command line shell. The tests are skipped with a reason in their title when neither is available.
  */
@@ -44,7 +44,7 @@ interface BetterSqliteDatabase {
 }
 
 function betterSqlite(): Database | undefined {
-  for (const name of ['SQLITE_DIR', 'DRIZZLE_DIR', 'TYPEORM_DIR']) {
+  for (const name of ['SQL_DIR', 'SQLITE_DIR', 'DRIZZLE_DIR', 'TYPEORM_DIR']) {
     const directory: string = process.env[name] ?? '';
     if (
       directory === '' ||
@@ -115,7 +115,7 @@ const probe: ToolProbe = database
   : {
       available: false,
       reason:
-        'set SQLITE_DIR to a directory with better-sqlite3 installed, or install the sqlite3 shell (see test/README.md)',
+        'set SQL_DIR to a directory with better-sqlite3 installed, or install the sqlite3 shell (see test/README.md)',
     };
 
 const FIXTURES: string = fileURLToPath(new URL('./fixtures/', import.meta.url));

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs the real tools that the optional verification tests use (Django, graphene-django,
 # TypeORM with SQLite, Drizzle ORM with drizzle-kit, Ajv for JSON Schema, Zod and better-sqlite3 for the SQL DDL
-# parser) into a scratch directory outside
+# tests) into a scratch directory outside
 # this repository, then prints the environment variables that switch the tests on.
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
@@ -56,12 +56,13 @@ mkdir -p "${target}/zod"
   npm install --silent zod@4 typescript tsx @types/node
 )
 
-echo "Installing better-sqlite3 into ${target}/sqlite" >&2
-mkdir -p "${target}/sqlite"
+echo "Installing better-sqlite3 into ${target}/sql" >&2
+mkdir -p "${target}/sql"
 (
-  cd "${target}/sqlite"
+  cd "${target}/sql"
   [ -f package.json ] || npm init -y > /dev/null
-  # The SQL DDL parser test runs the SQLite fixtures in a real database and compares the schema it reports.
+  # Runs the SQL DDL output on Node versions without node:sqlite (before 22.5). PostgreSQL and MySQL
+  # need a server: set SQL_POSTGRES_URL / SQL_MYSQL_URL yourself (see test/README.md).
   npm install --silent better-sqlite3
 )
 
@@ -70,4 +71,4 @@ echo "export TYPEORM_DIR=${target}/typeorm"
 echo "export DRIZZLE_DIR=${target}/drizzle"
 echo "export AJV_DIR=${target}/ajv"
 echo "export ZOD_DIR=${target}/zod"
-echo "export SQLITE_DIR=${target}/sqlite"
+echo "export SQL_DIR=${target}/sql"

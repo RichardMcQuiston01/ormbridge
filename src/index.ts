@@ -50,7 +50,6 @@ export type {
 } from './parsers/laravel.js';
 export { parseSqlDdl } from './parsers/sqlDdl.js';
 export type { SqlDdlParseOptions, SqlDdlSourceFile } from './parsers/sqlDdl.js';
-export type { SqlDialect } from './parsers/sqlSyntax.js';
 export { parseTypeorm } from './parsers/typeorm.js';
 export type {
   TypeormSourceFile,
@@ -71,6 +70,13 @@ export { emitGorm } from './emitters/gorm.js';
 export type { GormEmitOptions } from './emitters/gorm.js';
 export { emitDrizzle } from './emitters/drizzle.js';
 export type { DrizzleEmitOptions } from './emitters/drizzle.js';
+export {
+  emitSqlDdl,
+  quoteIdentifier,
+  sqlDialectOf,
+  sqlStringLiteral,
+} from './emitters/sqlDdl.js';
+export type { SqlDdlEmitOptions, SqlDialect } from './emitters/sqlDdl.js';
 export { emitGraphene } from './emitters/graphene.js';
 export { emitTypeorm } from './emitters/typeorm.js';
 export type { TypeormEmitOptions } from './emitters/typeorm.js';

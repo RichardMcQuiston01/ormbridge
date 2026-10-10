@@ -1,0 +1,4 @@
+ProductSimilar.to_product: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.
+Product index (title): SQL Server full-text search needs a separate mechanism (a virtual table or a catalog); it was written as an ordinary index.
+Product index (slug): the index type Hash is not supported by SQL Server and was dropped.
+SQL Server cannot refresh a column on update from the DDL (Customer.updatedAt, Order.updated_at, OrderItem.updated_at, Product.updated_at, Label.updated_at, Comment.updated_at); the application or a trigger has to set it.

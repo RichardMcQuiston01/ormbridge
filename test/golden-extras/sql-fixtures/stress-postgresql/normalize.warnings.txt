@@ -1,0 +1,2 @@
+enum Other: the type name "other" is already used by a table or another type; the type was named "other_enum".
+PostgreSQL cannot refresh a column on update from the DDL (Weird.updated_at, Other.updated_at); the application or a trigger has to set it.

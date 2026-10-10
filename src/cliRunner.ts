@@ -533,7 +533,7 @@ export async function runCli(
     )
     .option(
       '--provider <name>',
-      `Prisma datasource provider (${PRISMA_PROVIDERS.join(' | ')}) (default: postgresql)`
+      `database provider (${PRISMA_PROVIDERS.join(' | ')}); the Prisma datasource, the Drizzle/GORM dialect and the SQL dialect of --to sql (postgresql | mysql | sqlite | sqlserver) (default: postgresql)`
     )
     .option('--no-header', 'omit the Prisma generator and datasource blocks')
     .option(

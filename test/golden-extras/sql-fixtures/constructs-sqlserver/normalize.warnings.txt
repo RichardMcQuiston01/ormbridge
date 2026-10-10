@@ -1,0 +1,10 @@
+Book.tags: SQL Server has no array column type; the array was written as a JSON column.
+Book.grid: SQL Server has no array column type; the array was written as a JSON column.
+Book.colors: SQL Server has no array column type; the array was written as a JSON column.
+Book.window: range columns exist only on PostgreSQL; the column was written as text.
+Book.extra: hstore exists only on PostgreSQL; the column was written as JSON.
+Book.read_time: SQL Server has no interval type; the duration was written as an integer (microseconds).
+Series.parent: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.
+Book.editor: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.
+Author.latest_book: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.
+SQL Server cannot refresh a column on update from the DDL (Author.updated_at, Book.updated_at, Series.updated_at, Audiobook.updated_at, index.updated_at, Tagged.updated_at); the application or a trigger has to set it.
