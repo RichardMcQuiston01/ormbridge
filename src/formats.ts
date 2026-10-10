@@ -12,6 +12,7 @@ import {
 import { emitTypeorm } from './emitters/typeorm.js';
 import { emitJsonSchema } from './emitters/jsonSchema.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
+import { emitZod } from './emitters/zod.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDrizzle } from './parsers/drizzle.js';
@@ -478,6 +479,20 @@ const drizzleAdapter: FormatAdapter = {
     ),
 };
 
+const zodAdapter: FormatAdapter = {
+  name: 'zod',
+  // Output only, and no extension is claimed: ".ts" belongs to no single format, so pass --to zod.
+  extensions: [],
+  description: 'Zod schemas (TypeScript, Zod 4)',
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitZod(prepared, { camelFields: options.naming === 'normalize' })
+    );
+  },
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -489,6 +504,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(drizzleAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
+  registerFormat(zodAdapter),
   registerFormat(jsonSchemaAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(

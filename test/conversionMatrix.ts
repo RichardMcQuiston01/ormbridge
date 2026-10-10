@@ -9,6 +9,7 @@ import type { IrSchema } from '../src/ir.js';
 import { checkDrizzleOutput } from './drizzleCoverage.js';
 import { checkGormOutput } from './gormCoverage.js';
 import { checkJsonSchemaOutput } from './jsonSchemaCoverage.js';
+import { checkZodOutput } from './zodCoverage.js';
 import { loadCanonicalSources } from './harness.js';
 import { DEFAULT_OPTIONS } from './helpers.js';
 import { compareIr, type IrDifference } from './irCompare.js';
@@ -237,6 +238,7 @@ const EMIT_ONLY_CHECKS: Readonly<
   gorm: checkGormOutput,
   drizzle: checkDrizzleOutput,
   'json-schema': checkJsonSchemaOutput,
+  zod: checkZodOutput,
 };
 
 /** Write-only formats the matrix can check structurally, in registration order. */

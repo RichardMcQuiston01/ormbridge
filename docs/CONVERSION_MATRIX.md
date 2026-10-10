@@ -1225,6 +1225,76 @@ Not stable, but only for documented reasons: a second drizzle → json-schema �
 - `relationOnDelete PostTag.tag: cascade -> restrict` — see reason 10
 - `indexRemoved PostTag: unique (postid, tagid) -> (absent)` — see reason 10
 
+## Write-only targets
+
+Some formats can be written but not read (zod), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. JSON Schema: every model and enum has a `$defs` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
+
+| Pair | Files | Emit warnings | Missing |
+| --- | --- | --- | --- |
+| django → zod | 1 | 0 | none |
+| prisma → zod | 1 | 0 | none |
+| typeorm → zod | 1 | 0 | none |
+| doctrine → zod | 1 | 0 | none |
+| laravel → zod | 1 | 0 | none |
+| gorm → zod | 1 | 0 | none |
+| drizzle → zod | 1 | 0 | none |
+| json-schema → zod | 1 | 0 | none |
+
+### django → zod
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### prisma → zod
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### typeorm → zod
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### doctrine → zod
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### laravel → zod
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### gorm → zod
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### drizzle → zod
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### json-schema → zod
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### What zod approximates
+
+1. **Types that JSON cannot carry.** Big integers and decimals are validated as strings of digits (a decimal with `max_digits` and `decimal_places` gets a pattern sized to them), UUIDs with `z.uuid()` (which only accepts RFC 9562 versions and variants), binary data as base64 text, durations and times as plain strings, and JSON columns as `z.unknown()`. Date columns use `z.coerce.date()`, which also accepts `null` and numbers, so a null in a required date column is not rejected; the `dates: "string"` option validates ISO text strictly instead.
+2. **Create and update schemas are inferred.** The IR has no notion of an API payload. `<Model>CreateSchema` leaves out auto-increment keys, generated columns and auto-updated timestamps, and makes columns with a default (or a database default) and nullable columns optional. `<Model>UpdateSchema` is the create schema made partial, so it cannot change a generated column. Views get neither.
+3. **Relations are a separate schema.** Relation fields are not part of `<Model>Schema`; the foreign-key scalar is. A model that takes part in a relation also gets `<Model>WithRelationsSchema`, where every related row is optional and resolved lazily. Referential actions (`onDelete`), `related_name` collisions and composite foreign keys are not validation rules, so they are dropped (a composite key stays as its scalar columns).
+4. **Database-only rules are not checked.** Unique constraints, indexes, check constraints, string lengths below the database limit, integer ranges, enum value order and column names are not validated or kept; only string `max_length`, enum membership, nullability and the types above are. Enum labels are kept as comments. Ranges become an object with `lower`, `upper` and `bounds`, and hstore a record of nullable strings.
+
 ## Known issues
 
 - Writing a many-to-many to TypeORM emits `@JoinTable({ name, joinColumn, inverseJoinColumn })` so the join table matches the one Django creates. The TypeORM reader then warns that "custom @JoinTable settings (name, joinColumn, inverseJoinColumn) are not preserved" for ormbridge's own output. The names it would have read are the same ones it derives, so nothing is lost, but the warning is noise for generated code.

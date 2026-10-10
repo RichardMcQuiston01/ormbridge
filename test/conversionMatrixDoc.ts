@@ -240,6 +240,32 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
           'Every foreign key gets a `one()` relation on its table and the matching `many()` (or `one()` for a one-to-one) on the target. Two tables joined more than once, and self references, carry a `relationName` on both sides because Drizzle cannot pair them otherwise. An unnamed reverse relation is named after the plural of the model (`posts`). Tables are ordered so a table follows the tables it references; a reference to a table declared later (a cycle or a self reference) is annotated with `AnyPgColumn` (`AnyMySqlColumn`, `AnySQLiteColumn`).',
       },
     ],
+    zod: [
+      {
+        id: 'zod-wire-types',
+        title: 'Types that JSON cannot carry',
+        explanation:
+          'Big integers and decimals are validated as strings of digits (a decimal with `max_digits` and `decimal_places` gets a pattern sized to them), UUIDs with `z.uuid()` (which only accepts RFC 9562 versions and variants), binary data as base64 text, durations and times as plain strings, and JSON columns as `z.unknown()`. Date columns use `z.coerce.date()`, which also accepts `null` and numbers, so a null in a required date column is not rejected; the `dates: "string"` option validates ISO text strictly instead.',
+      },
+      {
+        id: 'zod-create-update',
+        title: 'Create and update schemas are inferred',
+        explanation:
+          'The IR has no notion of an API payload. `<Model>CreateSchema` leaves out auto-increment keys, generated columns and auto-updated timestamps, and makes columns with a default (or a database default) and nullable columns optional. `<Model>UpdateSchema` is the create schema made partial, so it cannot change a generated column. Views get neither.',
+      },
+      {
+        id: 'zod-relations',
+        title: 'Relations are a separate schema',
+        explanation:
+          'Relation fields are not part of `<Model>Schema`; the foreign-key scalar is. A model that takes part in a relation also gets `<Model>WithRelationsSchema`, where every related row is optional and resolved lazily. Referential actions (`onDelete`), `related_name` collisions and composite foreign keys are not validation rules, so they are dropped (a composite key stays as its scalar columns).',
+      },
+      {
+        id: 'zod-database-rules',
+        title: 'Database-only rules are not checked',
+        explanation:
+          'Unique constraints, indexes, check constraints, string lengths below the database limit, integer ranges, enum value order and column names are not validated or kept; only string `max_length`, enum membership, nullability and the types above are. Enum labels are kept as comments. Ranges become an object with `lower`, `upper` and `bounds`, and hstore a record of nullable strings.',
+      },
+    ],
   };
 
 /**

@@ -22,7 +22,7 @@ jobs:
       - run: npm test
 
   # The optional verification tests that load generated code with the real tools (Django,
-  # graphene-django, TypeORM, Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
+  # graphene-django, TypeORM, Zod, Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
   # because the tools are not installed there. A separate job keeps `check` fast, and a package
   # registry outage or a tool release then breaks only this job, not lint, build and tests.
   real-tools:
@@ -60,7 +60,7 @@ jobs:
           key: real-tools-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
           restore-keys: real-tools-${{ runner.os }}-
       - run: npm ci
-      - name: Install Django, graphene-django, TypeORM and Drizzle
+      - name: Install Django, graphene-django, TypeORM, Drizzle, Ajv and Zod
         run: |
           test/tools/setup-verification-tools.sh "$TOOLS" | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
       - name: Install Doctrine ORM and Illuminate

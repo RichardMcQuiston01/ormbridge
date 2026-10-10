@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs the real tools that the optional verification tests use (Django, graphene-django,
-# TypeORM with SQLite, Drizzle ORM with drizzle-kit and Ajv for JSON Schema) into a scratch directory outside this
-# repository, then prints the environment variables that switch the tests on.
+# TypeORM with SQLite, Drizzle ORM with drizzle-kit, Ajv for JSON Schema and Zod) into a scratch directory outside
+# this repository, then prints the environment variables that switch the tests on.
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
 #   eval "$(test/tools/setup-verification-tools.sh /tmp/ormbridge-tools | grep '^export ')"
@@ -47,7 +47,16 @@ mkdir -p "${target}/drizzle"
     @types/better-sqlite3
 )
 
+echo "Installing Zod 4, TypeScript and tsx into ${target}/zod" >&2
+mkdir -p "${target}/zod"
+(
+  cd "${target}/zod"
+  [ -f package.json ] || npm init -y > /dev/null
+  npm install --silent zod@4 typescript tsx @types/node
+)
+
 echo "export DJANGO_PYTHON=${target}/venv/bin/python"
 echo "export TYPEORM_DIR=${target}/typeorm"
 echo "export DRIZZLE_DIR=${target}/drizzle"
 echo "export AJV_DIR=${target}/ajv"
+echo "export ZOD_DIR=${target}/zod"

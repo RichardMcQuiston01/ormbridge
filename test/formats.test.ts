@@ -162,6 +162,9 @@ describe('formats command output', () => {
     expect(text).toMatch(
       /typescript\s+extensions: \(none\) {2}write {2}Plain TypeScript interfaces and enums\n/
     );
+    expect(text).toMatch(
+      /zod\s+extensions: \(none\) {2}write {2}Zod schemas \(TypeScript, Zod 4\)\n/
+    );
   });
 
   it('marks one-way formats', () => {
