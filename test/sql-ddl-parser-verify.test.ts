@@ -500,7 +500,7 @@ describe(titleWithReason('sql parser: real SQLite', probe), () => {
       );
       const query = (database as Database).load(
         `${text}
-         INSERT INTO auth_user DEFAULT VALUES;
+         INSERT INTO blog_user DEFAULT VALUES;
          INSERT INTO blog_category (updated_at, name, slug) VALUES ('2024-01-01', 'a', 'a');
          INSERT INTO blog_post (updated_at, public_id, title, body, author_id, category_id)
            VALUES ('2024-01-01', 'p-1', 't', 'b', 1, 1);`

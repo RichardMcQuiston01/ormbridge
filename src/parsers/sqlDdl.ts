@@ -111,6 +111,8 @@ interface RawTable {
   schema?: string;
   name: string;
   columns: RawColumn[];
+  /** Columns by lower-case name; the first of a repeated name wins. */
+  columnIndex: Map<string, RawColumn>;
   primaryKey?: { columns: string[]; name?: string };
   uniques: RawUnique[];
   references: RawReference[];
@@ -127,6 +129,8 @@ interface RawEnum {
   schema?: string;
   name: string;
   values: string[];
+  /** The members as a set, for the duplicate check of ALTER TYPE ... ADD VALUE. */
+  seen: Set<string>;
   dropped: boolean;
 }
 
@@ -150,6 +154,9 @@ const DEFAULT_SCHEMAS: ReadonlySet<string> = new Set(['public', 'dbo', 'main']);
 
 const MAX_WARNINGS: number = 400;
 
+/** An enum with more members than this takes ALTER TYPE ... ADD VALUE ... BEFORE / AFTER at the end. */
+const MAX_POSITIONED_ENUM_VALUES: number = 10_000;
+
 interface WarningSink {
   push(message: string): void;
 }
@@ -165,6 +172,8 @@ interface Context {
   /** Tables by lower-case name, for references written without a schema. */
   tablesByName: Map<string, RawTable[]>;
   enums: RawEnum[];
+  /** The latest enum of each lower-case name. */
+  enumsByName: Map<string, RawEnum>;
   warnings: string[];
   suppressedWarnings: number;
   skipped: Map<string, SkippedKind>;
@@ -233,6 +242,7 @@ function parseSources(
     tableByKey: new Map<string, RawTable>(),
     tablesByName: new Map<string, RawTable[]>(),
     enums: [],
+    enumsByName: new Map<string, RawEnum>(),
     warnings: [],
     suppressedWarnings: 0,
     skipped: new Map<string, SkippedKind>(),
@@ -570,6 +580,7 @@ function createTable(
       : { schema: normalizedSchema(name, file.dialect) as string }),
     name: name.name,
     columns: [],
+    columnIndex: new Map<string, RawColumn>(),
     uniques: [],
     references: [],
     indexes: [],
@@ -1088,10 +1099,7 @@ function applyConstraint(
       table.indexes.push(result.index);
       return;
     case 'default': {
-      const column: RawColumn | undefined = table.columns.find(
-        (candidate: RawColumn) =>
-          candidate.name.toLowerCase() === result.column.toLowerCase()
-      );
+      const column: RawColumn | undefined = findColumn(table, result.column);
       if (column === undefined) {
         warn(
           ctx,
@@ -1400,6 +1408,9 @@ function parseColumn(
     }
   }
   table.columns.push(column);
+  if (!table.columnIndex.has(column.name.toLowerCase())) {
+    table.columnIndex.set(column.name.toLowerCase(), column);
+  }
   return column;
 }
 
@@ -1537,12 +1548,19 @@ function lookupTable(
   }
   // An unqualified name finds a table in any schema when there is only one candidate.
   if (schema === undefined) {
-    const candidates: RawTable[] = (
-      ctx.tablesByName.get(name.name.toLowerCase()) ?? []
-    ).filter((table: RawTable) => !table.dropped);
-    if (candidates.length === 1) {
-      return candidates[0];
+    let only: RawTable | undefined;
+    for (const candidate of ctx.tablesByName.get(name.name.toLowerCase()) ??
+      []) {
+      if (candidate.dropped) {
+        continue;
+      }
+      if (only !== undefined) {
+        // Ambiguous: the name exists in several schemas.
+        return undefined;
+      }
+      only = candidate;
     }
+    return only;
   } else {
     const fallback: RawTable | undefined = ctx.tableByKey.get(
       tableKey(undefined, name.name)
@@ -1578,32 +1596,25 @@ function createType(
   const values: string[] = group
     .filter((token: Token) => token.kind === 'string')
     .map((token: Token) => token.value);
-  ctx.enums.push({
+  const created: RawEnum = {
     ...(name.schema === undefined ? {} : { schema: name.schema }),
     name: name.name,
     values,
+    seen: new Set<string>(values),
     dropped: false,
-  });
+  };
+  ctx.enums.push(created);
+  ctx.enumsByName.set(name.name.toLowerCase(), created);
 }
 
 function findEnum(
   ctx: Context,
   name: QualifiedName | string
 ): RawEnum | undefined {
-  const wanted: string = (
-    typeof name === 'string' ? name : name.name
-  ).toLowerCase();
-  for (let at: number = ctx.enums.length - 1; at >= 0; at -= 1) {
-    const candidate: RawEnum | undefined = ctx.enums[at];
-    if (
-      candidate !== undefined &&
-      !candidate.dropped &&
-      candidate.name.toLowerCase() === wanted
-    ) {
-      return candidate;
-    }
-  }
-  return undefined;
+  const found: RawEnum | undefined = ctx.enumsByName.get(
+    (typeof name === 'string' ? name : name.name).toLowerCase()
+  );
+  return found === undefined || found.dropped ? undefined : found;
 }
 
 function handleAlter(ctx: Context, file: FileContext, cursor: Cursor): void {
@@ -1617,17 +1628,22 @@ function handleAlter(ctx: Context, file: FileContext, cursor: Cursor): void {
     if (target !== undefined && cursor.acceptKeywords('ADD', 'VALUE')) {
       cursor.acceptKeywords('IF', 'NOT', 'EXISTS');
       const value: Token = cursor.next();
-      if (value.kind === 'string' && !target.values.includes(value.value)) {
+      if (value.kind === 'string' && !target.seen.has(value.value)) {
         let position: number = target.values.length;
         if (cursor.isKeyword('BEFORE') || cursor.isKeyword('AFTER')) {
           const after: boolean = cursor.next().up === 'AFTER';
           const anchor: Token = cursor.next();
-          const anchorAt: number = target.values.indexOf(anchor.value);
+          // Looking the anchor up is linear; a huge enum is appended to instead.
+          const anchorAt: number =
+            target.values.length > MAX_POSITIONED_ENUM_VALUES
+              ? -1
+              : target.values.indexOf(anchor.value);
           if (anchorAt !== -1) {
             position = after ? anchorAt + 1 : anchorAt;
           }
         }
         target.values.splice(position, 0, value.value);
+        target.seen.add(value.value);
       }
     }
     return;
@@ -1743,10 +1759,7 @@ function handleAlterAction(
     cursor.next();
     cursor.acceptKeyword('COLUMN');
     const columnToken: Token = cursor.next();
-    const column: RawColumn | undefined = table.columns.find(
-      (candidate: RawColumn) =>
-        candidate.name.toLowerCase() === columnToken.value.toLowerCase()
-    );
+    const column: RawColumn | undefined = findColumn(table, columnToken.value);
     if (column === undefined) {
       return;
     }
@@ -1858,21 +1871,33 @@ function sanitizeIdentifier(value: string): string {
   return result;
 }
 
+/** The next suffix to try per base name, per set of used names, so many clashes stay linear. */
+const NEXT_SUFFIX: WeakMap<Set<string>, Map<string, number>> = new WeakMap();
+
+function nextFree(base: string, used: Set<string>, separator: string): string {
+  let counters: Map<string, number> | undefined = NEXT_SUFFIX.get(used);
+  if (counters === undefined) {
+    counters = new Map<string, number>();
+    NEXT_SUFFIX.set(used, counters);
+  }
+  let suffix: number = counters.get(base) ?? 2;
+  for (;;) {
+    const candidate: string = `${base}${separator}${suffix}`;
+    suffix += 1;
+    if (!used.has(candidate)) {
+      counters.set(base, suffix);
+      used.add(candidate);
+      return candidate;
+    }
+  }
+}
+
 function uniqueName(base: string, used: Set<string>): string {
   if (!used.has(base)) {
     used.add(base);
     return base;
   }
-  for (let suffix: number = 2; suffix <= used.size + 2; suffix += 1) {
-    const candidate: string = `${base}_${suffix}`;
-    if (!used.has(candidate)) {
-      used.add(candidate);
-      return candidate;
-    }
-  }
-  const fallback: string = `${base}_${used.size + 3}`;
-  used.add(fallback);
-  return fallback;
+  return nextFree(base, used, '_');
 }
 
 function pluralize(snake: string): string {
@@ -1906,12 +1931,11 @@ function modelNameFor(table: RawTable, taken: Set<string>): string {
   if (taken.has(base) && table.schema !== undefined) {
     base = `${toPascalCase(table.schema)}${base}`;
   }
-  let name: string = base;
-  for (let suffix: number = 2; taken.has(name); suffix += 1) {
-    name = `${base}${suffix}`;
+  if (!taken.has(base)) {
+    taken.add(base);
+    return base;
   }
-  taken.add(name);
-  return name;
+  return nextFree(base, taken, '');
 }
 
 function enumMembers(values: string[]): IrEnumValue[] {
@@ -1929,10 +1953,7 @@ function enumMembers(values: string[]): IrEnumValue[] {
 }
 
 function findColumn(table: RawTable, name: string): RawColumn | undefined {
-  const lower: string = name.toLowerCase();
-  return table.columns.find(
-    (column: RawColumn) => column.name.toLowerCase() === lower
-  );
+  return table.columnIndex.get(name.toLowerCase());
 }
 
 /** Reads `col IN ('a', 'b')`, `col = 'a' OR col = 'b'` and PostgreSQL's `col = ANY (ARRAY[...])` checks. */
@@ -1980,10 +2001,12 @@ function extractEnumCheck(
   }
   let column: RawColumn | undefined;
   const values: string[] = [];
+  const seenValues: Set<string> = new Set<string>();
   let sawMembership: boolean = false;
   for (const token of kept) {
     if (token.kind === 'string') {
-      if (!values.includes(token.value)) {
+      if (!seenValues.has(token.value)) {
+        seenValues.add(token.value);
         values.push(token.value);
       }
     } else if (token.kind === 'word' || token.kind === 'ident') {
@@ -2453,10 +2476,7 @@ function buildSchema(
       const targetBuild: ModelBuild = builds.get(
         reference.target
       ) as ModelBuild;
-      const sources: number = build.references.filter(
-        (other: ResolvedReference) =>
-          other.target === reference.target && build.relationNames.has(other)
-      ).length;
+      const sources: number = namedPerTarget(build).get(reference.target) ?? 0;
       const isUnique: boolean = isOneToOne(table, reference);
       const source: string = toSnakeCase(build.name);
       const base: string = isUnique ? source : pluralize(source);
@@ -2476,6 +2496,9 @@ function buildSchema(
     const build: ModelBuild = builds.get(table) as ModelBuild;
     buildFields(build, enumByType, warnings);
     const primaryKey: string[] = table.primaryKey?.columns ?? [];
+    const primaryKeyNames: Set<string> = new Set(
+      primaryKey.map((name: string) => name.toLowerCase())
+    );
     for (const reference of build.references) {
       const name: string | undefined = build.relationNames.get(reference);
       if (name === undefined) {
@@ -2489,9 +2512,7 @@ function buildSchema(
       const nullable: boolean = reference.columns.some(
         (column: RawColumn) =>
           column.notNull !== true &&
-          !primaryKey.some(
-            (key: string) => key.toLowerCase() === column.name.toLowerCase()
-          )
+          !primaryKeyNames.has(column.name.toLowerCase())
       );
       const onDelete: IrOnDelete = reference.raw.onDelete ?? 'noAction';
       const onUpdate: IrOnDelete | undefined =
@@ -2605,38 +2626,76 @@ function buildSchema(
   return { models, enums, warnings: ctx.warnings };
 }
 
-/** A foreign key is one-to-one when its columns are the primary key or carry a unique constraint or index. */
-function isOneToOne(table: RawTable, reference: ResolvedReference): boolean {
-  const names: string[] = reference.columns.map(
-    (column: RawColumn) => column.name
-  );
-  if (
-    table.primaryKey !== undefined &&
-    referenceCoversExactly(names, table.primaryKey.columns)
-  ) {
-    return true;
+/** A set of column names as a comparable key. */
+function columnSetKey(names: readonly string[]): string {
+  return names
+    .map((name: string) => name.toLowerCase())
+    .sort()
+    .join('\u0000');
+}
+
+const UNIQUE_COLUMN_SETS: WeakMap<RawTable, Set<string>> = new WeakMap();
+
+/** The column sets of a table that hold unique values: the primary key, unique constraints and unique indexes. */
+function uniqueColumnSets(table: RawTable): Set<string> {
+  const cached: Set<string> | undefined = UNIQUE_COLUMN_SETS.get(table);
+  if (cached !== undefined) {
+    return cached;
   }
-  if (
-    table.uniques.some((unique: RawUnique) =>
-      referenceCoversExactly(names, unique.columns)
-    )
-  ) {
-    return true;
+  const sets: Set<string> = new Set<string>();
+  if (table.primaryKey !== undefined) {
+    sets.add(columnSetKey(table.primaryKey.columns));
   }
-  return table.indexes.some(
-    (index: RawIndex) =>
+  for (const unique of table.uniques) {
+    sets.add(columnSetKey(unique.columns));
+  }
+  for (const index of table.indexes) {
+    if (
       index.isUnique &&
       !index.isPartial &&
       index.kind === undefined &&
       index.elements.every(
         (element: RawIndexElement) => element.column !== undefined
-      ) &&
-      referenceCoversExactly(
-        names,
-        index.elements.map(
-          (element: RawIndexElement) => element.column as string
-        )
       )
+    ) {
+      sets.add(
+        columnSetKey(
+          index.elements.map(
+            (element: RawIndexElement) => element.column as string
+          )
+        )
+      );
+    }
+  }
+  UNIQUE_COLUMN_SETS.set(table, sets);
+  return sets;
+}
+
+/** A foreign key is one-to-one when its columns are the primary key or carry a unique constraint or index. */
+const NAMED_PER_TARGET: WeakMap<
+  ModelBuild,
+  Map<RawTable, number>
+> = new WeakMap();
+
+/** How many named relations of a model point at each target table. */
+function namedPerTarget(build: ModelBuild): Map<RawTable, number> {
+  const cached: Map<RawTable, number> | undefined = NAMED_PER_TARGET.get(build);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const counts: Map<RawTable, number> = new Map<RawTable, number>();
+  for (const reference of build.references) {
+    if (build.relationNames.has(reference)) {
+      counts.set(reference.target, (counts.get(reference.target) ?? 0) + 1);
+    }
+  }
+  NAMED_PER_TARGET.set(build, counts);
+  return counts;
+}
+
+function isOneToOne(table: RawTable, reference: ResolvedReference): boolean {
+  return uniqueColumnSets(table).has(
+    columnSetKey(reference.columns.map((column: RawColumn) => column.name))
   );
 }
 
@@ -2657,10 +2716,10 @@ function buildFields(
   warnings: WarningSink
 ): void {
   const table: RawTable = build.table;
-  const keyColumns: string[] = (table.primaryKey?.columns ?? []).map(
-    (name: string) => name.toLowerCase()
+  const keyColumns: Set<string> = new Set(
+    (table.primaryKey?.columns ?? []).map((name: string) => name.toLowerCase())
   );
-  const singleKey: boolean = keyColumns.length === 1;
+  const singleKey: boolean = keyColumns.size === 1;
   const uniqueNames: Map<string, string | undefined> = new Map();
   for (const unique of table.uniques) {
     if (unique.columns.length === 1) {
@@ -2707,7 +2766,7 @@ function buildFields(
         `table "${table.name}", column "${column.name}": a SET column is read as text; the member list is dropped.`
       );
     }
-    const inKey: boolean = keyColumns.includes(key);
+    const inKey: boolean = keyColumns.has(key);
     const isPrimaryKey: boolean = singleKey && inKey;
     const isInteger: boolean = type === 'int' || type === 'bigInt';
     const implicitRowId: boolean =
@@ -2807,6 +2866,16 @@ function buildIndexes(build: ModelBuild, warnings: WarningSink): void {
       ...(unique.name === undefined ? {} : { name: unique.name }),
     });
   }
+  // The column lists (in order) of the foreign keys, to recognise the indexes MySQL adds for them.
+  const foreignKeyColumnLists: Set<string> = new Set<string>(
+    table.dialect === 'mysql'
+      ? build.references.map((reference: ResolvedReference): string =>
+          reference.columns
+            .map((column: RawColumn) => nameOf(column.name) ?? '')
+            .join('\u0000')
+        )
+      : []
+  );
   for (const index of table.indexes) {
     const label: string = index.name === undefined ? '' : ` "${index.name}"`;
     if (
@@ -2834,15 +2903,7 @@ function buildIndexes(build: ModelBuild, warnings: WarningSink): void {
       index.kind === undefined &&
       !index.isPartial &&
       index.method === undefined &&
-      build.references.some((reference: ResolvedReference): boolean => {
-        const own: string[] = reference.columns.map(
-          (column: RawColumn) => nameOf(column.name) ?? ''
-        );
-        return (
-          own.length === names.length &&
-          own.every((name: string, at: number) => name === names[at])
-        );
-      })
+      foreignKeyColumnLists.has(names.join('\u0000'))
     ) {
       continue;
     }

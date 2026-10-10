@@ -2093,6 +2093,64 @@ describe('hostile input', () => {
   );
 
   it(
+    'stays linear when many names clash, many keys point at one table and one enum grows',
+    () => {
+      const count: number = 30_000;
+      // Distinct punctuation runs: different quoted names that read the same once cleaned up.
+      const punctuation = (index: number): string => {
+        const marks: string = '-~!@#%';
+        let rest: number = index;
+        let run: string = '';
+        do {
+          run += marks.charAt(rest % marks.length);
+          rest = Math.floor(rest / marks.length);
+        } while (rest > 0);
+        return run;
+      };
+      const clashing: string = Array.from(
+        { length: count },
+        (_, index) => `"a${punctuation(index)}" int`
+      ).join(', ');
+      const keyColumns: string = Array.from(
+        { length: count },
+        (_, index) => `k${index} int`
+      ).join(', ');
+      const keyList: string = Array.from(
+        { length: count },
+        (_, index) => `k${index}`
+      ).join(', ');
+      const references: string = Array.from(
+        { length: count },
+        (_, index) => `r${index} int REFERENCES target (id)`
+      ).join(', ');
+      const alterTypes: string = Array.from(
+        { length: count },
+        (_, index) =>
+          `ALTER TYPE e ADD VALUE 'v${index}' AFTER 'v${index - 1}';`
+      ).join('\n');
+      const sameModelName: string = Array.from(
+        { length: count },
+        (_, index) => `CREATE TABLE "t${punctuation(index)}" (id int);`
+      ).join('\n');
+      const text: string = `
+        CREATE TYPE e AS ENUM ('v-1');
+        ${alterTypes}
+        CREATE TABLE target (id int PRIMARY KEY);
+        CREATE TABLE clashing (id int PRIMARY KEY, ${clashing});
+        CREATE TABLE wide (${keyColumns}, ${references}, PRIMARY KEY (${keyList}), UNIQUE (${keyList}));
+        CREATE INDEX wide_idx ON wide (${keyList});
+        ${sameModelName}`;
+      const result: Result<IrSchema> = parseQuickly(text);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(model(result.value, 'Clashing').fields).toHaveLength(count + 1);
+        expect(result.value.models.length).toBeGreaterThan(count);
+      }
+    },
+    LIMIT
+  );
+
+  it(
     'caps the number of warnings',
     () => {
       const text: string =
