@@ -83,6 +83,20 @@ export const CANONICAL_FIXTURES: readonly CanonicalFixture[] = [
     paths: [fixturePath('./sql/postgresql/blog.sql')],
   },
   {
+    // SQLAlchemy 2.0 declarative models in a package. The SQLModel and classic Column() versions of the same
+    // schema (fixtures/sqlalchemy-sqlmodel, fixtures/sqlalchemy-classic) are checked in sqlalchemy-parser.test.ts.
+    format: 'sqlalchemy',
+    paths: [
+      './sqlalchemy/blog/base.py',
+      './sqlalchemy/blog/enums.py',
+      './sqlalchemy/blog/user.py',
+      './sqlalchemy/blog/category.py',
+      './sqlalchemy/blog/post.py',
+      './sqlalchemy/blog/tag.py',
+      './sqlalchemy/blog/profile.py',
+    ].map(fixturePath),
+  },
+  {
     // Laravel keeps the schema in migrations: they are listed in the order Laravel runs them,
     // followed by the backed enum and the Eloquent models that name the relations.
     format: 'laravel',

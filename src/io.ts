@@ -87,6 +87,26 @@ const SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   'build',
 ]);
 
+/**
+ * Directories skipped when reading SQLAlchemy / SQLModel projects: virtual environments, installed packages,
+ * caches and migration tools (Alembic keeps its revisions in `alembic/versions`).
+ */
+const SQLALCHEMY_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
+  ...SKIPPED_DIRECTORIES,
+  'alembic',
+  '.tox',
+  '.nox',
+  '.mypy_cache',
+  '.pytest_cache',
+  '.ruff_cache',
+  '.eggs',
+  'htmlcov',
+]);
+
+/** Python files that are tests, packaging or tooling and never define the models. */
+const SQLALCHEMY_NON_MODEL_FILES: RegExp =
+  /^(?:test_.*|.*_test|conftest|setup|noxfile|tasks|manage|wsgi|asgi)\.py$/;
+
 export interface RunOptions extends ConvertOptions {
   /** Files or directories to read. */
   inputs: string[];
@@ -426,7 +446,9 @@ async function discoverInputFiles(
                     ? 'JSON (.json) schema or OpenAPI files'
                     : format === 'sql'
                       ? 'SQL (.sql) files'
-                      : '.prisma files';
+                      : format === 'sqlalchemy'
+                        ? 'Python (.py) files with SQLAlchemy or SQLModel models'
+                        : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -467,6 +489,12 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
       extname(filePath) === '.php' && !/Test\.php$/.test(basename(filePath))
     );
   }
+  if (format === 'sqlalchemy') {
+    return (
+      extname(filePath) === '.py' &&
+      !SQLALCHEMY_NON_MODEL_FILES.test(basename(filePath))
+    );
+  }
   const parentName: string = basename(dirname(filePath));
   const fileName: string = basename(filePath);
   if (fileName === 'models.py') {
@@ -499,6 +527,9 @@ function isSkippedDirectory(
   }
   if (format === 'sql') {
     return SQL_SKIPPED_DIRECTORIES.has(name);
+  }
+  if (format === 'sqlalchemy') {
+    return SQLALCHEMY_SKIPPED_DIRECTORIES.has(name);
   }
   return (
     SKIPPED_DIRECTORIES.has(name) ||

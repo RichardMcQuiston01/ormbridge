@@ -80,7 +80,7 @@ jobs:
           key: real-tools-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
           restore-keys: real-tools-${{ runner.os }}-
       - run: npm ci
-      - name: Install Django, graphene-django, TypeORM, Drizzle, Ajv, Zod and better-sqlite3
+      - name: Install Django, graphene-django, SQLAlchemy 2, SQLModel, TypeORM, Drizzle, Ajv, Zod and better-sqlite3
         run: |
           test/tools/setup-verification-tools.sh "$TOOLS" | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
       - name: Point the SQL DDL tests at the PostgreSQL and MySQL services

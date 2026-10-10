@@ -22,6 +22,7 @@ import { parseGorm } from './parsers/gorm.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
 import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
+import { parseSqlAlchemy } from './parsers/sqlalchemy.js';
 import { parseSqlDdl } from './parsers/sqlDdl.js';
 import { parseTypeorm } from './parsers/typeorm.js';
 import { err, ok, type Result } from './result.js';
@@ -525,6 +526,25 @@ const sqlAdapter: FormatAdapter = {
     ),
 };
 
+const sqlalchemyAdapter: FormatAdapter = {
+  name: 'sqlalchemy',
+  // No extension is claimed: ".py" belongs to Django, so pass --from sqlalchemy.
+  extensions: [],
+  description:
+    'SQLAlchemy 2.0 and SQLModel models (Python; declarative, Column() and Table() styles)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseSqlAlchemy(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -539,6 +559,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(zodAdapter),
   registerFormat(jsonSchemaAdapter),
   registerFormat(sqlAdapter),
+  registerFormat(sqlalchemyAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

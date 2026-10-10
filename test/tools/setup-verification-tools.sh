@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs the real tools that the optional verification tests use (Django, graphene-django,
-# TypeORM with SQLite, Drizzle ORM with drizzle-kit, Ajv for JSON Schema, Zod and better-sqlite3 for the SQL DDL
-# tests) into a scratch directory outside
+# TypeORM with SQLite, Drizzle ORM with drizzle-kit, Ajv for JSON Schema, Zod, better-sqlite3 for the SQL DDL
+# tests, and SQLAlchemy 2 with SQLModel for the SQLAlchemy parser tests) into a scratch directory outside
 # this repository, then prints the environment variables that switch the tests on.
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
@@ -17,6 +17,11 @@ mkdir -p "${target}"
 echo "Installing Django and graphene-django into ${target}/venv" >&2
 python3 -m venv "${target}/venv"
 "${target}/venv/bin/pip" install --quiet django graphene-django
+
+echo "Installing SQLAlchemy 2 and SQLModel into ${target}/venv" >&2
+# The SQLAlchemy parser tests (SQLALCHEMY_PYTHON) read the fixtures with the real libraries, so they share the
+# virtual environment with Django.
+"${target}/venv/bin/pip" install --quiet "sqlalchemy>=2" sqlmodel
 
 echo "Installing TypeORM and SQLite into ${target}/typeorm" >&2
 mkdir -p "${target}/typeorm"
@@ -67,6 +72,7 @@ mkdir -p "${target}/sql"
 )
 
 echo "export DJANGO_PYTHON=${target}/venv/bin/python"
+echo "export SQLALCHEMY_PYTHON=${target}/venv/bin/python"
 echo "export TYPEORM_DIR=${target}/typeorm"
 echo "export DRIZZLE_DIR=${target}/drizzle"
 echo "export AJV_DIR=${target}/ajv"
