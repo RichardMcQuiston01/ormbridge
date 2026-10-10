@@ -1,0 +1,65 @@
+export enum PostStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+}
+
+export interface Category {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  name: string;
+  slug: string;
+  parentId: string | null;
+  parent?: Category | null;
+  children?: Category[];
+  postSet?: Post[];
+}
+
+export interface Post {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  publicId: string;
+  title: string;
+  body: string;
+  status: PostStatus;
+  rating: string | null;
+  viewCount: number;
+  isFeatured: boolean;
+  publishedAt: string;
+  metadata: unknown;
+  authorId: string;
+  author?: User;
+  editorId: string | null;
+  editor?: User | null;
+  categoryId: string;
+  category?: Category;
+  tags?: Tag[];
+}
+
+export interface Tag {
+  id: string;
+  label: string;
+  createdAt: string;
+  updatedAt: string;
+  posts?: Post[];
+}
+
+export interface Profile {
+  id: string;
+  bio: string | null;
+  avatar: string | null;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  user?: User;
+}
+
+export interface User {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  posts?: Post[];
+  editedPosts?: Post[];
+  profile?: Profile | null;
+}

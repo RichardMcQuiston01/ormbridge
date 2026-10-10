@@ -75,6 +75,25 @@ export const LOSS_REASONS: readonly LossReason[] = [
       'Drizzle has no related name: each side of a relation is a key in `relations()`, named after the plural of the model (`posts`). A Django `related_name` or an ORM-specific default such as `postset` is therefore replaced by the Drizzle key, and the Drizzle reader recovers that name rather than the original.',
   },
   {
+    id: 'json-schema-constraints',
+    title: 'JSON Schema does not carry database constraints',
+    explanation:
+      'The JSON Schema writer describes the rows of each model, not the tables that store them: table names, unique constraints, indexes, composite primary keys and referential actions (`on_delete`) are not written, and a model is read back under its own name with the default `restrict` action. The JSON Schema reader understands the `x-table-name`, `x-unique`, `x-indexes` and `x-on-delete` conventions, but the writer does not produce them yet, so these details are lost on a round trip.',
+  },
+  {
+    id: 'json-schema-defaults',
+    title:
+      'JSON Schema describes defaults and nullability of values, not columns',
+    explanation:
+      'A property that has a default or is `readOnly` is not required, and the reader reads such a property back as non-nullable with the generated hint it can infer: a database default that is only a stored string (an empty JSON object) is not written, `now` defaults and auto-updated hints are inferred from `readOnly` and the property name, and a `json` column has no nullability of its own, so a required `json` column comes back nullable.',
+  },
+  {
+    id: 'json-schema-join-tables',
+    title: 'Many-to-many becomes an array property in JSON Schema',
+    explanation:
+      'A many-to-many relation is written as an array of references on each side and is read back as a many-to-many field on the model defined first, with a join table named after the two models rather than the source table. An explicit join model (Prisma) is a model with two single references, which is read back as an ordinary model and loses its composite key and unique pair.',
+  },
+  {
     id: 'django-enum-length-floor',
     title: 'Django enum columns are at least 32 characters',
     explanation:
@@ -249,6 +268,59 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
     ],
   };
 
+/**
+ * What a format that can only be read cannot express, or has to guess, when it is read. The matrix
+ * compares IRs, so these losses (which happen before the IR exists) never show up as differences;
+ * they are listed in the matrix document next to the read-only rows instead. Keyed by format name.
+ */
+export const READ_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
+  {
+    'json-schema': [
+      {
+        id: 'json-schema-annotations',
+        title: 'Descriptions and validation keywords',
+        explanation:
+          'The IR has no comment slot, so `description`, `title` and `examples` are dropped. Validation keywords with no column meaning (`minimum`, `maximum`, `minLength`, `pattern`, `minItems`, `uniqueItems`, `writeOnly`, `deprecated`, `format` values such as `email` or `uri`) are not stored either; only `maxLength` becomes a column length.',
+      },
+      {
+        id: 'json-schema-no-database-meaning',
+        title: 'Constructs without a database meaning',
+        explanation:
+          '`oneOf` / `anyOf` unions (other than "a schema or null" and a list of constants, which are read as a nullable property and an enum), `patternProperties`, maps (`additionalProperties` with a schema), `if` / `then` / `else`, tuple arrays and a union of `type`s are reported as warnings. A property that uses one becomes a `json` column; a model-level one is ignored. A nested inline object is also a `json` column, and a `oneOf` of models is not a model.',
+      },
+      {
+        id: 'json-schema-inheritance',
+        title: 'Inheritance is flattened',
+        explanation:
+          'A model built with `allOf` (or a `$ref` next to `properties`) gets copies of the properties of every parent, with a warning. The IR has no inheritance, so the parent link is lost; the parent stays a model of its own when it is an object schema with properties.',
+      },
+      {
+        id: 'json-schema-relations',
+        title: 'Relations are inferred from `$ref` properties',
+        explanation:
+          'JSON Schema has no foreign keys. A property that references another model is a foreign key (required means not null, `x-on-delete` sets the action and `x-related-name` names the reverse side); an array of models on one model and a reference back on the other is one relation seen from both sides; arrays on both sides are a many-to-many; two single references that point at each other are a one-to-one (the required side holds the key, with a warning when that is a guess). An array with no counterpart gets a nullable foreign key added to the other model, with a warning. A foreign key column keeps its name (`<relation>_id`) unless a scalar property such as `authorId` is declared next to the relation.',
+      },
+      {
+        id: 'json-schema-types',
+        title: 'Column types are guessed from `type` and `format`',
+        explanation:
+          'A string without `maxLength` and without a `format` is `text`; with `maxLength` it is a length-limited `string`. Integers are `int` unless `format` is `int64`; numbers are `float` unless `format` is `decimal` (precision and scale come from `x-precision` / `x-scale` or `multipleOf`). A column type the IR has no name for (unsigned, 16-bit, native database types) cannot be stated. Only string enums become enums; the other enums keep their plain type with a warning.',
+      },
+      {
+        id: 'json-schema-keys',
+        title: 'Keys, generated values and names',
+        explanation:
+          'The primary key is the `x-primary-key` property (several make a composite key), else `id`, else `<model>Id`; a model with none gets an integer `id` and a warning. `readOnly` marks a value the database generates: an integer key counts up, a uuid is generated, a date-time is set on insert (or on every save when the name starts with `updated`). A date-time `default` of `now` or `CURRENT_TIMESTAMP` is the current time. Table names are the model names unless `x-table-name` says otherwise.',
+      },
+      {
+        id: 'json-schema-input',
+        title: 'Input limits',
+        explanation:
+          'Only JSON is read (the package has no YAML parser, so a YAML OpenAPI document must be converted first). References are followed between the files that are given: `#/...` pointers, `#`, and `$id`- or path-relative references; remote references are never fetched and named anchors (`$anchor`, `$dynamicRef`) are not resolved. An unresolved reference keeps its property as a `json` column.',
+      },
+    ],
+  };
+
 /** True when either end of the pair is the given format. */
 function involves(cell: MatrixCell, format: string): boolean {
   return cell.source === format || cell.target === format;
@@ -300,12 +372,48 @@ function explainLaravelDifference(
   }
 }
 
+/** Differences that come from how the JSON Schema writer and reader treat defaults, nullability and join tables. */
+function explainJsonSchemaDifference(
+  difference: IrDifference
+): string | undefined {
+  switch (difference.kind) {
+    case 'fieldDefault':
+      return difference.after === '(none)' ? 'json-schema-defaults' : undefined;
+    case 'fieldNullability':
+      return 'json-schema-defaults';
+    case 'fieldAutoUpdated':
+      return difference.before === 'false' && difference.after === 'true'
+        ? 'json-schema-defaults'
+        : undefined;
+    case 'relationRemoved':
+    case 'relationAdded':
+      return difference.before.startsWith('manyToMany') ||
+        difference.after.startsWith('manyToMany')
+        ? 'json-schema-join-tables'
+        : undefined;
+    case 'fieldAdded':
+    case 'fieldRemoved':
+    case 'modelAdded':
+    case 'modelRemoved':
+      return 'json-schema-join-tables';
+    default:
+      return undefined;
+  }
+}
+
 /** Returns the id of the reason that explains a difference, or undefined when it is unexplained. */
 export function explainDifference(
   difference: IrDifference,
   cell: MatrixCell
 ): string | undefined {
   const schema: IrSchema = cell.sourceSchema;
+  if (involves(cell, 'json-schema')) {
+    const jsonSchemaReason: string | undefined =
+      explainJsonSchemaDifference(difference);
+    if (jsonSchemaReason !== undefined) {
+      return jsonSchemaReason;
+    }
+  }
   if (involves(cell, 'laravel')) {
     const laravelReason: string | undefined = explainLaravelDifference(
       difference,
@@ -343,6 +451,15 @@ export function explainDifference(
         return 'gorm-auto-timestamps';
       }
       return undefined;
+    case 'tableName':
+    case 'indexRemoved':
+    case 'indexAdded':
+    case 'fieldUnique':
+    case 'relationOnDelete':
+    case 'compositePrimaryKey':
+      return involves(cell, 'json-schema')
+        ? 'json-schema-constraints'
+        : undefined;
     case 'relationRelatedName':
       if (involves(cell, 'drizzle')) {
         return 'drizzle-reverse-name';
@@ -687,6 +804,23 @@ export function renderMatrixMarkdown(
 
   if (emitOnly.length > 0) {
     lines.push(...emitOnlySection(emitOnly));
+  }
+
+  for (const name of readOnly) {
+    const readNotes: readonly LossReason[] = READ_ONLY_NOTES[name] ?? [];
+    if (readNotes.length === 0) {
+      continue;
+    }
+    lines.push(
+      `## What ${name} cannot express`,
+      '',
+      `The cells above compare IRs, so they cannot show what is lost before the IR exists, when ${name} is read. These are the constructs the ${name} reader drops, approximates or has to guess; each case also produces a warning that names the model and property.`,
+      ''
+    );
+    readNotes.forEach((note: LossReason, position: number): void => {
+      lines.push(`${position + 1}. **${note.title}.** ${note.explanation}`);
+    });
+    lines.push('');
   }
 
   lines.push(

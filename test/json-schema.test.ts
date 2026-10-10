@@ -476,13 +476,13 @@ describe('JSON Schema emitter', () => {
     expect(document.$defs).toEqual({});
   });
 
-  it('is registered as a write-only json-schema format without extensions', () => {
+  it('is registered as a readable and writable json-schema format without extensions', () => {
     const adapter = getFormat('json-schema');
     expect(adapter.ok).toBe(true);
     if (!adapter.ok) {
       return;
     }
-    expect(adapter.value.parse).toBeUndefined();
+    expect(adapter.value.parse).toBeDefined();
     expect(adapter.value.emit).toBeDefined();
     expect(adapter.value.extensions).toEqual([]);
     expect(getFormatByExtension('.json')).toBeUndefined();

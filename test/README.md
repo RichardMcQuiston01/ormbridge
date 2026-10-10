@@ -41,6 +41,8 @@ The Django, Graphene, TypeORM and Drizzle tests (`django-verify.test.ts`, `graph
 
 The Drizzle tests (`drizzle-verify.test.ts`) check the parser against the real Drizzle tools. Set `DRIZZLE_DIR` to a directory where `npm install drizzle-orm drizzle-kit typescript @types/node` has been run (no database is needed). For the canonical blog schema and the PostgreSQL, MySQL and SQLite files of the extras fixture, the files are type-checked with `tsc` against `drizzle-orm`, `drizzle-kit generate` builds Drizzle's own snapshot of the schema, and the snapshot's tables, columns, nullability, primary keys (also composite), foreign keys and their actions, indexes, unique constraints and enums are compared with the parser's result.
 
+The JSON Schema tests (`json-schema-ajv.test.ts`, `test/tools/validate-json-schema-fixtures.mjs`) check the JSON Schema and OpenAPI fixtures with the real Ajv validator: set `AJV_DIR` to a directory where `npm install ajv ajv-formats` has been run (outside this repository). Every fixture is checked against the meta-schema of its dialect (2020-12, 2019-09, draft 7, OpenAPI), and the canonical JSON Schema and the OpenAPI fixture are also compiled, which resolves every `$ref`; the extras fixtures contain unresolvable references on purpose, so they only get the meta-schema check. Skipped with a reason when `AJV_DIR` is not set.
+
 Left out of the extras on purpose: Prisma views and the PostgreSQL-only array and `Unsupported(...)` columns (no real tool can load them here, and the emitters already warn), and the django-extras fixture for Graphene (its `django.contrib.postgres` fields need psycopg and a PostgreSQL server to load).
 
 ## In CI

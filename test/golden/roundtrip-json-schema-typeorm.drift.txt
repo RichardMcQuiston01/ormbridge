@@ -1,0 +1,29 @@
++ @Column({ type: 'jsonb', nullable: true })
++ @Column({ type: 'uuid', default: () => 'gen_random_uuid()' })
++ @Column({ type: 'varchar', length: 100 })
++ @Entity('Category')
++ @Entity('Post')
++ @Entity('Profile')
++ @Entity('Tag')
++ @Entity('User')
++ import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, type Relation, UpdateDateColumn } from 'typeorm';
++ metadata!: unknown | null;
++ name: 'Post_tags',
++ onDelete: 'RESTRICT',
++ onDelete: 'RESTRICT',
+- @Column({ type: 'jsonb', default: () => "'{}'" })
+- @Column({ type: 'uuid', unique: true, default: () => 'gen_random_uuid()' })
+- @Column({ type: 'varchar', length: 100, unique: true })
+- @Entity('auth_user')
+- @Entity('blog_category')
+- @Entity('blog_post')
+- @Entity('blog_profile')
+- @Entity('blog_tag')
+- @Index('post_pub_status_idx', ['published_at', 'status'])
+- @Index(['title'])
+- @Unique(['author', 'title'])
+- import { Column, CreateDateColumn, Entity, Index, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, type Relation, Unique, UpdateDateColumn } from 'typeorm';
+- metadata!: unknown;
+- name: 'blog_post_tags',
+- onDelete: 'CASCADE',
+- onDelete: 'CASCADE',

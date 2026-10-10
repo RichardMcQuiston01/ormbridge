@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/blog.schema.json",
+  "title": "Blog",
+  "description": "The canonical blog schema, written as JSON Schema. Every $defs entry with properties is a model.",
+  "$defs": {
+    "PostStatus": {
+      "description": "Publication state of a post.",
+      "type": "string",
+      "enum": ["draft", "published"]
+    },
+    "Category": {
+      "type": "object",
+      "x-table-name": "blog_category",
+      "properties": {
+        "id": { "type": "integer", "readOnly": true },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "name": { "type": "string", "maxLength": 100, "x-unique": true },
+        "slug": { "type": "string", "maxLength": 50 },
+        "parent": {
+          "description": "Optional parent category.",
+          "anyOf": [{ "$ref": "#/$defs/Category" }, { "type": "null" }],
+          "x-related-name": "children"
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Category" }
+        }
+      },
+      "required": ["id", "created_at", "updated_at", "name", "slug"]
+    },
+    "Post": {
+      "type": "object",
+      "x-table-name": "blog_post",
+      "x-indexes": [
+        { "fields": ["title"] },
+        { "fields": ["author", "title"], "unique": true },
+        { "fields": ["published_at", "status"], "name": "post_pub_status_idx" }
+      ],
+      "properties": {
+        "id": { "type": "integer", "readOnly": true },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "public_id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true,
+          "x-unique": true
+        },
+        "title": { "type": "string", "maxLength": 200 },
+        "body": { "type": "string" },
+        "status": { "$ref": "#/$defs/PostStatus", "default": "draft" },
+        "rating": {
+          "type": ["number", "null"],
+          "format": "decimal",
+          "x-precision": 4,
+          "x-scale": 2
+        },
+        "view_count": { "type": "integer", "default": 0 },
+        "is_featured": { "type": "boolean", "default": false },
+        "published_at": {
+          "type": "string",
+          "format": "date-time",
+          "default": "now"
+        },
+        "metadata": { "type": "object", "default": {} },
+        "author": {
+          "$ref": "#/$defs/User",
+          "x-on-delete": "cascade",
+          "x-related-name": "posts"
+        },
+        "editor": {
+          "anyOf": [{ "$ref": "#/$defs/User" }, { "type": "null" }],
+          "x-related-name": "edited_posts"
+        },
+        "category": { "$ref": "#/$defs/Category", "x-on-delete": "restrict" },
+        "tags": { "type": "array", "items": { "$ref": "#/$defs/Tag" } }
+      },
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "public_id",
+        "title",
+        "body",
+        "status",
+        "view_count",
+        "is_featured",
+        "published_at",
+        "metadata",
+        "author",
+        "category"
+      ]
+    },
+    "Tag": {
+      "type": "object",
+      "x-table-name": "blog_tag",
+      "properties": {
+        "id": { "type": "integer", "readOnly": true },
+        "label": { "type": "string", "maxLength": 50 },
+        "posts": { "type": "array", "items": { "$ref": "#/$defs/Post" } }
+      },
+      "required": ["id", "label"]
+    },
+    "Profile": {
+      "type": "object",
+      "x-table-name": "blog_profile",
+      "properties": {
+        "id": { "type": "integer", "readOnly": true },
+        "bio": { "type": ["string", "null"] },
+        "avatar": { "type": ["string", "null"], "maxLength": 100 },
+        "user": { "$ref": "#/$defs/User", "x-on-delete": "cascade" }
+      },
+      "required": ["id", "user"]
+    },
+    "User": {
+      "type": "object",
+      "x-table-name": "auth_user",
+      "properties": {
+        "id": { "type": "integer", "readOnly": true },
+        "posts": { "type": "array", "items": { "$ref": "#/$defs/Post" } },
+        "edited_posts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Post" }
+        },
+        "profile": { "$ref": "#/$defs/Profile" }
+      },
+      "required": ["id"]
+    }
+  }
+}

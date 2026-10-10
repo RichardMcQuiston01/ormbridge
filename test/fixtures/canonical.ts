@@ -74,6 +74,10 @@ export const CANONICAL_FIXTURES: readonly CanonicalFixture[] = [
     ].map(fixturePath),
   },
   {
+    format: 'json-schema',
+    paths: [fixturePath('./json-schema/blog.schema.json')],
+  },
+  {
     // Laravel keeps the schema in migrations: they are listed in the order Laravel runs them,
     // followed by the backed enum and the Eloquent models that name the relations.
     format: 'laravel',

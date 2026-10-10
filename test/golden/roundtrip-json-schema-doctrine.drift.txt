@@ -1,0 +1,32 @@
+@@ src/Entity/Category.php
++ #[ORM\Column(name: 'name', type: 'string', length: 100)]
++ #[ORM\Table(name: 'Category')]
+- #[ORM\Column(name: 'name', type: 'string', length: 100, unique: true)]
+- #[ORM\Table(name: 'blog_category')]
+@@ src/Entity/Post.php
++ #[ORM\Column(name: 'metadata', type: 'json', nullable: true, options: ['jsonb' => true])]
++ #[ORM\Column(name: 'public_id', type: 'guid')]
++ #[ORM\JoinTable(name: 'Post_tags')]
++ #[ORM\Table(name: 'Post')]
++ onDelete: 'RESTRICT',
++ private mixed $metadata = null;
+- #[ORM\Column(name: 'metadata', type: 'json', options: ['jsonb' => true])]
+- #[ORM\Column(name: 'public_id', type: 'guid', unique: true)]
+- #[ORM\Index(columns: ['title'])]
+- #[ORM\Index(name: 'post_pub_status_idx', columns: ['published_at', 'status'])]
+- #[ORM\JoinTable(name: 'blog_post_tags')]
+- #[ORM\Table(name: 'blog_post')]
+- #[ORM\UniqueConstraint(columns: ['author_id', 'title'])]
+- onDelete: 'CASCADE',
+- private mixed $metadata = [];
+@@ src/Entity/Profile.php
++ #[ORM\Table(name: 'Profile')]
++ onDelete: 'RESTRICT',
+- #[ORM\Table(name: 'blog_profile')]
+- onDelete: 'CASCADE',
+@@ src/Entity/Tag.php
++ #[ORM\Table(name: 'Tag')]
+- #[ORM\Table(name: 'blog_tag')]
+@@ src/Entity/User.php
++ #[ORM\Table(name: '`User`')]
+- #[ORM\Table(name: 'auth_user')]
