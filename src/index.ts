@@ -73,6 +73,12 @@ export type {
 } from './emitters/typescriptInterfaces.js';
 export { emitJsonSchema } from './emitters/jsonSchema.js';
 export type { JsonSchemaOptions } from './emitters/jsonSchema.js';
+export { emitZod } from './emitters/zod.js';
+export type {
+  ZodBigIntMode,
+  ZodDateMode,
+  ZodEmitOptions,
+} from './emitters/zod.js';
 export { expandManyToMany, normalizeSchema } from './transforms.js';
 export type { NamingMode } from './transforms.js';
 export type * from './ir.js';

@@ -762,6 +762,7 @@ describe.each([
   ['typeorm', 'typeorm.txt'],
   ['typescript', 'typescript.txt'],
   ['graphene', 'graphene.txt'],
+  ['zod', 'zod.txt'],
 ])('Prisma extras -> %s', (target, goldenName) => {
   it('matches the stored output and warns about what it cannot carry', async () => {
     const { output, warnings } = await convertExtras(target);
