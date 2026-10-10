@@ -1,0 +1,306 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["billing", "inv"]
+}
+
+enum OrderState {
+  NEW @map("new")
+  PAID @map("paid")
+  REFUNDED @map("refunded")
+  SHIPPED @map("shipped")
+  CANCELLED @map("cancelled")
+
+  @@map("order_state")
+}
+
+enum InvoiceState {
+  OPEN @map("open")
+  PAID @map("paid")
+  VOID @map("void")
+}
+
+enum ForumUserRole {
+  MEMBER @map("member")
+  MODERATOR @map("moderator")
+  ADMIN @map("admin")
+}
+
+enum ForumThreadStatus {
+  OPEN @map("open")
+  CLOSED @map("closed")
+}
+
+enum NoteKind {
+  TODO @map("todo")
+  IDEA @map("idea")
+  QUOTE @map("quote")
+}
+
+enum ItemKind {
+  PART @map("part")
+  TOOL @map("tool")
+  KIT @map("kit")
+}
+
+model Customer {
+  customer_id      BigInt                                @id @default(autoincrement())
+  email            String                                @unique @db.Text
+  full_name        String                                @db.Text
+  nickname         String?                               @default("it's me") @db.Text
+  age              Int?
+  balance          Decimal                               @default(0) @db.Decimal(12, 2)
+  ratio            Float?                                @default(1.5)
+  tags             String[]                              @db.Text
+  scores           Json?
+  last_ip          String?                               @db.Inet
+  active_during    Unsupported("daterange")?
+  attrs            Json?
+  location         Unsupported("geometry(Point, 4326)")?
+  Signed_Up_At     DateTime                              @default(dbgenerated("now() AT TIME ZONE 'utc'")) @map("Signed Up At") @db.Timestamptz(6)
+  orders           Order[]
+  newsletters      Newsletter[]
+  customer_profile CustomerProfile?
+  favourites       CustomerFavourites[]
+
+  @@index([tags], type: Gin, map: "customers_tags_idx")
+  @@map("customers")
+}
+
+model Product {
+  sku         String               @id @db.Text
+  title       String               @db.VarChar(120)
+  price       Decimal              @default(9.99) @db.Decimal(10, 2)
+  description String?              @db.Text
+  order_items OrderItem[]
+  customers   CustomerFavourites[]
+
+  @@index([title(ops: raw("text_pattern_ops"))], map: "products_title_idx")
+  @@map("products")
+}
+
+model Order {
+  order_no    Int         @id(map: "orders_pkey")
+  state       OrderState  @default(NEW)
+  placed_at   DateTime    @default(now()) @db.Timestamptz(6)
+  subtotal    Decimal     @db.Decimal(12, 2)
+  tax         Decimal     @default(0) @db.Decimal(12, 2)
+  total       Decimal?    @db.Decimal(12, 2)
+  customer_id BigInt
+  customer    Customer    @relation(fields: [customer_id], references: [customer_id], onDelete: Restrict, onUpdate: Cascade)
+  order_items OrderItem[]
+  invoice     Invoice?
+
+  @@index([placed_at(sort: Desc), customer_id], map: "orders_placed_idx")
+  @@map("orders")
+}
+
+model OrderItem {
+  line_no     Int
+  quantity    Int     @default(1)
+  order_no    Int
+  order       Order   @relation(fields: [order_no], references: [order_no], onDelete: Cascade)
+  product_sku String  @db.Text
+  product     Product @relation(fields: [product_sku], references: [sku], onDelete: NoAction, map: "order_items_product_sku_fkey")
+
+  @@id([order_no, line_no])
+  @@map("order_items")
+}
+
+model ProductPrice {
+  region      String      @db.Text
+  sku         String      @db.Text
+  amount      Decimal     @db.Decimal(10, 2)
+  price_notes PriceNote[]
+
+  @@id([region, sku])
+  @@map("product_prices")
+}
+
+model PriceNote {
+  id            Int           @id(map: "price_notes_pkey") @default(autoincrement())
+  region        String        @db.Text
+  sku           String?       @db.Text
+  note          String?       @db.Text
+  product_price ProductPrice? @relation(fields: [region, sku], references: [region, sku], onDelete: Cascade, map: "fk_price")
+
+  @@map("price_notes")
+}
+
+model Newsletter {
+  id             Int      @id @default(autoincrement())
+  customer_email String   @db.Text
+  customer       Customer @relation(fields: [customer_email], references: [email], onDelete: Cascade)
+
+  @@map("newsletter")
+}
+
+model CustomerProfile {
+  bio         String?  @db.Text
+  customer_id BigInt   @id
+  customer    Customer @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+
+  @@map("customer_profiles")
+}
+
+model Invoice {
+  id       String       @id @default(uuid()) @db.Uuid
+  state    InvoiceState
+  issued   DateTime?    @default(now()) @db.Date
+  notes    Json?        @default("[]")
+  order_no Int          @unique
+  order    Order        @relation(fields: [order_no], references: [order_no], onDelete: NoAction)
+
+  @@map("invoices")
+  @@schema("billing")
+}
+
+model NoKey {
+  value String? @db.Text
+
+  @@map("no_key")
+}
+
+model ForumUser {
+  id            BigInt               @id @default(autoincrement())
+  handle        String               @unique(map: "uniq_handle") @db.VarChar(32)
+  role          ForumUserRole        @default(MEMBER)
+  perms         String?              @db.Text
+  karma         Int                  @default(0)
+  active        Boolean              @default(true)
+  last_seen     DateTime?            @updatedAt @db.Timestamptz(6)
+  bio           String?              @db.Text
+  avatar        Bytes?
+  score         Float?
+  born          Int?
+  quote         String?              @default("he said 'hi'") @db.VarChar(255)
+  forum_threads ForumThread[]
+  followees     ForumUserFollowees[] @relation("ForumUserFollowees_from_forum_user")
+  followers     ForumUserFollowees[] @relation("ForumUserFollowees_to_forum_user")
+
+  @@index([bio], map: "ft_bio")
+  @@map("forum_user")
+}
+
+model ForumThread {
+  id               Int               @id @default(autoincrement())
+  title            String            @db.VarChar(200)
+  status           ForumThreadStatus @default(OPEN)
+  created          DateTime?         @default(now()) @db.Timestamptz(6)
+  pinned           Boolean           @default(false)
+  author_id        BigInt
+  author           ForumUser         @relation(fields: [author_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_thread_author")
+  parent_thread_id Int?
+  parent_thread    ForumThread?      @relation("ForumThread_parent_thread", fields: [parent_thread_id], references: [id], onDelete: SetNull, map: "fk_thread_parent")
+  forum_threads    ForumThread[]     @relation("ForumThread_parent_thread")
+
+  @@unique([title, author_id], map: "uniq_title_author")
+  @@index([title], map: "idx_title")
+  @@index([author_id, created(sort: Desc)], map: "idx_author_created")
+  @@map("forum_thread")
+}
+
+model Notebook {
+  id       Int       @id @default(autoincrement())
+  title    String    @db.Text
+  created  DateTime? @default(now()) @db.Timestamptz(6)
+  archived Boolean   @default(false)
+  notes    Note[]
+
+  @@map("notebook")
+}
+
+model Note {
+  id          Int       @id @default(autoincrement())
+  body        Bytes?
+  priority    Int?      @default(3)
+  kind        NoteKind?
+  weight      Float?
+  price       Decimal?  @db.Decimal(8, 2)
+  flags       BigInt?
+  attachment  Bytes?
+  fingerprint String?   @db.VarChar(24)
+  word_count  Int?
+  due         DateTime? @default(now()) @db.Date
+  notebook_id Int
+  notebook    Notebook  @relation(fields: [notebook_id], references: [id], onDelete: Cascade)
+  tag         NoteTag[]
+
+  @@unique([kind, priority(sort: Desc)], map: "idx_note_kind_priority")
+  @@index([due], map: "idx_note_open")
+  @@map("note")
+}
+
+model Tag {
+  name   String    @id @db.Text
+  colour String?   @default("#ffffff") @db.VarChar(7)
+  notes  NoteTag[]
+
+  @@map("tag")
+}
+
+model Warehouse {
+  WarehouseId Int                       @id(map: "PK_Warehouse") @default(autoincrement())
+  Code        String                    @db.VarChar(4)
+  Name        String                    @db.VarChar(100)
+  Opened      DateTime?                 @db.Date
+  RowVer      Unsupported("rowversion")
+  items       Item[]
+
+  @@schema("inv")
+}
+
+model Item {
+  ItemId      BigInt    @id(map: "PK_Item") @default(autoincrement())
+  Sku         String    @db.VarChar(20)
+  Price       Decimal   @db.Decimal(19, 4)
+  Weight      Float?
+  Qty         Int       @default(0)
+  Guid        String    @default(uuid()) @db.Uuid
+  Added       DateTime  @default(now()) @db.Timestamptz(6)
+  Notes       String?   @db.Text
+  Photo       Bytes?
+  Kind        ItemKind
+  WarehouseId Int
+  Warehouse   Warehouse @relation(fields: [WarehouseId], references: [WarehouseId], onDelete: Cascade)
+
+  @@index([WarehouseId, Kind(sort: Desc)], map: "IX_Item_Warehouse")
+  @@schema("inv")
+}
+
+model CustomerFavourites {
+  id          Int      @id @default(autoincrement())
+  customer_id BigInt
+  customer    Customer @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+  product_id  String   @db.Text
+  product     Product  @relation(fields: [product_id], references: [sku], onDelete: Cascade)
+
+  @@unique([customer_id, product_id])
+  @@map("customers_favourites")
+}
+
+model ForumUserFollowees {
+  id                 Int       @id @default(autoincrement())
+  from_forum_user_id BigInt
+  from_forum_user    ForumUser @relation("ForumUserFollowees_from_forum_user", fields: [from_forum_user_id], references: [id], onDelete: Cascade)
+  to_forum_user_id   BigInt
+  to_forum_user      ForumUser @relation("ForumUserFollowees_to_forum_user", fields: [to_forum_user_id], references: [id], onDelete: Cascade)
+
+  @@unique([from_forum_user_id, to_forum_user_id])
+  @@map("forum_user_followees")
+}
+
+model NoteTag {
+  id      Int    @id @default(autoincrement())
+  note_id Int
+  note    Note   @relation(fields: [note_id], references: [id], onDelete: Cascade)
+  tag_id  String @db.Text
+  tag     Tag    @relation(fields: [tag_id], references: [name], onDelete: Cascade)
+
+  @@unique([note_id, tag_id])
+  @@map("note_tag")
+}

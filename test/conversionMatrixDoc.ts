@@ -94,6 +94,30 @@ export const LOSS_REASONS: readonly LossReason[] = [
       'A many-to-many relation is written as an array of references on each side and is read back as a many-to-many field on the model defined first, with a join table named after the two models rather than the source table. An explicit join model (Prisma) is a model with two single references, which is read back as an ordinary model and loses its composite key and unique pair.',
   },
   {
+    id: 'sql-reverse-name',
+    title: 'SQL stores no reverse accessor names',
+    explanation:
+      'A foreign key is a column, not a relation field, so the SQL reader names the reverse side after the table that holds the key (`blog_posts`, prefixed with the relation name when a table has two keys to the same target) and does not recover the `related_name` the source had.',
+  },
+  {
+    id: 'sql-auto-timestamps',
+    title: 'SQL cannot mark a column as refreshed on every save',
+    explanation:
+      'Only MySQL has `ON UPDATE CURRENT_TIMESTAMP`. The other dialects need a trigger, which is not written, so an auto-updated timestamp (`auto_now`, `@updatedAt`, `autoUpdateTime`) comes back as an ordinary timestamp with a default.',
+  },
+  {
+    id: 'sql-unique-index',
+    title: 'A unique index is not a unique column in SQL',
+    explanation:
+      'The SQL reader turns `UNIQUE (column)` constraints and column-level `UNIQUE` into a unique column, and keeps `CREATE UNIQUE INDEX` as an index, because the two are different objects in the database. A format that writes a single-column unique index (GORM `uniqueIndex`, a Laravel `unique()` migration call) therefore comes back as an index instead of a unique column, and the other way round.',
+  },
+  {
+    id: 'sql-join-tables',
+    title: 'Join tables and many-to-many fields in SQL',
+    explanation:
+      'A many-to-many field is written as a join table. The SQL reader turns a table of exactly two foreign-key columns that form its composite primary key, and nothing else, back into a many-to-many field and drops the table; any other join table (one with its own key or extra columns, as Django and Prisma write them) stays an explicit model, and a many-to-many field comes back as a model. The join table name and any `ON DELETE` action other than `CASCADE` are not kept.',
+  },
+  {
     id: 'django-enum-length-floor',
     title: 'Django enum columns are at least 32 characters',
     explanation:
@@ -345,6 +369,50 @@ export const READ_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
           'Only JSON is read (the package has no YAML parser, so a YAML OpenAPI document must be converted first). References are followed between the files that are given: `#/...` pointers, `#`, and `$id`- or path-relative references; remote references are never fetched and named anchors (`$anchor`, `$dynamicRef`) are not resolved. An unresolved reference keeps its property as a `json` column.',
       },
     ],
+    sql: [
+      {
+        id: 'sql-dropped-statements',
+        title: 'Statements and clauses with no model equivalent',
+        explanation:
+          "Only `CREATE TABLE`, `CREATE TYPE ... AS ENUM`, `CREATE INDEX` and `ALTER TABLE` (`ADD COLUMN`, `ADD CONSTRAINT`, `ALTER COLUMN` default and nullability) are read. Views, functions, procedures, triggers, sequences, domains, composite types, row data (`INSERT`, `COPY`), comments (`COMMENT ON`, `COMMENT=`), grants, storage options (`ENGINE=`, `WITH (...)`, tablespaces, partitioning, inheritance) and `CHECK` / `EXCLUDE` constraints have no place in the model and are dropped; each kind is reported once as a warning with a count. A `CHECK` of the form `col IN (...)` or `col = 'a' OR col = 'b'` on a text column is the one exception: it becomes an enum, because SQLite and SQL Server have no enum type.",
+      },
+      {
+        id: 'sql-types',
+        title: 'Column types are mapped to the nearest model type',
+        explanation:
+          'The model keeps no native type, so `timestamptz` and `timestamp`, `jsonb` and `json`, `varchar(n)` and `char(n)` (both a length-limited string), `tinytext` to `longtext`, `smallint` to `bigint` (only `bigint` stays `bigInt`) and the integer display widths and `UNSIGNED` / `ZEROFILL` of MySQL are no longer told apart. A `varchar` without a length and SQL Server `(max)` types are `text`; `tinyint(1)` and `bit` are booleans; SQLite types follow its affinity rules. Types the model has no name for (`geometry`, `tsvector`, `money` outside SQL Server, `rowversion`, composite types) are kept as `unsupported` columns with a warning, and a MySQL `SET` is read as text.',
+      },
+      {
+        id: 'sql-relations',
+        title: 'Relation names and reverse accessors are invented',
+        explanation:
+          'SQL stores a foreign key, not a relation field: the relation is named after the column without its `_id` suffix, and the reverse accessor after the table that holds the key (`blog_posts`, prefixed with the relation name when a table has two keys to the same target). A foreign key whose columns are unique or are the primary key is one-to-one. A table with exactly two foreign-key columns that together are its primary key, and nothing else, is read as a many-to-many relation and the table disappears from the model; its name, and any `ON DELETE` action other than `CASCADE`, are not kept. A foreign key to a table that is not in the input stays an ordinary column.',
+      },
+      {
+        id: 'sql-names',
+        title: 'Names',
+        explanation:
+          'Table names become singular PascalCase model names (`blog_post` is `BlogPost`) and the table name is kept as written. Fields are named after their columns. Constraint and index names are kept only when the DDL names them explicitly; names the database generates are not recorded. A database schema other than `public`, `dbo` or `main` is kept as the model schema; the database qualifier of a MySQL name is dropped.',
+      },
+      {
+        id: 'sql-indexes',
+        title: 'Indexes the model cannot express',
+        explanation:
+          'Expression indexes and partial unique indexes are skipped with a warning, the `WHERE` of a partial index, `INCLUDE` columns and storage parameters are dropped, and a MySQL index over exactly the columns of a foreign key is not kept because MySQL creates one for every key. Index methods other than the default (`USING gin`), operator classes, sort direction, prefix lengths, `FULLTEXT` and SQL Server `CLUSTERED` are kept where the model has a slot for them.',
+      },
+      {
+        id: 'sql-defaults',
+        title: 'Defaults',
+        explanation:
+          'Literal defaults, `now()` / `CURRENT_TIMESTAMP` and its variants, uuid generators (`gen_random_uuid()`, `uuid_generate_v4()`, `NEWID()`, `UUID()`), serial, identity and `AUTO_INCREMENT` columns and enum members are understood; any other default expression is kept as written as a database expression. MySQL `ON UPDATE CURRENT_TIMESTAMP` is the only way a column is marked as refreshed on every save, so `updated_at` columns of the other dialects are not.',
+      },
+      {
+        id: 'sql-dialect',
+        title: 'The dialect is guessed',
+        explanation:
+          'Every file is read as PostgreSQL, MySQL, SQLite or SQL Server, chosen from characteristic syntax (backticks, `AUTO_INCREMENT`, `AUTOINCREMENT`, `IDENTITY(1,1)`, `GO`, `SERIAL`, `::` casts), and as PostgreSQL when nothing decides it. The choice only matters for quoting rules and a few types (`tinyint(1)`, `bit`, `INTEGER PRIMARY KEY` in SQLite is an auto-incrementing key). Programmatic callers can pass `dialect` to `parseSqlDdl`.',
+      },
+    ],
   };
 
 /** True when either end of the pair is the given format. */
@@ -427,6 +495,35 @@ function explainJsonSchemaDifference(
   }
 }
 
+function explainSqlDifference(difference: IrDifference): string | undefined {
+  switch (difference.kind) {
+    case 'relationRelatedName':
+      return 'sql-reverse-name';
+    case 'fieldUnique':
+      return difference.before === 'true' && difference.after === 'false'
+        ? 'sql-unique-index'
+        : undefined;
+    case 'indexAdded':
+    case 'indexRemoved':
+      return 'sql-unique-index';
+    case 'fieldAutoUpdated':
+      return difference.before === 'true' && difference.after === 'false'
+        ? 'sql-auto-timestamps'
+        : undefined;
+    case 'relationRemoved':
+    case 'relationAdded':
+      return difference.before.startsWith('manyToMany') ||
+        difference.after.startsWith('manyToMany')
+        ? 'sql-join-tables'
+        : undefined;
+    case 'modelAdded':
+    case 'modelRemoved':
+      return 'sql-join-tables';
+    default:
+      return undefined;
+  }
+}
+
 /** Returns the id of the reason that explains a difference, or undefined when it is unexplained. */
 export function explainDifference(
   difference: IrDifference,
@@ -438,6 +535,12 @@ export function explainDifference(
       explainJsonSchemaDifference(difference);
     if (jsonSchemaReason !== undefined) {
       return jsonSchemaReason;
+    }
+  }
+  if (involves(cell, 'sql')) {
+    const sqlReason: string | undefined = explainSqlDifference(difference);
+    if (sqlReason !== undefined) {
+      return sqlReason;
     }
   }
   if (involves(cell, 'laravel')) {

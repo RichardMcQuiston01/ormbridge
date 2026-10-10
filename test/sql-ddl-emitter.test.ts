@@ -1935,28 +1935,29 @@ describe('SQL DDL emitter: golden files', () => {
   // The PostgreSQL output of every readable format is a golden of conversion.test.ts
   // (test/golden/<format>-to-sql.<naming>.txt). The other dialects live here.
   describe.each(['mysql', 'sqlite', 'sqlserver'] as const)('%s', (provider) => {
-    // The converter rejects same-format conversion, and sql is not a source, so every fixture is one.
-    describe.each(CANONICAL_FIXTURES.map((fixture) => fixture.format))(
-      '%s source',
-      (format) => {
-        it('matches the golden output (both naming modes)', async () => {
-          const files: Record<string, string> = {};
-          for (const naming of NAMING_MODES) {
-            const result = await convertCanonical(format, 'sql', {
-              naming,
-              provider,
-            });
-            files[`${naming}.sql`] = result.output;
-            files[`${naming}.warnings.txt`] = `${result.warnings.join('\n')}\n`;
-          }
-          expectFilesMatchGolden(
-            `sql-${provider}/${format}-to-sql`,
-            files,
-            GOLDEN_ROOT
-          );
-        });
-      }
-    );
+    // The converter rejects same-format conversion, so the sql fixtures are not sources here.
+    describe.each(
+      CANONICAL_FIXTURES.map((fixture) => fixture.format).filter(
+        (format: string) => format !== 'sql'
+      )
+    )('%s source', (format) => {
+      it('matches the golden output (both naming modes)', async () => {
+        const files: Record<string, string> = {};
+        for (const naming of NAMING_MODES) {
+          const result = await convertCanonical(format, 'sql', {
+            naming,
+            provider,
+          });
+          files[`${naming}.sql`] = result.output;
+          files[`${naming}.warnings.txt`] = `${result.warnings.join('\n')}\n`;
+        }
+        expectFilesMatchGolden(
+          `sql-${provider}/${format}-to-sql`,
+          files,
+          GOLDEN_ROOT
+        );
+      });
+    });
   });
 
   describe.each(EXTRA_SOURCES)('$label', (source) => {

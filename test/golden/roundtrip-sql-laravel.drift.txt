@@ -1,0 +1,29 @@
+@@ app/Models/BlogPost.php
++ /** @return HasMany<BlogPostTag, $this> */
++ public function blogPostTags(): HasMany
++ return $this->hasMany(BlogPostTag::class);
++ use Illuminate\Database\Eloquent\Relations\HasMany;
+- /** @return BelongsToMany<BlogTag, $this> */
+- public function tags(): BelongsToMany
+- return $this->belongsToMany(BlogTag::class, 'blog_post_tags', 'blog_post_id', 'blog_tag_id');
+- use Illuminate\Database\Eloquent\Relations\BelongsToMany;
++ file app/Models/BlogPostTag.php
+@@ app/Models/BlogTag.php
++ /** @return HasMany<BlogPostTag, $this> */
++ public function blogPostTags(): HasMany
++ return $this->hasMany(BlogPostTag::class);
++ use Illuminate\Database\Eloquent\Relations\HasMany;
+- /** @return BelongsToMany<BlogPost, $this> */
+- public function blogPosts(): BelongsToMany
+- return $this->belongsToMany(BlogPost::class, 'blog_post_tags', 'blog_tag_id', 'blog_post_id');
+- use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+@@ database/migrations/2024_01_01_000002_create_blog_category_table.php
++ $table->string('name', 100)->unique('blog_category_name_key');
+- $table->string('name', 100)->unique();
+@@ database/migrations/2024_01_01_000004_create_blog_post_table.php
++ $table->uuid('public_id')->unique('blog_post_public_id_key');
+- $table->uuid('public_id')->unique();
+@@ database/migrations/2024_01_01_000006_create_blog_post_tags_table.php
++ $table->id();
++ $table->unique(['blog_post_id', 'blog_tag_id'], 'blog_post_tags_blog_post_id_blog_tag_id_key');
+- $table->primary(['blog_post_id', 'blog_tag_id']);

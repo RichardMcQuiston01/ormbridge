@@ -1,0 +1,135 @@
+import { z } from 'zod';
+
+export const PostStatus = {
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+} as const;
+export const PostStatusSchema = z.enum(PostStatus);
+export type PostStatus = z.infer<typeof PostStatusSchema>;
+
+export const BlogUserSchema = z.object({
+  id: z.number().int(),
+});
+export type BlogUser = z.infer<typeof BlogUserSchema>;
+
+export const BlogUserCreateSchema = BlogUserSchema.omit({ id: true });
+export type BlogUserCreate = z.infer<typeof BlogUserCreateSchema>;
+
+export const BlogUserUpdateSchema = BlogUserCreateSchema.partial();
+export type BlogUserUpdate = z.infer<typeof BlogUserUpdateSchema>;
+
+export type BlogUserWithRelations = BlogUser & {
+  author_blog_posts?: BlogPostWithRelations[];
+  editor_blog_posts?: BlogPostWithRelations[];
+  blog_profile?: BlogProfileWithRelations | null;
+};
+export const BlogUserWithRelationsSchema: z.ZodType<BlogUserWithRelations> = BlogUserSchema.extend({
+  author_blog_posts: z.array(z.lazy(() => BlogPostWithRelationsSchema)).optional(),
+  editor_blog_posts: z.array(z.lazy(() => BlogPostWithRelationsSchema)).optional(),
+  blog_profile: z.lazy(() => BlogProfileWithRelationsSchema).nullable().optional(),
+});
+
+export const BlogCategorySchema = z.object({
+  id: z.number().int(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  name: z.string().max(100),
+  slug: z.string().max(50),
+  parent_id: z.number().int().nullable(),
+});
+export type BlogCategory = z.infer<typeof BlogCategorySchema>;
+
+export const BlogCategoryCreateSchema = BlogCategorySchema.omit({ id: true }).partial({ created_at: true, parent_id: true });
+export type BlogCategoryCreate = z.infer<typeof BlogCategoryCreateSchema>;
+
+export const BlogCategoryUpdateSchema = BlogCategoryCreateSchema.partial();
+export type BlogCategoryUpdate = z.infer<typeof BlogCategoryUpdateSchema>;
+
+export type BlogCategoryWithRelations = BlogCategory & {
+  parent?: BlogCategoryWithRelations | null;
+  blog_categories?: BlogCategoryWithRelations[];
+  blog_posts?: BlogPostWithRelations[];
+};
+export const BlogCategoryWithRelationsSchema: z.ZodType<BlogCategoryWithRelations> = BlogCategorySchema.extend({
+  parent: z.lazy(() => BlogCategoryWithRelationsSchema).nullable().optional(),
+  blog_categories: z.array(z.lazy(() => BlogCategoryWithRelationsSchema)).optional(),
+  blog_posts: z.array(z.lazy(() => BlogPostWithRelationsSchema)).optional(),
+});
+
+export const BlogTagSchema = z.object({
+  id: z.number().int(),
+  label: z.string().max(50),
+});
+export type BlogTag = z.infer<typeof BlogTagSchema>;
+
+export const BlogTagCreateSchema = BlogTagSchema.omit({ id: true });
+export type BlogTagCreate = z.infer<typeof BlogTagCreateSchema>;
+
+export const BlogTagUpdateSchema = BlogTagCreateSchema.partial();
+export type BlogTagUpdate = z.infer<typeof BlogTagUpdateSchema>;
+
+export type BlogTagWithRelations = BlogTag & {
+  blog_posts?: BlogPostWithRelations[];
+};
+export const BlogTagWithRelationsSchema: z.ZodType<BlogTagWithRelations> = BlogTagSchema.extend({
+  blog_posts: z.array(z.lazy(() => BlogPostWithRelationsSchema)).optional(),
+});
+
+export const BlogPostSchema = z.object({
+  id: z.number().int(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  public_id: z.uuid(),
+  title: z.string().max(200),
+  body: z.string(),
+  status: PostStatusSchema,
+  rating: z.string().regex(/^-?\d{1,2}(\.\d{1,2})?$/).nullable(),
+  view_count: z.number().int(),
+  is_featured: z.boolean(),
+  published_at: z.coerce.date(),
+  metadata: z.unknown(),
+  author_id: z.number().int(),
+  editor_id: z.number().int().nullable(),
+  category_id: z.number().int(),
+});
+export type BlogPost = z.infer<typeof BlogPostSchema>;
+
+export const BlogPostCreateSchema = BlogPostSchema.omit({ id: true }).partial({ created_at: true, public_id: true, status: true, rating: true, view_count: true, is_featured: true, published_at: true, metadata: true, editor_id: true });
+export type BlogPostCreate = z.infer<typeof BlogPostCreateSchema>;
+
+export const BlogPostUpdateSchema = BlogPostCreateSchema.partial();
+export type BlogPostUpdate = z.infer<typeof BlogPostUpdateSchema>;
+
+export type BlogPostWithRelations = BlogPost & {
+  author?: BlogUserWithRelations;
+  editor?: BlogUserWithRelations | null;
+  category?: BlogCategoryWithRelations;
+  tags?: BlogTagWithRelations[];
+};
+export const BlogPostWithRelationsSchema: z.ZodType<BlogPostWithRelations> = BlogPostSchema.extend({
+  author: z.lazy(() => BlogUserWithRelationsSchema).optional(),
+  editor: z.lazy(() => BlogUserWithRelationsSchema).nullable().optional(),
+  category: z.lazy(() => BlogCategoryWithRelationsSchema).optional(),
+  tags: z.array(z.lazy(() => BlogTagWithRelationsSchema)).optional(),
+});
+
+export const BlogProfileSchema = z.object({
+  id: z.number().int(),
+  bio: z.string().nullable(),
+  avatar: z.string().max(100).nullable(),
+  user_id: z.number().int(),
+});
+export type BlogProfile = z.infer<typeof BlogProfileSchema>;
+
+export const BlogProfileCreateSchema = BlogProfileSchema.omit({ id: true }).partial({ bio: true, avatar: true });
+export type BlogProfileCreate = z.infer<typeof BlogProfileCreateSchema>;
+
+export const BlogProfileUpdateSchema = BlogProfileCreateSchema.partial();
+export type BlogProfileUpdate = z.infer<typeof BlogProfileUpdateSchema>;
+
+export type BlogProfileWithRelations = BlogProfile & {
+  user?: BlogUserWithRelations;
+};
+export const BlogProfileWithRelationsSchema: z.ZodType<BlogProfileWithRelations> = BlogProfileSchema.extend({
+  user: z.lazy(() => BlogUserWithRelationsSchema).optional(),
+});

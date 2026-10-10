@@ -1,0 +1,28 @@
+Skipped 1 CREATE TYPE (not an enum) statement (first at shop.pg.sql:16): it has no equivalent in the shared model.
+Skipped 1 CREATE SEQUENCE statement (first at shop.pg.sql:18): it has no equivalent in the shared model.
+Skipped 1 CREATE VIEW statement (first at shop.pg.sql:120): views are not read.
+Skipped 1 CREATE FUNCTION statement (first at shop.pg.sql:122): it has no equivalent in the shared model.
+Skipped 3 CREATE TRIGGER statements (first at shop.pg.sql:131): it has no equivalent in the shared model.
+Skipped 6 data statements (first at shop.pg.sql:133): row data is not part of the schema.
+Skipped 1 CREATE PROCEDURE statement (first at inventory.sqlserver.sql:48): it has no equivalent in the shared model.
+table "customers": 1 CHECK constraint has no equivalent in the shared model and was dropped.
+table "note": 1 CHECK constraint has no equivalent in the shared model and was dropped.
+table "customers", column "location": the type "geometry(Point, 4326)" is unknown; it is kept as an unsupported column.
+table "customers": the index "customers_lower_email_idx" is on an expression, which the shared model cannot hold, and was skipped.
+table "customers": the partial unique index "customers_active_name_idx" would become unconditionally unique and was skipped.
+table "no_key": the table has no primary key; most ORMs need one.
+table "forum_user", column "perms": a SET column is read as text; the member list is dropped.
+table "note": the WHERE condition of the index "idx_note_open" was dropped.
+table "Item", column "Total": the column has no declared type (a computed column?) and was skipped.
+table "Item": the partial unique index "UX_Item_Sku" would become unconditionally unique and was skipped.
+Customer.scores: Prisma supports only one-dimensional scalar lists; the 2-dimensional array was written as Json.
+Customer.active_during: range columns are written as Unsupported("daterange"), which Prisma Client cannot read or filter.
+Customer.attrs: Prisma has no hstore type; the field was written as Json.
+Customer.location: Unsupported("geometry(Point, 4326)") is kept as an opaque column; Prisma Client cannot read, filter or write it.
+Order.total: the generated column expression subtotal + tax has no Prisma equivalent; it was written as a regular column, so Prisma will try to write to it.
+Note.word_count: the generated column expression length(body) has no Prisma equivalent; it was written as a regular column, so Prisma will try to write to it.
+Warehouse.RowVer: Unsupported("rowversion") is kept as an opaque column; Prisma Client cannot read, filter or write it.
+NoKey: the model has no primary key; Prisma requires one (@id or @@id).
+ForumUser index (bio): postgresql has no @@fulltext index in Prisma; it was written as an ordinary @@index.
+ForumThread index (title): the prefix length on "title" is only supported on MySQL and was dropped.
+Item index (Warehouse, Kind): clustered indexes are only supported on SQL Server and the setting was dropped.

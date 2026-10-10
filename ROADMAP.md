@@ -95,6 +95,8 @@ Status: track S (the SQL DDL emitter) is built on `feature/sql-ddl-emitter` as t
 
 Pairs M/N, O/P, R/S and T/U run in parallel; Q is independent of P. After they land, extend the conversion matrix (2.1) to cover the new read and write formats and document what is lossy.
 
+**Status of track R:** built (`parseSqlDdl`, the read-only `sql` format that claims `.sql`). It also reads SQL Server and a few `ALTER TABLE` forms; there is no SQL grammar in `tree-sitter-wasms`, so it uses a small static tokenizer. The `sql` format becomes writable when track S adds the emitter to the same adapter.
+
 ## Parallel work plan
 
 - **Now (one agent each, parallel):** 0.1, then 0.2 and 0.3 together, then 0.4.
@@ -107,5 +109,5 @@ Pairs M/N, O/P, R/S and T/U run in parallel; Q is independent of P. After they l
 ## Backlog (unscheduled)
 
 - Additional ORMs (Sequelize, Entity Framework, Hibernate/JPA)
-- A Zod parser, and Drizzle/SQLAlchemy migration replay
+- A Zod parser, and Drizzle/SQLAlchemy migration replay (the SQL reader replays only added columns, constraints and column defaults; renames, dropped columns and type changes are skipped with a warning)
 - Watch mode for regenerating shared models during development

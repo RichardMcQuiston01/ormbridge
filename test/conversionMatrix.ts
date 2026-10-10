@@ -5,7 +5,12 @@ import {
   type FormatOptions,
   type SourceText,
 } from '../src/formats.js';
-import type { IrSchema } from '../src/ir.js';
+import type {
+  IrCompositeForeignKey,
+  IrModel,
+  IrRelation,
+  IrSchema,
+} from '../src/ir.js';
 import { checkDrizzleOutput } from './drizzleCoverage.js';
 import { checkGormOutput } from './gormCoverage.js';
 import { checkJsonSchemaOutput } from './jsonSchemaCoverage.js';
@@ -143,6 +148,46 @@ export function parseEmitted(
   ]);
 }
 
+/**
+ * Formats that name a model after its table (SQL) cannot get the source's model names back.
+ * Renames the models of `parsed` to the name the model with the same table has in `reference`,
+ * so that the comparison looks at what the models contain instead of reporting every model as
+ * removed and added. Models without a counterpart keep their name.
+ */
+export function alignModelNames(
+  reference: IrSchema,
+  parsed: IrSchema
+): IrSchema {
+  const names: Map<string, string> = new Map();
+  for (const model of parsed.models) {
+    const counterpart: IrModel | undefined = reference.models.find(
+      (candidate: IrModel) =>
+        candidate.tableName.toLowerCase() === model.tableName.toLowerCase()
+    );
+    if (counterpart !== undefined) {
+      names.set(model.name, counterpart.name);
+    }
+  }
+  const rename = (name: string): string => names.get(name) ?? name;
+  return {
+    ...parsed,
+    models: parsed.models.map((model: IrModel): IrModel => ({
+      ...model,
+      name: rename(model.name),
+      relations: model.relations.map((relation: IrRelation): IrRelation => ({
+        ...relation,
+        targetModel: rename(relation.targetModel),
+      })),
+      compositeForeignKeys: model.compositeForeignKeys?.map(
+        (key: IrCompositeForeignKey): IrCompositeForeignKey => ({
+          ...key,
+          targetModel: rename(key.targetModel),
+        })
+      ),
+    })),
+  };
+}
+
 export interface MatrixCell {
   source: string;
   target: string;
@@ -162,6 +207,15 @@ export interface MatrixCell {
   readOnlySource?: boolean;
 }
 
+/** True for the formats that name a model after its table, so model names cannot round-trip. */
+function alignIfNamedAfterTable(
+  format: FormatAdapter,
+  reference: IrSchema,
+  parsed: IrSchema
+): IrSchema {
+  return format.name === 'sql' ? alignModelNames(reference, parsed) : parsed;
+}
+
 /** Runs one cell: parse A's canonical fixture, emit B, re-parse B, compare. */
 export async function computeCell(
   source: FormatAdapter,
@@ -172,13 +226,21 @@ export async function computeCell(
     loadCanonicalSources(source.name)
   );
   const emitted: EmittedText = emitWith(target, sourceIr);
-  const targetIr: IrSchema = await parseEmitted(target, emitted);
+  const targetIr: IrSchema = alignIfNamedAfterTable(
+    target,
+    sourceIr,
+    await parseEmitted(target, emitted)
+  );
 
   // Second trip: B -> A -> B, starting from the IR that B read back.
   const backEmitted: EmittedText = emitWith(source, targetIr);
   const sourceAgain: IrSchema = await parseEmitted(source, backEmitted);
   const emittedAgain: EmittedText = emitWith(target, sourceAgain);
-  const targetAgain: IrSchema = await parseEmitted(target, emittedAgain);
+  const targetAgain: IrSchema = alignIfNamedAfterTable(
+    target,
+    sourceIr,
+    await parseEmitted(target, emittedAgain)
+  );
 
   return {
     source: source.name,

@@ -1,0 +1,13 @@
++ 
++ 
++ 
++ ]
++ blog_post = models.ForeignKey("BlogPost", on_delete=models.CASCADE, related_name="blog_post_tags")
++ blog_tag = models.ForeignKey("BlogTag", on_delete=models.CASCADE, related_name="blog_post_tags")
++ class BlogPostTag(models.Model):
++ class Meta:
++ constraints = [
++ db_table = "blog_post_tags"
++ id = models.AutoField(primary_key=True)
++ models.UniqueConstraint(fields=["blog_post", "blog_tag"], name="blog_post_tags_blog_post_id_blog_tag_id_key"),
+- tags = models.ManyToManyField("BlogTag", related_name="blog_posts", blank=True)

@@ -22,6 +22,7 @@ import { parseGorm } from './parsers/gorm.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
 import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
+import { parseSqlDdl } from './parsers/sqlDdl.js';
 import { parseTypeorm } from './parsers/typeorm.js';
 import { err, ok, type Result } from './result.js';
 import {
@@ -501,7 +502,20 @@ const sqlAdapter: FormatAdapter = {
   name: 'sql',
   extensions: ['.sql'],
   description:
-    'SQL DDL (CREATE TABLE, indexes, enums; --provider picks the dialect)',
+    'SQL DDL: CREATE TABLE, indexes and enums (PostgreSQL, MySQL, SQLite, SQL Server; --provider picks the dialect)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    Promise.resolve(
+      parseSqlDdl(
+        sources.map((source: SourceText) => ({
+          path: source.path,
+          text: source.text,
+        })),
+        { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+      )
+    ),
   emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> =>
     ok(
       emitSqlDdl(schema, {

@@ -1,0 +1,62 @@
+@@ src/Entity/BlogPost.php
++ #[ORM\OneToMany(targetEntity: BlogPostTag::class, mappedBy: 'blog_post')]
++ $blogPostTag->setBlogPost($this);
++ $this->blog_post_tags = new ArrayCollection();
++ $this->blog_post_tags->add($blogPostTag);
++ * @return Collection<int, BlogPostTag>
++ /** @var Collection<int, BlogPostTag> */
++ // The owning side is required, so it is not unset here.
++ if (!$this->blog_post_tags->contains($blogPostTag)) {
++ if ($this->blog_post_tags->removeElement($blogPostTag)) {
++ private Collection $blog_post_tags;
++ public function addBlogPostTag(BlogPostTag $blogPostTag): static
++ public function getBlogPostTags(): Collection
++ public function removeBlogPostTag(BlogPostTag $blogPostTag): static
++ return $this->blog_post_tags;
+- #[ORM\InverseJoinColumn(name: 'blog_tag_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+- #[ORM\JoinColumn(name: 'blog_post_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+- #[ORM\JoinTable(name: 'blog_post_tags')]
+- #[ORM\ManyToMany(targetEntity: BlogTag::class, inversedBy: 'blog_posts')]
+- $tag->addBlogPost($this);
+- $tag->removeBlogPost($this);
+- $this->tags = new ArrayCollection();
+- $this->tags->add($tag);
+- * @return Collection<int, BlogTag>
+- /** @var Collection<int, BlogTag> */
+- if (!$this->tags->contains($tag)) {
+- if ($this->tags->removeElement($tag)) {
+- private Collection $tags;
+- public function addTag(BlogTag $tag): static
+- public function getTags(): Collection
+- public function removeTag(BlogTag $tag): static
+- return $this->tags;
++ file src/Entity/BlogPostTag.php
+@@ src/Entity/BlogTag.php
++ #[ORM\OneToMany(targetEntity: BlogPostTag::class, mappedBy: 'blog_tag')]
++ $blogPostTag->setBlogTag($this);
++ $this->blog_post_tags = new ArrayCollection();
++ $this->blog_post_tags->add($blogPostTag);
++ * @return Collection<int, BlogPostTag>
++ /** @var Collection<int, BlogPostTag> */
++ // The owning side is required, so it is not unset here.
++ if (!$this->blog_post_tags->contains($blogPostTag)) {
++ if ($this->blog_post_tags->removeElement($blogPostTag)) {
++ private Collection $blog_post_tags;
++ public function addBlogPostTag(BlogPostTag $blogPostTag): static
++ public function getBlogPostTags(): Collection
++ public function removeBlogPostTag(BlogPostTag $blogPostTag): static
++ return $this->blog_post_tags;
+- #[ORM\ManyToMany(targetEntity: BlogPost::class, mappedBy: 'tags')]
+- $blogPost->addTag($this);
+- $blogPost->removeTag($this);
+- $this->blog_posts = new ArrayCollection();
+- $this->blog_posts->add($blogPost);
+- * @return Collection<int, BlogPost>
+- /** @var Collection<int, BlogPost> */
+- if (!$this->blog_posts->contains($blogPost)) {
+- if ($this->blog_posts->removeElement($blogPost)) {
+- private Collection $blog_posts;
+- public function addBlogPost(BlogPost $blogPost): static
+- public function getBlogPosts(): Collection
+- public function removeBlogPost(BlogPost $blogPost): static
+- return $this->blog_posts;

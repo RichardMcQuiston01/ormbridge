@@ -1,0 +1,137 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+use DateTimeImmutable;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity]
+#[ORM\Table(name: 'blog_profile')]
+#[ORM\HasLifecycleCallbacks]
+class BlogProfile
+{
+    #[ORM\Id]
+    #[ORM\Column(name: 'id', type: 'guid')]
+    private string $id;
+
+    #[ORM\Column(name: 'bio', type: 'text', nullable: true)]
+    private ?string $bio = null;
+
+    #[ORM\Column(name: 'avatar', type: 'string', length: 100, nullable: true)]
+    private ?string $avatar = null;
+
+    #[ORM\Column(
+        name: 'created_at',
+        type: 'datetimetz_immutable',
+        options: ['default' => 'CURRENT_TIMESTAMP'],
+    )]
+    private DateTimeImmutable $createdAt;
+
+    #[ORM\Column(name: 'updated_at', type: 'datetimetz_immutable')]
+    private DateTimeImmutable $updatedAt;
+
+    #[ORM\OneToOne(targetEntity: BlogUser::class, inversedBy: 'blogProfile')]
+    #[ORM\JoinColumn(
+        name: 'user_id',
+        referencedColumnName: 'id',
+        nullable: false,
+        onDelete: 'CASCADE',
+    )]
+    private BlogUser $user;
+
+    public function __construct()
+    {
+        $this->id = self::generateUuid();
+        $this->createdAt = new DateTimeImmutable();
+    }
+
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function setId(string $id): static
+    {
+        $this->id = $id;
+
+        return $this;
+    }
+
+    public function getBio(): ?string
+    {
+        return $this->bio;
+    }
+
+    public function setBio(?string $bio): static
+    {
+        $this->bio = $bio;
+
+        return $this;
+    }
+
+    public function getAvatar(): ?string
+    {
+        return $this->avatar;
+    }
+
+    public function setAvatar(?string $avatar): static
+    {
+        $this->avatar = $avatar;
+
+        return $this;
+    }
+
+    public function getCreatedAt(): DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(DateTimeImmutable $createdAt): static
+    {
+        $this->createdAt = $createdAt;
+
+        return $this;
+    }
+
+    public function getUpdatedAt(): DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(DateTimeImmutable $updatedAt): static
+    {
+        $this->updatedAt = $updatedAt;
+
+        return $this;
+    }
+
+    public function getUser(): BlogUser
+    {
+        return $this->user;
+    }
+
+    public function setUser(BlogUser $user): static
+    {
+        $this->user = $user;
+
+        return $this;
+    }
+
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
+    public function refreshAutoUpdatedFields(): void
+    {
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    private static function generateUuid(): string
+    {
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+    }
+}

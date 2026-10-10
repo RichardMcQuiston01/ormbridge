@@ -54,6 +54,26 @@ const JSON_SCHEMA_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
 const NON_SCHEMA_JSON_FILES: RegExp =
   /^(package(-lock)?|npm-shrinkwrap|composer(\.lock)?|tsconfig(\..+)?|jsconfig|\.eslintrc|\.prettierrc|deno)\.json$/;
 
+/**
+ * Directories skipped when reading SQL files. `migrations` is deliberately not on the list: plain SQL
+ * migrations are a legitimate source and are read in file-name order.
+ */
+const SQL_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
+  'node_modules',
+  'vendor',
+  'venv',
+  '.venv',
+  'dist',
+  'build',
+  'coverage',
+  '__pycache__',
+  '.git',
+]);
+
+/** Rollback scripts (`001_init.down.sql`, `down.sql`, `V2__x.undo.sql`) undo a schema instead of describing it. */
+const SQL_ROLLBACK_FILES: RegExp =
+  /(?:^|[._-])(?:down|rollback|revert|undo)\.sql$/i;
+
 const SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   'node_modules',
   'venv',
@@ -404,7 +424,9 @@ async function discoverInputFiles(
                   ? 'Go (.go) model files'
                   : format === 'json-schema'
                     ? 'JSON (.json) schema or OpenAPI files'
-                    : '.prisma files';
+                    : format === 'sql'
+                      ? 'SQL (.sql) files'
+                      : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -432,6 +454,12 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
     return (
       extname(filePath).toLowerCase() === '.json' &&
       !NON_SCHEMA_JSON_FILES.test(basename(filePath))
+    );
+  }
+  if (format === 'sql') {
+    return (
+      extname(filePath).toLowerCase() === '.sql' &&
+      !SQL_ROLLBACK_FILES.test(basename(filePath))
     );
   }
   if (format === 'doctrine' || format === 'laravel') {
@@ -468,6 +496,9 @@ function isSkippedDirectory(
   }
   if (format === 'json-schema') {
     return JSON_SCHEMA_SKIPPED_DIRECTORIES.has(name);
+  }
+  if (format === 'sql') {
+    return SQL_SKIPPED_DIRECTORIES.has(name);
   }
   return (
     SKIPPED_DIRECTORIES.has(name) ||
