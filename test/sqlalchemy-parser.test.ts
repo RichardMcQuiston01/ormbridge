@@ -408,6 +408,22 @@ class Manager(Employee):
 });
 
 describe('column types', () => {
+  it('reads through a with_variant() modifier, as the emitter writes for big keys', async () => {
+    const schema: IrSchema = await parse(
+      single(`
+id: Mapped[int] = mapped_column(
+    BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
+)
+code: Mapped[str] = mapped_column(String(12).with_variant(Text, "sqlite"))
+`)
+    );
+    expect(field(schema, 'Thing', 'id').type).toBe('bigInt');
+    expect(field(schema, 'Thing', 'id').default?.kind).toBe('autoIncrement');
+    expect(field(schema, 'Thing', 'code').type).toBe('string');
+    expect(field(schema, 'Thing', 'code').maxLength).toBe(12);
+    expect(warningsMatching(schema, 'could not be evaluated')).toEqual([]);
+  });
+
   it('maps SQLAlchemy column types', async () => {
     const schema: IrSchema = await parse(
       single(`

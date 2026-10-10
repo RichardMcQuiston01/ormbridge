@@ -150,8 +150,29 @@ export function evaluateNode(node: SyntaxNode, depth: number = 0): PyValue {
   }
 }
 
+/** SQLAlchemy type modifiers that wrap a type call without changing what it is. */
+const TYPE_MODIFIER_METHODS: ReadonlySet<string> = new Set([
+  'with_variant',
+  'evaluates_none',
+]);
+
 function evaluateCall(node: SyntaxNode, depth: number): PyValue {
   const functionNode: SyntaxNode | null = node.childForFieldName('function');
+  if (functionNode !== null && functionNode.type === 'attribute') {
+    const receiver: SyntaxNode | null =
+      functionNode.childForFieldName('object');
+    const method: SyntaxNode | null =
+      functionNode.childForFieldName('attribute');
+    if (
+      receiver !== null &&
+      receiver.type === 'call' &&
+      method !== null &&
+      TYPE_MODIFIER_METHODS.has(method.text)
+    ) {
+      // BigInteger().with_variant(Integer, "sqlite") is still a BigInteger.
+      return evaluateCall(receiver, depth);
+    }
+  }
   const argumentsNode: SyntaxNode | null = node.childForFieldName('arguments');
   const callee: string =
     functionNode === null ? '' : functionNode.text.replace(/\s+/g, '');

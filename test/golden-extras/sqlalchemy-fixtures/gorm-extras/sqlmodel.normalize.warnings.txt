@@ -1,0 +1,3 @@
+Order index (customer, placedAt): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Product index (title): full-text indexes are not supported here; it was written as an ordinary index.
+Product index (slug): the index type, clustering, sort order, prefix length and operator class options were dropped.

@@ -1,0 +1,9 @@
++ is_featured = models.BooleanField(db_default=False)
++ published_at = models.DateTimeField(db_default=Now())
++ status = models.CharField(max_length=32, choices=PostStatus.choices, db_default=PostStatus.DRAFT)
++ view_count = models.IntegerField(db_default=0)
+- from django.utils import timezone
+- is_featured = models.BooleanField(default=False)
+- published_at = models.DateTimeField(default=timezone.now)
+- status = models.CharField(max_length=32, choices=PostStatus.choices, default=PostStatus.DRAFT)
+- view_count = models.IntegerField(default=0)

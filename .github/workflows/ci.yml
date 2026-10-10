@@ -22,7 +22,7 @@ jobs:
       - run: npm test
 
   # The optional verification tests that load generated code with the real tools (Django,
-  # graphene-django, TypeORM, Zod, SQL databases, Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
+  # graphene-django, SQLAlchemy and SQLModel, TypeORM, Zod, SQL databases, Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
   # because the tools are not installed there. A separate job keeps `check` fast, and a package
   # registry outage or a tool release then breaks only this job, not lint, build and tests.
   real-tools:

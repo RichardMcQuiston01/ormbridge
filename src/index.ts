@@ -82,6 +82,15 @@ export {
   sqlStringLiteral,
 } from './emitters/sqlDdl.js';
 export type { SqlDdlEmitOptions, SqlDialect } from './emitters/sqlDdl.js';
+export {
+  emitSqlAlchemy,
+  isSqlAlchemyStyle,
+  SQLALCHEMY_STYLES,
+} from './emitters/sqlalchemy.js';
+export type {
+  SqlAlchemyEmitOptions,
+  SqlAlchemyStyle,
+} from './emitters/sqlalchemy.js';
 export { emitGraphene } from './emitters/graphene.js';
 export { emitTypeorm } from './emitters/typeorm.js';
 export type { TypeormEmitOptions } from './emitters/typeorm.js';

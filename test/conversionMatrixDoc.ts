@@ -94,6 +94,18 @@ export const LOSS_REASONS: readonly LossReason[] = [
       'A many-to-many relation is written as an array of references on each side and is read back as a many-to-many field on the model defined first, with a join table named after the two models rather than the source table. An explicit join model (Prisma) is a model with two single references, which is read back as an ordinary model and loses its composite key and unique pair.',
   },
   {
+    id: 'sqlalchemy-reverse-name',
+    title: 'SQLAlchemy names both sides of a relationship',
+    explanation:
+      'A relationship is written on both classes with `back_populates`, so the reverse side always has a name. Where the source never named it (Django `post_set`, a Laravel or Doctrine inverse side that is not declared) the writer uses the plural of the model name (`posts`), and the reader keeps whatever the code says.',
+  },
+  {
+    id: 'sqlalchemy-many-to-many',
+    title: 'The side of a many-to-many that is written first can swap',
+    explanation:
+      'A many-to-many is written as an association `Table(...)` with `secondary=` on both classes. The reader keeps the two relationship names but not the name or the `ondelete` of the association table, and when both sides of the pair carry the same information it may read the pair with the other class as the owner.',
+  },
+  {
     id: 'sql-reverse-name',
     title: 'SQL stores no reverse accessor names',
     explanation:
@@ -314,6 +326,56 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
         title: 'What the DDL cannot say',
         explanation:
           'Views are a commented placeholder (the IR has no query), generated-column expressions are not SQL and the column is written as a regular one, database schemas (`@@schema`) are ignored, Prisma full-text indexes are a `FULLTEXT` index on MySQL and a `gin` index on PostgreSQL (an ordinary index elsewhere), and SQL Server downgrades a cascading action that would form a cycle or a second cascade path to `NO ACTION`. Relations, the reverse side of a relation and `related_name` are not part of DDL: only the foreign key remains.',
+      },
+    ],
+    sqlalchemy: [
+      {
+        id: 'sqlalchemy-styles',
+        title: 'Two flavours, one module',
+        explanation:
+          'The matrix writes the default `sqlalchemy` style: one `models.py` with a `Base(DeclarativeBase)`, typed `Mapped[...]` attributes built with `mapped_column`, and `relationship(back_populates=...)` on both sides of every relation. `--style sqlmodel` writes `SQLModel, table=True` classes with `Field(...)` and `Relationship(...)` instead (`sa_type`, `sa_column_kwargs`, `sa_column` and `sa_relationship_kwargs` only where `Field` and `Relationship` cannot say it). `--provider` is ignored: the output does not depend on the database.',
+      },
+      {
+        id: 'sqlalchemy-names',
+        title: 'Python attributes are snake_case',
+        explanation:
+          'Attribute names are snake_case in both naming modes, and the database column name is passed as the first argument of `mapped_column` whenever it differs. Names that would shadow something the class body needs (`class`, `metadata`, `text`, `datetime`, an enum or model name) get a trailing underscore, and a class name that collides with an imported name gets a `Model` suffix; each repair is a warning. An unnamed reverse relation is named after the plural of the model (`posts`), a one-to-one after the model.',
+      },
+      {
+        id: 'sqlalchemy-defaults',
+        title: 'Defaults live in the database where they can',
+        explanation:
+          'Literal, enum, boolean and `now` defaults are `server_default` (`func.now()`, `func.current_date()`, `true()`, `text(...)`), so a raw SQL insert gets them too. UUID defaults are `default=uuid.uuid4` (Python, no portable database function), an auto-updated column is `default=func.now(), onupdate=func.now()`, and a Prisma `dbgenerated(...)` expression is `server_default=text(...)`. Client-generated defaults (`cuid()`, `ulid()`) and Prisma default functions are dropped with a warning, and a UUID version 7 default is written as `uuid.uuid4`.',
+      },
+      {
+        id: 'sqlalchemy-many-to-many',
+        title: 'Many-to-many is an association table',
+        explanation:
+          'Every many-to-many relation is a `Table(...)` with the two foreign keys as a composite primary key (no surrogate `id`, unlike the table Django creates), referenced by `secondary=` on both relationships. A self-referential relation gets `primaryjoin` / `secondaryjoin`. The table is named `<owner table>_<relation>` and the columns `<model>_id` (`from_<model>_id` and `to_<model>_id` for a self reference).',
+      },
+      {
+        id: 'sqlalchemy-keys',
+        title: 'Keys, constraints and referential actions',
+        explanation:
+          'Composite primary keys and named primary keys are a `PrimaryKeyConstraint`, composite foreign keys a `ForeignKeyConstraint`, unique and index entries `UniqueConstraint` and `Index` in `__table_args__`; `ON DELETE` and `ON UPDATE` are written on every `ForeignKey`. A `SET NULL` action on a column that cannot be null is written as `RESTRICT` with a warning. The reverse side of a cascading or nulling key sets `passive_deletes=True`, so the ORM leaves the action to the database. A table without a primary key is mapped on its required columns with `__mapper_args__` (SQLModel needs one: the first column is marked as the key) and a warning.',
+      },
+      {
+        id: 'sqlalchemy-enums',
+        title: 'Enums are Python enum classes',
+        explanation:
+          'An enum is an `enum.Enum` class whose values are the stored values, bound with `Enum(Cls, name=..., values_callable=...)` so the database stores the values, not the member names. PostgreSQL gets a native enum type, other databases a `VARCHAR`. Member names that are not Python identifiers are repaired with a warning; labels are not kept.',
+      },
+      {
+        id: 'sqlalchemy-postgres-types',
+        title: 'PostgreSQL types fall back to JSON on SQLite',
+        explanation:
+          'Arrays (`ARRAY`, `dimensions=` for nested arrays), `HSTORE`, range types and `INET` are PostgreSQL types; each is written with `.with_variant(JSON(), "sqlite")` (a 45-character string for `INET`) so `create_all` also works in a SQLite test database, and the model gets a warning. Other databases are not covered. Durations are `Interval`, booleans `Boolean`, timestamps `DateTime(timezone=True)`, UUIDs the generic `Uuid`. A `bigInt` auto-increment key is `BigInteger().with_variant(Integer, "sqlite")` so SQLite counts it up.',
+      },
+      {
+        id: 'sqlalchemy-unrepresentable',
+        title: 'Constructs without a SQLAlchemy equivalent',
+        explanation:
+          'Views are a commented placeholder with a warning (SQLAlchemy has no declarative view; reflect it with `Table(..., autoload_with=engine)`), database schemas (`@@schema`) are ignored, generated-column expressions are not SQL and the column is written as a regular one, index methods, operator classes, sort order and full-text kinds are dropped (an ordinary index is written), and relations to a view or a model that is not in the input stay plain columns.',
       },
     ],
   };
@@ -545,6 +607,23 @@ function explainJsonSchemaDifference(
   }
 }
 
+function explainSqlAlchemyDifference(
+  difference: IrDifference
+): string | undefined {
+  switch (difference.kind) {
+    case 'relationRelatedName':
+      return 'sqlalchemy-reverse-name';
+    case 'relationRemoved':
+    case 'relationAdded':
+      return difference.before.startsWith('manyToMany') ||
+        difference.after.startsWith('manyToMany')
+        ? 'sqlalchemy-many-to-many'
+        : undefined;
+    default:
+      return undefined;
+  }
+}
+
 function explainSqlDifference(difference: IrDifference): string | undefined {
   switch (difference.kind) {
     case 'relationRelatedName':
@@ -585,6 +664,13 @@ export function explainDifference(
       explainJsonSchemaDifference(difference);
     if (jsonSchemaReason !== undefined) {
       return jsonSchemaReason;
+    }
+  }
+  if (involves(cell, 'sqlalchemy')) {
+    const sqlAlchemyReason: string | undefined =
+      explainSqlAlchemyDifference(difference);
+    if (sqlAlchemyReason !== undefined) {
+      return sqlAlchemyReason;
     }
   }
   if (involves(cell, 'sql')) {
