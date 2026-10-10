@@ -1,0 +1,1 @@
+PostgreSQL cannot refresh a column on update from the DDL (Account.updated_at, Session.updated_at, Group.updated_at, Membership.updated_at, Profile.updated_at, legacy_order.updated_at); the application or a trigger has to set it.

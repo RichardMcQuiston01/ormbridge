@@ -1,0 +1,14 @@
+Item.full_name: the generated column expression Concat("first_name", Value(" "), "last_name") is not SQL; the column was written as a regular column.
+Item.total_cents: the generated column expression F("quantity") * 100 is not SQL; the column was written as a regular column.
+Item.tags: SQL Server has no array column type; the array was written as a JSON column.
+Item.grid: SQL Server has no array column type; the array was written as a JSON column.
+Item.kinds: SQL Server has no array column type; the array was written as a JSON column.
+Item.attributes: hstore exists only on PostgreSQL; the column was written as JSON.
+Item.stock_range: range columns exist only on PostgreSQL; the column was written as text.
+Item.big_range: range columns exist only on PostgreSQL; the column was written as text.
+Item.price_range: range columns exist only on PostgreSQL; the column was written as text.
+Item.available: range columns exist only on PostgreSQL; the column was written as text.
+Item.valid_during: range columns exist only on PostgreSQL; the column was written as text.
+Item.shelf_life: SQL Server has no interval type; the duration was written as an integer (microseconds).
+Shipment.other: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.
+SQL Server cannot refresh a column on update from the DDL (Item.updated_at, Counter.updated_at, Shipment.updated_at, Account.updated_at, Assignment.updated_at, ContentType.updated_at); the application or a trigger has to set it.

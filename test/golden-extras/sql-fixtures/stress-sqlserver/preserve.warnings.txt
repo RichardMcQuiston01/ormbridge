@@ -1,0 +1,1 @@
+Weird.self: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.

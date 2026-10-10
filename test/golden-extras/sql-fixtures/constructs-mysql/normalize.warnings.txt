@@ -1,0 +1,6 @@
+Book.tags: MySQL has no array column type; the array was written as a JSON column.
+Book.grid: MySQL has no array column type; the array was written as a JSON column.
+Book.colors: MySQL has no array column type; the array was written as a JSON column.
+Book.window: range columns exist only on PostgreSQL; the column was written as text.
+Book.extra: hstore exists only on PostgreSQL; the column was written as JSON.
+Book.read_time: MySQL has no interval type; the duration was written as an integer (microseconds).

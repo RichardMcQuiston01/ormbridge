@@ -1227,7 +1227,7 @@ Not stable, but only for documented reasons: a second drizzle → json-schema �
 
 ## Write-only targets
 
-Some formats can be written but not read (zod), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. JSON Schema: every model and enum has a `$defs` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
+Some formats can be written but not read (zod, sql), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. JSON Schema: every model and enum has a `$defs` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
 
 | Pair | Files | Emit warnings | Missing |
 | --- | --- | --- | --- |
@@ -1239,6 +1239,14 @@ Some formats can be written but not read (zod), so the matrix cannot re-read the
 | gorm → zod | 1 | 0 | none |
 | drizzle → zod | 1 | 0 | none |
 | json-schema → zod | 1 | 0 | none |
+| django → sql | 1 | 1 | none |
+| prisma → sql | 1 | 1 | none |
+| typeorm → sql | 1 | 1 | none |
+| doctrine → sql | 1 | 0 | none |
+| laravel → sql | 1 | 1 | none |
+| gorm → sql | 1 | 1 | none |
+| drizzle → sql | 1 | 1 | none |
+| json-schema → sql | 1 | 1 | none |
 
 ### django → zod
 
@@ -1288,12 +1296,81 @@ The output covers the canonical schema.
 
 Emit warnings: none.
 
+### django → sql
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- PostgreSQL cannot refresh a column on update from the DDL (Category.updated_at, Post.updated_at); the application or a trigger has to set it.
+
+### prisma → sql
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- PostgreSQL cannot refresh a column on update from the DDL (Category.updated_at, Post.updated_at); the application or a trigger has to set it.
+
+### typeorm → sql
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- PostgreSQL cannot refresh a column on update from the DDL (Category.updatedAt, Post.updatedAt); the application or a trigger has to set it.
+
+### doctrine → sql
+
+The output covers the canonical schema.
+
+Emit warnings: none.
+
+### laravel → sql
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- PostgreSQL cannot refresh a column on update from the DDL (Category.updated_at, Post.updated_at); the application or a trigger has to set it.
+
+### gorm → sql
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- PostgreSQL cannot refresh a column on update from the DDL (Category.updatedAt, Post.updatedAt); the application or a trigger has to set it.
+
+### drizzle → sql
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- PostgreSQL cannot refresh a column on update from the DDL (Category.updatedAt, Post.updatedAt); the application or a trigger has to set it.
+
+### json-schema → sql
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- PostgreSQL cannot refresh a column on update from the DDL (Category.updated_at, Post.updated_at); the application or a trigger has to set it.
+
 ### What zod approximates
 
 1. **Types that JSON cannot carry.** Big integers and decimals are validated as strings of digits (a decimal with `max_digits` and `decimal_places` gets a pattern sized to them), UUIDs with `z.uuid()` (which only accepts RFC 9562 versions and variants), binary data as base64 text, durations and times as plain strings, and JSON columns as `z.unknown()`. Date columns use `z.coerce.date()`, which also accepts `null` and numbers, so a null in a required date column is not rejected; the `dates: "string"` option validates ISO text strictly instead.
 2. **Create and update schemas are inferred.** The IR has no notion of an API payload. `<Model>CreateSchema` leaves out auto-increment keys, generated columns and auto-updated timestamps, and makes columns with a default (or a database default) and nullable columns optional. `<Model>UpdateSchema` is the create schema made partial, so it cannot change a generated column. Views get neither.
 3. **Relations are a separate schema.** Relation fields are not part of `<Model>Schema`; the foreign-key scalar is. A model that takes part in a relation also gets `<Model>WithRelationsSchema`, where every related row is optional and resolved lazily. Referential actions (`onDelete`), `related_name` collisions and composite foreign keys are not validation rules, so they are dropped (a composite key stays as its scalar columns).
 4. **Database-only rules are not checked.** Unique constraints, indexes, check constraints, string lengths below the database limit, integer ranges, enum value order and column names are not validated or kept; only string `max_length`, enum membership, nullability and the types above are. Enum labels are kept as comments. Ranges become an object with `lower`, `upper` and `bounds`, and hstore a record of nullable strings.
+
+### What sql approximates
+
+1. **Types are chosen per dialect.** The matrix writes PostgreSQL (`--provider` picks MySQL, SQLite or SQL Server). `uuid` is `UUID` on PostgreSQL, `CHAR(36)` on MySQL and SQLite and `UNIQUEIDENTIFIER` on SQL Server; `json` is `JSONB`, `JSON`, `TEXT` with a `json_valid` check, or `NVARCHAR(MAX)` with an `ISJSON` check; booleans, timestamps, `bytes` and `float` follow the same pattern. A Prisma native type (`@db.VarChar`, `@db.Uuid`, ...) is kept when the dialect has a type of that name. A duration is an `INTERVAL` only on PostgreSQL (an integer of microseconds elsewhere), and arrays, hstore and ranges exist only there too (JSON or text elsewhere, with a warning).
+2. **Defaults are database expressions.** A `now` default is `now()`, `CURRENT_TIMESTAMP`, `CURRENT_TIMESTAMP(6)` or `SYSUTCDATETIME()`, a UUID default is `gen_random_uuid()`, `(UUID())`, `NEWID()` or an expression over `randomblob` on SQLite, and an auto-increment key is `GENERATED BY DEFAULT AS IDENTITY`, `AUTO_INCREMENT`, `AUTOINCREMENT` or `IDENTITY(1,1)`. Defaults that are computed by the ORM client (`cuid()`, `ulid()`) are dropped with a warning, and a database expression is written as it is. A column the ORM refreshes on update (`auto_now`, `@updatedAt`) is `ON UPDATE CURRENT_TIMESTAMP(6)` on MySQL only; the other dialects need a trigger, which is not generated.
+3. **Enums depend on the dialect.** PostgreSQL gets a `CREATE TYPE ... AS ENUM`, MySQL an inline `ENUM(...)` and SQLite and SQL Server a `CHECK (column IN (...))` constraint on a text column. Member names and labels are not kept, only the stored values.
+4. **What the DDL cannot say.** Views are a commented placeholder (the IR has no query), generated-column expressions are not SQL and the column is written as a regular one, database schemas (`@@schema`) are ignored, Prisma full-text indexes are a `FULLTEXT` index on MySQL and a `gin` index on PostgreSQL (an ordinary index elsewhere), and SQL Server downgrades a cascading action that would form a cycle or a second cascade path to `NO ACTION`. Relations, the reverse side of a relation and `related_name` are not part of DDL: only the foreign key remains.
 
 ## Known issues
 
