@@ -48,6 +48,9 @@ export type {
   LaravelSourceFile,
   LaravelParseOptions,
 } from './parsers/laravel.js';
+export { parseSqlDdl } from './parsers/sqlDdl.js';
+export type { SqlDdlParseOptions, SqlDdlSourceFile } from './parsers/sqlDdl.js';
+export type { SqlDialect } from './parsers/sqlSyntax.js';
 export { parseTypeorm } from './parsers/typeorm.js';
 export type {
   TypeormSourceFile,

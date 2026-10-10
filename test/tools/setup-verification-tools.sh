@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Installs the real tools that the optional verification tests use (Django, graphene-django,
-# TypeORM with SQLite, Drizzle ORM with drizzle-kit, Ajv for JSON Schema and Zod) into a scratch directory outside
+# TypeORM with SQLite, Drizzle ORM with drizzle-kit, Ajv for JSON Schema, Zod and better-sqlite3 for the SQL DDL
+# parser) into a scratch directory outside
 # this repository, then prints the environment variables that switch the tests on.
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
@@ -55,8 +56,18 @@ mkdir -p "${target}/zod"
   npm install --silent zod@4 typescript tsx @types/node
 )
 
+echo "Installing better-sqlite3 into ${target}/sqlite" >&2
+mkdir -p "${target}/sqlite"
+(
+  cd "${target}/sqlite"
+  [ -f package.json ] || npm init -y > /dev/null
+  # The SQL DDL parser test runs the SQLite fixtures in a real database and compares the schema it reports.
+  npm install --silent better-sqlite3
+)
+
 echo "export DJANGO_PYTHON=${target}/venv/bin/python"
 echo "export TYPEORM_DIR=${target}/typeorm"
 echo "export DRIZZLE_DIR=${target}/drizzle"
 echo "export AJV_DIR=${target}/ajv"
 echo "export ZOD_DIR=${target}/zod"
+echo "export SQLITE_DIR=${target}/sqlite"
