@@ -1,0 +1,5 @@
+@@ models/post.go
++ PublishedAt time.Time        `gorm:"not null;autoCreateTime;default:CURRENT_TIMESTAMP;index:post_pub_status_idx,priority:1"`
++ Title       string           `gorm:"size:200;not null;index:ix_blog_post_title;uniqueIndex:uni_blog_post_author_id_title,priority:2"`
+- PublishedAt time.Time        `gorm:"not null;autoCreateTime;index:post_pub_status_idx,priority:1"`
+- Title       string           `gorm:"size:200;not null;index;uniqueIndex:uni_blog_post_author_id_title,priority:2"`

@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CustomerTier {
+  FREE @map("free")
+  PRO @map("pro")
+}
+
+enum InvoiceState {
+  NEW @map("new")
+  PAID @map("paid")
+  VOID @map("void")
+
+  @@map("invoice_state")
+}
+
+enum Currency {
+  USD
+  EUR
+}
+
+model Customer {
+  created_at   DateTime            @default(now()) @db.Timestamptz(6)
+  created_by   String?             @db.VarChar(50)
+  id           Int                 @id @default(autoincrement())
+  email        String              @unique @db.VarChar(255)
+  name         String              @db.VarChar(50)
+  nickname     String?
+  tier         CustomerTier        @default(FREE)
+  credit       Decimal             @default(0) @db.Decimal(12, 2)
+  prefs        Json                @default("{}")
+  birthday     DateTime?           @db.Date
+  wakes_at     DateTime?           @db.Time(6)
+  lifetime     BigInt?
+  avatar       Bytes?
+  score        Float               @default(0.5)
+  visits       BigInt              @default(0)
+  rank         Int                 @default(1)
+  is_active    Boolean             @default(true)
+  external_id  String              @default(uuid()) @db.Uuid
+  referrer_id  Int?
+  referrer     Customer?           @relation("Customer_referrer", fields: [referrer_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  referrals    Customer[]          @relation("Customer_referrer")
+  addresses    Address[]
+  invoice_set  Invoice[]           @relation("Invoice_customer")
+  invoice_set2 Invoice[]           @relation("Invoice_billing_customer")
+  note_set     Note[]
+  following    CustomerFollowing[] @relation("CustomerFollowing_from_customer")
+  followers    CustomerFollowing[] @relation("CustomerFollowing_to_customer")
+
+  @@unique([email, name], map: "uq_customers_email_name")
+  @@map("customers")
+}
+
+model Address {
+  kind        String   @db.VarChar(20)
+  line1       String   @db.VarChar(120)
+  line2       String?  @db.VarChar(120)
+  customer_id Int
+  customer    Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  @@id([customer_id, kind])
+  @@map("addresses")
+}
+
+model Warehouse {
+  region      String    @db.VarChar(10)
+  code        String    @db.VarChar(10)
+  label       String    @db.VarChar(50)
+  invoice_set Invoice[]
+
+  @@id([region, code])
+  @@map("warehouses")
+}
+
+model Invoice {
+  id                  Int          @id @default(autoincrement())
+  number              String       @db.VarChar(32)
+  state               InvoiceState @default(NEW)
+  currency            Currency     @default(USD)
+  issued_on           DateTime     @default(now()) @db.Date
+  subtotal            Decimal      @db.Decimal(12, 2)
+  tax                 Decimal      @default(0) @db.Decimal(12, 2)
+  total               Decimal      @db.Decimal(12, 2)
+  ship_region         String?      @db.VarChar(10)
+  ship_code           String?      @db.VarChar(10)
+  customer_id         Int
+  customer            Customer     @relation("Invoice_customer", fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  billing_customer_id Int?
+  billing_customer    Customer?    @relation("Invoice_billing_customer", fields: [billing_customer_id], references: [id], onDelete: NoAction)
+  warehouse           Warehouse?   @relation(fields: [ship_region, ship_code], references: [region, code], onDelete: SetNull, map: "fk_invoice_ship")
+  items               LineItem[]
+
+  @@index([issued_on], map: "ix_invoice_issued")
+  @@map("invoice")
+}
+
+model Product {
+  id      Int        @id @default(autoincrement())
+  sku     String     @unique @db.VarChar(40)
+  kind    String     @default("product") @db.VarChar(20)
+  name    String     @db.VarChar(50)
+  stock   Int        @default(0)
+  book    Book?
+  items   LineItem[]
+  reviews Review[]
+
+  @@map("products")
+}
+
+model Book {
+  isbn  String  @unique @db.VarChar(20)
+  id_id Int     @id @map("id")
+  id    Product @relation(fields: [id_id], references: [id], onDelete: NoAction)
+
+  @@map("books")
+}
+
+model LineItem {
+  quantity   Int     @default(1)
+  invoice_id Int
+  invoice    Invoice @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  product_id Int
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Restrict)
+
+  @@id([invoice_id, product_id])
+  @@map("line_items")
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  body       String   @db.Text
+  posted_at  DateTime @default(now()) @db.Timestamptz(6)
+  product_id Int
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: NoAction)
+
+  @@map("reviews")
+}
+
+model Note {
+  id        Int       @id @default(autoincrement())
+  text_     String    @map("text") @db.Text
+  pinned    Boolean   @default(false)
+  author_id Int?
+  author    Customer? @relation(fields: [author_id], references: [id], onDelete: NoAction)
+
+  @@map("notes")
+}
+
+model AuditLog {
+  id      Int    @id @default(autoincrement())
+  message String @db.Text
+
+  @@map("audit_log")
+}
+
+model CustomerFollowing {
+  id               Int      @id @default(autoincrement())
+  from_customer_id Int
+  from_customer    Customer @relation("CustomerFollowing_from_customer", fields: [from_customer_id], references: [id], onDelete: Cascade)
+  to_customer_id   Int
+  to_customer      Customer @relation("CustomerFollowing_to_customer", fields: [to_customer_id], references: [id], onDelete: Cascade)
+
+  @@unique([from_customer_id, to_customer_id])
+  @@map("customers_following")
+}

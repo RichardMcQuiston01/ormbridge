@@ -1,0 +1,109 @@
++ 
++ 
++ "blog_category.id",
++ "blog_post.id",
++ "blog_post_id",
++ "blog_tag.id",
++ "blog_tag_id",
++ "blog_user.id",
++ "blog_user.id",
++ )
++ )
++ )
++ )
++ )
++ )
++ )
++ ),
++ ),
++ ),
++ ),
++ ),
++ ),
++ ForeignKey(
++ ForeignKey(
++ ForeignKey(
++ ForeignKey(
++ ForeignKey(
++ ForeignKey("blog_user.id", ondelete="CASCADE", name="blog_post_author_id_fkey"),
++ Integer,
++ Integer,
++ PrimaryKeyConstraint("id", name="blog_category_pkey"),
++ PrimaryKeyConstraint("id", name="blog_post_pkey"),
++ PrimaryKeyConstraint("id", name="blog_profile_pkey"),
++ PrimaryKeyConstraint("id", name="blog_tag_blog_posts_pkey"),
++ PrimaryKeyConstraint("id", name="blog_tag_pkey"),
++ PrimaryKeyConstraint("id", name="blog_user_pkey"),
++ PrimaryKeyConstraint,
++ UniqueConstraint(
++ UniqueConstraint("name", name="blog_category_name_key"),
++ UniqueConstraint("public_id", name="blog_post_public_id_key"),
++ __table_args__ = (
++ __table_args__ = (
++ __table_args__ = (
++ __table_args__ = (
++ __table_args__ = (
++ __tablename__ = "blog_tag_blog_posts"
++ back_populates="blog_post",
++ back_populates="blog_tag",
++ blog_post: Mapped["BlogPost"] = relationship(back_populates="blog_tag_blog_posts")
++ blog_post_id: Mapped[int] = mapped_column(
++ blog_tag: Mapped["BlogTag"] = relationship(back_populates="blog_tag_blog_posts")
++ blog_tag_blog_posts: Mapped[list["BlogTagBlogPost"]] = relationship(
++ blog_tag_blog_posts: Mapped[list["BlogTagBlogPost"]] = relationship(
++ blog_tag_id: Mapped[int] = mapped_column(
++ class BlogTagBlogPost(Base):
++ id: Mapped[int] = mapped_column(Integer)
++ id: Mapped[int] = mapped_column(Integer)
++ id: Mapped[int] = mapped_column(Integer)
++ id: Mapped[int] = mapped_column(Integer)
++ id: Mapped[int] = mapped_column(Integer)
++ id: Mapped[int] = mapped_column(Integer)
++ name: Mapped[str] = mapped_column(String(100))
++ name="blog_category_parent_id_fkey",
++ name="blog_post_editor_id_fkey",
++ name="blog_profile_user_id_fkey",
++ name="blog_tag_blog_posts_blog_post_id_fkey",
++ name="blog_tag_blog_posts_blog_tag_id_blog_post_id_key",
++ name="blog_tag_blog_posts_blog_tag_id_fkey",
++ ondelete="CASCADE",
++ ondelete="CASCADE",
++ ondelete="CASCADE",
++ ondelete="SET NULL",
++ ondelete="SET NULL",
++ passive_deletes=True,
++ passive_deletes=True,
++ public_id: Mapped[uuid.UUID] = mapped_column(Uuid, default=uuid.uuid4)
+- "blog_post_id",
+- "blog_post_tags",
+- "blog_tag_id",
+- )
+- ),
+- ),
+- Base.metadata,
+- Column(
+- Column(
+- Column,
+- ForeignKey("blog_category.id", ondelete="SET NULL"),
+- ForeignKey("blog_post.id", ondelete="CASCADE"),
+- ForeignKey("blog_tag.id", ondelete="CASCADE"),
+- ForeignKey("blog_user.id", ondelete="CASCADE"),
+- ForeignKey("blog_user.id", ondelete="CASCADE"),
+- ForeignKey("blog_user.id", ondelete="SET NULL"),
+- Table,
+- back_populates="blog_posts",
+- back_populates="tags",
+- blog_post_tags = Table(
+- blog_posts: Mapped[list["BlogPost"]] = relationship(
+- id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+- id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+- id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+- id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+- id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+- name: Mapped[str] = mapped_column(String(100), unique=True)
+- primary_key=True,
+- primary_key=True,
+- public_id: Mapped[uuid.UUID] = mapped_column(Uuid, unique=True, default=uuid.uuid4)
+- secondary=blog_post_tags,
+- secondary=blog_post_tags,
+- tags: Mapped[list["BlogTag"]] = relationship(
