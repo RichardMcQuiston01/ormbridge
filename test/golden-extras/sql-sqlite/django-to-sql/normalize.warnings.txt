@@ -1,0 +1,5 @@
+Post.author: settings.AUTH_USER_MODEL was assumed to be a model named "User".
+Post.editor: settings.AUTH_USER_MODEL was assumed to be a model named "User".
+Profile.user: settings.AUTH_USER_MODEL was assumed to be a model named "User".
+Post.author references model "User", which was not found in the input. A stub model with an auto-increment id was generated; replace it with the real definition.
+SQLite cannot refresh a column on update from the DDL (Category.updated_at, Post.updated_at, Tag.updated_at, Profile.updated_at, User.updated_at); the application or a trigger has to set it.

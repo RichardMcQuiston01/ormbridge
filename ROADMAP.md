@@ -91,6 +91,8 @@ Order: Drizzle first (closest to TypeORM and Prisma, so most of the machinery ex
 | T. SQLAlchemy parser   | `feature/sqlalchemy-parser`   | `src/parsers/sqlalchemy.ts`, `src/parsers/pythonSyntax.ts` | Read SQLAlchemy 2.0 declarative models (`Mapped[...]`, `mapped_column`, `relationship`, `ForeignKey`, `Index`, `UniqueConstraint`, `Enum`, association tables) and SQLModel classes (`SQLModel, table=True`, `Field`, `Relationship`) with tree-sitter Python. Classic `Column(...)` style too.                                                                                                                      | 0.3, 0.4   |
 | U. SQLAlchemy emitter  | `feature/sqlalchemy-emitter`  | `src/emitters/sqlalchemy.ts`                               | Emit SQLAlchemy 2.0 models (and a `--style sqlmodel` variant) with typed `Mapped[...]` columns, relationships and `back_populates` on both sides, enums, indexes, constraints and association tables. Verify by importing the models with real SQLAlchemy and creating the tables in SQLite.                                                                                                                         | 0.3, 0.4   |
 
+Status: track S (the SQL DDL emitter) is built on `feature/sql-ddl-emitter` as the write-only `sql` format; it becomes readable when track R adds `parse` to the same adapter.
+
 Pairs M/N, O/P, R/S and T/U run in parallel; Q is independent of P. After they land, extend the conversion matrix (2.1) to cover the new read and write formats and document what is lossy.
 
 ## Parallel work plan

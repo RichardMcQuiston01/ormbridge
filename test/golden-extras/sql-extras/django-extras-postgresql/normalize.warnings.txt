@@ -1,0 +1,3 @@
+Item.full_name: the generated column expression Concat("first_name", Value(" "), "last_name") is not SQL; the column was written as a regular column.
+Item.total_cents: the generated column expression F("quantity") * 100 is not SQL; the column was written as a regular column.
+PostgreSQL cannot refresh a column on update from the DDL (Item.updated_at, Counter.updated_at, Shipment.updated_at, Account.updated_at, Assignment.updated_at, ContentType.updated_at); the application or a trigger has to set it.

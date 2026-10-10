@@ -11,6 +11,7 @@ import {
 } from './emitters/prisma.js';
 import { emitTypeorm } from './emitters/typeorm.js';
 import { emitJsonSchema } from './emitters/jsonSchema.js';
+import { emitSqlDdl } from './emitters/sqlDdl.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import { emitZod } from './emitters/zod.js';
 import type { IrSchema } from './ir.js';
@@ -45,7 +46,10 @@ export interface SourceText {
 export interface FormatOptions {
   /** "preserve" keeps existing database names; "normalize" applies a fresh-schema style. */
   naming: NamingMode;
-  /** Prisma datasource provider; controls native column types such as @db.VarChar. */
+  /**
+   * Database provider. Prisma uses it for native column types such as @db.VarChar, Drizzle and GORM
+   * for the dialect, and the SQL DDL emitter for the SQL it writes (postgresql, mysql, sqlite, sqlserver).
+   */
   provider: PrismaProvider;
   /** Emit Prisma generator and datasource blocks. */
   header: boolean;
@@ -493,6 +497,20 @@ const zodAdapter: FormatAdapter = {
   },
 };
 
+const sqlAdapter: FormatAdapter = {
+  name: 'sql',
+  extensions: ['.sql'],
+  description:
+    'SQL DDL (CREATE TABLE, indexes, enums; --provider picks the dialect)',
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> =>
+    ok(
+      emitSqlDdl(schema, {
+        provider: options.provider,
+        naming: options.naming,
+      })
+    ),
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -506,6 +524,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(typescriptAdapter),
   registerFormat(zodAdapter),
   registerFormat(jsonSchemaAdapter),
+  registerFormat(sqlAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

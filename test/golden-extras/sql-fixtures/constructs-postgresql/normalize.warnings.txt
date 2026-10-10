@@ -1,0 +1,1 @@
+PostgreSQL cannot refresh a column on update from the DDL (Author.updated_at, Book.updated_at, Series.updated_at, Audiobook.updated_at, index.updated_at, Tagged.updated_at); the application or a trigger has to set it.

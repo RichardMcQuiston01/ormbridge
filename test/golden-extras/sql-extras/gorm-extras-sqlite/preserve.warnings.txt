@@ -1,0 +1,3 @@
+Product index (title): SQLite full-text search needs a separate mechanism (a virtual table or a catalog); it was written as an ordinary index.
+Product index (slug): the index type Hash is not supported by SQLite and was dropped.
+SQLite cannot refresh a column on update from the DDL (Customer.updatedAt); the application or a trigger has to set it.

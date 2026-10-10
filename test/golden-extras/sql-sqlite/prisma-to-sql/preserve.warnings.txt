@@ -1,0 +1,1 @@
+SQLite cannot refresh a column on update from the DDL (Category.updated_at, Post.updated_at); the application or a trigger has to set it.

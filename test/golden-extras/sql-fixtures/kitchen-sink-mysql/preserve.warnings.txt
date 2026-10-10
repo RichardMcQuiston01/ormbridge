@@ -1,0 +1,2 @@
+Account.labels: MySQL has no array column type; the array was written as a JSON column.
+Account.ttl: MySQL has no interval type; the duration was written as an integer (microseconds).

@@ -1,0 +1,2 @@
+Item.full_name: the generated column expression Concat("first_name", Value(" "), "last_name") is not SQL; the column was written as a regular column.
+Item.total_cents: the generated column expression F("quantity") * 100 is not SQL; the column was written as a regular column.
