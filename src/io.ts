@@ -40,6 +40,40 @@ const LARAVEL_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   '.git',
 ]);
 
+/** Directories skipped when reading JSON Schema documents. */
+const JSON_SCHEMA_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
+  'vendor',
+  'node_modules',
+  'dist',
+  'build',
+  'coverage',
+  '.git',
+]);
+
+/** JSON files that are tool configuration and never hold a schema. */
+const NON_SCHEMA_JSON_FILES: RegExp =
+  /^(package(-lock)?|npm-shrinkwrap|composer(\.lock)?|tsconfig(\..+)?|jsconfig|\.eslintrc|\.prettierrc|deno)\.json$/;
+
+/**
+ * Directories skipped when reading SQL files. `migrations` is deliberately not on the list: plain SQL
+ * migrations are a legitimate source and are read in file-name order.
+ */
+const SQL_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
+  'node_modules',
+  'vendor',
+  'venv',
+  '.venv',
+  'dist',
+  'build',
+  'coverage',
+  '__pycache__',
+  '.git',
+]);
+
+/** Rollback scripts (`001_init.down.sql`, `down.sql`, `V2__x.undo.sql`) undo a schema instead of describing it. */
+const SQL_ROLLBACK_FILES: RegExp =
+  /(?:^|[._-])(?:down|rollback|revert|undo)\.sql$/i;
+
 const SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   'node_modules',
   'venv',
@@ -380,13 +414,19 @@ async function discoverInputFiles(
         ? 'models.py files (or a models/ package)'
         : format === 'typeorm'
           ? 'TypeScript (.ts) entity files'
-          : format === 'doctrine'
-            ? 'PHP (.php) entity files'
-            : format === 'laravel'
-              ? 'PHP (.php) migration and model files (database/migrations and app/)'
-              : format === 'gorm'
-                ? 'Go (.go) model files'
-                : '.prisma files';
+          : format === 'drizzle'
+            ? 'TypeScript (.ts) Drizzle schema files'
+            : format === 'doctrine'
+              ? 'PHP (.php) entity files'
+              : format === 'laravel'
+                ? 'PHP (.php) migration and model files (database/migrations and app/)'
+                : format === 'gorm'
+                  ? 'Go (.go) model files'
+                  : format === 'json-schema'
+                    ? 'JSON (.json) schema or OpenAPI files'
+                    : format === 'sql'
+                      ? 'SQL (.sql) files'
+                      : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -399,7 +439,7 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
   if (format === 'prisma') {
     return extname(filePath) === '.prisma';
   }
-  if (format === 'typeorm') {
+  if (format === 'typeorm' || format === 'drizzle') {
     return (
       extname(filePath) === '.ts' &&
       !/\.(d|test|spec)\.ts$/.test(basename(filePath))
@@ -408,6 +448,18 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
   if (format === 'gorm') {
     return (
       extname(filePath) === '.go' && !/_test\.go$/.test(basename(filePath))
+    );
+  }
+  if (format === 'json-schema') {
+    return (
+      extname(filePath).toLowerCase() === '.json' &&
+      !NON_SCHEMA_JSON_FILES.test(basename(filePath))
+    );
+  }
+  if (format === 'sql') {
+    return (
+      extname(filePath).toLowerCase() === '.sql' &&
+      !SQL_ROLLBACK_FILES.test(basename(filePath))
     );
   }
   if (format === 'doctrine' || format === 'laravel') {
@@ -441,6 +493,12 @@ function isSkippedDirectory(
   }
   if (format === 'gorm') {
     return GO_SKIPPED_DIRECTORIES.has(name);
+  }
+  if (format === 'json-schema') {
+    return JSON_SCHEMA_SKIPPED_DIRECTORIES.has(name);
+  }
+  if (format === 'sql') {
+    return SQL_SKIPPED_DIRECTORIES.has(name);
   }
   return (
     SKIPPED_DIRECTORIES.has(name) ||

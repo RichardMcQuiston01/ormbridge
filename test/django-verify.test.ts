@@ -12,7 +12,7 @@ import {
   parseSource,
   probePython,
   titleWithReason,
-  VERIFY_SOURCES,
+  SOURCES_WITHOUT_VIEWS,
   writeProjectFile,
   type ToolProbe,
   type VerifySource,
@@ -64,7 +64,7 @@ function validate(models: string, schema: IrSchema): SpawnSyncReturns<string> {
 }
 
 describe(titleWithReason('django emitter: real Django', probe), () => {
-  const sources: VerifySource[] = VERIFY_SOURCES.filter(
+  const sources: VerifySource[] = SOURCES_WITHOUT_VIEWS.filter(
     (source: VerifySource) => source.format !== 'django'
   );
 

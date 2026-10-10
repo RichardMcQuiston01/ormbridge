@@ -1,0 +1,121 @@
+@@ schema.ts
++ .$onUpdate(() => new Date()),
++ .defaultNow(),
++ .defaultNow(),
++ .notNull()
++ .notNull()
++ .notNull()
++ .notNull()
++ .notNull()
++ .notNull()
++ .notNull()
++ .references(() => category.id, { onDelete: 'restrict' }),
++ .references(() => post.id, { onDelete: 'restrict' }),
++ .references(() => tag.id, { onDelete: 'restrict' }),
++ .references(() => user.id, { onDelete: 'restrict' }),
++ .references(() => user.id, { onDelete: 'restrict' }),
++ .references(() => user.id, { onDelete: 'set null' }),
++ authorId: integer('author_id')
++ body: text('body').notNull(),
++ categoryId: integer('category_id')
++ createdAt: timestamp('createdAt', { withTimezone: true })
++ createdAt: timestamp('createdAt', { withTimezone: true })
++ editorId: integer('editor_id')
++ export const category = pgTable('Category', {
++ export const post = pgTable('Post', {
++ export const postTag = pgTable('PostTag', {
++ export const postTagRelations = relations(postTag, ({ one }) => ({
++ export const profile = pgTable('Profile', {
++ export const tag = pgTable('Tag', {
++ export const user = pgTable('User', {
++ export type NewPostTag = typeof postTag.$inferInsert;
++ export type PostTag = typeof postTag.$inferSelect;
++ fields: [postTag.postId],
++ fields: [postTag.tagId],
++ id: serial('id').primaryKey(),
++ id: serial('id').primaryKey(),
++ isFeatured: boolean('isFeatured').notNull().default(false),
++ metadata: jsonb('metadata'),
++ name: varchar('name', { length: 100 }).notNull(),
++ postId: integer('post_id')
++ postTags: many(postTag),
++ postTags: many(postTag),
++ publicId: uuid('publicId').notNull().defaultRandom(),
++ publishedAt: timestamp('publishedAt', { withTimezone: true })
++ rating: numeric('rating', { precision: 4, scale: 2 }),
++ status: postStatusEnum('status').notNull().default('draft'),
++ tagId: integer('tag_id')
++ title: varchar('title', { length: 200 }).notNull(),
++ updatedAt: timestamp('updatedAt', { withTimezone: true })
++ updatedAt: timestamp('updatedAt', { withTimezone: true })
++ viewCount: integer('viewCount').notNull().default(0),
++ });
++ });
+- 'blog_post',
+- 'blog_post_tags',
+- (table) => [
+- (table) => [
+- );
+- );
+- .$onUpdate(() => new Date()),
+- .defaultNow(),
+- .defaultNow(),
+- .notNull()
+- .notNull()
+- .notNull()
+- .notNull()
+- .notNull()
+- .notNull()
+- .notNull()
+- .references(() => category.id, { onDelete: 'restrict' }),
+- .references(() => post.id, { onDelete: 'cascade' }),
+- .references(() => tag.id, { onDelete: 'cascade' }),
+- .references(() => user.id, { onDelete: 'cascade' }),
+- .references(() => user.id, { onDelete: 'cascade' }),
+- .references(() => user.id, { onDelete: 'set null' }),
+- ]
+- ]
+- authorId: integer('author_id')
+- body: text('body').notNull(),
+- categoryId: integer('category_id')
+- createdAt: timestamp('created_at', { withTimezone: true })
+- createdAt: timestamp('created_at', { withTimezone: true })
+- editorId: integer('editor_id')
+- export const category = pgTable('blog_category', {
+- export const post = pgTable(
+- export const postTags = pgTable(
+- export const postTagsRelations = relations(postTags, ({ one }) => ({
+- export const profile = pgTable('blog_profile', {
+- export const tag = pgTable('blog_tag', {
+- export const user = pgTable('auth_user', {
+- export type NewPostTags = typeof postTags.$inferInsert;
+- export type PostTags = typeof postTags.$inferSelect;
+- fields: [postTags.postId],
+- fields: [postTags.tagId],
+- id: serial('id').primaryKey(),
+- id: serial('id').primaryKey(),
+- index('blog_post_title_idx').on(table.title),
+- index('post_pub_status_idx').on(table.publishedAt, table.status),
+- index,
+- isFeatured: boolean('is_featured').notNull().default(false),
+- metadata: jsonb('metadata').notNull().default({}),
+- name: varchar('name', { length: 100 }).notNull().unique(),
+- postId: integer('post_id')
+- postTags: many(postTags),
+- postTags: many(postTags),
+- publicId: uuid('public_id').notNull().unique().defaultRandom(),
+- publishedAt: timestamp('published_at', { withTimezone: true })
+- rating: numeric('rating', { precision: 4, scale: 2 }),
+- status: postStatusEnum('status').notNull().default('draft'),
+- tagId: integer('tag_id')
+- title: varchar('title', { length: 200 }).notNull(),
+- uniqueIndex('blog_post_author_id_title_key').on(table.authorId, table.title),
+- uniqueIndex('blog_post_tags_post_id_tag_id_key').on(table.postId, table.tagId),
+- uniqueIndex,
+- updatedAt: timestamp('updated_at', { withTimezone: true })
+- updatedAt: timestamp('updated_at', { withTimezone: true })
+- viewCount: integer('view_count').notNull().default(0),
+- {
+- {
+- },
+- },

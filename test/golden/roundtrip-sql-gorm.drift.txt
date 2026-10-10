@@ -1,0 +1,32 @@
+@@ models/blog_category.go
++ BlogCategories []BlogCategory `gorm:"foreignKey:ParentID;constraint:blog_category_parent_id_fkey,OnDelete:SET NULL"`
++ Name      string    `gorm:"size:100;not null;uniqueIndex:blog_category_name_key"`
++ Parent         *BlogCategory  `gorm:"foreignKey:ParentID;constraint:blog_category_parent_id_fkey,OnDelete:SET NULL"`
+- BlogCategories []BlogCategory `gorm:"foreignKey:ParentID;constraint:OnDelete:SET NULL"`
+- Name      string    `gorm:"size:100;not null;unique"`
+- Parent         *BlogCategory  `gorm:"foreignKey:ParentID;constraint:OnDelete:SET NULL"`
+@@ models/blog_post.go
++ Author       BlogUser      `gorm:"foreignKey:AuthorID;constraint:blog_post_author_id_fkey,OnDelete:CASCADE"`
++ BlogPostTags []BlogPostTag `gorm:"foreignKey:BlogPostID;constraint:blog_post_tags_blog_post_id_fkey,OnDelete:CASCADE"`
++ Category     BlogCategory  `gorm:"foreignKey:CategoryID;constraint:blog_post_category_id_fkey,OnDelete:RESTRICT"`
++ Editor       *BlogUser     `gorm:"foreignKey:EditorID;constraint:blog_post_editor_id_fkey,OnDelete:SET NULL"`
++ PublicID    uuid.UUID        `gorm:"type:uuid;not null;uniqueIndex:blog_post_public_id_key;default:gen_random_uuid()"`
+- Author   BlogUser     `gorm:"foreignKey:AuthorID;constraint:OnDelete:CASCADE"`
+- Category BlogCategory `gorm:"foreignKey:CategoryID;constraint:blog_post_category_id_fkey,OnDelete:RESTRICT"`
+- Editor   *BlogUser    `gorm:"foreignKey:EditorID;constraint:OnDelete:SET NULL"`
+- PublicID    uuid.UUID        `gorm:"type:uuid;not null;unique;default:gen_random_uuid()"`
+- Tags     []BlogTag    `gorm:"many2many:blog_post_tags;constraint:OnDelete:CASCADE"`
++ file models/blog_post_tag.go
+@@ models/blog_profile.go
++ User BlogUser `gorm:"foreignKey:UserID;constraint:blog_profile_user_id_fkey,OnDelete:CASCADE"`
+- User BlogUser `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+@@ models/blog_tag.go
++ BlogPostTags []BlogPostTag `gorm:"foreignKey:BlogTagID;constraint:blog_post_tags_blog_tag_id_fkey,OnDelete:CASCADE"`
+- BlogPosts []BlogPost `gorm:"many2many:blog_post_tags;constraint:OnDelete:CASCADE"`
+@@ models/blog_user.go
++ AuthorBlogPosts []BlogPost   `gorm:"foreignKey:AuthorID;constraint:blog_post_author_id_fkey,OnDelete:CASCADE"`
++ BlogProfile     *BlogProfile `gorm:"foreignKey:UserID;constraint:blog_profile_user_id_fkey,OnDelete:CASCADE"`
++ EditorBlogPosts []BlogPost   `gorm:"foreignKey:EditorID;constraint:blog_post_editor_id_fkey,OnDelete:SET NULL"`
+- AuthorBlogPosts []BlogPost   `gorm:"foreignKey:AuthorID;constraint:OnDelete:CASCADE"`
+- BlogProfile     *BlogProfile `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+- EditorBlogPosts []BlogPost   `gorm:"foreignKey:EditorID;constraint:OnDelete:SET NULL"`

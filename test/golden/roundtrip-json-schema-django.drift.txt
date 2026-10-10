@@ -1,0 +1,29 @@
++ author = models.ForeignKey("User", on_delete=models.PROTECT, related_name="posts")
++ category = models.ForeignKey("Category", on_delete=models.PROTECT, related_name="post_set")
++ db_table = "Category"
++ db_table = "Post"
++ db_table = "Profile"
++ db_table = "Tag"
++ db_table = "User"
++ metadata = models.JSONField(null=True, blank=True)
++ name = models.CharField(max_length=100)
++ public_id = models.UUIDField(default=uuid.uuid4)
++ user = models.OneToOneField("User", on_delete=models.PROTECT, related_name="profile")
+- ]
+- ]
+- author = models.ForeignKey("User", on_delete=models.CASCADE, related_name="posts")
+- category = models.ForeignKey("Category", on_delete=models.PROTECT)
+- constraints = [
+- db_table = "auth_user"
+- db_table = "blog_category"
+- db_table = "blog_post"
+- db_table = "blog_profile"
+- db_table = "blog_tag"
+- indexes = [
+- metadata = models.JSONField(default=dict)
+- models.Index(fields=["published_at", "status"], name="post_pub_status_idx"),
+- models.Index(fields=["title"], name="post_title_idx"),
+- models.UniqueConstraint(fields=["author", "title"], name="blog_post_author_title_uniq"),
+- name = models.CharField(max_length=100, unique=True)
+- public_id = models.UUIDField(unique=True, default=uuid.uuid4)
+- user = models.OneToOneField("User", on_delete=models.CASCADE, related_name="profile")

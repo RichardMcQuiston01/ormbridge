@@ -1,0 +1,66 @@
++ @@unique([blog_post_id, blog_tag_id], map: "blog_post_tags_blog_post_id_blog_tag_id_key")
++ author         BlogUser      @relation("BlogPost_author", fields: [author_id], references: [id], onDelete: Cascade, map: "blog_post_author_id_fkey")
++ author_id      Int
++ blog_post    BlogPost @relation(fields: [blog_post_id], references: [id], onDelete: Cascade, map: "blog_post_tags_blog_post_id_fkey")
++ blog_post_tags BlogPostTag[]
++ blog_post_tags BlogPostTag[]
++ blog_tag     BlogTag  @relation(fields: [blog_tag_id], references: [id], onDelete: Cascade, map: "blog_post_tags_blog_tag_id_fkey")
++ body           String        @db.Text
++ category       BlogCategory  @relation(fields: [category_id], references: [id], onDelete: Restrict, map: "blog_post_category_id_fkey")
++ category_id    Int
++ created_at     DateTime      @default(now()) @db.Timestamptz(6)
++ editor         BlogUser?     @relation("BlogPost_editor", fields: [editor_id], references: [id], onDelete: SetNull, map: "blog_post_editor_id_fkey")
++ editor_id      Int?
++ id                Int          @id(map: "blog_user_pkey") @default(autoincrement())
++ id              Int            @id(map: "blog_category_pkey") @default(autoincrement())
++ id             Int           @id(map: "blog_post_pkey") @default(autoincrement())
++ id             Int           @id(map: "blog_tag_pkey") @default(autoincrement())
++ id           Int      @id(map: "blog_post_tags_pkey") @default(autoincrement())
++ id      Int      @id(map: "blog_profile_pkey") @default(autoincrement())
++ is_featured    Boolean       @default(false)
++ label          String        @db.VarChar(50)
++ metadata       Json          @default("{}")
++ model BlogPostTag {
++ name            String         @unique(map: "blog_category_name_key") @db.VarChar(100)
++ parent          BlogCategory?  @relation("BlogCategory_parent", fields: [parent_id], references: [id], onDelete: SetNull, map: "blog_category_parent_id_fkey")
++ public_id      String        @default(uuid()) @unique(map: "blog_post_public_id_key") @db.Uuid
++ published_at   DateTime      @default(now()) @db.Timestamptz(6)
++ rating         Decimal?      @db.Decimal(4, 2)
++ status         PostStatus    @default(DRAFT)
++ title          String        @db.VarChar(200)
++ updated_at     DateTime      @db.Timestamptz(6)
++ user    BlogUser @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "blog_profile_user_id_fkey")
++ view_count     Int           @default(0)
+- @@unique([blog_post_id, blog_tag_id])
+- author       BlogUser       @relation("BlogPost_author", fields: [author_id], references: [id], onDelete: Cascade)
+- author_id    Int
+- blog_post    BlogPost @relation(fields: [blog_post_id], references: [id], onDelete: Cascade)
+- blog_posts BlogPostTags[]
+- blog_tag     BlogTag  @relation(fields: [blog_tag_id], references: [id], onDelete: Cascade)
+- body         String         @db.Text
+- category     BlogCategory   @relation(fields: [category_id], references: [id], onDelete: Restrict, map: "blog_post_category_id_fkey")
+- category_id  Int
+- created_at   DateTime       @default(now()) @db.Timestamptz(6)
+- editor       BlogUser?      @relation("BlogPost_editor", fields: [editor_id], references: [id], onDelete: SetNull)
+- editor_id    Int?
+- id                Int          @id @default(autoincrement())
+- id              Int            @id @default(autoincrement())
+- id           Int            @id @default(autoincrement())
+- id           Int      @id @default(autoincrement())
+- id         Int            @id @default(autoincrement())
+- id      Int      @id @default(autoincrement())
+- is_featured  Boolean        @default(false)
+- label      String         @db.VarChar(50)
+- metadata     Json           @default("{}")
+- model BlogPostTags {
+- name            String         @unique @db.VarChar(100)
+- parent          BlogCategory?  @relation("BlogCategory_parent", fields: [parent_id], references: [id], onDelete: SetNull)
+- public_id    String         @default(uuid()) @unique @db.Uuid
+- published_at DateTime       @default(now()) @db.Timestamptz(6)
+- rating       Decimal?       @db.Decimal(4, 2)
+- status       PostStatus     @default(DRAFT)
+- tags         BlogPostTags[]
+- title        String         @db.VarChar(200)
+- updated_at   DateTime       @db.Timestamptz(6)
+- user    BlogUser @relation(fields: [user_id], references: [id], onDelete: Cascade)
+- view_count   Int            @default(0)

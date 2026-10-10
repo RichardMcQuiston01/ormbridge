@@ -1,0 +1,159 @@
+import { z } from 'zod';
+
+export const ItemKind = {
+  /** Tool */
+  TOOL: 'tool',
+  /** Toy */
+  TOY: 'toy',
+} as const;
+export const ItemKindSchema = z.enum(ItemKind);
+export type ItemKind = z.infer<typeof ItemKindSchema>;
+
+export const ItemSchema = z.object({
+  id: z.number().int(),
+  first_name: z.string().max(40),
+  last_name: z.string().max(40),
+  full_name: z.string().max(81),
+  quantity: z.number().int(),
+  total_cents: z.number().int(),
+  tags: z.array(z.string().max(20)),
+  grid: z.array(z.array(z.number().int())).nullable(),
+  kinds: z.array(ItemKindSchema),
+  attributes: z.record(z.string(), z.string().nullable()),
+  stock_range: z.object({ lower: z.number().int().nullable(), upper: z.number().int().nullable(), bounds: z.string().optional() }).nullable(),
+  big_range: z.object({ lower: z.string().regex(/^-?\d+$/).nullable(), upper: z.string().regex(/^-?\d+$/).nullable(), bounds: z.string().optional() }).nullable(),
+  price_range: z.object({ lower: z.string().regex(/^-?\d+(\.\d+)?$/).nullable(), upper: z.string().regex(/^-?\d+(\.\d+)?$/).nullable(), bounds: z.string().optional() }).nullable(),
+  available: z.object({ lower: z.coerce.date().nullable(), upper: z.coerce.date().nullable(), bounds: z.string().optional() }).nullable(),
+  valid_during: z.object({ lower: z.coerce.date().nullable(), upper: z.coerce.date().nullable(), bounds: z.string().optional() }).nullable(),
+  last_ip: z.union([z.ipv4(), z.ipv6()]).nullable(),
+  legacy_ip: z.union([z.ipv4(), z.ipv6()]).nullable(),
+  shelf_life: z.string().nullable(),
+  source_path: z.string().max(100).nullable(),
+  manual: z.string().max(100).nullable(),
+  photo: z.string().max(100).nullable(),
+  small_count: z.number().int(),
+  tiny_count: z.number().int(),
+  is_active: z.boolean(),
+  stocked_at: z.coerce.date(),
+  priority: z.number().int(),
+  note: z.string().max(20),
+});
+export type Item = z.infer<typeof ItemSchema>;
+
+export const ItemCreateSchema = ItemSchema.omit({ id: true, full_name: true, total_cents: true }).partial({ quantity: true, tags: true, grid: true, kinds: true, attributes: true, stock_range: true, big_range: true, price_range: true, available: true, valid_during: true, last_ip: true, legacy_ip: true, shelf_life: true, source_path: true, manual: true, photo: true, small_count: true, tiny_count: true, is_active: true, stocked_at: true, priority: true, note: true });
+export type ItemCreate = z.infer<typeof ItemCreateSchema>;
+
+export const ItemUpdateSchema = ItemCreateSchema.partial();
+export type ItemUpdate = z.infer<typeof ItemUpdateSchema>;
+
+export type ItemWithRelations = Item & {
+  shipments?: ShipmentWithRelations[];
+  other_shipments?: ShipmentWithRelations[];
+  assignment_set?: AssignmentWithRelations[];
+};
+export const ItemWithRelationsSchema: z.ZodType<ItemWithRelations> = ItemSchema.extend({
+  shipments: z.array(z.lazy(() => ShipmentWithRelationsSchema)).optional(),
+  other_shipments: z.array(z.lazy(() => ShipmentWithRelationsSchema)).optional(),
+  assignment_set: z.array(z.lazy(() => AssignmentWithRelationsSchema)).optional(),
+});
+
+export const CounterSchema = z.object({
+  small_id: z.number().int(),
+  label: z.string().max(20),
+});
+export type Counter = z.infer<typeof CounterSchema>;
+
+export const CounterCreateSchema = CounterSchema.omit({ small_id: true });
+export type CounterCreate = z.infer<typeof CounterCreateSchema>;
+
+export const CounterUpdateSchema = CounterCreateSchema.partial();
+export type CounterUpdate = z.infer<typeof CounterUpdateSchema>;
+
+export const ShipmentSchema = z.object({
+  id: z.number().int(),
+  object_id: z.number().int(),
+  item_id: z.number().int(),
+  other_id: z.number().int(),
+  content_type_id: z.number().int(),
+  created_by_id: z.number().int(),
+});
+export type Shipment = z.infer<typeof ShipmentSchema>;
+
+export const ShipmentCreateSchema = ShipmentSchema.omit({ id: true });
+export type ShipmentCreate = z.infer<typeof ShipmentCreateSchema>;
+
+export const ShipmentUpdateSchema = ShipmentCreateSchema.partial();
+export type ShipmentUpdate = z.infer<typeof ShipmentUpdateSchema>;
+
+export type ShipmentWithRelations = Shipment & {
+  item?: ItemWithRelations;
+  other?: ItemWithRelations;
+  content_type?: ContentTypeWithRelations;
+  created_by?: AccountWithRelations;
+};
+export const ShipmentWithRelationsSchema: z.ZodType<ShipmentWithRelations> = ShipmentSchema.extend({
+  item: z.lazy(() => ItemWithRelationsSchema).optional(),
+  other: z.lazy(() => ItemWithRelationsSchema).optional(),
+  content_type: z.lazy(() => ContentTypeWithRelationsSchema).optional(),
+  created_by: z.lazy(() => AccountWithRelationsSchema).optional(),
+});
+
+export const AccountSchema = z.object({
+  id: z.number().int(),
+  email: z.string().max(254),
+});
+export type Account = z.infer<typeof AccountSchema>;
+
+export const AccountCreateSchema = AccountSchema.omit({ id: true });
+export type AccountCreate = z.infer<typeof AccountCreateSchema>;
+
+export const AccountUpdateSchema = AccountCreateSchema.partial();
+export type AccountUpdate = z.infer<typeof AccountUpdateSchema>;
+
+export type AccountWithRelations = Account & {
+  shipment_set?: ShipmentWithRelations[];
+  assignment_set?: AssignmentWithRelations[];
+};
+export const AccountWithRelationsSchema: z.ZodType<AccountWithRelations> = AccountSchema.extend({
+  shipment_set: z.array(z.lazy(() => ShipmentWithRelationsSchema)).optional(),
+  assignment_set: z.array(z.lazy(() => AssignmentWithRelationsSchema)).optional(),
+});
+
+export const AssignmentSchema = z.object({
+  item_id: z.number().int(),
+  account_id: z.number().int(),
+});
+export type Assignment = z.infer<typeof AssignmentSchema>;
+
+export const AssignmentCreateSchema = AssignmentSchema;
+export type AssignmentCreate = z.infer<typeof AssignmentCreateSchema>;
+
+export const AssignmentUpdateSchema = AssignmentCreateSchema.partial();
+export type AssignmentUpdate = z.infer<typeof AssignmentUpdateSchema>;
+
+export type AssignmentWithRelations = Assignment & {
+  item?: ItemWithRelations;
+  account?: AccountWithRelations;
+};
+export const AssignmentWithRelationsSchema: z.ZodType<AssignmentWithRelations> = AssignmentSchema.extend({
+  item: z.lazy(() => ItemWithRelationsSchema).optional(),
+  account: z.lazy(() => AccountWithRelationsSchema).optional(),
+});
+
+export const ContentTypeSchema = z.object({
+  id: z.number().int(),
+});
+export type ContentType = z.infer<typeof ContentTypeSchema>;
+
+export const ContentTypeCreateSchema = ContentTypeSchema.omit({ id: true });
+export type ContentTypeCreate = z.infer<typeof ContentTypeCreateSchema>;
+
+export const ContentTypeUpdateSchema = ContentTypeCreateSchema.partial();
+export type ContentTypeUpdate = z.infer<typeof ContentTypeUpdateSchema>;
+
+export type ContentTypeWithRelations = ContentType & {
+  shipment_set?: ShipmentWithRelations[];
+};
+export const ContentTypeWithRelationsSchema: z.ZodType<ContentTypeWithRelations> = ContentTypeSchema.extend({
+  shipment_set: z.array(z.lazy(() => ShipmentWithRelationsSchema)).optional(),
+});

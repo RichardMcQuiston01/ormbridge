@@ -1,0 +1,1 @@
+PostgreSQL cannot refresh a column on update from the DDL (Customer.updatedAt, Order.updated_at, OrderItem.updated_at, Product.updated_at, Label.updated_at, Comment.updated_at); the application or a trigger has to set it.

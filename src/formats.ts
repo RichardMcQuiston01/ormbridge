@@ -1,5 +1,6 @@
 import { emitDjango } from './emitters/django.js';
 import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
+import { emitDrizzle } from './emitters/drizzle.js';
 import { emitGorm, isValidGoPackageName } from './emitters/gorm.js';
 import { emitGraphene } from './emitters/graphene.js';
 import { emitLaravel } from './emitters/laravel.js';
@@ -9,13 +10,19 @@ import {
   type PrismaProvider,
 } from './emitters/prisma.js';
 import { emitTypeorm } from './emitters/typeorm.js';
+import { emitJsonSchema } from './emitters/jsonSchema.js';
+import { emitSqlDdl } from './emitters/sqlDdl.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
+import { emitZod } from './emitters/zod.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
+import { parseDrizzle } from './parsers/drizzle.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parseGorm } from './parsers/gorm.js';
+import { parseJsonSchema } from './parsers/jsonSchema.js';
 import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
+import { parseSqlDdl } from './parsers/sqlDdl.js';
 import { parseTypeorm } from './parsers/typeorm.js';
 import { err, ok, type Result } from './result.js';
 import {
@@ -40,7 +47,10 @@ export interface SourceText {
 export interface FormatOptions {
   /** "preserve" keeps existing database names; "normalize" applies a fresh-schema style. */
   naming: NamingMode;
-  /** Prisma datasource provider; controls native column types such as @db.VarChar. */
+  /**
+   * Database provider. Prisma uses it for native column types such as @db.VarChar, Drizzle and GORM
+   * for the dialect, and the SQL DDL emitter for the SQL it writes (postgresql, mysql, sqlite, sqlserver).
+   */
   provider: PrismaProvider;
   /** Emit Prisma generator and datasource blocks. */
   header: boolean;
@@ -298,6 +308,34 @@ const typescriptAdapter: FormatAdapter = {
   },
 };
 
+const jsonSchemaAdapter: FormatAdapter = {
+  name: 'json-schema',
+  // No extension is claimed: the registry matches the last extension only, and ".json" is too generic, so pass --from/--to json-schema.
+  extensions: [],
+  description:
+    'JSON Schema (draft 2020-12) and OpenAPI components.schemas (JSON)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    Promise.resolve(
+      parseJsonSchema(
+        sources.map((source: SourceText) => ({
+          path: source.path,
+          text: source.text,
+        })),
+        { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+      )
+    ),
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitJsonSchema(prepared, { camelFields: options.naming === 'normalize' })
+    );
+  },
+};
+
 const doctrineAdapter: FormatAdapter = {
   name: 'doctrine',
   // No extension is claimed: ".php" is too generic to infer, so pass --from/--to doctrine.
@@ -421,6 +459,72 @@ const gormAdapter: FormatAdapter = {
   },
 };
 
+const drizzleAdapter: FormatAdapter = {
+  name: 'drizzle',
+  // No extension is claimed: ".ts" is too generic to infer, so pass --from/--to drizzle.
+  extensions: [],
+  description: 'Drizzle ORM schemas (TypeScript, pg/mysql/sqlite-core)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseDrizzle(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+  emit: (schema: IrSchema, options: FormatOptions): Result<FormatEmitOutput> =>
+    ok(
+      emitDrizzle(schema, {
+        provider: options.provider,
+        naming: options.naming,
+      })
+    ),
+};
+
+const zodAdapter: FormatAdapter = {
+  name: 'zod',
+  // Output only, and no extension is claimed: ".ts" belongs to no single format, so pass --to zod.
+  extensions: [],
+  description: 'Zod schemas (TypeScript, Zod 4)',
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitZod(prepared, { camelFields: options.naming === 'normalize' })
+    );
+  },
+};
+
+const sqlAdapter: FormatAdapter = {
+  name: 'sql',
+  extensions: ['.sql'],
+  description:
+    'SQL DDL: CREATE TABLE, indexes and enums (PostgreSQL, MySQL, SQLite, SQL Server; --provider picks the dialect)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    Promise.resolve(
+      parseSqlDdl(
+        sources.map((source: SourceText) => ({
+          path: source.path,
+          text: source.text,
+        })),
+        { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+      )
+    ),
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> =>
+    ok(
+      emitSqlDdl(schema, {
+        provider: options.provider,
+        naming: options.naming,
+      })
+    ),
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -429,8 +533,12 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(doctrineAdapter),
   registerFormat(laravelAdapter),
   registerFormat(gormAdapter),
+  registerFormat(drizzleAdapter),
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
+  registerFormat(zodAdapter),
+  registerFormat(jsonSchemaAdapter),
+  registerFormat(sqlAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

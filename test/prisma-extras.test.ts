@@ -762,6 +762,7 @@ describe.each([
   ['typeorm', 'typeorm.txt'],
   ['typescript', 'typescript.txt'],
   ['graphene', 'graphene.txt'],
+  ['zod', 'zod.txt'],
 ])('Prisma extras -> %s', (target, goldenName) => {
   it('matches the stored output and warns about what it cannot carry', async () => {
     const { output, warnings } = await convertExtras(target);
@@ -798,6 +799,9 @@ describe('Prisma extras: degradation warnings', () => {
     expect(text).toContain('Account.tenant: the onUpdate action "cascade"');
   });
 });
+
+/** `prisma validate` starts a CLI process, which is slow on a busy CI runner (vitest's default is 5 s). */
+const PRISMA_VALIDATE_TIMEOUT_MS: number = 120_000;
 
 /**
  * Real verification: set PRISMA_BIN to a prisma CLI (6.x or 7.x) and PRISMA_MAJOR to its major version
@@ -836,7 +840,8 @@ describe.skipIf(process.env.PRISMA_BIN === undefined)(
             }
           )
         ).not.toThrow();
-      }
+      },
+      PRISMA_VALIDATE_TIMEOUT_MS
     );
   }
 );

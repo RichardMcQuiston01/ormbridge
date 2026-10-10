@@ -1,0 +1,59 @@
+export enum PostStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+}
+
+export interface BlogUser {
+  id: number;
+  author_blog_posts?: BlogPost[];
+  editor_blog_posts?: BlogPost[];
+  blog_profile?: BlogProfile | null;
+}
+
+export interface BlogCategory {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  slug: string;
+  parent_id: number | null;
+  parent?: BlogCategory | null;
+  blog_categories?: BlogCategory[];
+  blog_posts?: BlogPost[];
+}
+
+export interface BlogTag {
+  id: number;
+  label: string;
+  blog_posts?: BlogPost[];
+}
+
+export interface BlogPost {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  public_id: string;
+  title: string;
+  body: string;
+  status: PostStatus;
+  rating: string | null;
+  view_count: number;
+  is_featured: boolean;
+  published_at: string;
+  metadata: unknown;
+  author_id: number;
+  author?: BlogUser;
+  editor_id: number | null;
+  editor?: BlogUser | null;
+  category_id: number;
+  category?: BlogCategory;
+  tags?: BlogTag[];
+}
+
+export interface BlogProfile {
+  id: number;
+  bio: string | null;
+  avatar: string | null;
+  user_id: number;
+  user?: BlogUser;
+}

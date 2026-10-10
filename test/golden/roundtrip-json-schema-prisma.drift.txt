@@ -1,0 +1,30 @@
++ author       User       @relation("Post_author", fields: [author_id], references: [id], onDelete: Restrict)
++ metadata     Json?
++ name       String     @db.VarChar(100)
++ post    Post @relation(fields: [post_id], references: [id], onDelete: Restrict)
++ public_id    String     @default(uuid()) @db.Uuid
++ tag     Tag  @relation(fields: [tag_id], references: [id], onDelete: Restrict)
++ user    User    @relation(fields: [user_id], references: [id], onDelete: Restrict)
+- 
+- 
+- 
+- 
+- 
+- 
+- @@index([published_at, status], map: "post_pub_status_idx")
+- @@index([title])
+- @@map("auth_user")
+- @@map("blog_category")
+- @@map("blog_post")
+- @@map("blog_post_tags")
+- @@map("blog_profile")
+- @@map("blog_tag")
+- @@unique([author_id, title])
+- @@unique([post_id, tag_id])
+- author       User       @relation("Post_author", fields: [author_id], references: [id], onDelete: Cascade)
+- metadata     Json       @default("{}")
+- name       String     @unique @db.VarChar(100)
+- post    Post @relation(fields: [post_id], references: [id], onDelete: Cascade)
+- public_id    String     @default(uuid()) @unique @db.Uuid
+- tag     Tag  @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+- user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)

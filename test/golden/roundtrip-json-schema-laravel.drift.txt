@@ -1,0 +1,31 @@
+@@ app/Models/Category.php
++ protected $table = 'Category';
+- protected $table = 'blog_category';
+@@ app/Models/Post.php
++ protected $table = 'Post';
++ return $this->belongsToMany(Tag::class, 'Tag_posts', 'post_id', 'tag_id');
+- protected $table = 'blog_post';
+- return $this->belongsToMany(Tag::class, 'blog_post_tags', 'post_id', 'tag_id');
+@@ app/Models/Profile.php
++ protected $table = 'Profile';
+- protected $table = 'blog_profile';
+@@ app/Models/Tag.php
++ protected $table = 'Tag';
++ return $this->belongsToMany(Post::class, 'Tag_posts', 'tag_id', 'post_id');
+- protected $table = 'blog_tag';
+- return $this->belongsToMany(Post::class, 'blog_post_tags', 'tag_id', 'post_id');
+@@ app/Models/User.php
++ protected $table = 'User';
+- protected $table = 'auth_user';
++ file database/migrations/2024_01_01_000001_create_Category_table.php
+- file database/migrations/2024_01_01_000001_create_blog_category_table.php
++ file database/migrations/2024_01_01_000002_create_Tag_table.php
+- file database/migrations/2024_01_01_000002_create_blog_tag_table.php
++ file database/migrations/2024_01_01_000003_create_User_table.php
+- file database/migrations/2024_01_01_000003_create_auth_user_table.php
++ file database/migrations/2024_01_01_000004_create_Post_table.php
+- file database/migrations/2024_01_01_000004_create_blog_post_table.php
++ file database/migrations/2024_01_01_000005_create_Profile_table.php
+- file database/migrations/2024_01_01_000005_create_blog_profile_table.php
++ file database/migrations/2024_01_01_000006_create_Tag_posts_table.php
+- file database/migrations/2024_01_01_000006_create_blog_post_tags_table.php

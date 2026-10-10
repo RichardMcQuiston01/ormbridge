@@ -1,0 +1,63 @@
+@@ models/category.go
++ // Category maps to the "Category" table.
++ CreatedAt time.Time `gorm:"column:createdAt;not null;autoCreateTime"`
++ Name      string    `gorm:"size:100;not null"`
++ UpdatedAt time.Time `gorm:"column:updatedAt;not null;autoUpdateTime"`
++ return "Category"
+- // Category maps to the "blog_category" table.
+- CreatedAt time.Time `gorm:"not null;autoCreateTime"`
+- Name      string    `gorm:"size:100;not null;unique"`
+- UpdatedAt time.Time `gorm:"not null;autoUpdateTime"`
+- return "blog_category"
+@@ models/post.go
++ // Post maps to the "Post" table.
++ Author   User     `gorm:"foreignKey:AuthorID;constraint:OnDelete:RESTRICT"`
++ AuthorID    int32 `gorm:"not null"`
++ CreatedAt   time.Time        `gorm:"column:createdAt;not null;autoCreateTime"`
++ IsFeatured  bool             `gorm:"column:isFeatured;not null;default:false"`
++ Metadata    datatypes.JSON
++ PublicID    uuid.UUID        `gorm:"column:publicId;type:uuid;not null;default:gen_random_uuid()"`
++ PublishedAt time.Time        `gorm:"column:publishedAt;not null;autoCreateTime"`
++ Status      PostStatus       `gorm:"not null;default:draft"`
++ Tags     []Tag    `gorm:"many2many:Post_tags;constraint:OnDelete:CASCADE"`
++ Title       string           `gorm:"size:200;not null"`
++ UpdatedAt   time.Time        `gorm:"column:updatedAt;not null;autoUpdateTime"`
++ ViewCount   int32            `gorm:"column:viewCount;not null;default:0"`
++ return "Post"
+- // Post maps to the "blog_post" table.
+- Author   User     `gorm:"foreignKey:AuthorID;constraint:OnDelete:CASCADE"`
+- AuthorID    int32            `gorm:"not null;uniqueIndex:uni_blog_post_author_id_title,priority:1"`
+- CreatedAt   time.Time        `gorm:"not null;autoCreateTime"`
+- IsFeatured  bool             `gorm:"not null;default:false"`
+- Metadata    datatypes.JSON   `gorm:"not null;default:'{}'"`
+- PublicID    uuid.UUID        `gorm:"type:uuid;not null;unique;default:gen_random_uuid()"`
+- PublishedAt time.Time        `gorm:"not null;autoCreateTime;index:post_pub_status_idx,priority:1"`
+- Status      PostStatus       `gorm:"not null;default:draft;index:post_pub_status_idx,priority:2"`
+- Tags     []Tag    `gorm:"many2many:blog_post_tags;constraint:OnDelete:CASCADE"`
+- Title       string           `gorm:"size:200;not null;index;uniqueIndex:uni_blog_post_author_id_title,priority:2"`
+- UpdatedAt   time.Time        `gorm:"not null;autoUpdateTime"`
+- ViewCount   int32            `gorm:"not null;default:0"`
+- return "blog_post"
+@@ models/profile.go
++ // Profile maps to the "Profile" table.
++ User User `gorm:"foreignKey:UserID;constraint:OnDelete:RESTRICT"`
++ return "Profile"
+- // Profile maps to the "blog_profile" table.
+- User User `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+- return "blog_profile"
+@@ models/tag.go
++ // Tag maps to the "Tag" table.
++ Posts []Post `gorm:"many2many:Post_tags;constraint:OnDelete:CASCADE"`
++ return "Tag"
+- // Tag maps to the "blog_tag" table.
+- Posts []Post `gorm:"many2many:blog_post_tags;constraint:OnDelete:CASCADE"`
+- return "blog_tag"
+@@ models/user.go
++ // User maps to the "User" table.
++ Posts       []Post   `gorm:"foreignKey:AuthorID;constraint:OnDelete:RESTRICT"`
++ Profile     *Profile `gorm:"foreignKey:UserID;constraint:OnDelete:RESTRICT"`
++ return "User"
+- // User maps to the "auth_user" table.
+- Posts       []Post   `gorm:"foreignKey:AuthorID;constraint:OnDelete:CASCADE"`
+- Profile     *Profile `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+- return "auth_user"

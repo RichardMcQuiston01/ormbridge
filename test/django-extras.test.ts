@@ -610,6 +610,7 @@ describe.each([
   ['typeorm', 'typeorm.txt'],
   ['typescript', 'typescript.txt'],
   ['graphene', 'graphene.txt'],
+  ['zod', 'zod.txt'],
 ])('Django extras -> %s', (target, goldenName) => {
   it('matches the stored output', async () => {
     const { output } = await convertExtras(target);

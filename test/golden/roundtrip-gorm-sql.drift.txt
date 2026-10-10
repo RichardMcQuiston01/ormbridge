@@ -1,0 +1,4 @@
++ CREATE UNIQUE INDEX blog_category_name_key ON blog_category (name);
++ CREATE UNIQUE INDEX blog_post_public_id_key ON blog_post (public_id);
+- CONSTRAINT blog_category_name_key UNIQUE (name),
+- CONSTRAINT blog_post_public_id_key UNIQUE (public_id),
