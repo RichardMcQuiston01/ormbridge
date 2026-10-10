@@ -12,6 +12,7 @@ export type PyValue =
   | { kind: 'none' }
   | { kind: 'name'; value: string }
   | { kind: 'list'; items: PyValue[] }
+  | { kind: 'dict'; entries: { key: PyValue; value: PyValue }[] }
   | PyCall
   | { kind: 'other'; text: string };
 
@@ -67,8 +68,15 @@ function unquote(literalText: string): string {
   return body.replace(/\\(["'\\])/g, '$1').replace(/\\n/g, '\n');
 }
 
+/** Nesting depth beyond which an expression is kept as source text (guards against hostile input). */
+const MAX_EVALUATION_DEPTH: number = 64;
+
 /** Evaluates a tree-sitter expression node into the supported PyValue subset. */
-export function evaluateNode(node: SyntaxNode): PyValue {
+export function evaluateNode(node: SyntaxNode, depth: number = 0): PyValue {
+  if (depth > MAX_EVALUATION_DEPTH) {
+    return { kind: 'other', text: node.text.slice(0, 200) };
+  }
+  const next: number = depth + 1;
   switch (node.type) {
     case 'string':
       return { kind: 'string', value: unquote(node.text) };
@@ -99,17 +107,36 @@ export function evaluateNode(node: SyntaxNode): PyValue {
     case 'tuple':
     case 'expression_list':
     case 'set':
-      return { kind: 'list', items: node.namedChildren.map(evaluateNode) };
+      return {
+        kind: 'list',
+        items: node.namedChildren.map((child: SyntaxNode): PyValue =>
+          evaluateNode(child, next)
+        ),
+      };
+    case 'dictionary': {
+      const entries: { key: PyValue; value: PyValue }[] = [];
+      for (const pair of node.namedChildren) {
+        const keyNode: SyntaxNode | null = pair.childForFieldName('key');
+        const valueNode: SyntaxNode | null = pair.childForFieldName('value');
+        if (pair.type === 'pair' && keyNode !== null && valueNode !== null) {
+          entries.push({
+            key: evaluateNode(keyNode, next),
+            value: evaluateNode(valueNode, next),
+          });
+        }
+      }
+      return { kind: 'dict', entries };
+    }
     case 'parenthesized_expression': {
       const inner: SyntaxNode | undefined = node.namedChildren[0];
       return inner === undefined
         ? { kind: 'other', text: node.text }
-        : evaluateNode(inner);
+        : evaluateNode(inner, next);
     }
     case 'unary_operator': {
       const operand: SyntaxNode | undefined = node.namedChildren[0];
       if (operand !== undefined && node.text.startsWith('-')) {
-        const operandValue: PyValue = evaluateNode(operand);
+        const operandValue: PyValue = evaluateNode(operand, next);
         if (operandValue.kind === 'number') {
           return { kind: 'number', value: -operandValue.value };
         }
@@ -117,13 +144,13 @@ export function evaluateNode(node: SyntaxNode): PyValue {
       return { kind: 'other', text: node.text };
     }
     case 'call':
-      return evaluateCall(node);
+      return evaluateCall(node, next);
     default:
       return { kind: 'other', text: node.text };
   }
 }
 
-function evaluateCall(node: SyntaxNode): PyValue {
+function evaluateCall(node: SyntaxNode, depth: number): PyValue {
   const functionNode: SyntaxNode | null = node.childForFieldName('function');
   const argumentsNode: SyntaxNode | null = node.childForFieldName('arguments');
   const callee: string =
@@ -138,10 +165,10 @@ function evaluateCall(node: SyntaxNode): PyValue {
         const valueNode: SyntaxNode | null =
           argumentNode.childForFieldName('value');
         if (keyNode !== null && valueNode !== null) {
-          kwargs[keyNode.text] = evaluateNode(valueNode);
+          kwargs[keyNode.text] = evaluateNode(valueNode, depth);
         }
       } else if (argumentNode.type !== 'comment') {
-        args.push(evaluateNode(argumentNode));
+        args.push(evaluateNode(argumentNode, depth));
       }
     }
   }

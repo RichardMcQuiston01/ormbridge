@@ -369,6 +369,56 @@ export const READ_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
           'Only JSON is read (the package has no YAML parser, so a YAML OpenAPI document must be converted first). References are followed between the files that are given: `#/...` pointers, `#`, and `$id`- or path-relative references; remote references are never fetched and named anchors (`$anchor`, `$dynamicRef`) are not resolved. An unresolved reference keeps its property as a `json` column.',
       },
     ],
+    sqlalchemy: [
+      {
+        id: 'sqlalchemy-static',
+        title: 'The models are read, not run',
+        explanation:
+          'The reader parses the Python source with tree-sitter and never imports it, so only what is written literally is understood: string table and column names, literal arguments, `Mapped[...]` annotations, `Annotated[...]` aliases and a literal `type_annotation_map`. A name computed at import time, a model built in a loop or function, `__table_args__` produced by a `@declared_attr`, and any other `@declared_attr` member are skipped with a warning (a `@declared_attr` `__tablename__` that returns the class name is the one exception).',
+      },
+      {
+        id: 'sqlalchemy-constraints',
+        title: 'Constraints and indexes with no model equivalent',
+        explanation:
+          '`CheckConstraint`, `ExcludeConstraint`, partial indexes (a `*_where` argument), expression indexes (`func.lower(...)`, `text(...)`), index operator classes and `INCLUDE` columns, `deferrable` / `initially`, comments and `info` have no place in the IR and are dropped, each with a warning. Named unique constraints, ordinary and unique indexes (also `Index(...)` written after the class), composite primary and foreign keys, `ondelete` and `onupdate` are kept.',
+      },
+      {
+        id: 'sqlalchemy-defaults',
+        title: 'Defaults are reduced to the ones the IR can state',
+        explanation:
+          'Literals, `func.now()` and `datetime` callables (the current time), `uuid.uuid4`, `dict` / `list` and a `lambda` returning one of those, enum members, `Decimal(...)` and SQL text such as `text("0")`, `text("\'draft\'")` or `text("CURRENT_TIMESTAMP")` are kept; any other expression in `server_default` is kept as a database expression, and any other Python callable in `default` is dropped with a warning. A `server_default` wins over `default` when both are given. `onupdate=func.now()` marks the column as refreshed on every save and drops the redundant `now` default.',
+      },
+      {
+        id: 'sqlalchemy-types',
+        title: 'Column types are mapped to the nearest model type',
+        explanation:
+          '`SmallInteger` and `Integer` are both `int`, `String(n)` and `Unicode(n)` a length-limited `string`, `DateTime(timezone=True)` and `DateTime` the same `dateTime`, `JSON` and `JSONB` the same `json`, and `Float(precision=...)` a plain `float`. A Python type with no column type of its own (`dict`, `list[str]`, a custom class) needs an explicit SQLAlchemy type and otherwise becomes an `unsupported` column with a warning, as do types the IR has no name for (`Geometry`, `TSVECTOR`). A `TypeDecorator` is read through its `impl`.',
+      },
+      {
+        id: 'sqlalchemy-enums',
+        title: 'Enums store member names unless told otherwise',
+        explanation:
+          "SQLAlchemy writes the member names of a Python `Enum` to the database (`DRAFT`), not their values, unless `values_callable=lambda e: [m.value for m in e]` is given; the reader follows the same rule when it fills the stored value of each enum member. `native_enum`, `create_constraint`, `length` and `inherit_schema` are not kept; an explicit `name=` becomes the enum's database name.",
+      },
+      {
+        id: 'sqlalchemy-inheritance',
+        title: 'Inheritance',
+        explanation:
+          'Mixins, abstract bases (`__abstract__ = True`) and plain bases contribute their columns to every subclass. Joined-table inheritance becomes an ordinary model whose primary key is a one-to-one relation to the parent. Single-table inheritance (a subclass with no table of its own) and polymorphic identities are not modelled: the subclass is skipped with a warning.',
+      },
+      {
+        id: 'sqlalchemy-relationships',
+        title: 'Relationships are matched through foreign keys',
+        explanation:
+          "A relationship is not a database object, so the reader works out which side owns the foreign key (from `foreign_keys`, `remote_side`, `primaryjoin` or the only foreign key between the two tables) and attaches the other side as its related name (`back_populates`, `backref`). A reverse side that is a single object (`uselist=False`, or an annotation that is not a list) makes the relation one-to-one; so does a unique foreign key. Loader and cascade options (`lazy`, `cascade`, `order_by`, `passive_deletes`, `viewonly` relationships) are not kept. A many-to-many keeps the two names and drops the association table's own name and `ondelete` (it is re-derived as `<table>_<relation>`); extra columns on the association table are not represented, and an association class with extra columns stays an ordinary model.",
+      },
+      {
+        id: 'sqlalchemy-sqlmodel',
+        title: 'SQLModel',
+        explanation:
+          'A class declared with `table=True` is a model and its table name defaults to the lower-cased class name; classes without it only contribute fields. Pydantic constraints (`ge`, `le`, `min_length`, `regex`, validators) and `alias` / `exclude` settings have no database meaning and are dropped. A field typed `list` or `dict` needs `sa_type` or `sa_column` to name its column type.',
+      },
+    ],
     sql: [
       {
         id: 'sql-dropped-statements',

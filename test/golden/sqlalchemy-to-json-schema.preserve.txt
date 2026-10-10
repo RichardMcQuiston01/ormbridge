@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ormbridge:schema",
+  "$defs": {
+    "PostStatus": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published"
+      ]
+    },
+    "User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "readOnly": true
+        },
+        "posts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Post"
+          }
+        },
+        "edited_posts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Post"
+          }
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Profile"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Category": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "id": {
+          "type": "integer",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "slug": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "parent_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Category"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Category"
+          }
+        },
+        "posts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Post"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "slug"
+      ],
+      "additionalProperties": false
+    },
+    "Post": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "id": {
+          "type": "integer",
+          "readOnly": true
+        },
+        "public_id": {
+          "type": "string",
+          "format": "uuid",
+          "readOnly": true
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "body": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PostStatus",
+          "default": "draft"
+        },
+        "rating": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^-?[0-9]{1,2}(\\.[0-9]{1,2})?$"
+        },
+        "view_count": {
+          "type": "integer",
+          "default": 0
+        },
+        "is_featured": {
+          "type": "boolean",
+          "default": false
+        },
+        "published_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "metadata_": {},
+        "author_id": {
+          "type": "integer"
+        },
+        "author": {
+          "$ref": "#/$defs/User"
+        },
+        "editor_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "editor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/User"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "category_id": {
+          "type": "integer"
+        },
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Tag"
+          }
+        }
+      },
+      "required": [
+        "title",
+        "body",
+        "author_id",
+        "category_id"
+      ],
+      "additionalProperties": false
+    },
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "readOnly": true
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "posts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Post"
+          }
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "Profile": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "readOnly": true
+        },
+        "bio": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "avatar": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "user_id": {
+          "type": "integer"
+        },
+        "user": {
+          "$ref": "#/$defs/User"
+        }
+      },
+      "required": [
+        "user_id"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

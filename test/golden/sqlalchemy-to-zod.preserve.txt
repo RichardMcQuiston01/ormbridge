@@ -1,0 +1,135 @@
+import { z } from 'zod';
+
+export const PostStatus = {
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+} as const;
+export const PostStatusSchema = z.enum(PostStatus);
+export type PostStatus = z.infer<typeof PostStatusSchema>;
+
+export const UserSchema = z.object({
+  id: z.number().int(),
+});
+export type User = z.infer<typeof UserSchema>;
+
+export const UserCreateSchema = UserSchema.omit({ id: true });
+export type UserCreate = z.infer<typeof UserCreateSchema>;
+
+export const UserUpdateSchema = UserCreateSchema.partial();
+export type UserUpdate = z.infer<typeof UserUpdateSchema>;
+
+export type UserWithRelations = User & {
+  posts?: PostWithRelations[];
+  edited_posts?: PostWithRelations[];
+  profile?: ProfileWithRelations | null;
+};
+export const UserWithRelationsSchema: z.ZodType<UserWithRelations> = UserSchema.extend({
+  posts: z.array(z.lazy(() => PostWithRelationsSchema)).optional(),
+  edited_posts: z.array(z.lazy(() => PostWithRelationsSchema)).optional(),
+  profile: z.lazy(() => ProfileWithRelationsSchema).nullable().optional(),
+});
+
+export const CategorySchema = z.object({
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  id: z.number().int(),
+  name: z.string().max(100),
+  slug: z.string().max(50),
+  parent_id: z.number().int().nullable(),
+});
+export type Category = z.infer<typeof CategorySchema>;
+
+export const CategoryCreateSchema = CategorySchema.omit({ updated_at: true, id: true }).partial({ created_at: true, parent_id: true });
+export type CategoryCreate = z.infer<typeof CategoryCreateSchema>;
+
+export const CategoryUpdateSchema = CategoryCreateSchema.partial();
+export type CategoryUpdate = z.infer<typeof CategoryUpdateSchema>;
+
+export type CategoryWithRelations = Category & {
+  parent?: CategoryWithRelations | null;
+  children?: CategoryWithRelations[];
+  posts?: PostWithRelations[];
+};
+export const CategoryWithRelationsSchema: z.ZodType<CategoryWithRelations> = CategorySchema.extend({
+  parent: z.lazy(() => CategoryWithRelationsSchema).nullable().optional(),
+  children: z.array(z.lazy(() => CategoryWithRelationsSchema)).optional(),
+  posts: z.array(z.lazy(() => PostWithRelationsSchema)).optional(),
+});
+
+export const PostSchema = z.object({
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  id: z.number().int(),
+  public_id: z.uuid(),
+  title: z.string().max(200),
+  body: z.string(),
+  status: PostStatusSchema,
+  rating: z.string().regex(/^-?\d{1,2}(\.\d{1,2})?$/).nullable(),
+  view_count: z.number().int(),
+  is_featured: z.boolean(),
+  published_at: z.coerce.date(),
+  metadata_: z.unknown(),
+  author_id: z.number().int(),
+  editor_id: z.number().int().nullable(),
+  category_id: z.number().int(),
+});
+export type Post = z.infer<typeof PostSchema>;
+
+export const PostCreateSchema = PostSchema.omit({ updated_at: true, id: true }).partial({ created_at: true, public_id: true, status: true, rating: true, view_count: true, is_featured: true, published_at: true, metadata_: true, editor_id: true });
+export type PostCreate = z.infer<typeof PostCreateSchema>;
+
+export const PostUpdateSchema = PostCreateSchema.partial();
+export type PostUpdate = z.infer<typeof PostUpdateSchema>;
+
+export type PostWithRelations = Post & {
+  author?: UserWithRelations;
+  editor?: UserWithRelations | null;
+  category?: CategoryWithRelations;
+  tags?: TagWithRelations[];
+};
+export const PostWithRelationsSchema: z.ZodType<PostWithRelations> = PostSchema.extend({
+  author: z.lazy(() => UserWithRelationsSchema).optional(),
+  editor: z.lazy(() => UserWithRelationsSchema).nullable().optional(),
+  category: z.lazy(() => CategoryWithRelationsSchema).optional(),
+  tags: z.array(z.lazy(() => TagWithRelationsSchema)).optional(),
+});
+
+export const TagSchema = z.object({
+  id: z.number().int(),
+  label: z.string().max(50),
+});
+export type Tag = z.infer<typeof TagSchema>;
+
+export const TagCreateSchema = TagSchema.omit({ id: true });
+export type TagCreate = z.infer<typeof TagCreateSchema>;
+
+export const TagUpdateSchema = TagCreateSchema.partial();
+export type TagUpdate = z.infer<typeof TagUpdateSchema>;
+
+export type TagWithRelations = Tag & {
+  posts?: PostWithRelations[];
+};
+export const TagWithRelationsSchema: z.ZodType<TagWithRelations> = TagSchema.extend({
+  posts: z.array(z.lazy(() => PostWithRelationsSchema)).optional(),
+});
+
+export const ProfileSchema = z.object({
+  id: z.number().int(),
+  bio: z.string().nullable(),
+  avatar: z.string().max(100).nullable(),
+  user_id: z.number().int(),
+});
+export type Profile = z.infer<typeof ProfileSchema>;
+
+export const ProfileCreateSchema = ProfileSchema.omit({ id: true }).partial({ bio: true, avatar: true });
+export type ProfileCreate = z.infer<typeof ProfileCreateSchema>;
+
+export const ProfileUpdateSchema = ProfileCreateSchema.partial();
+export type ProfileUpdate = z.infer<typeof ProfileUpdateSchema>;
+
+export type ProfileWithRelations = Profile & {
+  user?: UserWithRelations;
+};
+export const ProfileWithRelationsSchema: z.ZodType<ProfileWithRelations> = ProfileSchema.extend({
+  user: z.lazy(() => UserWithRelationsSchema).optional(),
+});
