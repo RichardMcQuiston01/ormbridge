@@ -13,6 +13,11 @@ import {
   type PrismaVersion,
 } from './emitters/prisma.js';
 import {
+  isSqlAlchemyStyle,
+  SQLALCHEMY_STYLES,
+  type SqlAlchemyStyle,
+} from './emitters/sqlalchemy.js';
+import {
   describeFormats,
   getFormat,
   getFormatByExtension,
@@ -60,6 +65,7 @@ interface ConvertFlags {
   namespace?: string;
   goPackage?: string;
   prismaVersion?: string;
+  style?: string;
   /** A path, or false when --no-config was given. */
   config?: string | boolean;
   dryRun?: boolean;
@@ -114,6 +120,7 @@ interface MergedSettings {
   goPackage?: string;
   /** A number from the config file or the raw text of the flag. */
   prismaVersion?: number | string;
+  style?: string;
 }
 
 /** Validates merged settings and builds the options for one conversion. */
@@ -181,6 +188,17 @@ function buildRunOptions(
     );
   }
 
+  let style: SqlAlchemyStyle | undefined;
+  if (settings.style !== undefined) {
+    if (!isSqlAlchemyStyle(settings.style)) {
+      return failure(
+        'INVALID_OPTION',
+        `Invalid --style value "${settings.style}". Expected one of: ${SQLALCHEMY_STYLES.join(', ')}.`
+      );
+    }
+    style = settings.style;
+  }
+
   let prismaVersion: PrismaVersion | undefined;
   if (settings.prismaVersion !== undefined) {
     const versionText: string = String(settings.prismaVersion).trim();
@@ -216,6 +234,7 @@ function buildRunOptions(
         ? {}
         : { goPackage: settings.goPackage }),
       ...(prismaVersion === undefined ? {} : { prismaVersion }),
+      ...(style === undefined ? {} : { style }),
     },
   };
 }
@@ -315,6 +334,9 @@ function planRuns(
     }
     if (flags.prismaVersion !== undefined) {
       settings.prismaVersion = flags.prismaVersion;
+    }
+    if (flags.style !== undefined) {
+      settings.style = flags.style;
     }
     const options: Result<RunOptions> = buildRunOptions(settings, mode);
     if (!options.ok) {
@@ -555,6 +577,10 @@ export async function runCli(
     .option(
       '--prisma-version <version>',
       'Prisma major version of the generator and datasource blocks (6 | 7) (default: 6; 7 writes the prisma-client generator and no datasource url)'
+    )
+    .option(
+      '--style <name>',
+      `flavour of the SQLAlchemy output (${SQLALCHEMY_STYLES.join(' | ')}); sqlmodel writes SQLModel classes (--to sqlalchemy only) (default: sqlalchemy)`
     )
     .option(
       '--dry-run',

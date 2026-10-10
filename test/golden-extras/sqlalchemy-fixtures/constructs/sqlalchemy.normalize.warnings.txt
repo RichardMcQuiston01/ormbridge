@@ -1,0 +1,3 @@
+Book.color: the name "color" collides with another attribute of the class or a name used by the module; it was written as color_.
+index.class: "class" would shadow a name the class needs; the attribute was written as class_.
+Book.tags, grid, colors, window, extra: array, HSTORE, range and IP address columns are PostgreSQL types; they fall back to JSON (or a string) on SQLite.

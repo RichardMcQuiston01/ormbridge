@@ -1,6 +1,11 @@
 import { readFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { PRISMA_PROVIDERS } from './emitters/prisma.js';
+import {
+  isSqlAlchemyStyle,
+  SQLALCHEMY_STYLES,
+  type SqlAlchemyStyle,
+} from './emitters/sqlalchemy.js';
 import { describeThrown, err, ok, type Result } from './result.js';
 
 /** File names searched for in each directory, in priority order. */
@@ -30,6 +35,8 @@ export interface ConversionConfig {
   goPackage?: string;
   /** Prisma major version of the generated header (6 or 7). */
   prismaVersion?: 6 | 7;
+  /** Flavour of the SQLAlchemy output: plain SQLAlchemy 2.0 or SQLModel. */
+  style?: SqlAlchemyStyle;
 }
 
 /** A parsed config file. Top-level settings are defaults shared by every entry in `conversions`. */
@@ -56,6 +63,7 @@ const CONVERSION_KEYS: readonly string[] = [
   'namespace',
   'goPackage',
   'prismaVersion',
+  'style',
 ];
 
 /**
@@ -305,6 +313,17 @@ function parseConversion(
       );
     }
     config.prismaVersion = prismaVersion;
+  }
+
+  const style: unknown = raw['style'];
+  if (style !== undefined) {
+    if (typeof style !== 'string' || !isSqlAlchemyStyle(style)) {
+      return fail(
+        'style',
+        `must be one of ${SQLALCHEMY_STYLES.join(', ')} (got ${describeValue(style)}).`
+      );
+    }
+    config.style = style;
   }
 
   const header: unknown = raw['header'];

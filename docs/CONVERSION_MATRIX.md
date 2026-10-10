@@ -1621,7 +1621,7 @@ Not stable, but only for documented reasons: a second json-schema → sql → js
 
 ## Write-only targets
 
-Some formats can be written but not read (zod), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. JSON Schema: every model and enum has a `$defs` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
+Some formats can be written but not read (zod, sqlalchemy), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. JSON Schema: every model and enum has a `$defs` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
 
 | Pair | Files | Emit warnings | Missing |
 | --- | --- | --- | --- |
@@ -1634,6 +1634,15 @@ Some formats can be written but not read (zod), so the matrix cannot re-read the
 | drizzle → zod | 1 | 0 | none |
 | json-schema → zod | 1 | 0 | none |
 | sql → zod | 1 | 0 | none |
+| django → sqlalchemy | 1 | 1 | none |
+| prisma → sqlalchemy | 1 | 1 | none |
+| typeorm → sqlalchemy | 1 | 1 | none |
+| doctrine → sqlalchemy | 1 | 1 | none |
+| laravel → sqlalchemy | 1 | 1 | none |
+| gorm → sqlalchemy | 1 | 1 | none |
+| drizzle → sqlalchemy | 1 | 1 | none |
+| json-schema → sqlalchemy | 1 | 1 | none |
+| sql → sqlalchemy | 1 | 1 | none |
 
 ### django → zod
 
@@ -1689,12 +1698,95 @@ The output covers the canonical schema.
 
 Emit warnings: none.
 
+### django → sqlalchemy
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Post.metadata: "metadata" would shadow a name the class needs; the attribute was written as metadata_.
+
+### prisma → sqlalchemy
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Post.metadata: "metadata" would shadow a name the class needs; the attribute was written as metadata_.
+
+### typeorm → sqlalchemy
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Post.metadata: "metadata" would shadow a name the class needs; the attribute was written as metadata_.
+
+### doctrine → sqlalchemy
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Post.metadata: "metadata" would shadow a name the class needs; the attribute was written as metadata_.
+
+### laravel → sqlalchemy
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Post.metadata: "metadata" would shadow a name the class needs; the attribute was written as metadata_.
+
+### gorm → sqlalchemy
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Post.metadata: "metadata" would shadow a name the class needs; the attribute was written as metadata_.
+
+### drizzle → sqlalchemy
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Post.metadata: "metadata" would shadow a name the class needs; the attribute was written as metadata_.
+
+### json-schema → sqlalchemy
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Post.metadata: "metadata" would shadow a name the class needs; the attribute was written as metadata_.
+
+### sql → sqlalchemy
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- BlogPost.metadata: "metadata" would shadow a name the class needs; the attribute was written as metadata_.
+
 ### What zod approximates
 
 1. **Types that JSON cannot carry.** Big integers and decimals are validated as strings of digits (a decimal with `max_digits` and `decimal_places` gets a pattern sized to them), UUIDs with `z.uuid()` (which only accepts RFC 9562 versions and variants), binary data as base64 text, durations and times as plain strings, and JSON columns as `z.unknown()`. Date columns use `z.coerce.date()`, which also accepts `null` and numbers, so a null in a required date column is not rejected; the `dates: "string"` option validates ISO text strictly instead.
 2. **Create and update schemas are inferred.** The IR has no notion of an API payload. `<Model>CreateSchema` leaves out auto-increment keys, generated columns and auto-updated timestamps, and makes columns with a default (or a database default) and nullable columns optional. `<Model>UpdateSchema` is the create schema made partial, so it cannot change a generated column. Views get neither.
 3. **Relations are a separate schema.** Relation fields are not part of `<Model>Schema`; the foreign-key scalar is. A model that takes part in a relation also gets `<Model>WithRelationsSchema`, where every related row is optional and resolved lazily. Referential actions (`onDelete`), `related_name` collisions and composite foreign keys are not validation rules, so they are dropped (a composite key stays as its scalar columns).
 4. **Database-only rules are not checked.** Unique constraints, indexes, check constraints, string lengths below the database limit, integer ranges, enum value order and column names are not validated or kept; only string `max_length`, enum membership, nullability and the types above are. Enum labels are kept as comments. Ranges become an object with `lower`, `upper` and `bounds`, and hstore a record of nullable strings.
+
+### What sqlalchemy approximates
+
+1. **Two flavours, one module.** The matrix writes the default `sqlalchemy` style: one `models.py` with a `Base(DeclarativeBase)`, typed `Mapped[...]` attributes built with `mapped_column`, and `relationship(back_populates=...)` on both sides of every relation. `--style sqlmodel` writes `SQLModel, table=True` classes with `Field(...)` and `Relationship(...)` instead (`sa_type`, `sa_column_kwargs`, `sa_column` and `sa_relationship_kwargs` only where `Field` and `Relationship` cannot say it). `--provider` is ignored: the output does not depend on the database.
+2. **Python attributes are snake_case.** Attribute names are snake_case in both naming modes, and the database column name is passed as the first argument of `mapped_column` whenever it differs. Names that would shadow something the class body needs (`class`, `metadata`, `text`, `datetime`, an enum or model name) get a trailing underscore, and a class name that collides with an imported name gets a `Model` suffix; each repair is a warning. An unnamed reverse relation is named after the plural of the model (`posts`), a one-to-one after the model.
+3. **Defaults live in the database where they can.** Literal, enum, boolean and `now` defaults are `server_default` (`func.now()`, `func.current_date()`, `true()`, `text(...)`), so a raw SQL insert gets them too. UUID defaults are `default=uuid.uuid4` (Python, no portable database function), an auto-updated column is `default=func.now(), onupdate=func.now()`, and a Prisma `dbgenerated(...)` expression is `server_default=text(...)`. Client-generated defaults (`cuid()`, `ulid()`) and Prisma default functions are dropped with a warning, and a UUID version 7 default is written as `uuid.uuid4`.
+4. **Many-to-many is an association table.** Every many-to-many relation is a `Table(...)` with the two foreign keys as a composite primary key (no surrogate `id`, unlike the table Django creates), referenced by `secondary=` on both relationships. A self-referential relation gets `primaryjoin` / `secondaryjoin`. The table is named `<owner table>_<relation>` and the columns `<model>_id` (`from_<model>_id` and `to_<model>_id` for a self reference).
+5. **Keys, constraints and referential actions.** Composite primary keys and named primary keys are a `PrimaryKeyConstraint`, composite foreign keys a `ForeignKeyConstraint`, unique and index entries `UniqueConstraint` and `Index` in `__table_args__`; `ON DELETE` and `ON UPDATE` are written on every `ForeignKey`. A `SET NULL` action on a column that cannot be null is written as `RESTRICT` with a warning. The reverse side of a cascading or nulling key sets `passive_deletes=True`, so the ORM leaves the action to the database. A table without a primary key is mapped on its required columns with `__mapper_args__` (SQLModel needs one: the first column is marked as the key) and a warning.
+6. **Enums are Python enum classes.** An enum is an `enum.Enum` class whose values are the stored values, bound with `Enum(Cls, name=..., values_callable=...)` so the database stores the values, not the member names. PostgreSQL gets a native enum type, other databases a `VARCHAR`. Member names that are not Python identifiers are repaired with a warning; labels are not kept.
+7. **PostgreSQL types fall back to JSON on SQLite.** Arrays (`ARRAY`, `dimensions=` for nested arrays), `HSTORE`, range types and `INET` are PostgreSQL types; each is written with `.with_variant(JSON(), "sqlite")` (a 45-character string for `INET`) so `create_all` also works in a SQLite test database, and the model gets a warning. Other databases are not covered. Durations are `Interval`, booleans `Boolean`, timestamps `DateTime(timezone=True)`, UUIDs the generic `Uuid`. A `bigInt` auto-increment key is `BigInteger().with_variant(Integer, "sqlite")` so SQLite counts it up.
+8. **Constructs without a SQLAlchemy equivalent.** Views are a commented placeholder with a warning (SQLAlchemy has no declarative view; reflect it with `Table(..., autoload_with=engine)`), database schemas (`@@schema`) are ignored, generated-column expressions are not SQL and the column is written as a regular one, index methods, operator classes, sort order and full-text kinds are dropped (an ordinary index is written), and relations to a view or a model that is not in the input stay plain columns.
 
 ## Known issues
 

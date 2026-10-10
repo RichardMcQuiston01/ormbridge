@@ -1,0 +1,2 @@
+Account.labels, ip: array, HSTORE, range and IP address columns are PostgreSQL types; they fall back to JSON (or a string) on SQLite.
+Session.token: the UUID version 7 default was written as uuid.uuid4.

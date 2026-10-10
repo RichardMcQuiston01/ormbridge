@@ -95,6 +95,8 @@ Status: track S (the SQL DDL emitter) is built on `feature/sql-ddl-emitter` as t
 
 Pairs M/N, O/P, R/S and T/U run in parallel; Q is independent of P. After they land, extend the conversion matrix (2.1) to cover the new read and write formats and document what is lossy.
 
+**Status of track U:** built (`emitSqlAlchemy`, the write-only `sqlalchemy` format, `--style sqlalchemy | sqlmodel`). One `models.py`; `.py` stays with Django, so users pass `--to sqlalchemy`. The sibling parser (track T) adds `parse` to the same adapter. Verified with real SQLAlchemy 2 and SQLModel in the `real-tools` CI job (`SQLALCHEMY_PYTHON`).
+
 **Status of track R:** built (`parseSqlDdl`, the read-only `sql` format that claims `.sql`). It also reads SQL Server and a few `ALTER TABLE` forms; there is no SQL grammar in `tree-sitter-wasms`, so it uses a small static tokenizer. The `sql` format becomes writable when track S adds the emitter to the same adapter.
 
 ## Parallel work plan

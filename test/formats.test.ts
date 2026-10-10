@@ -165,6 +165,9 @@ describe('formats command output', () => {
     expect(text).toMatch(
       /zod\s+extensions: \(none\) {2}write {2}Zod schemas \(TypeScript, Zod 4\)\n/
     );
+    expect(text).toMatch(
+      /sqlalchemy\s+extensions: \(none\) {2}(read \+ )?write {2}SQLAlchemy 2\.0 declarative models \(Python\); --style sqlmodel writes SQLModel classes\n/
+    );
   });
 
   it('marks one-way formats', () => {
