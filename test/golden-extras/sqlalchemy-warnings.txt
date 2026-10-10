@@ -1,0 +1,17 @@
+Customer.__table_args__: a CheckConstraint ("ck_customers_credit") was ignored (check constraints are not part of the shared model).
+Invoice.__table_args__: the index "ix_invoice_number_desc" on an expression or on a column that does not exist was ignored.
+Customer: the index "ix_customers_email_lower" on an expression or on a column that does not exist was ignored.
+Customer: the partial index "ix_customers_active_name" (with a WHERE clause) was ignored.
+audit_log: the Table is not mapped to a class and not used as a secondary table; it is converted as the model AuditLog.
+Customer.lifetime: Prisma has no interval type; the duration was written as BigInt (microseconds).
+Invoice.total: the generated column expression subtotal + tax has no Prisma equivalent; it was written as a regular column, so Prisma will try to write to it.
+---
+Device.shape: the column type Geometry is not known; the column was kept as an unsupported type.
+Device.__table_args__: a CheckConstraint ("ck_devices_tags") was ignored (check constraints are not part of the shared model).
+Device.__table_args__: the partial index "ix_devices_live" (with a WHERE clause) was ignored.
+Device.__table_args__: an ExcludeConstraint was ignored.
+Device.grid: Prisma supports only one-dimensional scalar lists; the 2-dimensional array was written as Json.
+Device.labels: Prisma has no hstore type; the field was written as Json.
+Device.window: range columns are written as Unsupported("int4range"), which Prisma Client cannot read or filter.
+Device.shape: Unsupported("Geometry(POINT)") is kept as an opaque column; Prisma Client cannot read, filter or write it.
+Device index (tags): the index type gin is not supported on postgresql and was dropped.

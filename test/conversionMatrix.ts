@@ -14,6 +14,7 @@ import type {
 import { checkDrizzleOutput } from './drizzleCoverage.js';
 import { checkGormOutput } from './gormCoverage.js';
 import { checkJsonSchemaOutput } from './jsonSchemaCoverage.js';
+import { checkSqlAlchemyOutput } from './sqlalchemyCoverage.js';
 import { checkSqlDdlOutput } from './sqlDdlCoverage.js';
 import { checkZodOutput } from './zodCoverage.js';
 import { loadCanonicalSources } from './harness.js';
@@ -303,6 +304,7 @@ const EMIT_ONLY_CHECKS: Readonly<
   'json-schema': checkJsonSchemaOutput,
   zod: checkZodOutput,
   sql: checkSqlDdlOutput,
+  sqlalchemy: checkSqlAlchemyOutput,
 };
 
 /** Write-only formats the matrix can check structurally, in registration order. */

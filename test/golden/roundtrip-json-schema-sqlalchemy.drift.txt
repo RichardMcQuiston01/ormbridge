@@ -1,0 +1,55 @@
++ "Post_tags",
++ Column("post_id", ForeignKey("Post.id", ondelete="CASCADE"), primary_key=True),
++ Column("tag_id", ForeignKey("Tag.id", ondelete="CASCADE"), primary_key=True),
++ ForeignKey("Category.id", ondelete="RESTRICT"),
++ ForeignKey("Category.id", ondelete="SET NULL"),
++ ForeignKey("User.id", ondelete="RESTRICT"),
++ ForeignKey("User.id", ondelete="RESTRICT"),
++ ForeignKey("User.id", ondelete="SET NULL"),
++ __tablename__ = "Category"
++ __tablename__ = "Post"
++ __tablename__ = "Profile"
++ __tablename__ = "Tag"
++ __tablename__ = "User"
++ metadata_: Mapped[Optional[Any]] = mapped_column(JSON(none_as_null=True))
++ name: Mapped[str] = mapped_column(String(100))
++ post_tags = Table(
++ profile: Mapped[Optional["Profile"]] = relationship(back_populates="user")
++ public_id: Mapped[uuid.UUID] = mapped_column(Uuid, default=uuid.uuid4)
++ secondary=post_tags,
++ secondary=post_tags,
+- "blog_post_tags",
+- "metadata",
+- )
+- )
+- )
+- Column("post_id", ForeignKey("blog_post.id", ondelete="CASCADE"), primary_key=True),
+- Column("tag_id", ForeignKey("blog_tag.id", ondelete="CASCADE"), primary_key=True),
+- ForeignKey("auth_user.id", ondelete="CASCADE"),
+- ForeignKey("auth_user.id", ondelete="CASCADE"),
+- ForeignKey("auth_user.id", ondelete="SET NULL"),
+- ForeignKey("blog_category.id", ondelete="RESTRICT"),
+- ForeignKey("blog_category.id", ondelete="SET NULL"),
+- Index("ix_blog_post_title", "title"),
+- Index("post_pub_status_idx", "published_at", "status"),
+- Index,
+- JSON,
+- UniqueConstraint("author_id", "title", name="uq_blog_post_author_id_title"),
+- UniqueConstraint,
+- __table_args__ = (
+- __tablename__ = "auth_user"
+- __tablename__ = "blog_category"
+- __tablename__ = "blog_post"
+- __tablename__ = "blog_profile"
+- __tablename__ = "blog_tag"
+- back_populates="user",
+- blog_post_tags = Table(
+- metadata_: Mapped[Any] = mapped_column(
+- name: Mapped[str] = mapped_column(String(100), unique=True)
+- passive_deletes=True,
+- passive_deletes=True,
+- profile: Mapped[Optional["Profile"]] = relationship(
+- public_id: Mapped[uuid.UUID] = mapped_column(Uuid, unique=True, default=uuid.uuid4)
+- secondary=blog_post_tags,
+- secondary=blog_post_tags,
+- server_default=text("'{}'"),

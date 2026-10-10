@@ -1,0 +1,2 @@
+enum Other: the Python class was named OtherEnum.
+Weird.self: "self" would shadow a name the class needs; the attribute was written as self_.

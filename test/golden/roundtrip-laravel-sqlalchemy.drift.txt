@@ -1,0 +1,49 @@
++ )
++ )
++ )
++ )
++ )
++ BigInteger().with_variant(Integer, "sqlite"),
++ BigInteger().with_variant(Integer, "sqlite"),
++ BigInteger().with_variant(Integer, "sqlite"),
++ BigInteger().with_variant(Integer, "sqlite"),
++ BigInteger().with_variant(Integer, "sqlite"),
++ BigInteger,
++ BigInteger,
++ BigInteger,
++ BigInteger,
++ BigInteger,
++ BigInteger,
++ autoincrement=True,
++ autoincrement=True,
++ autoincrement=True,
++ autoincrement=True,
++ autoincrement=True,
++ created_at: Mapped[Optional[datetime.datetime]] = mapped_column(
++ created_at: Mapped[Optional[datetime.datetime]] = mapped_column(
++ id: Mapped[int] = mapped_column(
++ id: Mapped[int] = mapped_column(
++ id: Mapped[int] = mapped_column(
++ id: Mapped[int] = mapped_column(
++ id: Mapped[int] = mapped_column(
++ primary_key=True,
++ primary_key=True,
++ primary_key=True,
++ primary_key=True,
++ primary_key=True,
++ updated_at: Mapped[Optional[datetime.datetime]] = mapped_column(
++ updated_at: Mapped[Optional[datetime.datetime]] = mapped_column(
+- Integer,
+- Integer,
+- Integer,
+- Integer,
+- Integer,
+- created_at: Mapped[datetime.datetime] = mapped_column(
+- created_at: Mapped[datetime.datetime] = mapped_column(
+- id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+- id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+- id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+- id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+- id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+- updated_at: Mapped[datetime.datetime] = mapped_column(
+- updated_at: Mapped[datetime.datetime] = mapped_column(

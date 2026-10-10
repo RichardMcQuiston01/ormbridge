@@ -114,6 +114,22 @@ describe('loadConfigFile', () => {
     });
   });
 
+  it('reads the style key', async () => {
+    const path: string = join(workDirectory, 'ormbridge.config.json');
+    await writeFile(
+      path,
+      JSON.stringify({
+        input: 'models.py',
+        to: 'sqlalchemy',
+        style: 'sqlmodel',
+        conversions: [{ name: 'plain', style: 'sqlalchemy' }],
+      })
+    );
+    const config: ConfigFile = expectOk(await loadConfigFile(path));
+    expect(config.defaults.style).toBe('sqlmodel');
+    expect(config.conversions[0]?.style).toBe('sqlalchemy');
+  });
+
   it('accepts a single input string and a $schema key', async () => {
     const path: string = join(workDirectory, '.ormbridgerc.json');
     await writeFile(path, '{"$schema":"x","input":"models.py"}');
@@ -203,6 +219,11 @@ describe('parseConfig validation', () => {
     [{ from: '' }, '"from" must be a non-empty string'],
     [{ appLabel: 4 }, '"appLabel" must be a non-empty string'],
     [{ goPackage: '' }, '"goPackage" must be a non-empty string'],
+    [
+      { style: 'peewee' },
+      '"style" must be one of sqlalchemy, sqlmodel (got "peewee")',
+    ],
+    [{ style: 3 }, '"style" must be one of sqlalchemy, sqlmodel (got 3)'],
     [{ prismaVersion: 8 }, '"prismaVersion" must be the number 6 or 7 (got 8)'],
     [
       { prismaVersion: '7' },

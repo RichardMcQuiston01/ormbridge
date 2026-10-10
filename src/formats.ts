@@ -11,6 +11,12 @@ import {
 } from './emitters/prisma.js';
 import { emitTypeorm } from './emitters/typeorm.js';
 import { emitJsonSchema } from './emitters/jsonSchema.js';
+import {
+  emitSqlAlchemy,
+  isSqlAlchemyStyle,
+  SQLALCHEMY_STYLES,
+  type SqlAlchemyStyle,
+} from './emitters/sqlalchemy.js';
 import { emitSqlDdl } from './emitters/sqlDdl.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import { emitZod } from './emitters/zod.js';
@@ -22,6 +28,7 @@ import { parseGorm } from './parsers/gorm.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
 import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
+import { parseSqlAlchemy } from './parsers/sqlalchemy.js';
 import { parseSqlDdl } from './parsers/sqlDdl.js';
 import { parseTypeorm } from './parsers/typeorm.js';
 import { err, ok, type Result } from './result.js';
@@ -67,6 +74,12 @@ export interface FormatOptions {
   namespace?: string;
   /** Go package name of the generated GORM models (default `models`); also the output directory. */
   goPackage?: string;
+  /**
+   * Flavour of the SQLAlchemy output: `sqlalchemy` (default; `DeclarativeBase`, `Mapped[...]` and
+   * `mapped_column`) or `sqlmodel` (`SQLModel, table=True` classes with `Field` and `Relationship`).
+   * Only the `sqlalchemy` format reads it.
+   */
+  style?: SqlAlchemyStyle;
 }
 
 /**
@@ -525,6 +538,39 @@ const sqlAdapter: FormatAdapter = {
     ),
 };
 
+const sqlalchemyAdapter: FormatAdapter = {
+  name: 'sqlalchemy',
+  // No extension is claimed: ".py" belongs to Django, so pass --from / --to sqlalchemy (and --style sqlmodel to write SQLModel).
+  extensions: [],
+  description:
+    'SQLAlchemy 2.0 and SQLModel models (Python; declarative, Column() and Table() styles; --style sqlmodel writes SQLModel classes)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseSqlAlchemy(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    if (options.style !== undefined && !isSqlAlchemyStyle(options.style)) {
+      return err(
+        'INVALID_OPTION',
+        `Invalid style "${String(options.style)}". Expected one of: ${SQLALCHEMY_STYLES.join(', ')}.`
+      );
+    }
+    return ok(
+      emitSqlAlchemy(schema, {
+        naming: options.naming,
+        ...(options.style === undefined ? {} : { style: options.style }),
+      })
+    );
+  },
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -539,6 +585,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(zodAdapter),
   registerFormat(jsonSchemaAdapter),
   registerFormat(sqlAdapter),
+  registerFormat(sqlalchemyAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>
