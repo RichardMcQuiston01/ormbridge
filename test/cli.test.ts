@@ -969,3 +969,66 @@ describe('gorm output', () => {
     expect(stale.stderr).toMatch(/models[\\/]tag\.go is out of date/);
   });
 });
+
+describe('sequelize input', () => {
+  const MODELS: string = fileURLToPath(
+    new URL('./fixtures/sequelize/models', import.meta.url)
+  );
+
+  it('reads a directory of models with --from sequelize', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      MODELS,
+      '--from',
+      'sequelize',
+      '--to',
+      'prisma',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(run.stdout).toContain('model Post {');
+    expect(run.stdout).toContain('@@map("blog_post_tags")');
+    expect(run.stderr).not.toContain('warning');
+  });
+
+  it('reads a single model file and needs --from, because .js is not inferred', async () => {
+    const file: string = join(MODELS, 'tag.js');
+    const explicit: CliRun = await cli([
+      'convert',
+      '-i',
+      file,
+      '--from',
+      'sequelize',
+      '--to',
+      'prisma',
+    ]);
+    expect(explicit.code).toBe(EXIT_OK);
+    expect(explicit.stdout).toContain('model Tag {');
+    const inferred: CliRun = await cli([
+      'convert',
+      '-i',
+      file,
+      '--to',
+      'prisma',
+    ]);
+    expect(inferred.code).toBe(EXIT_CONVERSION_ERROR);
+  });
+
+  it('refuses to write Sequelize models and lists the format as read-only', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'sequelize',
+    ]);
+    expect(run.code).not.toBe(EXIT_OK);
+    expect(run.stderr).toContain(
+      'The format "sequelize" can only be used as an input'
+    );
+    const formats: CliRun = await cli(['formats']);
+    expect(formats.stdout).toMatch(
+      /sequelize\s+extensions: \(none\)\s+read\s+/
+    );
+  });
+});

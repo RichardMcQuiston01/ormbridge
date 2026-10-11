@@ -74,6 +74,20 @@ export const CANONICAL_FIXTURES: readonly CanonicalFixture[] = [
     ].map(fixturePath),
   },
   {
+    // Sequelize 6 models in the layout sequelize-cli generates: one factory per file (sequelize.define plus an
+    // associate function) and the models/index.js loader, which defines no models. Read only, so the matrix lists
+    // it among the read-only sources. The class, sequelize-typescript and variant styles live in sequelize-extras.
+    format: 'sequelize',
+    paths: [
+      './sequelize/models/index.js',
+      './sequelize/models/category.js',
+      './sequelize/models/post.js',
+      './sequelize/models/profile.js',
+      './sequelize/models/tag.js',
+      './sequelize/models/user.js',
+    ].map(fixturePath),
+  },
+  {
     format: 'json-schema',
     paths: [fixturePath('./json-schema/blog.schema.json')],
   },

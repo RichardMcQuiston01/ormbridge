@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuthorState {
+  ACTIVE @map("active")
+  BANNED @map("banned")
+}
+
+model Author {
+  id        Int          @id @default(autoincrement())
+  email     String       @unique @db.VarChar(80)
+  bio       String?      @db.Text
+  state     AuthorState? @default(ACTIVE)
+  nickname  String?      @db.VarChar(255)
+  createdAt DateTime     @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @db.Timestamptz(6)
+  deletedAt DateTime?    @db.Timestamptz(6)
+  profile   Profile?
+  posts     Post[]
+
+  @@map("authors")
+}
+
+model Profile {
+  id       Int    @id @default(autoincrement())
+  authorId Int    @unique
+  author   Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Post {
+  id           Int       @id @default(autoincrement())
+  title        String    @db.VarChar(200)
+  slug         String    @db.VarChar(120)
+  status       String?   @default("draft") @db.VarChar(20)
+  publishedAt  DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
+  authorId     Int
+  author       Author    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  categoryId   Int?
+  category     Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  post_tag_set PostTag[]
+
+  @@index([title])
+  @@unique([slug, authorId], map: "posts_author_slug")
+  @@index([status, publishedAt], map: "posts_status_idx")
+  @@map("posts")
+}
+
+model Category {
+  id       Int        @id @default(autoincrement())
+  name     String?    @db.VarChar(60)
+  parentId Int?
+  parent   Category?  @relation("Category_parent", fields: [parentId], references: [id], onDelete: SetNull)
+  posts    Post[]
+  children Category[] @relation("Category_parent")
+
+  @@map("categories")
+}
+
+model Tag {
+  id           Int       @id @default(autoincrement())
+  label        String?   @db.VarChar(40)
+  post_tag_set PostTag[]
+
+  @@map("tags")
+}
+
+model PostTag {
+  postId Int
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tagId  Int
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("post_tags")
+}

@@ -48,6 +48,11 @@ export type {
   LaravelSourceFile,
   LaravelParseOptions,
 } from './parsers/laravel.js';
+export { parseSequelize } from './parsers/sequelize.js';
+export type {
+  SequelizeParseOptions,
+  SequelizeSourceFile,
+} from './parsers/sequelize.js';
 export { parseSqlAlchemy } from './parsers/sqlalchemy.js';
 export type {
   SqlAlchemyParseOptions,

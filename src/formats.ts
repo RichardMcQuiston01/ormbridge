@@ -28,6 +28,7 @@ import { parseGorm } from './parsers/gorm.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
 import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
+import { parseSequelize } from './parsers/sequelize.js';
 import { parseSqlAlchemy } from './parsers/sqlalchemy.js';
 import { parseSqlDdl } from './parsers/sqlDdl.js';
 import { parseTypeorm } from './parsers/typeorm.js';
@@ -581,6 +582,25 @@ const sqlalchemyAdapter: FormatAdapter = {
   },
 };
 
+const sequelizeAdapter: FormatAdapter = {
+  name: 'sequelize',
+  // Input only, and no extension is claimed: ".js" and ".ts" are too generic to infer, so pass --from sequelize.
+  extensions: [],
+  description:
+    'Sequelize 6 models (JavaScript or TypeScript; define, Model.init and sequelize-typescript)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseSequelize(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -596,6 +616,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(jsonSchemaAdapter),
   registerFormat(sqlAdapter),
   registerFormat(sqlalchemyAdapter),
+  registerFormat(sequelizeAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

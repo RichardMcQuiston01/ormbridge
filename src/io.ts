@@ -107,6 +107,28 @@ const SQLALCHEMY_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
 const SQLALCHEMY_NON_MODEL_FILES: RegExp =
   /^(?:test_.*|.*_test|conftest|setup|noxfile|tasks|manage|wsgi|asgi)\.py$/;
 
+/**
+ * Directories skipped when reading Sequelize projects: installed packages and build output, plus the
+ * sequelize-cli directories that hold migrations, seeders and connection settings instead of models.
+ */
+const SEQUELIZE_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
+  'node_modules',
+  'dist',
+  'build',
+  'coverage',
+  'migrations',
+  'seeders',
+  'config',
+  '.git',
+]);
+
+/** JavaScript and TypeScript sources that can hold Sequelize models. */
+const SEQUELIZE_SOURCE_FILE: RegExp = /\.(?:[cm]?js|ts)$/;
+
+/** Declaration files, tests and specs never define the models. */
+const SEQUELIZE_NON_MODEL_FILE: RegExp =
+  /(?:\.d\.ts|\.(?:test|spec)\.[cm]?[jt]s)$/;
+
 export interface RunOptions extends ConvertOptions {
   /** Files or directories to read. */
   inputs: string[];
@@ -448,7 +470,9 @@ async function discoverInputFiles(
                       ? 'SQL (.sql) files'
                       : format === 'sqlalchemy'
                         ? 'Python (.py) files with SQLAlchemy or SQLModel models'
-                        : '.prisma files';
+                        : format === 'sequelize'
+                          ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files'
+                          : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -465,6 +489,13 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
     return (
       extname(filePath) === '.ts' &&
       !/\.(d|test|spec)\.ts$/.test(basename(filePath))
+    );
+  }
+  if (format === 'sequelize') {
+    const fileName: string = basename(filePath);
+    return (
+      SEQUELIZE_SOURCE_FILE.test(fileName) &&
+      !SEQUELIZE_NON_MODEL_FILE.test(fileName)
     );
   }
   if (format === 'gorm') {
@@ -530,6 +561,9 @@ function isSkippedDirectory(
   }
   if (format === 'sqlalchemy') {
     return SQLALCHEMY_SKIPPED_DIRECTORIES.has(name);
+  }
+  if (format === 'sequelize') {
+    return SEQUELIZE_SKIPPED_DIRECTORIES.has(name);
   }
   return (
     SKIPPED_DIRECTORIES.has(name) ||
