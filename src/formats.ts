@@ -80,6 +80,11 @@ export interface FormatOptions {
    * Only the `sqlalchemy` format reads it.
    */
   style?: SqlAlchemyStyle;
+  /**
+   * Write ormbridge's `x-` convention keywords (table names, keys, indexes, referential actions) into JSON Schema
+   * output (default true). Turn it off for validators that reject unknown keywords. Only `json-schema` reads it.
+   */
+  conventions?: boolean;
 }
 
 /**
@@ -344,7 +349,12 @@ const jsonSchemaAdapter: FormatAdapter = {
     const prepared: IrSchema =
       options.naming === 'normalize' ? normalizeSchema(schema) : schema;
     return ok(
-      emitJsonSchema(prepared, { camelFields: options.naming === 'normalize' })
+      emitJsonSchema(prepared, {
+        camelFields: options.naming === 'normalize',
+        ...(options.conventions === undefined
+          ? {}
+          : { conventions: options.conventions }),
+      })
     );
   },
 };

@@ -42,7 +42,7 @@ One document: `$schema`, `$id` (`urn:ormbridge:schema`) and `$defs` with an entr
 - **Relations.** A foreign key keeps its scalar (`author_id`) and adds an optional `$ref` property (`author`). Reverse sides and many-to-many fields are optional arrays of `$ref`.
 - **Convention keywords** (default on) carry what JSON Schema has no keyword for: `x-table-name`, `x-primary-key`, `x-unique`, `x-indexes`, `x-on-delete`, `x-related-name`. They make the file read back into the same models, tables and indexes.
 
-Options that apply from the CLI: `--naming preserve` (default) keeps property names, `--naming normalize` writes camelCase; the config key `naming` is the same. The `conventions` option (set it to `false` to omit the `x-` keywords), `id` and `refPrefix` exist only in the API.
+Options that apply from the CLI: `--naming preserve` (default) keeps property names, `--naming normalize` writes camelCase; the config key `naming` is the same. `--no-conventions` (config key `conventions: false`, API option `conventions: false`) omits the `x-` keywords. The `id` and `refPrefix` options exist only in the API.
 
 **Ajv strict mode** rejects unknown keywords. Either register the vocabulary or write without conventions:
 
