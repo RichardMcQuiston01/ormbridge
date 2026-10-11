@@ -1,0 +1,12 @@
+{
+  "conversions": [
+    {
+      "name": "to-prisma",
+      "input": "../django/models/models.py",
+      "from": "django",
+      "to": "prisma",
+      "naming": "normalize",
+      "output": "models/schema.prisma"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "conversions": [
+    {
+      "name": "to-graphene",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "graphene",
+      "output": "generated/schema.py"
+    }
+  ]
+}

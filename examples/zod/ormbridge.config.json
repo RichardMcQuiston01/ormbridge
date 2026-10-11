@@ -1,0 +1,11 @@
+{
+  "conversions": [
+    {
+      "name": "to-zod",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "zod",
+      "output": "generated/schemas.ts"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-sql",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "sql",
+      "output": "models/schema.sql"
+    },
+    {
+      "name": "from-sql",
+      "input": "models",
+      "from": "sql",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}

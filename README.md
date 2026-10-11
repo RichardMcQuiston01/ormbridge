@@ -12,15 +12,13 @@ Convert ORM models between frameworks and languages, so one data model can be sh
 | GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; writes one file per model                   |
 | Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable` / `mysqlTable` / `sqliteTable` plus `relations()`           |
 | JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON) |
-| SQL DDL                     |  ✔   |       | `CREATE TABLE` and friends for PostgreSQL, MySQL, SQLite, SQL Server  |
-| SQLAlchemy / SQLModel       |  ✔   |       | SQLAlchemy 2.0 declarative, `Column()` and `Table()` styles; SQLModel |
+| SQL DDL                     |  ✔   |   ✔   | `CREATE TABLE` and friends for PostgreSQL, MySQL, SQLite, SQL Server  |
+| SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 declarative, `Column()` and `Table()` styles; SQLModel |
 | TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                             |
 | Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django            |
 | Zod schemas                 |      |   ✔   | Zod 4 schemas and inferred types for validation                       |
-| SQL DDL                     |      |   ✔   | One `.sql` script for PostgreSQL, MySQL, SQLite or SQL Server         |
-| SQLAlchemy / SQLModel       |      |   ✔   | SQLAlchemy 2.0 declarative models; `--style sqlmodel` for SQLModel    |
 
-See [What is converted](#what-is-converted) for the field-level mapping and [docs/CONVERSION_MATRIX.md](docs/CONVERSION_MATRIX.md) for exactly what survives a round trip between the readable formats.
+Each format has a [guide](docs/formats/README.md) and a runnable [example project](examples/README.md). See [What is converted](#what-is-converted) for the field-level mapping and [docs/CONVERSION_MATRIX.md](docs/CONVERSION_MATRIX.md) for exactly what survives a round trip between the readable formats.
 
 - **Static parsing, no runtime needed.** Source files are read with [tree-sitter](https://tree-sitter.github.io/), so there is no Python, Django, PHP, Composer, Go toolchain or database to install or connect to.
 - **Safe for existing databases.** The default `preserve` mode keeps your existing table and column names, so a new tool can sit on top of the database you already have.
@@ -380,7 +378,7 @@ Drizzle's schema is TypeScript code, so `--from drizzle` reads it with the tree-
 
 ### JSON Schema and OpenAPI (`--from json-schema`)
 
-`--from json-schema` reads JSON Schema (draft 2020-12, 2019-09 and 7) and the `components.schemas` of OpenAPI 3.x (and Swagger 2 `definitions`) documents. It is plain JSON, so nothing is installed or run. Only JSON is read: ormbridge has no YAML parser, so convert a YAML OpenAPI document to JSON first (the error says so). It is read only for now (there is no `--to json-schema` yet). `.json` is too generic to infer and `.schema.json` is not an extension the registry can match (it looks at the last extension only), so pass `--from json-schema`. A directory is read recursively: every `.json` file, except tool configuration (`package.json`, `tsconfig*.json`, ...) and anything below `node_modules/`, `vendor/`, `dist/`, `build/`, `coverage/` and `.git/`.
+`--from json-schema` reads JSON Schema (draft 2020-12, 2019-09 and 7) and the `components.schemas` of OpenAPI 3.x (and Swagger 2 `definitions`) documents. It is plain JSON, so nothing is installed or run. Only JSON is read: ormbridge has no YAML parser, so convert a YAML OpenAPI document to JSON first (the error says so). `.json` is too generic to infer and `.schema.json` is not an extension the registry can match (it looks at the last extension only), so pass `--from json-schema`. A directory is read recursively: every `.json` file, except tool configuration (`package.json`, `tsconfig*.json`, ...) and anything below `node_modules/`, `vendor/`, `dist/`, `build/`, `coverage/` and `.git/`.
 
 Every object schema with properties under `$defs`, `definitions` or `components.schemas` is a model (named after its key), and so is a root object schema (named after its `title`, `$id` or file name). Enums, aliases of scalar types and free-form objects are not models.
 
@@ -407,7 +405,7 @@ Every object schema with properties under `$defs`, `definitions` or `components.
 
 A property that is not in `required` is nullable unless it has a `default` or is `readOnly` (the database fills it in). The conventions of ormbridge's own JSON Schema output are read back: a foreign key scalar (`author_id`) next to an optional `$ref` property (`author`) is one relation whose nullability is the scalar's, reverse sides are arrays that are matched with the foreign keys that point at the model (by `x-related-name`, otherwise by position when the counts agree, with a warning), `readOnly` columns are generated, and `bigInt` and `decimal` columns written as patterned strings (`^-?[0-9]+$`, `^-?[0-9]{1,6}(\.[0-9]{1,2})?$`) are read as `bigInt` and `decimal(8, 2)`. Table names, unique constraints, indexes, composite keys, referential actions, related names, enum labels and the exact owner of a many-to-many field are not JSON Schema keywords, so they only survive through the `x-` conventions above, which the writer produces too (see below).
 
-Losses, each reported as a warning naming the model and property: `description` / `title` (the IR has no comments), validation keywords (`minimum`, `pattern`, ...), `oneOf` / `anyOf` unions (a property becomes `json`; a `oneOf` of models is not a model), `patternProperties`, maps (`additionalProperties` with a schema), `if` / `then` / `else`, type unions, tuple arrays, nested inline objects (a `json` column; define them under `$defs` to make them models), arrays of models inside other arrays and non-string enums (the plain type is kept). An array of models with no counterpart on the other model gets a nullable foreign key on that model (JSON Schema cannot say who holds the key). The `x-` keywords above are ormbridge's own conventions and are ignored by other tools. [docs/CONVERSION_MATRIX.md](docs/CONVERSION_MATRIX.md) lists what the reader cannot express.
+Dropped without a warning: `description` / `title` (the IR has no comments) and validation keywords (`minimum`, `pattern`, ...). Losses reported as a warning naming the model and property: `oneOf` / `anyOf` unions (a property becomes `json`; a `oneOf` of models is not a model), `patternProperties`, maps (`additionalProperties` with a schema), `if` / `then` / `else`, type unions, tuple arrays, nested inline objects (a `json` column; define them under `$defs` to make them models), arrays of models inside other arrays and non-string enums (the plain type is kept). An array of models with no counterpart on the other model gets a nullable foreign key on that model (JSON Schema cannot say who holds the key). The `x-` keywords above are ormbridge's own conventions and are ignored by other tools. [docs/CONVERSION_MATRIX.md](docs/CONVERSION_MATRIX.md) lists what the reader cannot express.
 
 ### SQL DDL (`--from sql`)
 
@@ -475,7 +473,7 @@ The Prisma parser and emitter cover more than the Django mapping above. Construc
 
 The Prisma emitter also adapts to what the target provider rejects, each time with a warning naming the model and field: `Restrict` becomes `NoAction` on SQL Server, enums are written as `String` on SQL Server (which has none), `autoincrement()` on an `Int` becomes `sequence()` on CockroachDB, `Json` is written as `String @db.NVarChar(Max)` on SQL Server, and CockroachDB uses its own type names (`@db.String(n)`, not `@db.VarChar(n)`).
 
-Prisma 7 changed the schema header: the `prisma-client` generator replaces `prisma-client-js` and needs an `output` path, and the datasource no longer takes `url` (connection URLs move to `prisma.config.ts`). Programmatic callers can pass `prismaVersion: 7` to `convertText` (or `emitPrisma`) to get that header; the default stays Prisma 6, and there is no CLI flag for it yet. ormbridge does not generate `prisma.config.ts` or the driver adapter that Prisma 7 needs at runtime.
+Prisma 7 changed the schema header: the `prisma-client` generator replaces `prisma-client-js` and needs an `output` path, and the datasource no longer takes `url` (connection URLs move to `prisma.config.ts`). Pass `--prisma-version 7` (config key `prismaVersion`, or `prismaVersion: 7` to `convertText` and `emitPrisma`) to get that header; the default stays Prisma 6. ormbridge does not generate `prisma.config.ts` or the driver adapter that Prisma 7 needs at runtime.
 
 ### TypeScript interfaces (`--to typescript`)
 
