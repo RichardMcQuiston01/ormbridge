@@ -29,7 +29,8 @@
         },
         "name": {
           "type": "string",
-          "maxLength": 100
+          "maxLength": 100,
+          "x-unique": true
         },
         "slug": {
           "type": "string",
@@ -50,7 +51,8 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "x-related-name": "children"
         },
         "children": {
           "type": "array",
@@ -69,7 +71,8 @@
         "name",
         "slug"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "category"
     },
     "Post": {
       "type": "object",
@@ -92,7 +95,8 @@
         "publicId": {
           "type": "string",
           "format": "uuid",
-          "readOnly": true
+          "readOnly": true,
+          "x-unique": true
         },
         "title": {
           "type": "string",
@@ -131,7 +135,9 @@
           "format": "uuid"
         },
         "author": {
-          "$ref": "#/$defs/User"
+          "$ref": "#/$defs/User",
+          "x-related-name": "posts",
+          "x-on-delete": "cascade"
         },
         "editorId": {
           "type": [
@@ -148,14 +154,16 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "x-related-name": "editedPosts"
         },
         "categoryId": {
           "type": "string",
           "format": "uuid"
         },
         "category": {
-          "$ref": "#/$defs/Category"
+          "$ref": "#/$defs/Category",
+          "x-related-name": "postSet"
         },
         "tags": {
           "type": "array",
@@ -170,7 +178,29 @@
         "authorId",
         "categoryId"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "post",
+      "x-indexes": [
+        {
+          "fields": [
+            "title"
+          ]
+        },
+        {
+          "fields": [
+            "author",
+            "title"
+          ],
+          "unique": true
+        },
+        {
+          "fields": [
+            "publishedAt",
+            "status"
+          ],
+          "name": "post_pub_status_idx"
+        }
+      ]
     },
     "Tag": {
       "type": "object",
@@ -204,7 +234,8 @@
       "required": [
         "label"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "tag"
     },
     "Profile": {
       "type": "object",
@@ -242,13 +273,16 @@
           "format": "uuid"
         },
         "user": {
-          "$ref": "#/$defs/User"
+          "$ref": "#/$defs/User",
+          "x-related-name": "profile",
+          "x-on-delete": "cascade"
         }
       },
       "required": [
         "userId"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "profile"
     },
     "User": {
       "type": "object",
@@ -291,7 +325,8 @@
           ]
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "user"
     },
     "PostTags": {
       "type": "object",
@@ -316,21 +351,35 @@
           "format": "uuid"
         },
         "post": {
-          "$ref": "#/$defs/Post"
+          "$ref": "#/$defs/Post",
+          "x-related-name": "tags",
+          "x-on-delete": "cascade"
         },
         "tagId": {
           "type": "string",
           "format": "uuid"
         },
         "tag": {
-          "$ref": "#/$defs/Tag"
+          "$ref": "#/$defs/Tag",
+          "x-related-name": "posts",
+          "x-on-delete": "cascade"
         }
       },
       "required": [
         "postId",
         "tagId"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "post_tag",
+      "x-indexes": [
+        {
+          "fields": [
+            "post",
+            "tag"
+          ],
+          "unique": true
+        }
+      ]
     }
   }
 }

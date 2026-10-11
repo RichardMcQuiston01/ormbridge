@@ -1,0 +1,6 @@
++ "name": "ix_blog_post_title"
++ "name": "uq_blog_post_author_id_title"
++ "unique": true,
++ ],
+- "unique": true
+- ]

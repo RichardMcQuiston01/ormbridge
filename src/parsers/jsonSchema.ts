@@ -1589,6 +1589,16 @@ function assignPrimaryKey(
       (name: unknown): name is string =>
         typeof name === 'string' && fieldNamed(name) !== undefined
     );
+    // A composite key may also name relations (the two references of an explicit join model).
+    const withRelations: string[] = modelLevel.filter(
+      (name: unknown): name is string =>
+        typeof name === 'string' &&
+        (fieldNamed(name) !== undefined ||
+          built.toOne.some((relation: ToOneProp) => relation.name === name))
+    );
+    if (withRelations.length > 1) {
+      keyNames = withRelations;
+    }
   }
   if (keyNames.length === 0) {
     const candidate: IrField | undefined =

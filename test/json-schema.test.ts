@@ -12,6 +12,8 @@ import type {
   IrSchema,
 } from '../src/ir.js';
 import { getFormat, getFormatByExtension } from '../src/formats.js';
+import { JSON_SCHEMA_CONVENTION_KEYWORDS } from '../src/emitters/jsonSchema.js';
+import { parseJsonSchema } from '../src/parsers/jsonSchema.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -351,10 +353,16 @@ describe('JSON Schema emitter', () => {
     );
     const post: Record<string, JsonObject> = properties(document, 'Post');
     expect(post.author_id).toEqual({ type: 'integer' });
-    expect(post.author).toEqual({ $ref: '#/$defs/User' });
+    expect(post.author).toEqual({
+      $ref: '#/$defs/User',
+      'x-on-delete': 'cascade',
+      'x-related-name': 'posts',
+    });
     expect(post.editor_id).toEqual({ type: ['integer', 'null'] });
     expect(post.editor).toEqual({
       anyOf: [{ $ref: '#/$defs/User' }, { type: 'null' }],
+      'x-on-delete': 'cascade',
+      'x-related-name': 'edits',
     });
     expect(definition(document, 'Post').required).toEqual(['author_id']);
     expect(post.tags).toEqual({
@@ -394,7 +402,10 @@ describe('JSON Schema emitter', () => {
     const note: Record<string, JsonObject> = properties(document, 'Note');
     expect(note.account_id).toEqual({ type: 'string', maxLength: 20 });
     expect(note.owner_id).toEqual({ type: 'string', format: 'uuid' });
-    expect(note.account).toEqual({ $ref: '#/components/schemas/Account' });
+    expect(note.account).toEqual({
+      $ref: '#/components/schemas/Account',
+      'x-on-delete': 'cascade',
+    });
     expect(note.ghost).toBeUndefined();
     expect(output.warnings.join('\n')).toContain(
       '"Nowhere" does not exist in the schema'
@@ -474,6 +485,170 @@ describe('JSON Schema emitter', () => {
   it('produces an empty $defs object for an empty schema', () => {
     const { document } = emit(schemaOf([]));
     expect(document.$defs).toEqual({});
+  });
+
+  it('writes the table name, keys, uniques, indexes and referential actions as x- conventions', () => {
+    const { document } = emit(
+      schemaOf([
+        model('User', {
+          tableName: 'auth_user',
+          fields: [
+            idField(),
+            {
+              ...idField(),
+              name: 'email',
+              columnName: 'email',
+              type: 'string',
+              isPrimaryKey: false,
+              isUnique: true,
+            },
+          ],
+          indexes: [
+            { fields: ['email'], isUnique: true, name: 'user_email_key' },
+          ],
+        }),
+        model('Membership', {
+          tableName: 'Membership',
+          fields: [
+            { ...idField(), name: 'role', columnName: 'role', type: 'string' },
+          ],
+          relations: [
+            relation('user', 'User', {
+              onDelete: 'setNull',
+              isNullable: false,
+            }),
+          ],
+          compositePrimaryKey: ['user', 'role'],
+          indexes: [{ fields: ['role', 'user'], isUnique: false }],
+        }),
+      ])
+    );
+    const user: JsonObject = definition(document, 'User');
+    expect(user['x-table-name']).toBe('auth_user');
+    expect(user['x-indexes']).toEqual([
+      { fields: ['email'], unique: true, name: 'user_email_key' },
+    ]);
+    expect(properties(document, 'User').email['x-unique']).toBe(true);
+    const membership: JsonObject = definition(document, 'Membership');
+    expect(membership['x-table-name']).toBeUndefined();
+    expect(membership['x-primary-key']).toEqual(['user', 'role']);
+    expect(membership['x-indexes']).toEqual([{ fields: ['role', 'user'] }]);
+    expect(properties(document, 'Membership').user['x-on-delete']).toBe(
+      'setNull'
+    );
+  });
+
+  it('leaves out x- conventions that the reader would assume anyway', () => {
+    const { document } = emit(
+      schemaOf([
+        model('User', { tableName: 'User' }),
+        model('Post', {
+          tableName: 'Post',
+          relations: [
+            relation('author', 'User', { onDelete: 'restrict' }),
+            relation('editor', 'User', {
+              isNullable: true,
+              onDelete: 'setNull',
+            }),
+          ],
+        }),
+      ])
+    );
+    expect(definition(document, 'User')['x-table-name']).toBeUndefined();
+    expect(definition(document, 'User')['x-indexes']).toBeUndefined();
+    const post: Record<string, JsonObject> = properties(document, 'Post');
+    expect(post.author['x-on-delete']).toBeUndefined();
+    expect(post.editor['x-on-delete']).toBeUndefined();
+    expect(post.author['x-related-name']).toBeUndefined();
+  });
+
+  it('writes no x- keywords with conventions: false', () => {
+    const { output } = emit(
+      schemaOf([
+        model('User', { tableName: 'auth_user' }),
+        model('Post', { relations: [relation('author', 'User')] }),
+      ]),
+      { conventions: false }
+    );
+    expect(output.text).not.toMatch(/"x-/);
+    for (const keyword of JSON_SCHEMA_CONVENTION_KEYWORDS) {
+      expect(output.text).not.toContain(`"${keyword}"`);
+    }
+  });
+
+  it('marks a primary key that is not called id', () => {
+    const { document } = emit(
+      schemaOf([
+        model('Tag', {
+          fields: [
+            { ...idField(), name: 'slug', columnName: 'slug', type: 'string' },
+          ],
+        }),
+      ])
+    );
+    expect(properties(document, 'Tag').slug['x-primary-key']).toBe(true);
+  });
+
+  it('round trips the conventions through the reader', () => {
+    const original: IrSchema = schemaOf([
+      model('User', {
+        tableName: 'auth_user',
+        fields: [
+          idField(),
+          {
+            ...idField(),
+            name: 'email',
+            columnName: 'email',
+            type: 'string',
+            isPrimaryKey: false,
+            isUnique: true,
+          },
+        ],
+        indexes: [
+          { fields: ['email'], isUnique: true, name: 'user_email_key' },
+        ],
+      }),
+      model('Post', {
+        tableName: 'blog_post',
+        relations: [
+          relation('author', 'User', {
+            relatedName: 'posts',
+            onDelete: 'cascade',
+          }),
+        ],
+      }),
+      model('PostTag', {
+        fields: [],
+        relations: [relation('post', 'Post'), relation('tag', 'Tag')],
+        compositePrimaryKey: ['post', 'tag'],
+      }),
+      model('Tag', { tableName: 'tag' }),
+    ]);
+    const { output } = emit(original);
+    const reread = parseJsonSchema(
+      [{ path: 'schema.json', text: output.text }],
+      { appLabel: 'app' }
+    );
+    expect(reread.ok).toBe(true);
+    if (!reread.ok) {
+      return;
+    }
+    const byName = (name: string): IrModel | undefined =>
+      reread.value.models.find((candidate: IrModel) => candidate.name === name);
+    expect(byName('User')?.tableName).toBe('auth_user');
+    expect(byName('User')?.indexes).toEqual([
+      { fields: ['email'], isUnique: true, name: 'user_email_key' },
+    ]);
+    expect(
+      byName('User')?.fields.find((f: IrField) => f.name === 'email')?.isUnique
+    ).toBe(true);
+    expect(byName('Post')?.tableName).toBe('blog_post');
+    const author: IrRelation | undefined = byName('Post')?.relations.find(
+      (r: IrRelation) => r.name === 'author'
+    );
+    expect(author?.onDelete).toBe('cascade');
+    expect(author?.relatedName).toBe('posts');
+    expect(byName('PostTag')?.compositePrimaryKey).toEqual(['post', 'tag']);
   });
 
   it('is registered as a readable and writable json-schema format without extensions', () => {

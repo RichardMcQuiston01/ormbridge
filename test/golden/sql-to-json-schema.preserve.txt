@@ -39,7 +39,8 @@
           ]
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "blog_user"
     },
     "BlogCategory": {
       "type": "object",
@@ -59,7 +60,8 @@
         },
         "name": {
           "type": "string",
-          "maxLength": 100
+          "maxLength": 100,
+          "x-unique": true
         },
         "slug": {
           "type": "string",
@@ -79,7 +81,8 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "x-related-name": "blog_categories"
         },
         "blog_categories": {
           "type": "array",
@@ -99,7 +102,8 @@
         "name",
         "slug"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "blog_category"
     },
     "BlogTag": {
       "type": "object",
@@ -122,7 +126,8 @@
       "required": [
         "label"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "blog_tag"
     },
     "BlogPost": {
       "type": "object",
@@ -143,7 +148,8 @@
         "public_id": {
           "type": "string",
           "format": "uuid",
-          "readOnly": true
+          "readOnly": true,
+          "x-unique": true
         },
         "title": {
           "type": "string",
@@ -181,7 +187,9 @@
           "type": "integer"
         },
         "author": {
-          "$ref": "#/$defs/BlogUser"
+          "$ref": "#/$defs/BlogUser",
+          "x-related-name": "author_blog_posts",
+          "x-on-delete": "cascade"
         },
         "editor_id": {
           "type": [
@@ -197,13 +205,15 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "x-related-name": "editor_blog_posts"
         },
         "category_id": {
           "type": "integer"
         },
         "category": {
-          "$ref": "#/$defs/BlogCategory"
+          "$ref": "#/$defs/BlogCategory",
+          "x-related-name": "blog_posts"
         },
         "tags": {
           "type": "array",
@@ -219,7 +229,31 @@
         "author_id",
         "category_id"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "blog_post",
+      "x-indexes": [
+        {
+          "fields": [
+            "author",
+            "title"
+          ],
+          "unique": true,
+          "name": "blog_post_author_id_title_key"
+        },
+        {
+          "fields": [
+            "title"
+          ],
+          "name": "blog_post_title_idx"
+        },
+        {
+          "fields": [
+            "published_at",
+            "status"
+          ],
+          "name": "post_pub_status_idx"
+        }
+      ]
     },
     "BlogProfile": {
       "type": "object",
@@ -245,13 +279,16 @@
           "type": "integer"
         },
         "user": {
-          "$ref": "#/$defs/BlogUser"
+          "$ref": "#/$defs/BlogUser",
+          "x-related-name": "blog_profile",
+          "x-on-delete": "cascade"
         }
       },
       "required": [
         "user_id"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "blog_profile"
     }
   }
 }

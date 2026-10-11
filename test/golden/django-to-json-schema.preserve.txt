@@ -29,7 +29,8 @@
         },
         "name": {
           "type": "string",
-          "maxLength": 100
+          "maxLength": 100,
+          "x-unique": true
         },
         "slug": {
           "type": "string",
@@ -49,7 +50,8 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "x-related-name": "children"
         },
         "children": {
           "type": "array",
@@ -68,7 +70,8 @@
         "name",
         "slug"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "blog_category"
     },
     "Post": {
       "type": "object",
@@ -90,7 +93,8 @@
         "public_id": {
           "type": "string",
           "format": "uuid",
-          "readOnly": true
+          "readOnly": true,
+          "x-unique": true
         },
         "title": {
           "type": "string",
@@ -128,7 +132,9 @@
           "type": "integer"
         },
         "author": {
-          "$ref": "#/$defs/User"
+          "$ref": "#/$defs/User",
+          "x-related-name": "posts",
+          "x-on-delete": "cascade"
         },
         "editor_id": {
           "type": [
@@ -144,7 +150,8 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "x-related-name": "edited_posts"
         },
         "category_id": {
           "type": "integer"
@@ -165,7 +172,29 @@
         "author_id",
         "category_id"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "blog_post",
+      "x-indexes": [
+        {
+          "fields": [
+            "title"
+          ]
+        },
+        {
+          "fields": [
+            "author",
+            "title"
+          ],
+          "unique": true
+        },
+        {
+          "fields": [
+            "published_at",
+            "status"
+          ],
+          "name": "post_pub_status_idx"
+        }
+      ]
     },
     "Tag": {
       "type": "object",
@@ -188,7 +217,8 @@
       "required": [
         "label"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "blog_tag"
     },
     "Profile": {
       "type": "object",
@@ -214,13 +244,15 @@
           "type": "integer"
         },
         "user": {
-          "$ref": "#/$defs/User"
+          "$ref": "#/$defs/User",
+          "x-on-delete": "cascade"
         }
       },
       "required": [
         "user_id"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "blog_profile"
     },
     "User": {
       "type": "object",
@@ -252,7 +284,8 @@
           ]
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "auth_user"
     }
   }
 }

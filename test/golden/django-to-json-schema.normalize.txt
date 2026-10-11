@@ -30,7 +30,8 @@
         },
         "name": {
           "type": "string",
-          "maxLength": 100
+          "maxLength": 100,
+          "x-unique": true
         },
         "slug": {
           "type": "string",
@@ -51,7 +52,8 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "x-related-name": "children"
         },
         "children": {
           "type": "array",
@@ -70,7 +72,8 @@
         "name",
         "slug"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "category"
     },
     "Post": {
       "type": "object",
@@ -93,7 +96,8 @@
         "publicId": {
           "type": "string",
           "format": "uuid",
-          "readOnly": true
+          "readOnly": true,
+          "x-unique": true
         },
         "title": {
           "type": "string",
@@ -132,7 +136,9 @@
           "format": "uuid"
         },
         "author": {
-          "$ref": "#/$defs/User"
+          "$ref": "#/$defs/User",
+          "x-related-name": "posts",
+          "x-on-delete": "cascade"
         },
         "editorId": {
           "type": [
@@ -149,7 +155,8 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "x-related-name": "editedPosts"
         },
         "categoryId": {
           "type": "string",
@@ -171,7 +178,29 @@
         "authorId",
         "categoryId"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "post",
+      "x-indexes": [
+        {
+          "fields": [
+            "title"
+          ]
+        },
+        {
+          "fields": [
+            "author",
+            "title"
+          ],
+          "unique": true
+        },
+        {
+          "fields": [
+            "publishedAt",
+            "status"
+          ],
+          "name": "post_pub_status_idx"
+        }
+      ]
     },
     "Tag": {
       "type": "object",
@@ -205,7 +234,8 @@
       "required": [
         "label"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "tag"
     },
     "Profile": {
       "type": "object",
@@ -243,13 +273,15 @@
           "format": "uuid"
         },
         "user": {
-          "$ref": "#/$defs/User"
+          "$ref": "#/$defs/User",
+          "x-on-delete": "cascade"
         }
       },
       "required": [
         "userId"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "profile"
     },
     "User": {
       "type": "object",
@@ -292,7 +324,8 @@
           ]
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "x-table-name": "user"
     }
   }
 }

@@ -99,7 +99,10 @@ export type {
   TypescriptDateMode,
   TypescriptInterfacesOptions,
 } from './emitters/typescriptInterfaces.js';
-export { emitJsonSchema } from './emitters/jsonSchema.js';
+export {
+  emitJsonSchema,
+  JSON_SCHEMA_CONVENTION_KEYWORDS,
+} from './emitters/jsonSchema.js';
 export type { JsonSchemaOptions } from './emitters/jsonSchema.js';
 export { emitZod } from './emitters/zod.js';
 export type {
