@@ -5,13 +5,15 @@ on:
     branches: [dev, main]
   push:
     branches: [dev, main]
+  # Lets the publish workflow run the same jobs (including `real-tools`) before releasing.
+  workflow_call:
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -49,14 +51,14 @@ jobs:
           --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot" --health-interval 5s
           --health-timeout 5s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Choose the tools directory (outside the repository)
         run: echo "TOOLS=$RUNNER_TEMP/verification-tools" >> "$GITHUB_ENV"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: pip
@@ -66,12 +68,12 @@ jobs:
           php-version: '8.3'
           extensions: mbstring, pdo_sqlite, sqlite3
           tools: composer
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
           cache: false
       - name: Cache package downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.npm
