@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-11
+
+Documentation and tooling release: a guide and a runnable example for every format, a shorter README with the reference material in `docs/`, a `--no-conventions` flag for JSON Schema output, and a publish workflow that waits for the full CI run (including the real-tool checks). No change to the converted output unless `--no-conventions` is used.
+
 ### Added
 
 - CLI: `--no-conventions` (config key `conventions: false`) omits the `x-` convention keywords from JSON Schema output, for validators such as Ajv in strict mode that reject unknown keywords. The `conventions` option of `emitJsonSchema` was previously API-only; `FormatOptions` gains the same optional `conventions` field.
@@ -11,14 +15,11 @@
 ### Changed
 
 - README: rewritten as a short overview with install, usage and examples. The long reference sections moved, unchanged apart from navigation links, to `docs/CLI.md` (options, config file, exit codes, naming modes), `docs/FIELD_MAPPING.md`, `docs/LIMITATIONS.md` and `docs/API.md`.
+- CI: the publish workflow now runs the whole CI workflow, including the `real-tools` job, and publishes only if it passes; the pinned GitHub Actions moved to Node 24 releases (`checkout`, `setup-node`, `setup-python`, `setup-go` v6, `cache` v5), which removes the Node 20 deprecation warning.
 
 ### Fixed
 
 - README: the format table listed SQL DDL and SQLAlchemy/SQLModel twice, once as read-only.
-
-### Changed
-
-- CI: the publish workflow now runs the whole CI workflow, including the `real-tools` job, and publishes only if it passes; the pinned GitHub Actions moved to Node 24 releases (`checkout`, `setup-node`, `setup-python`, `setup-go` v6, `cache` v5), which removes the Node 20 deprecation warning.
 
 ## 0.6.0 - 2026-10-11
 
