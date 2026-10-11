@@ -36,11 +36,11 @@ The output is a single file with no header comment: the enums first, then one `e
 
 Options that apply:
 
-| Option | Effect |
-| --- | --- |
-| `--naming preserve` (default) | Keeps the property names of the source (`created_at`). |
-| `--naming normalize` | camelCase properties (`createdAt`, `authorId`) and `string` primary keys (UUID), like the other emitters. |
-| config key `naming` | Same as the flag. |
+| Option                        | Effect                                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `--naming preserve` (default) | Keeps the property names of the source (`created_at`).                                                    |
+| `--naming normalize`          | camelCase properties (`createdAt`, `authorId`) and `string` primary keys (UUID), like the other emitters. |
+| config key `naming`           | Same as the flag.                                                                                         |
 
 `--provider`, `--style` and the other flags are ignored. Date handling is not configurable on the command line: the CLI always writes `string`. Programmatic callers can pass `dates: 'date'` to `emitTypescriptInterfaces` to type date columns as `Date`.
 
@@ -80,7 +80,14 @@ declare const prismaText: string;
 // Whole pipeline: text in, text out. Never throws; check `ok`.
 const converted: Result<ConvertResult> = await convertText(
   [{ path: 'schema.prisma', text: prismaText }],
-  { from: 'prisma', to: 'typescript', naming: 'normalize', provider: 'postgresql', header: true, autoField: 'int' }
+  {
+    from: 'prisma',
+    to: 'typescript',
+    naming: 'normalize',
+    provider: 'postgresql',
+    header: true,
+    autoField: 'int',
+  }
 );
 if (converted.ok) {
   console.log(converted.value.output, converted.value.warnings);

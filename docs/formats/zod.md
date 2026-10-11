@@ -26,11 +26,11 @@ There is no Zod reader.
 
 One file, starting with `import { z } from 'zod';`. Property, enum and relation naming match the `typescript` output, so the two can be generated side by side. For every model the file declares:
 
-| Export | Meaning |
-| --- | --- |
-| `<Model>Schema`, type `<Model>` | The row as stored. Foreign-key scalars are included; relation fields are not. |
-| `<Model>CreateSchema`, `<Model>Create` | The row minus database-generated columns (auto-increment keys, generated columns, auto-updated timestamps). Columns with a default and nullable columns become optional. |
-| `<Model>UpdateSchema`, `<Model>Update` | The create schema made partial. |
+| Export                                               | Meaning                                                                                                                                                                           |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<Model>Schema`, type `<Model>`                      | The row as stored. Foreign-key scalars are included; relation fields are not.                                                                                                     |
+| `<Model>CreateSchema`, `<Model>Create`               | The row minus database-generated columns (auto-increment keys, generated columns, auto-updated timestamps). Columns with a default and nullable columns become optional.          |
+| `<Model>UpdateSchema`, `<Model>Update`               | The create schema made partial.                                                                                                                                                   |
 | `<Model>WithRelationsSchema`, `<Model>WithRelations` | Only for models that take part in a relation: the row plus optional related rows, resolved with `z.lazy`. The type is written by hand because the schemas are mutually recursive. |
 
 Views get neither create nor update schemas.
@@ -78,7 +78,14 @@ declare const prismaText: string;
 
 const converted: Result<ConvertResult> = await convertText(
   [{ path: 'schema.prisma', text: prismaText }],
-  { from: 'prisma', to: 'zod', naming: 'preserve', provider: 'postgresql', header: true, autoField: 'int' }
+  {
+    from: 'prisma',
+    to: 'zod',
+    naming: 'preserve',
+    provider: 'postgresql',
+    header: true,
+    autoField: 'int',
+  }
 );
 if (!converted.ok) {
   console.error(`${converted.error.code}: ${converted.error.message}`);
