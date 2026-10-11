@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- CI: the publish workflow now runs the whole CI workflow, including the `real-tools` job, and publishes only if it passes; the pinned GitHub Actions moved to Node 24 releases (`checkout`, `setup-node`, `setup-python`, `setup-go` v6, `cache` v5), which removes the Node 20 deprecation warning.
+
 ## 0.6.0 - 2026-10-11
 
 The JSON Schema writer now carries table names, composite and non-`id` primary keys, unique columns, indexes, referential actions and related names as `x-table-name`, `x-primary-key`, `x-unique`, `x-indexes`, `x-on-delete` and `x-related-name` keywords, so they survive a round trip. **Output change:** Ajv in strict mode rejects these unknown keywords; register them with `ajv.addVocabulary(JSON_SCHEMA_CONVENTION_KEYWORDS)` or pass `conventions: false` to `emitJsonSchema` for the previous output.
