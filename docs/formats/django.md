@@ -14,10 +14,10 @@ npx ormbridge convert            # runs both conversions
 npx ormbridge convert --check    # exits 3 if a generated file is stale
 ```
 
-| Conversion    | Input                      | Output                  |
-| ------------- | -------------------------- | ----------------------- |
-| `to-django`   | `../schema/schema.prisma`  | `models/models.py`      |
-| `from-django` | `models` (the folder)      | `prisma/schema.prisma`  |
+| Conversion    | Input                     | Output                 |
+| ------------- | ------------------------- | ---------------------- |
+| `to-django`   | `../schema/schema.prisma` | `models/models.py`     |
+| `from-django` | `models` (the folder)     | `prisma/schema.prisma` |
 
 Inside this repository run `node ../../dist/cli.js convert` after `npm run build`. Without a config file the same conversions are `ormbridge convert -i schema.prisma -o models.py` and `ormbridge convert -i ./models -f django -o schema.prisma`.
 
@@ -73,7 +73,14 @@ declare const modelsPy: string;
 // Prisma -> Django, in memory.
 const converted: Result<ConvertResult> = await convertText(
   [{ path: 'schema.prisma', text: prismaText }],
-  { from: 'prisma', to: 'django', naming: 'preserve', provider: 'postgresql', header: true, autoField: 'int' }
+  {
+    from: 'prisma',
+    to: 'django',
+    naming: 'preserve',
+    provider: 'postgresql',
+    header: true,
+    autoField: 'int',
+  }
 );
 if (converted.ok) {
   console.log(converted.value.output); // models.py text

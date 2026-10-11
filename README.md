@@ -473,7 +473,7 @@ The Prisma parser and emitter cover more than the Django mapping above. Construc
 
 The Prisma emitter also adapts to what the target provider rejects, each time with a warning naming the model and field: `Restrict` becomes `NoAction` on SQL Server, enums are written as `String` on SQL Server (which has none), `autoincrement()` on an `Int` becomes `sequence()` on CockroachDB, `Json` is written as `String @db.NVarChar(Max)` on SQL Server, and CockroachDB uses its own type names (`@db.String(n)`, not `@db.VarChar(n)`).
 
-Prisma 7 changed the schema header: the `prisma-client` generator replaces `prisma-client-js` and needs an `output` path, and the datasource no longer takes `url` (connection URLs move to `prisma.config.ts`). Programmatic callers can pass `prismaVersion: 7` to `convertText` (or `emitPrisma`) to get that header; the default stays Prisma 6, and there is no CLI flag for it yet. ormbridge does not generate `prisma.config.ts` or the driver adapter that Prisma 7 needs at runtime.
+Prisma 7 changed the schema header: the `prisma-client` generator replaces `prisma-client-js` and needs an `output` path, and the datasource no longer takes `url` (connection URLs move to `prisma.config.ts`). Pass `--prisma-version 7` (config key `prismaVersion`, or `prismaVersion: 7` to `convertText` and `emitPrisma`) to get that header; the default stays Prisma 6. ormbridge does not generate `prisma.config.ts` or the driver adapter that Prisma 7 needs at runtime.
 
 ### TypeScript interfaces (`--to typescript`)
 
