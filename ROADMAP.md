@@ -8,7 +8,7 @@ Work is split into tracks that can be built by separate agents in parallel. Each
 - **Pull requests into `dev`:** a PR may merge only after lint, build, and tests pass in CI. Prefer small PRs and squash merges. Rebase on `dev` before opening the PR.
 - **Release:** once `dev` is fully tested, open one `dev` → `main` PR (same checks required).
 - **Publishing:** the release PR bumps the version (`npm version <patch|minor|major> --no-git-tag-version`), so nothing is committed to `main` directly. After it merges, tag the merge commit on `main` (`git tag vX.Y.Z <sha>` and `git push origin vX.Y.Z`). The publish workflow runs from the tag, confirms the tag matches `package.json` and the tagged commit is on `main`, then publishes to npm.
-- **Every PR** updates `CHANGELOG.md`, and the README "What is converted" section when it adds a format or field type.
+- **Every PR** updates `CHANGELOG.md`, and `docs/FIELD_MAPPING.md` (plus the README format table) when it adds a format or field type.
 - **Shared files** (`src/ir.ts`, `src/index.ts`, `src/formats.ts`, README tables) are conflict hotspots. Change them in the smallest PR possible and merge it before dependent work starts.
 
 ## Phase 0: Foundations (sequential, complete before Phase 1)
