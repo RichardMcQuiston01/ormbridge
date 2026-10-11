@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-typeorm",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "typeorm",
+      "output": "models/entities.ts"
+    },
+    {
+      "name": "from-typeorm",
+      "input": "models",
+      "from": "typeorm",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}

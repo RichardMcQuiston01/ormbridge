@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-gorm",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "gorm",
+      "output": "models"
+    },
+    {
+      "name": "from-gorm",
+      "input": "models",
+      "from": "gorm",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}

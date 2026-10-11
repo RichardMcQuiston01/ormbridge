@@ -28,7 +28,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "docs:matrix": "tsx scripts/generate-conversion-matrix.ts"
+    "docs:matrix": "tsx scripts/generate-conversion-matrix.ts",
+    "examples": "npm run build && scripts/regenerate-examples.sh",
+    "examples:check": "npm run build && scripts/regenerate-examples.sh --check"
   },
   "keywords": [
     "django",

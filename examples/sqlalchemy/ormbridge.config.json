@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-sqlalchemy",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "sqlalchemy",
+      "output": "models/models.py"
+    },
+    {
+      "name": "from-sqlalchemy",
+      "input": "models",
+      "from": "sqlalchemy",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}

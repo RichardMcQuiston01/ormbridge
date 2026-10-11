@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PostStatus {
+  DRAFT @map("draft")
+  PUBLISHED @map("published")
+}
+
+model BlogCategory {
+  id              Int            @id(map: "blog_category_pkey") @default(autoincrement())
+  created_at      DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime       @db.Timestamptz(6)
+  name            String         @unique(map: "blog_category_name_key") @db.VarChar(100)
+  slug            String         @db.VarChar(50)
+  parent_id       Int?
+  parent          BlogCategory?  @relation("BlogCategory_parent", fields: [parent_id], references: [id], onDelete: SetNull, map: "blog_category_parent_id_fkey")
+  blog_categories BlogCategory[] @relation("BlogCategory_parent")
+  blog_posts      BlogPost[]
+
+  @@map("blog_category")
+}
+
+model AuthUser {
+  id                Int          @id(map: "auth_user_pkey") @default(autoincrement())
+  author_blog_posts BlogPost[]   @relation("BlogPost_author")
+  editor_blog_posts BlogPost[]   @relation("BlogPost_editor")
+  blog_profile      BlogProfile?
+
+  @@map("auth_user")
+}
+
+model BlogPost {
+  id             Int           @id(map: "blog_post_pkey") @default(autoincrement())
+  created_at     DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime      @db.Timestamptz(6)
+  public_id      String        @default(uuid()) @unique(map: "blog_post_public_id_key") @db.Uuid
+  title          String        @db.VarChar(200)
+  body           String        @db.Text
+  status         PostStatus    @default(DRAFT)
+  rating         Decimal?      @db.Decimal(4, 2)
+  view_count     Int           @default(0)
+  is_featured    Boolean       @default(false)
+  published_at   DateTime      @default(now()) @db.Timestamptz(6)
+  metadata       Json          @default("{}")
+  author_id      Int
+  author         AuthUser      @relation("BlogPost_author", fields: [author_id], references: [id], onDelete: Cascade, map: "blog_post_author_id_fkey")
+  editor_id      Int?
+  editor         AuthUser?     @relation("BlogPost_editor", fields: [editor_id], references: [id], onDelete: SetNull, map: "blog_post_editor_id_fkey")
+  category_id    Int
+  category       BlogCategory  @relation(fields: [category_id], references: [id], onDelete: Restrict, map: "blog_post_category_id_fkey")
+  blog_post_tags BlogPostTag[]
+
+  @@index([title], map: "blog_post_title_idx")
+  @@unique([author_id, title], map: "blog_post_author_id_title_key")
+  @@index([published_at, status], map: "post_pub_status_idx")
+  @@map("blog_post")
+}
+
+model BlogTag {
+  id             Int           @id(map: "blog_tag_pkey") @default(autoincrement())
+  label          String        @db.VarChar(50)
+  blog_post_tags BlogPostTag[]
+
+  @@map("blog_tag")
+}
+
+model BlogProfile {
+  id      Int      @id(map: "blog_profile_pkey") @default(autoincrement())
+  bio     String?  @db.Text
+  avatar  String?  @db.VarChar(100)
+  user_id Int      @unique
+  user    AuthUser @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "blog_profile_user_id_fkey")
+
+  @@map("blog_profile")
+}
+
+model BlogPostTag {
+  id      Int      @id(map: "blog_post_tags_pkey") @default(autoincrement())
+  post_id Int
+  post    BlogPost @relation(fields: [post_id], references: [id], onDelete: Cascade, map: "blog_post_tags_post_id_fkey")
+  tag_id  Int
+  tag     BlogTag  @relation(fields: [tag_id], references: [id], onDelete: Cascade, map: "blog_post_tags_tag_id_fkey")
+
+  @@unique([post_id, tag_id], map: "blog_post_tags_post_id_tag_id_key")
+  @@map("blog_post_tags")
+}

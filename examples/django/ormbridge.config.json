@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-django",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "django",
+      "output": "models/models.py"
+    },
+    {
+      "name": "from-django",
+      "input": "models",
+      "from": "django",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}

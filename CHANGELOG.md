@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Documentation: a guide for every format in `docs/formats/` (what is read and written, options, warnings and losses, programmatic use), indexed from the README.
+- Examples: a runnable project per format in `examples/`. Each converts a shared blog schema with `ormbridge convert` using its own `ormbridge.config.json`, with the generated files committed. `npm run examples` regenerates them, `npm run examples:check` (and the test suite) fails when one is stale.
+
+### Fixed
+
+- README: the format table listed SQL DDL and SQLAlchemy/SQLModel twice, once as read-only.
+
 ### Changed
 
 - CI: the publish workflow now runs the whole CI workflow, including the `real-tools` job, and publishes only if it passes; the pinned GitHub Actions moved to Node 24 releases (`checkout`, `setup-node`, `setup-python`, `setup-go` v6, `cache` v5), which removes the Node 20 deprecation warning.

@@ -12,15 +12,13 @@ Convert ORM models between frameworks and languages, so one data model can be sh
 | GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; writes one file per model                   |
 | Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable` / `mysqlTable` / `sqliteTable` plus `relations()`           |
 | JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON) |
-| SQL DDL                     |  ✔   |       | `CREATE TABLE` and friends for PostgreSQL, MySQL, SQLite, SQL Server  |
-| SQLAlchemy / SQLModel       |  ✔   |       | SQLAlchemy 2.0 declarative, `Column()` and `Table()` styles; SQLModel |
+| SQL DDL                     |  ✔   |   ✔   | `CREATE TABLE` and friends for PostgreSQL, MySQL, SQLite, SQL Server  |
+| SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 declarative, `Column()` and `Table()` styles; SQLModel |
 | TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                             |
 | Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django            |
 | Zod schemas                 |      |   ✔   | Zod 4 schemas and inferred types for validation                       |
-| SQL DDL                     |      |   ✔   | One `.sql` script for PostgreSQL, MySQL, SQLite or SQL Server         |
-| SQLAlchemy / SQLModel       |      |   ✔   | SQLAlchemy 2.0 declarative models; `--style sqlmodel` for SQLModel    |
 
-See [What is converted](#what-is-converted) for the field-level mapping and [docs/CONVERSION_MATRIX.md](docs/CONVERSION_MATRIX.md) for exactly what survives a round trip between the readable formats.
+Each format has a [guide](docs/formats/README.md) and a runnable [example project](examples/README.md). See [What is converted](#what-is-converted) for the field-level mapping and [docs/CONVERSION_MATRIX.md](docs/CONVERSION_MATRIX.md) for exactly what survives a round trip between the readable formats.
 
 - **Static parsing, no runtime needed.** Source files are read with [tree-sitter](https://tree-sitter.github.io/), so there is no Python, Django, PHP, Composer, Go toolchain or database to install or connect to.
 - **Safe for existing databases.** The default `preserve` mode keeps your existing table and column names, so a new tool can sit on top of the database you already have.

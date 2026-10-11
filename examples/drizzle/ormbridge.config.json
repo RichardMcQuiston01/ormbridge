@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-drizzle",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "drizzle",
+      "output": "models"
+    },
+    {
+      "name": "from-drizzle",
+      "input": "models",
+      "from": "drizzle",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}

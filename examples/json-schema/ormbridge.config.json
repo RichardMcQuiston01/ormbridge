@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-json-schema",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "json-schema",
+      "output": "models/schemas.json"
+    },
+    {
+      "name": "from-json-schema",
+      "input": "models",
+      "from": "json-schema",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}
