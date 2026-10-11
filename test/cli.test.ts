@@ -373,6 +373,30 @@ describe('config files', () => {
     );
   });
 
+  it('omits the x- keywords with --no-conventions and the config key', async () => {
+    const base: string[] = [
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'json-schema',
+    ];
+    const defaults: CliRun = await cli(base);
+    expect(defaults.code).toBe(EXIT_OK);
+    expect(defaults.stdout).toContain('"x-table-name"');
+    const flagged: CliRun = await cli([...base, '--no-conventions']);
+    expect(flagged.code).toBe(EXIT_OK);
+    expect(flagged.stdout).not.toContain('"x-');
+    expect(flagged.stdout).toContain('"$defs"');
+
+    await writeConfig({
+      input: BLOG_FIXTURE_PATH,
+      to: 'json-schema',
+      conventions: false,
+    });
+    expect((await cli(['convert'])).stdout).not.toContain('"x-');
+  });
+
   it('honours --no-config', async () => {
     await writeConfig({ input: BLOG_FIXTURE_PATH });
     const run: CliRun = await cli(['convert', '--no-config']);

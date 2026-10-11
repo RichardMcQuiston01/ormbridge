@@ -20,7 +20,7 @@ One runnable project per format. Each folder converts the shared blog schema in 
 
 Folder layout:
 
-- `ormbridge.config.json` lists the conversions ([config file reference](../README.md#config-file)).
+- `ormbridge.config.json` lists the conversions ([config file reference](../docs/CLI.md#config-file)).
 - `models/` (or `generated/` for write-only formats) holds the files written from the shared schema.
 - `prisma/schema.prisma` holds the schema read back from `models/`, so you can compare it with the original.
 

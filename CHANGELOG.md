@@ -4,8 +4,13 @@
 
 ### Added
 
+- CLI: `--no-conventions` (config key `conventions: false`) omits the `x-` convention keywords from JSON Schema output, for validators such as Ajv in strict mode that reject unknown keywords. The `conventions` option of `emitJsonSchema` was previously API-only; `FormatOptions` gains the same optional `conventions` field.
 - Documentation: a guide for every format in `docs/formats/` (what is read and written, options, warnings and losses, programmatic use), indexed from the README.
 - Examples: a runnable project per format in `examples/`. Each converts a shared blog schema with `ormbridge convert` using its own `ormbridge.config.json`, with the generated files committed. `npm run examples` regenerates them, `npm run examples:check` (and the test suite) fails when one is stale.
+
+### Changed
+
+- README: rewritten as a short overview with install, usage and examples. The long reference sections moved, unchanged apart from navigation links, to `docs/CLI.md` (options, config file, exit codes, naming modes), `docs/FIELD_MAPPING.md`, `docs/LIMITATIONS.md` and `docs/API.md`.
 
 ### Fixed
 

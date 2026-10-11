@@ -60,6 +60,7 @@ interface ConvertFlags {
   naming?: string;
   provider?: string;
   header: boolean;
+  conventions: boolean;
   appLabel?: string;
   autoField?: string;
   namespace?: string;
@@ -114,6 +115,7 @@ interface MergedSettings {
   naming?: string;
   provider?: string;
   header?: boolean;
+  conventions?: boolean;
   appLabel?: string;
   autoField?: string;
   namespace?: string;
@@ -235,6 +237,9 @@ function buildRunOptions(
         : { goPackage: settings.goPackage }),
       ...(prismaVersion === undefined ? {} : { prismaVersion }),
       ...(style === undefined ? {} : { style }),
+      ...(settings.conventions === undefined
+        ? {}
+        : { conventions: settings.conventions }),
     },
   };
 }
@@ -265,6 +270,7 @@ async function resolveConfig(
 function planRuns(
   flags: ConvertFlags,
   headerFromFlag: boolean | undefined,
+  conventionsFromFlag: boolean | undefined,
   config: ConfigFile | undefined,
   env: CliEnvironment,
   mode: RunMode
@@ -319,6 +325,9 @@ function planRuns(
     }
     if (headerFromFlag !== undefined) {
       settings.header = headerFromFlag;
+    }
+    if (conventionsFromFlag !== undefined) {
+      settings.conventions = conventionsFromFlag;
     }
     if (flags.appLabel !== undefined) {
       settings.appLabel = flags.appLabel;
@@ -440,6 +449,7 @@ function report(
 async function handleConvert(
   flags: ConvertFlags,
   headerFromFlag: boolean | undefined,
+  conventionsFromFlag: boolean | undefined,
   env: CliEnvironment
 ): Promise<number> {
   const usageError = (message: string): number => {
@@ -468,6 +478,7 @@ async function handleConvert(
   const runs: Result<PlannedRun[]> = planRuns(
     flags,
     headerFromFlag,
+    conventionsFromFlag,
     config.value,
     env,
     mode
@@ -559,6 +570,10 @@ export async function runCli(
     )
     .option('--no-header', 'omit the Prisma generator and datasource blocks')
     .option(
+      '--no-conventions',
+      'omit the x-table-name, x-primary-key, x-unique, x-indexes, x-on-delete and x-related-name keywords from JSON Schema output (for validators that reject unknown keywords)'
+    )
+    .option(
       '--app-label <name>',
       'Django app label used for default table names (default: derived from the directory)'
     )
@@ -612,7 +627,16 @@ export async function runCli(
         command.getOptionValueSource('header') === 'cli'
           ? flags.header
           : undefined;
-      exitCode = await handleConvert(flags, headerFromFlag, env);
+      const conventionsFromFlag: boolean | undefined =
+        command.getOptionValueSource('conventions') === 'cli'
+          ? flags.conventions
+          : undefined;
+      exitCode = await handleConvert(
+        flags,
+        headerFromFlag,
+        conventionsFromFlag,
+        env
+      );
     });
 
   program

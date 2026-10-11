@@ -37,6 +37,8 @@ export interface ConversionConfig {
   prismaVersion?: 6 | 7;
   /** Flavour of the SQLAlchemy output: plain SQLAlchemy 2.0 or SQLModel. */
   style?: SqlAlchemyStyle;
+  /** Write the `x-` convention keywords into JSON Schema output (default true). */
+  conventions?: boolean;
 }
 
 /** A parsed config file. Top-level settings are defaults shared by every entry in `conversions`. */
@@ -64,6 +66,7 @@ const CONVERSION_KEYS: readonly string[] = [
   'goPackage',
   'prismaVersion',
   'style',
+  'conventions',
 ];
 
 /**
@@ -324,6 +327,17 @@ function parseConversion(
       );
     }
     config.style = style;
+  }
+
+  const conventions: unknown = raw['conventions'];
+  if (conventions !== undefined) {
+    if (typeof conventions !== 'boolean') {
+      return fail(
+        'conventions',
+        `must be true or false (got ${describeValue(conventions)}).`
+      );
+    }
+    config.conventions = conventions;
   }
 
   const header: unknown = raw['header'];
