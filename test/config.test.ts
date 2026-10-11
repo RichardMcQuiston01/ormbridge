@@ -130,6 +130,31 @@ describe('loadConfigFile', () => {
     expect(config.conversions[0]?.style).toBe('sqlalchemy');
   });
 
+  it('reads the conventions key and rejects other values', async () => {
+    const path: string = join(workDirectory, 'ormbridge.config.json');
+    await writeFile(
+      path,
+      JSON.stringify({
+        input: 'schema.prisma',
+        to: 'json-schema',
+        conventions: false,
+        conversions: [{ name: 'on', conventions: true }],
+      })
+    );
+    const config: ConfigFile = expectOk(await loadConfigFile(path));
+    expect(config.defaults.conventions).toBe(false);
+    expect(config.conversions[0]?.conventions).toBe(true);
+
+    await writeFile(path, JSON.stringify({ conventions: 'no' }));
+    const rejected: Result<ConfigFile> = await loadConfigFile(path);
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.error.message).toContain(
+        '"conventions" must be true or false'
+      );
+    }
+  });
+
   it('accepts a single input string and a $schema key', async () => {
     const path: string = join(workDirectory, '.ormbridgerc.json');
     await writeFile(path, '{"$schema":"x","input":"models.py"}');

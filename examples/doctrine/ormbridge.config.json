@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-doctrine",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "doctrine",
+      "output": "models"
+    },
+    {
+      "name": "from-doctrine",
+      "input": "models",
+      "from": "doctrine",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "conversions": [
+    {
+      "name": "to-typescript",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "typescript",
+      "output": "generated/models.ts"
+    }
+  ]
+}

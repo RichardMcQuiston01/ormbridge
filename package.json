@@ -1,6 +1,6 @@
 {
   "name": "ormbridge",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Convert ORM models between frameworks and languages (Django, Prisma, TypeORM, Doctrine, Laravel). Define your data model once and share typed schemas across your stack.",
   "author": {
     "name": "Richard McQuiston",
@@ -28,7 +28,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "docs:matrix": "tsx scripts/generate-conversion-matrix.ts"
+    "docs:matrix": "tsx scripts/generate-conversion-matrix.ts",
+    "examples": "npm run build && scripts/regenerate-examples.sh",
+    "examples:check": "npm run build && scripts/regenerate-examples.sh --check"
   },
   "keywords": [
     "django",

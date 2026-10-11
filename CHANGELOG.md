@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-11
+
+Documentation and tooling release: a guide and a runnable example for every format, a shorter README with the reference material in `docs/`, a `--no-conventions` flag for JSON Schema output, and a publish workflow that waits for the full CI run (including the real-tool checks). No change to the converted output unless `--no-conventions` is used.
+
+### Added
+
+- CLI: `--no-conventions` (config key `conventions: false`) omits the `x-` convention keywords from JSON Schema output, for validators such as Ajv in strict mode that reject unknown keywords. The `conventions` option of `emitJsonSchema` was previously API-only; `FormatOptions` gains the same optional `conventions` field.
+- Documentation: a guide for every format in `docs/formats/` (what is read and written, options, warnings and losses, programmatic use), indexed from the README.
+- Examples: a runnable project per format in `examples/`. Each converts a shared blog schema with `ormbridge convert` using its own `ormbridge.config.json`, with the generated files committed. `npm run examples` regenerates them, `npm run examples:check` (and the test suite) fails when one is stale.
+
+### Changed
+
+- README: rewritten as a short overview with install, usage and examples. The long reference sections moved, unchanged apart from navigation links, to `docs/CLI.md` (options, config file, exit codes, naming modes), `docs/FIELD_MAPPING.md`, `docs/LIMITATIONS.md` and `docs/API.md`.
+- CI: the publish workflow now runs the whole CI workflow, including the `real-tools` job, and publishes only if it passes; the pinned GitHub Actions moved to Node 24 releases (`checkout`, `setup-node`, `setup-python`, `setup-go` v6, `cache` v5), which removes the Node 20 deprecation warning.
+
+### Fixed
+
+- README: the format table listed SQL DDL and SQLAlchemy/SQLModel twice, once as read-only.
+
 ## 0.6.0 - 2026-10-11
 
 The JSON Schema writer now carries table names, composite and non-`id` primary keys, unique columns, indexes, referential actions and related names as `x-table-name`, `x-primary-key`, `x-unique`, `x-indexes`, `x-on-delete` and `x-related-name` keywords, so they survive a round trip. **Output change:** Ajv in strict mode rejects these unknown keywords; register them with `ajv.addVocabulary(JSON_SCHEMA_CONVENTION_KEYWORDS)` or pass `conventions: false` to `emitJsonSchema` for the previous output.

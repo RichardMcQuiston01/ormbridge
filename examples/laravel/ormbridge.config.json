@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-laravel",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "laravel",
+      "output": "models"
+    },
+    {
+      "name": "from-laravel",
+      "input": "models",
+      "from": "laravel",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}

@@ -69,3 +69,5 @@ The SQL DDL parser (`sql-ddl-parser-verify.test.ts`) runs the SQLite fixtures (`
 ## Round-trip drift files
 
 `roundtrip-<from>-<via>.drift.txt` lists what a round trip changes. An empty file means the pair is lossless for the fixture. A non-empty file documents a lossy mapping: `+` lines were added and `-` lines were lost. Any change to a mapping shows up as a diff in these files.
+
+`examples.test.ts` runs `ormbridge convert --check` in every folder of `examples/` (one per registered format, each with a config file and README), so a change to an emitter or parser that alters the committed example output fails until `npm run examples` regenerates it.
