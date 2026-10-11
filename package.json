@@ -53,6 +53,7 @@
     "python",
     "typeorm",
     "drizzle",
+    "sequelize",
     "graphene",
     "doctrine",
     "laravel",

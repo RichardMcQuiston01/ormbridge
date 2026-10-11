@@ -1,0 +1,1 @@
+Post.metadata: "metadata" would shadow a name the class needs; the attribute was written as metadata_.

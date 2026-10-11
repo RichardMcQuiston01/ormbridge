@@ -168,6 +168,9 @@ describe('formats command output', () => {
     expect(text).toMatch(
       /sqlalchemy\s+extensions: \(none\) {2}read \+ write {2}SQLAlchemy 2\.0 and SQLModel models \(Python; declarative, Column\(\) and Table\(\) styles; --style sqlmodel writes SQLModel classes\)\n/
     );
+    expect(text).toMatch(
+      /sequelize\s+extensions: \(none\) {2}read {2}Sequelize 6 models \(JavaScript or TypeScript; define, Model\.init and sequelize-typescript\)\n/
+    );
   });
 
   it('marks one-way formats', () => {

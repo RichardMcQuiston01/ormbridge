@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuditEntryLevel {
+  INFO @map("info")
+  WARN @map("warn")
+}
+
+model Account {
+  id             Int          @id @default(autoincrement())
+  email          String       @unique(map: "account_email_unique") @db.VarChar(120)
+  balance        Decimal      @default(0) @db.Decimal(10, 2)
+  settings       Json?        @default("{}")
+  nickname       String?      @db.VarChar(255)
+  legacyCode     String?      @map("legacy_code") @db.VarChar(8)
+  lastSeen       DateTime?    @default(now()) @db.Timestamptz(6)
+  createdAt      DateTime     @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+  membership_set Membership[]
+  orders         Order[]      @relation("Order_account")
+  order_set      Order[]      @relation("Order_buyer")
+  order_set2     Order[]      @relation("Order_referrer")
+
+  @@map("Accounts")
+}
+
+model Person {
+  id             Int             @id @default(autoincrement())
+  name           String          @db.VarChar(255)
+  born           DateTime?       @db.Date
+  wakeUp         DateTime?       @map("wake_up") @db.Time(6)
+  photo          Bytes?
+  height         Float?
+  rank           BigInt?
+  shelf          Int?
+  createdAt      DateTime        @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  friends        PersonFriends[] @relation("PersonFriends_from_person")
+  person_friends PersonFriends[] @relation("PersonFriends_to_person")
+
+  @@map("people")
+}
+
+model AuditEntry {
+  id        Int              @id @default(autoincrement())
+  action    String           @db.VarChar(255)
+  level     AuditEntryLevel? @default(INFO)
+  logged_at DateTime         @db.Timestamptz(6)
+}
+
+model Group {
+  id             Int          @id @default(autoincrement())
+  title          String?      @db.VarChar(255)
+  createdAt      DateTime     @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+  membership_set Membership[]
+
+  @@map("Groups")
+}
+
+model Membership {
+  role      String? @default("member") @db.VarChar(20)
+  AccountId Int
+  account   Account @relation(fields: [AccountId], references: [id], onDelete: Cascade)
+  GroupId   Int
+  group     Group   @relation(fields: [GroupId], references: [id], onDelete: Cascade)
+
+  @@id([AccountId, GroupId])
+  @@map("Memberships")
+}
+
+model Order {
+  id            Int      @id @default(autoincrement())
+  total         Decimal  @db.Decimal(10, 2)
+  auditorId     Int?
+  AccountId     Int?
+  account       Account? @relation("Order_account", fields: [AccountId], references: [id], onDelete: SetNull)
+  buyerId       Int?
+  buyer         Account? @relation("Order_buyer", fields: [buyerId], references: [id], onDelete: SetNull)
+  referrerEmail String?  @db.VarChar(120)
+  referrer      Account? @relation("Order_referrer", fields: [referrerEmail], references: [email], onDelete: Restrict)
+
+  @@map("Orders")
+}
+
+model Setting {
+  id    Int     @id @default(autoincrement())
+  scope String? @db.VarChar(30)
+  key   String? @db.VarChar(30)
+  value String? @db.Text
+
+  @@unique([key, value], map: "setting_key_value")
+  @@map("settings")
+}
+
+model Event {
+  id         Int      @id @default(autoincrement())
+  title      String?  @db.VarChar(80)
+  startsAt   DateTime @db.Timestamptz(6)
+  capacity   Int?
+  ticket_set Ticket[]
+
+  @@index([title], map: "events_title")
+  @@index([startsAt(sort: Desc), capacity])
+  @@unique([title, startsAt])
+  @@map("events")
+}
+
+model Ticket {
+  id      Int     @id @default(autoincrement())
+  seat    String? @db.VarChar(10)
+  eventId Int
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("tickets")
+}
+
+model Country {
+  code     String  @id @db.VarChar(2)
+  name     String? @db.VarChar(255)
+  city_set City[]
+
+  @@map("countries")
+}
+
+model City {
+  id          Int      @id @default(autoincrement())
+  name        String?  @db.VarChar(255)
+  countryCode String?  @db.VarChar(2)
+  country     Country? @relation(fields: [countryCode], references: [code], onDelete: Cascade)
+
+  @@map("cities")
+}
+
+model PersonFriends {
+  id             Int    @id @default(autoincrement())
+  from_person_id Int
+  from_person    Person @relation("PersonFriends_from_person", fields: [from_person_id], references: [id], onDelete: Cascade)
+  to_person_id   Int
+  to_person      Person @relation("PersonFriends_to_person", fields: [to_person_id], references: [id], onDelete: Cascade)
+
+  @@unique([from_person_id, to_person_id])
+  @@map("people_friends")
+}
