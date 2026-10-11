@@ -8,6 +8,10 @@
 - Documentation: a guide for every format in `docs/formats/` (what is read and written, options, warnings and losses, programmatic use), indexed from the README.
 - Examples: a runnable project per format in `examples/`. Each converts a shared blog schema with `ormbridge convert` using its own `ormbridge.config.json`, with the generated files committed. `npm run examples` regenerates them, `npm run examples:check` (and the test suite) fails when one is stale.
 
+### Changed
+
+- README: rewritten as a short overview with install, usage and examples. The long reference sections moved, unchanged apart from navigation links, to `docs/CLI.md` (options, config file, exit codes, naming modes), `docs/FIELD_MAPPING.md`, `docs/LIMITATIONS.md` and `docs/API.md`.
+
 ### Fixed
 
 - README: the format table listed SQL DDL and SQLAlchemy/SQLModel twice, once as read-only.
