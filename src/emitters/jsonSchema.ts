@@ -4,7 +4,9 @@ import type {
   IrEnum,
   IrEnumValue,
   IrField,
+  IrIndex,
   IrModel,
+  IrOnDelete,
   IrRelation,
   IrSchema,
 } from '../ir.js';
@@ -22,6 +24,20 @@ export const JSON_SCHEMA_DEFAULT_ID: string = 'urn:ormbridge:schema';
 /** Where `$ref` values point by default: the `$defs` of the document itself. */
 export const JSON_SCHEMA_DEFAULT_REF_PREFIX: string = '#/$defs/';
 
+/**
+ * The ormbridge-specific keywords the writer adds to carry what JSON Schema has no keyword for.
+ * Other tools ignore them, but Ajv in strict mode rejects unknown keywords: register them with
+ * `ajv.addVocabulary(JSON_SCHEMA_CONVENTION_KEYWORDS)` or turn them off with `conventions: false`.
+ */
+export const JSON_SCHEMA_CONVENTION_KEYWORDS: readonly string[] = [
+  'x-table-name',
+  'x-primary-key',
+  'x-unique',
+  'x-indexes',
+  'x-on-delete',
+  'x-related-name',
+];
+
 export interface JsonSchemaOptions {
   /** Use camelCase property names (the `normalize` naming mode). */
   camelFields: boolean;
@@ -32,6 +48,13 @@ export interface JsonSchemaOptions {
    * `$defs` entries into an OpenAPI document's `components.schemas`.
    */
   refPrefix?: string;
+  /**
+   * Write the `x-table-name`, `x-primary-key`, `x-unique`, `x-indexes`, `x-on-delete` and
+   * `x-related-name` conventions that let the JSON Schema reader recover table names, keys,
+   * unique constraints, indexes and referential actions. Defaults to true; pass false for a
+   * document that strict validators such as Ajv can load without registering the keywords.
+   */
+  conventions?: boolean;
 }
 
 type JsonObject = Record<string, unknown>;
@@ -54,6 +77,7 @@ interface EmitContext {
   schema: IrSchema;
   refPrefix: string;
   camelFields: boolean;
+  conventions: boolean;
   warnings: string[];
   names: Map<string, ModelNames>;
   /** "Model.relation" -> property name of the reverse side on the target model. */
@@ -89,6 +113,7 @@ export function emitJsonSchema(
     schema,
     refPrefix: options.refPrefix ?? JSON_SCHEMA_DEFAULT_REF_PREFIX,
     camelFields: options.camelFields,
+    conventions: options.conventions ?? true,
     warnings: prismaOnlyWarnings(schema),
     names: new Map<string, ModelNames>(),
     inverseNames: new Map<string, string>(),
@@ -116,7 +141,10 @@ export function emitJsonSchema(
       ...(forward.get(model.name) ?? []),
       ...(reverse.get(model.name) ?? []),
     ];
-    definitions[modelDefName(context, model)] = objectSchema(properties);
+    definitions[modelDefName(context, model)] = objectSchema(
+      properties,
+      modelConventions(context, model)
+    );
   }
 
   const document: JsonObject = {
@@ -590,11 +618,86 @@ function fieldProperty(
   if (generated) {
     schema = { ...schema, readOnly: true };
   }
+  if (context.conventions && field.isUnique) {
+    schema = { ...schema, 'x-unique': true };
+  }
+  // A key the reader would not find on its own (anything but "id") is marked. A composite key is
+  // written once on the model, by modelConventions().
+  if (
+    context.conventions &&
+    field.isPrimaryKey &&
+    name !== 'id' &&
+    (model.compositePrimaryKey?.length ?? 0) < 2
+  ) {
+    schema = { ...schema, 'x-primary-key': true };
+  }
   return {
     name,
     schema,
     required: !field.isNullable && field.default === undefined && !generated,
   };
+}
+
+/** What the reader assumes when a relation property carries no "x-on-delete". */
+function readerOnDelete(relation: IrRelation): IrOnDelete {
+  return relation.isNullable ? 'setNull' : 'restrict';
+}
+
+/** Adds the "x-related-name" and "x-on-delete" conventions to a relation property. */
+function withRelationConventions(
+  context: EmitContext,
+  schema: JsonObject,
+  relation: IrRelation,
+  inverseProp: string
+): JsonObject {
+  if (!context.conventions) {
+    return schema;
+  }
+  let result: JsonObject = schema;
+  if (relation.relatedName !== undefined) {
+    result = { ...result, 'x-related-name': inverseProp };
+  }
+  if (relation.onDelete !== readerOnDelete(relation)) {
+    result = { ...result, 'x-on-delete': relation.onDelete };
+  }
+  return result;
+}
+
+/**
+ * The model-level conventions the reader understands: "x-table-name" when the table is not named
+ * after the definition, "x-primary-key" for a composite key and "x-indexes" for every index.
+ */
+function modelConventions(context: EmitContext, model: IrModel): JsonObject {
+  const names: ModelNames = namesOf(context, model);
+  const propertyOf = (irName: string): string =>
+    names.relations.get(irName) ?? names.fields.get(irName) ?? irName;
+  const conventions: JsonObject = {};
+  if (!context.conventions) {
+    return conventions;
+  }
+  if (model.tableName !== modelDefName(context, model)) {
+    conventions['x-table-name'] = model.tableName;
+  }
+  if ((model.compositePrimaryKey?.length ?? 0) > 1) {
+    conventions['x-primary-key'] = (model.compositePrimaryKey ?? []).map(
+      propertyOf
+    );
+  }
+  if (model.indexes.length > 0) {
+    conventions['x-indexes'] = model.indexes.map(
+      (index: IrIndex): JsonObject => {
+        const entry: JsonObject = { fields: index.fields.map(propertyOf) };
+        if (index.isUnique) {
+          entry.unique = true;
+        }
+        if (index.name !== undefined) {
+          entry.name = index.name;
+        }
+        return entry;
+      }
+    );
+  }
+  return conventions;
 }
 
 function buildForwardProperties(
@@ -670,7 +773,12 @@ function buildForwardProperties(
     }
     properties.push({
       name: relationProp,
-      schema: relation.isNullable ? nullable(targetRef) : targetRef,
+      schema: withRelationConventions(
+        context,
+        relation.isNullable ? nullable(targetRef) : targetRef,
+        relation,
+        inverseProp
+      ),
       required: false,
     });
     addReverse(reverse, target.name, {
@@ -695,7 +803,10 @@ function addReverse(
   reverse.set(targetName, existing);
 }
 
-function objectSchema(properties: Property[]): JsonObject {
+function objectSchema(
+  properties: Property[],
+  conventions: JsonObject = {}
+): JsonObject {
   const members: JsonObject = {};
   const required: string[] = [];
   for (const property of properties) {
@@ -709,5 +820,5 @@ function objectSchema(properties: Property[]): JsonObject {
     result.required = required;
   }
   result.additionalProperties = false;
-  return result;
+  return { ...result, ...conventions };
 }

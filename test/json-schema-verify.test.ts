@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { JSON_SCHEMA_CONVENTION_KEYWORDS } from '../src/emitters/jsonSchema.js';
 import type {
   IrEnum,
   IrField,
@@ -39,6 +40,7 @@ interface AjvValidate {
 interface AjvInstance {
   validateSchema(schema: unknown): boolean | Promise<unknown>;
   addSchema(schema: unknown): AjvInstance;
+  addVocabulary(keywords: string[]): AjvInstance;
   getSchema(key: string): AjvValidate | undefined;
   errorsText(errors?: unknown): string;
 }
@@ -89,6 +91,8 @@ function createAjv(): AjvInstance {
     allErrors: false,
   });
   formatsModule.default(ajv);
+  // Strict mode rejects unknown keywords: register ormbridge's own conventions.
+  ajv.addVocabulary([...JSON_SCHEMA_CONVENTION_KEYWORDS]);
   return ajv;
 }
 

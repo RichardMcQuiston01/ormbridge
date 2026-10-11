@@ -1,4 +1,6 @@
-+ "id": {
-+ "readOnly": true
-+ "type": "integer",
-+ },
++ "name": "blog_post_author_id_title_key"
++ "name": "blog_post_title_idx"
++ "unique": true,
++ ],
+- "unique": true
+- ]

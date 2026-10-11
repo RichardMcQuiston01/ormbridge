@@ -1,0 +1,10 @@
++ "$ref": "#/$defs/Category",
++ "name": "blog_post_author_title_uniq"
++ "name": "post_title_idx"
++ "unique": true,
++ "x-related-name": "post_set"
++ "x-related-name": "profile",
++ ],
+- "$ref": "#/$defs/Category"
+- "unique": true
+- ]

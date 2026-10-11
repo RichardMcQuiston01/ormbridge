@@ -25,16 +25,16 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 
 | from \ to | django | prisma | typeorm | doctrine | laravel | gorm | drizzle | json-schema | sql | sqlalchemy |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **django** | — | ⚠ 5 differences | ⚠ 3 differences | ⚠ 3 differences | ⚠ 13 differences | ⚠ 3 differences | ⚠ 6 differences | ⚠ 17 differences | ⚠ 12 differences | ⚠ 4 differences |
-| **prisma** | ✔ lossless | — | ✔ lossless | ⚠ 1 difference | ⚠ 10 differences | ✔ lossless | ⚠ 2 differences | ⚠ 18 differences | ⚠ 9 differences | ✔ lossless |
-| **typeorm** | ✔ lossless | ⚠ 2 differences | — | ⚠ 1 difference | ⚠ 10 differences | ⚠ 1 difference | ⚠ 3 differences | ⚠ 14 differences | ⚠ 9 differences | ⚠ 1 difference |
-| **doctrine** | ✔ lossless | ⚠ 2 differences | ✔ lossless | — | ⚠ 14 differences | ⚠ 4 differences | ⚠ 3 differences | ⚠ 18 differences | ⚠ 7 differences | ⚠ 1 difference |
-| **laravel** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | — | ✔ lossless | ⚠ 2 differences | ⚠ 16 differences | ⚠ 9 differences | ⚠ 2 differences |
-| **gorm** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | ⚠ 10 differences | — | ⚠ 3 differences | ⚠ 14 differences | ⚠ 9 differences | ⚠ 1 difference |
-| **drizzle** | ✔ lossless | ✔ lossless | ✔ lossless | ⚠ 1 difference | ⚠ 9 differences | ✔ lossless | — | ⚠ 19 differences | ⚠ 9 differences | ✔ lossless |
+| **django** | — | ⚠ 5 differences | ⚠ 3 differences | ⚠ 3 differences | ⚠ 13 differences | ⚠ 3 differences | ⚠ 6 differences | ⚠ 5 differences | ⚠ 12 differences | ⚠ 4 differences |
+| **prisma** | ✔ lossless | — | ✔ lossless | ⚠ 1 difference | ⚠ 10 differences | ✔ lossless | ⚠ 2 differences | ⚠ 2 differences | ⚠ 9 differences | ✔ lossless |
+| **typeorm** | ✔ lossless | ⚠ 2 differences | — | ⚠ 1 difference | ⚠ 10 differences | ⚠ 1 difference | ⚠ 3 differences | ⚠ 2 differences | ⚠ 9 differences | ⚠ 1 difference |
+| **doctrine** | ✔ lossless | ⚠ 2 differences | ✔ lossless | — | ⚠ 14 differences | ⚠ 4 differences | ⚠ 3 differences | ⚠ 6 differences | ⚠ 7 differences | ⚠ 1 difference |
+| **laravel** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | — | ✔ lossless | ⚠ 2 differences | ⚠ 4 differences | ⚠ 9 differences | ⚠ 2 differences |
+| **gorm** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | ⚠ 10 differences | — | ⚠ 3 differences | ⚠ 2 differences | ⚠ 9 differences | ⚠ 1 difference |
+| **drizzle** | ✔ lossless | ✔ lossless | ✔ lossless | ⚠ 1 difference | ⚠ 9 differences | ✔ lossless | — | ⚠ 2 differences | ⚠ 9 differences | ✔ lossless |
 | **json-schema** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | ⚠ 10 differences | ⚠ 1 difference | ⚠ 3 differences | — | ⚠ 9 differences | ⚠ 1 difference |
-| **sql** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | ⚠ 11 differences | ⚠ 2 differences | ⚠ 2 differences | ⚠ 16 differences | — | ⚠ 2 differences |
-| **sqlalchemy** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | ⚠ 9 differences | ✔ lossless | ⚠ 2 differences | ⚠ 14 differences | ⚠ 9 differences | — |
+| **sql** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | ⚠ 11 differences | ⚠ 2 differences | ⚠ 2 differences | ⚠ 4 differences | — | ⚠ 2 differences |
+| **sqlalchemy** | ✔ lossless | ⚠ 2 differences | ✔ lossless | ⚠ 1 difference | ⚠ 9 differences | ✔ lossless | ⚠ 2 differences | ⚠ 2 differences | ⚠ 9 differences | — |
 
 | Pair | Result | Emit warnings | Re-read warnings | Stable after a second trip |
 | --- | --- | --- | --- | --- |
@@ -44,7 +44,7 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 | django → laravel | ⚠ 13 differences | 0 | 0 | yes |
 | django → gorm | ⚠ 3 differences | 0 | 5 | no |
 | django → drizzle | ⚠ 6 differences | 0 | 0 | yes |
-| django → json-schema | ⚠ 17 differences | 0 | 1 | yes |
+| django → json-schema | ⚠ 5 differences | 0 | 0 | yes |
 | django → sql | ⚠ 12 differences | 1 | 0 | yes |
 | django → sqlalchemy | ⚠ 4 differences | 1 | 0 | yes |
 | prisma → django | ✔ lossless | 0 | 0 | yes |
@@ -53,7 +53,7 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 | prisma → laravel | ⚠ 10 differences | 0 | 0 | yes |
 | prisma → gorm | ✔ lossless | 0 | 7 | yes |
 | prisma → drizzle | ⚠ 2 differences | 0 | 0 | yes |
-| prisma → json-schema | ⚠ 18 differences | 0 | 1 | yes |
+| prisma → json-schema | ⚠ 2 differences | 0 | 0 | yes |
 | prisma → sql | ⚠ 9 differences | 1 | 0 | yes |
 | prisma → sqlalchemy | ✔ lossless | 1 | 0 | yes |
 | typeorm → django | ✔ lossless | 0 | 0 | yes |
@@ -62,7 +62,7 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 | typeorm → laravel | ⚠ 10 differences | 0 | 0 | yes |
 | typeorm → gorm | ⚠ 1 difference | 0 | 5 | yes |
 | typeorm → drizzle | ⚠ 3 differences | 0 | 0 | yes |
-| typeorm → json-schema | ⚠ 14 differences | 0 | 1 | yes |
+| typeorm → json-schema | ⚠ 2 differences | 0 | 0 | yes |
 | typeorm → sql | ⚠ 9 differences | 1 | 0 | yes |
 | typeorm → sqlalchemy | ⚠ 1 difference | 1 | 0 | yes |
 | doctrine → django | ✔ lossless | 0 | 0 | no |
@@ -71,7 +71,7 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 | doctrine → laravel | ⚠ 14 differences | 0 | 0 | no |
 | doctrine → gorm | ⚠ 4 differences | 0 | 5 | no |
 | doctrine → drizzle | ⚠ 3 differences | 0 | 0 | no |
-| doctrine → json-schema | ⚠ 18 differences | 0 | 1 | yes |
+| doctrine → json-schema | ⚠ 6 differences | 0 | 0 | yes |
 | doctrine → sql | ⚠ 7 differences | 0 | 0 | no |
 | doctrine → sqlalchemy | ⚠ 1 difference | 1 | 0 | no |
 | laravel → django | ✔ lossless | 0 | 0 | no |
@@ -80,7 +80,7 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 | laravel → doctrine | ⚠ 1 difference | 0 | 1 | no |
 | laravel → gorm | ✔ lossless | 0 | 5 | no |
 | laravel → drizzle | ⚠ 2 differences | 0 | 0 | no |
-| laravel → json-schema | ⚠ 16 differences | 0 | 1 | no |
+| laravel → json-schema | ⚠ 4 differences | 0 | 0 | no |
 | laravel → sql | ⚠ 9 differences | 1 | 0 | no |
 | laravel → sqlalchemy | ⚠ 2 differences | 1 | 0 | no |
 | gorm → django | ✔ lossless | 0 | 0 | no |
@@ -89,7 +89,7 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 | gorm → doctrine | ⚠ 1 difference | 0 | 1 | yes |
 | gorm → laravel | ⚠ 10 differences | 0 | 0 | yes |
 | gorm → drizzle | ⚠ 3 differences | 0 | 0 | yes |
-| gorm → json-schema | ⚠ 14 differences | 0 | 1 | no |
+| gorm → json-schema | ⚠ 2 differences | 0 | 0 | no |
 | gorm → sql | ⚠ 9 differences | 1 | 0 | no |
 | gorm → sqlalchemy | ⚠ 1 difference | 1 | 0 | yes |
 | drizzle → django | ✔ lossless | 1 | 0 | yes |
@@ -98,7 +98,7 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 | drizzle → doctrine | ⚠ 1 difference | 0 | 0 | yes |
 | drizzle → laravel | ⚠ 9 differences | 1 | 0 | yes |
 | drizzle → gorm | ✔ lossless | 0 | 7 | yes |
-| drizzle → json-schema | ⚠ 19 differences | 0 | 2 | yes |
+| drizzle → json-schema | ⚠ 2 differences | 0 | 0 | yes |
 | drizzle → sql | ⚠ 9 differences | 1 | 0 | no |
 | drizzle → sqlalchemy | ✔ lossless | 1 | 0 | yes |
 | json-schema → django | ✔ lossless | 0 | 0 | no |
@@ -117,7 +117,7 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 | sql → laravel | ⚠ 11 differences | 0 | 0 | no |
 | sql → gorm | ⚠ 2 differences | 0 | 5 | no |
 | sql → drizzle | ⚠ 2 differences | 0 | 0 | yes |
-| sql → json-schema | ⚠ 16 differences | 0 | 1 | no |
+| sql → json-schema | ⚠ 4 differences | 0 | 0 | no |
 | sql → sqlalchemy | ⚠ 2 differences | 1 | 0 | no |
 | sqlalchemy → django | ✔ lossless | 2 | 0 | yes |
 | sqlalchemy → prisma | ⚠ 2 differences | 0 | 0 | yes |
@@ -126,7 +126,7 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 | sqlalchemy → laravel | ⚠ 9 differences | 0 | 0 | yes |
 | sqlalchemy → gorm | ✔ lossless | 0 | 5 | yes |
 | sqlalchemy → drizzle | ⚠ 2 differences | 0 | 0 | yes |
-| sqlalchemy → json-schema | ⚠ 14 differences | 0 | 1 | yes |
+| sqlalchemy → json-schema | ⚠ 2 differences | 0 | 0 | yes |
 | sqlalchemy → sql | ⚠ 9 differences | 1 | 0 | yes |
 
 ## Why information is lost
@@ -140,19 +140,18 @@ Rows are the source format, columns the target. ✔ means the canonical schema c
 7. **GORM refreshes `updated_at` columns itself.** A column named `updated_at` (or `UpdatedAt`) is maintained by GORM through `autoUpdateTime`, which the GORM writer adds and the reader reports as "updated automatically". A source format that cannot express the flag therefore gains it after a pass through GORM.
 8. **Many-to-many becomes an explicit join table in Drizzle.** Drizzle has no many-to-many field: a join table is an ordinary table with two foreign keys, and `relations()` describes each side of the pair. The Drizzle writer therefore writes an explicit join table (`PostTag`, named after the two models in the singular) in both naming modes, and the Drizzle reader reads it back as an ordinary model, the way the Prisma reader does, so the relation `Post.tags` is not restored as a many-to-many. A Prisma source that already has an explicit join model under another name (`PostTags`) is replaced by the one the writer derives.
 9. **Drizzle names reverse relations in `relations()`.** Drizzle has no related name: each side of a relation is a key in `relations()`, named after the plural of the model (`posts`). A Django `related_name` or an ORM-specific default such as `postset` is therefore replaced by the Drizzle key, and the Drizzle reader recovers that name rather than the original.
-10. **JSON Schema does not carry database constraints.** The JSON Schema writer describes the rows of each model, not the tables that store them: table names, unique constraints, indexes, composite primary keys and referential actions (`on_delete`) are not written, and a model is read back under its own name with the default `restrict` action. The JSON Schema reader understands the `x-table-name`, `x-unique`, `x-indexes` and `x-on-delete` conventions, but the writer does not produce them yet, so these details are lost on a round trip.
-11. **JSON Schema describes defaults and nullability of values, not columns.** A property that has a default or is `readOnly` is not required, and the reader reads such a property back as non-nullable with the generated hint it can infer: a database default that is only a stored string (an empty JSON object) is not written, `now` defaults and auto-updated hints are inferred from `readOnly` and the property name, and a `json` column has no nullability of its own, so a required `json` column comes back nullable.
-12. **Many-to-many becomes an array property in JSON Schema.** A many-to-many relation is written as an array of references on each side and is read back as a many-to-many field on the model defined first, with a join table named after the two models rather than the source table. An explicit join model (Prisma) is a model with two single references, which is read back as an ordinary model and loses its composite key and unique pair.
-13. **SQLAlchemy names both sides of a relationship.** A relationship is written on both classes with `back_populates`, so the reverse side always has a name. Where the source never named it (Django `post_set`, a Laravel or Doctrine inverse side that is not declared) the writer uses the plural of the model name (`posts`), and the reader keeps whatever the code says.
-14. **The side of a many-to-many that is written first can swap.** A many-to-many is written as an association `Table(...)` with `secondary=` on both classes. The reader keeps the two relationship names but not the name or the `ondelete` of the association table, and when both sides of the pair carry the same information it may read the pair with the other class as the owner.
-15. **SQL stores no reverse accessor names.** A foreign key is a column, not a relation field, so the SQL reader names the reverse side after the table that holds the key (`blog_posts`, prefixed with the relation name when a table has two keys to the same target) and does not recover the `related_name` the source had.
-16. **SQL cannot mark a column as refreshed on every save.** Only MySQL has `ON UPDATE CURRENT_TIMESTAMP`. The other dialects need a trigger, which is not written, so an auto-updated timestamp (`auto_now`, `@updatedAt`, `autoUpdateTime`) comes back as an ordinary timestamp with a default.
-17. **A unique index is not a unique column in SQL.** The SQL reader turns `UNIQUE (column)` constraints and column-level `UNIQUE` into a unique column, and keeps `CREATE UNIQUE INDEX` as an index, because the two are different objects in the database. A format that writes a single-column unique index (GORM `uniqueIndex`, a Laravel `unique()` migration call) therefore comes back as an index instead of a unique column, and the other way round.
-18. **Join tables and many-to-many fields in SQL.** A many-to-many field is written as a join table. The SQL reader turns a table of exactly two foreign-key columns that form its composite primary key, and nothing else, back into a many-to-many field and drops the table; any other join table (one with its own key or extra columns, as Django and Prisma write them) stays an explicit model, and a many-to-many field comes back as a model. The join table name and any `ON DELETE` action other than `CASCADE` are not kept.
-19. **Django enum columns are at least 32 characters.** The Django writer ignores the stored length of an enum-backed field and writes `max_length` as the longer of 32 and the longest enum value (`src/emitters/django.ts`). A length kept by another format (for example 20 in a Doctrine `length: 20` column) therefore becomes 32 once the schema passes through Django, which is why a second trip through Django is not stable for that field.
-20. **Laravel keys are big integers.** The Laravel writer spells an auto-increment key as `$table->id()`, which is an unsigned big integer, and writes the foreign keys that point at it as `foreignId()`. An `int` key therefore comes back as `bigInt` when the migrations are read again. Reading Laravel migrations written with `increments()` (the canonical Laravel fixture does) keeps `int`, so this only appears when the schema passes through the Laravel writer.
-21. **Laravel timestamps are nullable and maintained by Eloquent.** The Laravel writer uses `$table->timestamps()` for `created_at` / `updated_at`, which creates nullable columns without a database default, because Eloquent fills them in. The Laravel reader reports them as nullable, treats `updated_at` of a model with `$timestamps` as auto-updated and `created_at` as defaulting to now. A source that has these columns as required, with a different default or without the auto-update flag (Doctrine keeps the default and sets the value in a lifecycle callback), therefore changes when it passes through Laravel; TypeORM only treats a column as `@UpdateDateColumn` while it is required, so the flag is lost on the way back from there.
-22. **Laravel names unnamed reverse relations in the plural.** A Django foreign key without `related_name` has the implicit reverse accessor `<model>_set`, which the IR records as no name. The Laravel writer needs a method name for the `hasMany` side and uses the plural of the model (`posts`), which the Laravel reader then reports as an explicit reverse name.
+10. **JSON Schema describes defaults and nullability of values, not columns.** A property that has a default or is `readOnly` is not required, and the reader reads such a property back as non-nullable with the generated hint it can infer: a database default that is only a stored string (an empty JSON object) is not written, `now` defaults and auto-updated hints are inferred from `readOnly` and the property name, and a `json` column has no nullability of its own, so a required `json` column comes back nullable.
+11. **Many-to-many becomes an array property in JSON Schema.** A many-to-many relation is written as an array of references on each side and is read back as a many-to-many field on the model defined first, with a join table named after the two models rather than the source table. An explicit join model (Prisma) is a model with two single references; it is read back as an ordinary model and keeps its composite key through `x-primary-key`.
+12. **SQLAlchemy names both sides of a relationship.** A relationship is written on both classes with `back_populates`, so the reverse side always has a name. Where the source never named it (Django `post_set`, a Laravel or Doctrine inverse side that is not declared) the writer uses the plural of the model name (`posts`), and the reader keeps whatever the code says.
+13. **The side of a many-to-many that is written first can swap.** A many-to-many is written as an association `Table(...)` with `secondary=` on both classes. The reader keeps the two relationship names but not the name or the `ondelete` of the association table, and when both sides of the pair carry the same information it may read the pair with the other class as the owner.
+14. **SQL stores no reverse accessor names.** A foreign key is a column, not a relation field, so the SQL reader names the reverse side after the table that holds the key (`blog_posts`, prefixed with the relation name when a table has two keys to the same target) and does not recover the `related_name` the source had.
+15. **SQL cannot mark a column as refreshed on every save.** Only MySQL has `ON UPDATE CURRENT_TIMESTAMP`. The other dialects need a trigger, which is not written, so an auto-updated timestamp (`auto_now`, `@updatedAt`, `autoUpdateTime`) comes back as an ordinary timestamp with a default.
+16. **A unique index is not a unique column in SQL.** The SQL reader turns `UNIQUE (column)` constraints and column-level `UNIQUE` into a unique column, and keeps `CREATE UNIQUE INDEX` as an index, because the two are different objects in the database. A format that writes a single-column unique index (GORM `uniqueIndex`, a Laravel `unique()` migration call) therefore comes back as an index instead of a unique column, and the other way round.
+17. **Join tables and many-to-many fields in SQL.** A many-to-many field is written as a join table. The SQL reader turns a table of exactly two foreign-key columns that form its composite primary key, and nothing else, back into a many-to-many field and drops the table; any other join table (one with its own key or extra columns, as Django and Prisma write them) stays an explicit model, and a many-to-many field comes back as a model. The join table name and any `ON DELETE` action other than `CASCADE` are not kept.
+18. **Django enum columns are at least 32 characters.** The Django writer ignores the stored length of an enum-backed field and writes `max_length` as the longer of 32 and the longest enum value (`src/emitters/django.ts`). A length kept by another format (for example 20 in a Doctrine `length: 20` column) therefore becomes 32 once the schema passes through Django, which is why a second trip through Django is not stable for that field.
+19. **Laravel keys are big integers.** The Laravel writer spells an auto-increment key as `$table->id()`, which is an unsigned big integer, and writes the foreign keys that point at it as `foreignId()`. An `int` key therefore comes back as `bigInt` when the migrations are read again. Reading Laravel migrations written with `increments()` (the canonical Laravel fixture does) keeps `int`, so this only appears when the schema passes through the Laravel writer.
+20. **Laravel timestamps are nullable and maintained by Eloquent.** The Laravel writer uses `$table->timestamps()` for `created_at` / `updated_at`, which creates nullable columns without a database default, because Eloquent fills them in. The Laravel reader reports them as nullable, treats `updated_at` of a model with `$timestamps` as auto-updated and `created_at` as defaulting to now. A source that has these columns as required, with a different default or without the auto-update flag (Doctrine keeps the default and sets the value in a lifecycle callback), therefore changes when it passes through Laravel; TypeORM only treats a column as `@UpdateDateColumn` while it is required, so the flag is lost on the way back from there.
+21. **Laravel names unnamed reverse relations in the plural.** A Django foreign key without `related_name` has the implicit reverse accessor `<model>_set`, which the IR records as no name. The Laravel writer needs a method name for the `hasMany` side and uses the plural of the model (`posts`), which the Laravel reader then reports as an explicit reverse name.
 
 ## Details per pair
 
@@ -203,23 +202,23 @@ Warnings when the output is read back:
 - Post.tags: custom join table settings (name, JoinColumn, InverseJoinColumn) are not preserved; the join table name and columns are derived from the models.
 
 Not stable, but only for documented reasons: a second doctrine → django → doctrine trip changes:
-- `fieldMaxLength Post.status: 20 -> 32` — see reason 19
+- `fieldMaxLength Post.status: 20 -> 32` — see reason 18
 
 ### django → laravel
 
 Differences found:
 
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
 - `fieldMaxLength Post.status: 20 -> (none)` — see reason 1
-- `relationRelatedName Post.category: postset -> posts` — see reason 22
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType User.id: int -> bigInt` — see reason 20
+- `relationRelatedName Post.category: postset -> posts` — see reason 21
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType User.id: int -> bigInt` — see reason 19
 - `enumValueLabel PostStatus.draft: Draft -> (none)` — see reason 2
 - `enumValueLabel PostStatus.published: Published -> (none)` — see reason 2
 
@@ -248,7 +247,7 @@ Warnings when the output is read back:
 - Profile.User: GORM ignores the constraint:... tag of a belongs-to field when User.Profile describes the same foreign key; set the constraint on that field instead.
 
 Not stable, but only for documented reasons: a second gorm → django → gorm trip changes:
-- `fieldMaxLength Post.status: 20 -> 32` — see reason 19
+- `fieldMaxLength Post.status: 20 -> 32` — see reason 18
 
 ### django → drizzle
 
@@ -271,29 +270,15 @@ Stable: converting drizzle → django → drizzle again changes nothing further.
 
 Differences found:
 
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
 - `fieldMaxLength Post.status: 20 -> (none)` — see reason 1
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 - `enumValueLabel PostStatus.draft: Draft -> (none)` — see reason 2
 - `enumValueLabel PostStatus.published: Published -> (none)` — see reason 2
 
 Emit warnings: none.
 
-Warnings when the output is read back:
-
-- User.posts: Post has 2 properties that reference User (author, editor) and User has as many arrays of Post, so they were matched in order of appearance and this array is the reverse of Post.author. Set "x-related-name": "posts" on the right property to say so explicitly.
+Warnings when the output is read back: none.
 
 Stable: converting json-schema → django → json-schema again changes nothing further.
 
@@ -301,16 +286,16 @@ Stable: converting json-schema → django → json-schema again changes nothing 
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 16
-- `relationRelatedName Category.parent: children -> blogcategories` — see reason 15
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 16
+- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 15
+- `relationRelatedName Category.parent: children -> blogcategories` — see reason 14
+- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 15
 - `fieldMaxLength Post.status: 20 -> (none)` — see reason 1
-- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 15
-- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 15
-- `relationRelatedName Post.category: postset -> blogposts` — see reason 15
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 18
-- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 15
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 14
+- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 14
+- `relationRelatedName Post.category: postset -> blogposts` — see reason 14
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 17
+- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 14
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 - `enumValueLabel PostStatus.draft: Draft -> (none)` — see reason 2
 - `enumValueLabel PostStatus.published: Published -> (none)` — see reason 2
 
@@ -327,7 +312,7 @@ Stable: converting sql → django → sql again changes nothing further.
 Differences found:
 
 - `fieldMaxLength Post.status: 20 -> (none)` — see reason 1
-- `relationRelatedName Post.category: postset -> posts` — see reason 13
+- `relationRelatedName Post.category: postset -> posts` — see reason 12
 - `enumValueLabel PostStatus.draft: Draft -> (none)` — see reason 2
 - `enumValueLabel PostStatus.published: Published -> (none)` — see reason 2
 
@@ -375,16 +360,16 @@ Stable: converting doctrine → prisma → doctrine again changes nothing furthe
 
 Differences found:
 
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType User.id: int -> bigInt` — see reason 20
-- `fieldType PostTags.id: int -> bigInt` — see reason 20
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType User.id: int -> bigInt` — see reason 19
+- `fieldType PostTags.id: int -> bigInt` — see reason 19
 
 Emit warnings: none.
 
@@ -427,30 +412,12 @@ Stable: converting drizzle → prisma → drizzle again changes nothing further.
 
 Differences found:
 
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
-- `tableName PostTags: blog_post_tags -> PostTags` — see reason 10
-- `relationOnDelete PostTags.post: cascade -> restrict` — see reason 10
-- `relationOnDelete PostTags.tag: cascade -> restrict` — see reason 10
-- `indexRemoved PostTags: unique (postid, tagid) -> (absent)` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 Emit warnings: none.
 
-Warnings when the output is read back:
-
-- User.posts: Post has 2 properties that reference User (author, editor) and User has as many arrays of Post, so they were matched in order of appearance and this array is the reverse of Post.author. Set "x-related-name": "posts" on the right property to say so explicitly.
+Warnings when the output is read back: none.
 
 Stable: converting json-schema → prisma → json-schema again changes nothing further.
 
@@ -458,15 +425,15 @@ Stable: converting json-schema → prisma → json-schema again changes nothing 
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 16
-- `relationRelatedName Category.parent: children -> blogcategories` — see reason 15
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 16
-- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 15
-- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 15
-- `relationRelatedName Post.category: postset -> blogposts` — see reason 15
-- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 15
-- `relationRelatedName PostTags.post: tags -> blogposttags` — see reason 15
-- `relationRelatedName PostTags.tag: posts -> blogposttags` — see reason 15
+- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 15
+- `relationRelatedName Category.parent: children -> blogcategories` — see reason 14
+- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 15
+- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 14
+- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 14
+- `relationRelatedName Post.category: postset -> blogposts` — see reason 14
+- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 14
+- `relationRelatedName PostTags.post: tags -> blogposttags` — see reason 14
+- `relationRelatedName PostTags.tag: posts -> blogposttags` — see reason 14
 
 Emit warnings:
 
@@ -529,16 +496,16 @@ Stable: converting doctrine → typeorm → doctrine again changes nothing furth
 
 Differences found:
 
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `relationRelatedName Post.category: postset -> posts` — see reason 22
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType User.id: int -> bigInt` — see reason 20
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `relationRelatedName Post.category: postset -> posts` — see reason 21
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType User.id: int -> bigInt` — see reason 19
 
 Emit warnings: none.
 
@@ -582,26 +549,12 @@ Stable: converting drizzle → typeorm → drizzle again changes nothing further
 
 Differences found:
 
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 Emit warnings: none.
 
-Warnings when the output is read back:
-
-- User.posts: Post has 2 properties that reference User (author, editor) and User has as many arrays of Post, so they were matched in order of appearance and this array is the reverse of Post.author. Set "x-related-name": "posts" on the right property to say so explicitly.
+Warnings when the output is read back: none.
 
 Stable: converting json-schema → typeorm → json-schema again changes nothing further.
 
@@ -609,15 +562,15 @@ Stable: converting json-schema → typeorm → json-schema again changes nothing
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 16
-- `relationRelatedName Category.parent: children -> blogcategories` — see reason 15
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 16
-- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 15
-- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 15
-- `relationRelatedName Post.category: postset -> blogposts` — see reason 15
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 18
-- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 15
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 15
+- `relationRelatedName Category.parent: children -> blogcategories` — see reason 14
+- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 15
+- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 14
+- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 14
+- `relationRelatedName Post.category: postset -> blogposts` — see reason 14
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 17
+- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 14
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 Emit warnings:
 
@@ -631,7 +584,7 @@ Stable: converting sql → typeorm → sql again changes nothing further.
 
 Differences found:
 
-- `relationRelatedName Post.category: postset -> posts` — see reason 13
+- `relationRelatedName Post.category: postset -> posts` — see reason 12
 
 Emit warnings:
 
@@ -683,20 +636,20 @@ Not stable, but only for documented reasons: a second typeorm → doctrine → t
 
 Differences found:
 
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldDefault Category.updated_at: now -> (none)` — see reason 21
-- `fieldAutoUpdated Category.updated_at: false -> true` — see reason 21
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldDefault Post.updated_at: now -> (none)` — see reason 21
-- `fieldAutoUpdated Post.updated_at: false -> true` — see reason 21
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `relationRelatedName Post.category: postset -> posts` — see reason 22
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType User.id: int -> bigInt` — see reason 20
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldDefault Category.updated_at: now -> (none)` — see reason 20
+- `fieldAutoUpdated Category.updated_at: false -> true` — see reason 20
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldDefault Post.updated_at: now -> (none)` — see reason 20
+- `fieldAutoUpdated Post.updated_at: false -> true` — see reason 20
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `relationRelatedName Post.category: postset -> posts` — see reason 21
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType User.id: int -> bigInt` — see reason 19
 
 Emit warnings: none.
 
@@ -746,30 +699,16 @@ Not stable, but only for documented reasons: a second drizzle → doctrine → d
 
 Differences found:
 
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldDefault Category.updated_at: now -> (none)` — see reason 11
-- `fieldAutoUpdated Category.updated_at: false -> true` — see reason 11
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldDefault Post.updated_at: now -> (none)` — see reason 11
-- `fieldAutoUpdated Post.updated_at: false -> true` — see reason 11
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
+- `fieldDefault Category.updated_at: now -> (none)` — see reason 10
+- `fieldAutoUpdated Category.updated_at: false -> true` — see reason 10
+- `fieldDefault Post.updated_at: now -> (none)` — see reason 10
+- `fieldAutoUpdated Post.updated_at: false -> true` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 Emit warnings: none.
 
-Warnings when the output is read back:
-
-- User.posts: Post has 2 properties that reference User (author, editor) and User has as many arrays of Post, so they were matched in order of appearance and this array is the reverse of Post.author. Set "x-related-name": "posts" on the right property to say so explicitly.
+Warnings when the output is read back: none.
 
 Stable: converting json-schema → doctrine → json-schema again changes nothing further.
 
@@ -777,13 +716,13 @@ Stable: converting json-schema → doctrine → json-schema again changes nothin
 
 Differences found:
 
-- `relationRelatedName Category.parent: children -> blogcategories` — see reason 15
-- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 15
-- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 15
-- `relationRelatedName Post.category: postset -> blogposts` — see reason 15
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 18
-- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 15
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `relationRelatedName Category.parent: children -> blogcategories` — see reason 14
+- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 14
+- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 14
+- `relationRelatedName Post.category: postset -> blogposts` — see reason 14
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 17
+- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 14
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 Emit warnings: none.
 
@@ -796,7 +735,7 @@ Not stable, but only for documented reasons: a second sql → doctrine → sql t
 
 Differences found:
 
-- `relationRelatedName Post.category: postset -> posts` — see reason 13
+- `relationRelatedName Post.category: postset -> posts` — see reason 12
 
 Emit warnings:
 
@@ -816,15 +755,15 @@ Emit warnings: none.
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second django → laravel → django trip changes:
-- `fieldType User.id: int -> bigInt` — see reason 20
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Profile.id: int -> bigInt` — see reason 20
+- `fieldType User.id: int -> bigInt` — see reason 19
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Profile.id: int -> bigInt` — see reason 19
 
 ### laravel → prisma
 
@@ -838,16 +777,16 @@ Emit warnings: none.
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second prisma → laravel → prisma trip changes:
-- `fieldType User.id: int -> bigInt` — see reason 20
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType PostTags.id: int -> bigInt` — see reason 20
+- `fieldType User.id: int -> bigInt` — see reason 19
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType PostTags.id: int -> bigInt` — see reason 19
 
 ### laravel → typeorm
 
@@ -860,12 +799,12 @@ Warnings when the output is read back:
 - Post.tags: custom @JoinTable settings (name, joinColumn, inverseJoinColumn) are not preserved; the join table name and columns are derived from the models.
 
 Not stable, but only for documented reasons: a second typeorm → laravel → typeorm trip changes:
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 21
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 21
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 20
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 20
 
 ### laravel → doctrine
 
@@ -880,15 +819,15 @@ Warnings when the output is read back:
 - Post.tags: custom join table settings (name, JoinColumn, InverseJoinColumn) are not preserved; the join table name and columns are derived from the models.
 
 Not stable, but only for documented reasons: a second doctrine → laravel → doctrine trip changes:
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType User.id: int -> bigInt` — see reason 20
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType User.id: int -> bigInt` — see reason 19
 
 ### laravel → gorm
 
@@ -905,15 +844,15 @@ Warnings when the output is read back:
 - Profile.User: GORM ignores the constraint:... tag of a belongs-to field when User.Profile describes the same foreign key; set the constraint on that field instead.
 
 Not stable, but only for documented reasons: a second gorm → laravel → gorm trip changes:
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType User.id: int -> bigInt` — see reason 20
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType User.id: int -> bigInt` — see reason 19
 
 ### laravel → drizzle
 
@@ -927,68 +866,54 @@ Emit warnings: none.
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second drizzle → laravel → drizzle trip changes:
-- `fieldType User.id: int -> bigInt` — see reason 20
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType PostTag.id: int -> bigInt` — see reason 20
+- `fieldType User.id: int -> bigInt` — see reason 19
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType PostTag.id: int -> bigInt` — see reason 19
 
 ### laravel → json-schema
 
 Differences found:
 
-- `tableName User: auth_user -> User` — see reason 10
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `relationAdded Tag.posts: (absent) -> manyToMany -> Post` — see reason 12
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 12
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
+- `relationAdded Tag.posts: (absent) -> manyToMany -> Post` — see reason 11
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 11
 
 Emit warnings: none.
 
-Warnings when the output is read back:
-
-- User.posts: Post has 2 properties that reference User (author, editor) and User has as many arrays of Post, so they were matched in order of appearance and this array is the reverse of Post.author. Set "x-related-name": "posts" on the right property to say so explicitly.
+Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second json-schema → laravel → json-schema trip changes:
-- `fieldType User.id: int -> bigInt` — see reason 20
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 11
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 11
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 11
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 11
-- `fieldType Profile.id: int -> bigInt` — see reason 20
+- `fieldType User.id: int -> bigInt` — see reason 19
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 10
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 10
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 10
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 10
+- `fieldType Profile.id: int -> bigInt` — see reason 19
 
 ### laravel → sql
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 16
-- `relationRelatedName Category.parent: children -> blogcategories` — see reason 15
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 16
-- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 15
-- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 15
-- `relationRelatedName Post.category: posts -> blogposts` — see reason 15
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 18
-- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 15
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 15
+- `relationRelatedName Category.parent: children -> blogcategories` — see reason 14
+- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 15
+- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 14
+- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 14
+- `relationRelatedName Post.category: posts -> blogposts` — see reason 14
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 17
+- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 14
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 Emit warnings:
 
@@ -997,27 +922,27 @@ Emit warnings:
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second sql → laravel → sql trip changes:
-- `fieldType User.id: int -> bigInt` — see reason 20
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldUnique Category.name: true -> false` — see reason 17
-- `indexAdded Category: (absent) -> unique (name)` — see reason 17
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldUnique Post.public_id: true -> false` — see reason 17
-- `indexAdded Post: (absent) -> unique (publicid)` — see reason 17
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType BlogPostTag.id: int -> bigInt` — see reason 20
+- `fieldType User.id: int -> bigInt` — see reason 19
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldUnique Category.name: true -> false` — see reason 16
+- `indexAdded Category: (absent) -> unique (name)` — see reason 16
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldUnique Post.public_id: true -> false` — see reason 16
+- `indexAdded Post: (absent) -> unique (publicid)` — see reason 16
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType BlogPostTag.id: int -> bigInt` — see reason 19
 
 ### laravel → sqlalchemy
 
 Differences found:
 
-- `relationAdded Tag.posts: (absent) -> manyToMany -> Post` — see reason 14
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 14
+- `relationAdded Tag.posts: (absent) -> manyToMany -> Post` — see reason 13
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 13
 
 Emit warnings:
 
@@ -1026,15 +951,15 @@ Emit warnings:
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second sqlalchemy → laravel → sqlalchemy trip changes:
-- `fieldType User.id: int -> bigInt` — see reason 20
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Profile.id: int -> bigInt` — see reason 20
+- `fieldType User.id: int -> bigInt` — see reason 19
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Profile.id: int -> bigInt` — see reason 19
 
 ### gorm → django
 
@@ -1090,16 +1015,16 @@ Stable: converting doctrine → gorm → doctrine again changes nothing further.
 
 Differences found:
 
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `relationRelatedName Post.category: postset -> posts` — see reason 22
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType User.id: int -> bigInt` — see reason 20
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `relationRelatedName Post.category: postset -> posts` — see reason 21
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType User.id: int -> bigInt` — see reason 19
 
 Emit warnings: none.
 
@@ -1125,43 +1050,29 @@ Stable: converting drizzle → gorm → drizzle again changes nothing further.
 
 Differences found:
 
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 Emit warnings: none.
 
-Warnings when the output is read back:
-
-- User.posts: Post has 2 properties that reference User (author, editor) and User has as many arrays of Post, so they were matched in order of appearance and this array is the reverse of Post.author. Set "x-related-name": "posts" on the right property to say so explicitly.
+Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second json-schema → gorm → json-schema trip changes:
-- `fieldNullability Post.metadata: nullable -> required` — see reason 11
+- `fieldNullability Post.metadata: nullable -> required` — see reason 10
 
 ### gorm → sql
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 16
-- `relationRelatedName Category.parent: children -> blogcategories` — see reason 15
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 16
-- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 15
-- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 15
-- `relationRelatedName Post.category: postset -> blogposts` — see reason 15
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 18
-- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 15
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 15
+- `relationRelatedName Category.parent: children -> blogcategories` — see reason 14
+- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 15
+- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 14
+- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 14
+- `relationRelatedName Post.category: postset -> blogposts` — see reason 14
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 17
+- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 14
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 Emit warnings:
 
@@ -1170,16 +1081,16 @@ Emit warnings:
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second sql → gorm → sql trip changes:
-- `fieldUnique Category.name: true -> false` — see reason 17
-- `indexAdded Category: (absent) -> unique (name)` — see reason 17
-- `fieldUnique Post.public_id: true -> false` — see reason 17
-- `indexAdded Post: (absent) -> unique (publicid)` — see reason 17
+- `fieldUnique Category.name: true -> false` — see reason 16
+- `indexAdded Category: (absent) -> unique (name)` — see reason 16
+- `fieldUnique Post.public_id: true -> false` — see reason 16
+- `indexAdded Post: (absent) -> unique (publicid)` — see reason 16
 
 ### gorm → sqlalchemy
 
 Differences found:
 
-- `relationRelatedName Post.category: postset -> posts` — see reason 13
+- `relationRelatedName Post.category: postset -> posts` — see reason 12
 
 Emit warnings:
 
@@ -1237,15 +1148,15 @@ Stable: converting doctrine → drizzle → doctrine again changes nothing furth
 
 Differences found:
 
-- `fieldType User.id: int -> bigInt` — see reason 20
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Profile.id: int -> bigInt` — see reason 20
+- `fieldType User.id: int -> bigInt` — see reason 19
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Profile.id: int -> bigInt` — see reason 19
 
 Emit warnings:
 
@@ -1277,32 +1188,12 @@ Stable: converting gorm → drizzle → gorm again changes nothing further.
 
 Differences found:
 
-- `tableName User: auth_user -> User` — see reason 10
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName PostTag: blog_post_tags -> PostTag` — see reason 10
-- `compositePrimaryKey PostTag: (post, tag) -> (none)` — see reason 10
-- `fieldAdded PostTag.id: (absent) -> int` — see reason 12
-- `relationOnDelete PostTag.post: cascade -> restrict` — see reason 10
-- `relationOnDelete PostTag.tag: cascade -> restrict` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 Emit warnings: none.
 
-Warnings when the output is read back:
-
-- PostTag: no primary key property was found (an id, postTagId or x-primary-key property), so an integer "id" column was added.
-- User.posts: Post has 2 properties that reference User (author, editor) and User has as many arrays of Post, so they were matched in order of appearance and this array is the reverse of Post.author. Set "x-related-name": "posts" on the right property to say so explicitly.
+Warnings when the output is read back: none.
 
 Stable: converting json-schema → drizzle → json-schema again changes nothing further.
 
@@ -1310,15 +1201,15 @@ Stable: converting json-schema → drizzle → json-schema again changes nothing
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 16
-- `relationRelatedName Category.parent: children -> blogcategories` — see reason 15
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 16
-- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 15
-- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 15
-- `relationRelatedName Post.category: posts -> blogposts` — see reason 15
-- `relationAdded Post.tags: (absent) -> manyToMany -> Tag` — see reason 18
-- `modelRemoved PostTag: model PostTag -> (absent)` — see reason 18
-- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 15
+- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 15
+- `relationRelatedName Category.parent: children -> blogcategories` — see reason 14
+- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 15
+- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 14
+- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 14
+- `relationRelatedName Post.category: posts -> blogposts` — see reason 14
+- `relationAdded Post.tags: (absent) -> manyToMany -> Tag` — see reason 17
+- `modelRemoved PostTag: model PostTag -> (absent)` — see reason 17
+- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 14
 
 Emit warnings:
 
@@ -1327,8 +1218,8 @@ Emit warnings:
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second sql → drizzle → sql trip changes:
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 18
-- `modelAdded PostTag: (absent) -> model PostTag` — see reason 18
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 17
+- `modelAdded PostTag: (absent) -> model PostTag` — see reason 17
 
 ### drizzle → sqlalchemy
 
@@ -1351,51 +1242,23 @@ Emit warnings: none.
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second django → json-schema → django trip changes:
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 ### json-schema → prisma
 
 Differences found:
 
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 12
-- `modelAdded PostTags: (absent) -> model PostTags` — see reason 12
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 11
+- `modelAdded PostTags: (absent) -> model PostTags` — see reason 11
 
 Emit warnings: none.
 
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second prisma → json-schema → prisma trip changes:
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
-- `tableName PostTags: blog_post_tags -> PostTags` — see reason 10
-- `relationOnDelete PostTags.post: cascade -> restrict` — see reason 10
-- `relationOnDelete PostTags.tag: cascade -> restrict` — see reason 10
-- `indexRemoved PostTags: unique (postid, tagid) -> (absent)` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 ### json-schema → typeorm
 
@@ -1408,20 +1271,8 @@ Warnings when the output is read back:
 - Post.tags: custom @JoinTable settings (name, joinColumn, inverseJoinColumn) are not preserved; the join table name and columns are derived from the models.
 
 Not stable, but only for documented reasons: a second typeorm → json-schema → typeorm trip changes:
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 ### json-schema → doctrine
 
@@ -1436,55 +1287,31 @@ Warnings when the output is read back:
 - Post.tags: custom join table settings (name, JoinColumn, InverseJoinColumn) are not preserved; the join table name and columns are derived from the models.
 
 Not stable, but only for documented reasons: a second doctrine → json-schema → doctrine trip changes:
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "[]" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "[]" -> (none)` — see reason 10
 
 ### json-schema → laravel
 
 Differences found:
 
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 11
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 11
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 11
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 11
-- `relationRelatedName Post.category: postset -> posts` — see reason 22
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Profile.id: int -> bigInt` — see reason 20
-- `fieldType User.id: int -> bigInt` — see reason 20
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 10
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 10
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 10
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 10
+- `relationRelatedName Post.category: postset -> posts` — see reason 21
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Profile.id: int -> bigInt` — see reason 19
+- `fieldType User.id: int -> bigInt` — see reason 19
 
 Emit warnings: none.
 
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second laravel → json-schema → laravel trip changes:
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 ### json-schema → gorm
 
@@ -1503,65 +1330,37 @@ Warnings when the output is read back:
 - Profile.User: GORM ignores the constraint:... tag of a belongs-to field when User.Profile describes the same foreign key; set the constraint on that field instead.
 
 Not stable, but only for documented reasons: a second gorm → json-schema → gorm trip changes:
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 ### json-schema → drizzle
 
 Differences found:
 
 - `relationRelatedName Post.category: postset -> posts` — see reason 9
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 12
-- `modelAdded PostTag: (absent) -> model PostTag` — see reason 12
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 11
+- `modelAdded PostTag: (absent) -> model PostTag` — see reason 11
 
 Emit warnings: none.
 
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second drizzle → json-schema → drizzle trip changes:
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `tableName PostTag: blog_post_tags -> PostTag` — see reason 10
-- `relationOnDelete PostTag.post: cascade -> restrict` — see reason 10
-- `relationOnDelete PostTag.tag: cascade -> restrict` — see reason 10
-- `indexRemoved PostTag: unique (postid, tagid) -> (absent)` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 ### json-schema → sql
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 16
-- `relationRelatedName Category.parent: children -> blogcategories` — see reason 15
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 16
-- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 15
-- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 15
-- `relationRelatedName Post.category: postset -> blogposts` — see reason 15
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 12
-- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 15
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 12
+- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 15
+- `relationRelatedName Category.parent: children -> blogcategories` — see reason 14
+- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 15
+- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 14
+- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 14
+- `relationRelatedName Post.category: postset -> blogposts` — see reason 14
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 11
+- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 14
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 11
 
 Emit warnings:
 
@@ -1570,35 +1369,14 @@ Emit warnings:
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second sql → json-schema → sql trip changes:
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 17
-- `relationRelatedName Category.parent: blogcategories -> categories` — see reason 15
-- `tableName User: auth_user -> User` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 17
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `relationRelatedName Post.author: authorblogposts -> authorposts` — see reason 15
-- `relationRelatedName Post.editor: editorblogposts -> editorposts` — see reason 15
-- `relationRelatedName Post.category: blogposts -> posts` — see reason 15
-- `indexRemoved Post: index (title) -> (absent)` — see reason 17
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 17
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 17
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
-- `relationRelatedName Profile.user: blogprofile -> profile` — see reason 15
-- `tableName BlogPostTag: blog_post_tags -> BlogPostTag` — see reason 10
-- `relationOnDelete BlogPostTag.post: cascade -> restrict` — see reason 10
-- `relationOnDelete BlogPostTag.tag: cascade -> restrict` — see reason 10
-- `indexRemoved BlogPostTag: unique (postid, tagid) -> (absent)` — see reason 17
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 ### json-schema → sqlalchemy
 
 Differences found:
 
-- `relationRelatedName Post.category: postset -> posts` — see reason 13
+- `relationRelatedName Post.category: postset -> posts` — see reason 12
 
 Emit warnings:
 
@@ -1607,20 +1385,8 @@ Emit warnings:
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second sqlalchemy → json-schema → sqlalchemy trip changes:
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName User: auth_user -> User` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 ### sql → django
 
@@ -1631,23 +1397,23 @@ Emit warnings: none.
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second django → sql → django trip changes:
-- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 18
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 17
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 ### sql → prisma
 
 Differences found:
 
-- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 18
-- `modelAdded BlogPostTags: (absent) -> model BlogPostTags` — see reason 18
+- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 17
+- `modelAdded BlogPostTags: (absent) -> model BlogPostTags` — see reason 17
 
 Emit warnings: none.
 
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second prisma → sql → prisma trip changes:
-- `modelRemoved BlogPostTags: model BlogPostTags -> (absent)` — see reason 18
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `modelRemoved BlogPostTags: model BlogPostTags -> (absent)` — see reason 17
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 ### sql → typeorm
 
@@ -1660,8 +1426,8 @@ Warnings when the output is read back:
 - BlogPost.tags: custom @JoinTable settings (name, joinColumn, inverseJoinColumn) are not preserved; the join table name and columns are derived from the models.
 
 Not stable, but only for documented reasons: a second typeorm → sql → typeorm trip changes:
-- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 18
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 17
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 ### sql → doctrine
 
@@ -1676,36 +1442,36 @@ Warnings when the output is read back:
 - BlogPost.tags: custom join table settings (name, JoinColumn, InverseJoinColumn) are not preserved; the join table name and columns are derived from the models.
 
 Not stable, but only for documented reasons: a second doctrine → sql → doctrine trip changes:
-- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 18
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 17
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 ### sql → laravel
 
 Differences found:
 
-- `fieldType BlogUser.id: int -> bigInt` — see reason 20
-- `fieldType BlogCategory.id: int -> bigInt` — see reason 20
-- `fieldNullability BlogCategory.created_at: required -> nullable` — see reason 21
-- `fieldNullability BlogCategory.updated_at: required -> nullable` — see reason 21
-- `fieldAutoUpdated BlogCategory.updated_at: false -> true` — see reason 21
-- `fieldType BlogTag.id: int -> bigInt` — see reason 20
-- `fieldType BlogPost.id: int -> bigInt` — see reason 20
-- `fieldNullability BlogPost.created_at: required -> nullable` — see reason 21
-- `fieldNullability BlogPost.updated_at: required -> nullable` — see reason 21
-- `fieldAutoUpdated BlogPost.updated_at: false -> true` — see reason 21
-- `fieldType BlogProfile.id: int -> bigInt` — see reason 20
+- `fieldType BlogUser.id: int -> bigInt` — see reason 19
+- `fieldType BlogCategory.id: int -> bigInt` — see reason 19
+- `fieldNullability BlogCategory.created_at: required -> nullable` — see reason 20
+- `fieldNullability BlogCategory.updated_at: required -> nullable` — see reason 20
+- `fieldAutoUpdated BlogCategory.updated_at: false -> true` — see reason 20
+- `fieldType BlogTag.id: int -> bigInt` — see reason 19
+- `fieldType BlogPost.id: int -> bigInt` — see reason 19
+- `fieldNullability BlogPost.created_at: required -> nullable` — see reason 20
+- `fieldNullability BlogPost.updated_at: required -> nullable` — see reason 20
+- `fieldAutoUpdated BlogPost.updated_at: false -> true` — see reason 20
+- `fieldType BlogProfile.id: int -> bigInt` — see reason 19
 
 Emit warnings: none.
 
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second laravel → sql → laravel trip changes:
-- `fieldUnique BlogCategory.name: true -> false` — see reason 17
-- `indexAdded BlogCategory: (absent) -> unique (name)` — see reason 17
-- `fieldUnique BlogPost.public_id: true -> false` — see reason 17
-- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 18
-- `indexAdded BlogPost: (absent) -> unique (publicid)` — see reason 17
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `fieldUnique BlogCategory.name: true -> false` — see reason 16
+- `indexAdded BlogCategory: (absent) -> unique (name)` — see reason 16
+- `fieldUnique BlogPost.public_id: true -> false` — see reason 16
+- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 17
+- `indexAdded BlogPost: (absent) -> unique (publicid)` — see reason 16
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 ### sql → gorm
 
@@ -1725,19 +1491,19 @@ Warnings when the output is read back:
 - BlogProfile.User: GORM ignores the constraint:... tag of a belongs-to field when BlogUser.BlogProfile describes the same foreign key; set the constraint on that field instead.
 
 Not stable, but only for documented reasons: a second gorm → sql → gorm trip changes:
-- `fieldUnique BlogCategory.name: true -> false` — see reason 17
-- `indexAdded BlogCategory: (absent) -> unique (name)` — see reason 17
-- `fieldUnique BlogPost.public_id: true -> false` — see reason 17
-- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 18
-- `indexAdded BlogPost: (absent) -> unique (publicid)` — see reason 17
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `fieldUnique BlogCategory.name: true -> false` — see reason 16
+- `indexAdded BlogCategory: (absent) -> unique (name)` — see reason 16
+- `fieldUnique BlogPost.public_id: true -> false` — see reason 16
+- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 17
+- `indexAdded BlogPost: (absent) -> unique (publicid)` — see reason 16
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 ### sql → drizzle
 
 Differences found:
 
-- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 18
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 17
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 Emit warnings: none.
 
@@ -1749,39 +1515,25 @@ Stable: converting drizzle → sql → drizzle again changes nothing further.
 
 Differences found:
 
-- `tableName BlogUser: blog_user -> BlogUser` — see reason 10
-- `tableName BlogCategory: blog_category -> BlogCategory` — see reason 10
-- `fieldUnique BlogCategory.name: true -> false` — see reason 17
-- `tableName BlogTag: blog_tag -> BlogTag` — see reason 10
-- `relationAdded BlogTag.blog_posts: (absent) -> manyToMany -> BlogPost` — see reason 12
-- `tableName BlogPost: blog_post -> BlogPost` — see reason 10
-- `fieldUnique BlogPost.public_id: true -> false` — see reason 17
-- `fieldNullability BlogPost.metadata: required -> nullable` — see reason 11
-- `fieldDefault BlogPost.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete BlogPost.author: cascade -> restrict` — see reason 10
-- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 12
-- `indexRemoved BlogPost: unique (authorid, title) -> (absent)` — see reason 17
-- `indexRemoved BlogPost: index (title) -> (absent)` — see reason 17
-- `indexRemoved BlogPost: index (publishedat, status) -> (absent)` — see reason 17
-- `tableName BlogProfile: blog_profile -> BlogProfile` — see reason 10
-- `relationOnDelete BlogProfile.user: cascade -> restrict` — see reason 10
+- `relationAdded BlogTag.blog_posts: (absent) -> manyToMany -> BlogPost` — see reason 11
+- `fieldNullability BlogPost.metadata: required -> nullable` — see reason 10
+- `fieldDefault BlogPost.metadata: literal "{}" -> (none)` — see reason 10
+- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 11
 
 Emit warnings: none.
 
-Warnings when the output is read back:
-
-- BlogUser.author_blog_posts: BlogPost has 2 properties that reference BlogUser (author, editor) and BlogUser has as many arrays of BlogPost, so they were matched in order of appearance and this array is the reverse of BlogPost.author. Set "x-related-name": "author_blog_posts" on the right property to say so explicitly.
+Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second json-schema → sql → json-schema trip changes:
-- `relationRemoved BlogTag.blog_posts: manyToMany -> BlogPost -> (absent)` — see reason 12
-- `modelAdded BlogTagBlogPost: (absent) -> model BlogTagBlogPost` — see reason 12
+- `relationRemoved BlogTag.blog_posts: manyToMany -> BlogPost -> (absent)` — see reason 11
+- `modelAdded BlogTagBlogPost: (absent) -> model BlogTagBlogPost` — see reason 11
 
 ### sql → sqlalchemy
 
 Differences found:
 
-- `relationAdded BlogTag.blog_posts: (absent) -> manyToMany -> BlogPost` — see reason 14
-- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 14
+- `relationAdded BlogTag.blog_posts: (absent) -> manyToMany -> BlogPost` — see reason 13
+- `relationRemoved BlogPost.tags: manyToMany -> BlogTag -> (absent)` — see reason 13
 
 Emit warnings:
 
@@ -1790,8 +1542,8 @@ Emit warnings:
 Warnings when the output is read back: none.
 
 Not stable, but only for documented reasons: a second sqlalchemy → sql → sqlalchemy trip changes:
-- `relationRemoved BlogTag.blog_posts: manyToMany -> BlogPost -> (absent)` — see reason 14
-- `modelAdded BlogTagBlogPost: (absent) -> model BlogTagBlogPost` — see reason 18
+- `relationRemoved BlogTag.blog_posts: manyToMany -> BlogPost -> (absent)` — see reason 13
+- `modelAdded BlogTagBlogPost: (absent) -> model BlogTagBlogPost` — see reason 17
 
 ### sqlalchemy → django
 
@@ -1810,7 +1562,7 @@ Stable: converting django → sqlalchemy → django again changes nothing furthe
 
 Differences found:
 
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 14
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 13
 - `modelAdded PostTags: (absent) -> model PostTags` — see reason 3
 
 Emit warnings: none.
@@ -1849,15 +1601,15 @@ Stable: converting doctrine → sqlalchemy → doctrine again changes nothing fu
 
 Differences found:
 
-- `fieldType User.id: int -> bigInt` — see reason 20
-- `fieldNullability Category.created_at: required -> nullable` — see reason 21
-- `fieldNullability Category.updated_at: required -> nullable` — see reason 21
-- `fieldType Category.id: int -> bigInt` — see reason 20
-- `fieldNullability Post.created_at: required -> nullable` — see reason 21
-- `fieldNullability Post.updated_at: required -> nullable` — see reason 21
-- `fieldType Post.id: int -> bigInt` — see reason 20
-- `fieldType Tag.id: int -> bigInt` — see reason 20
-- `fieldType Profile.id: int -> bigInt` — see reason 20
+- `fieldType User.id: int -> bigInt` — see reason 19
+- `fieldNullability Category.created_at: required -> nullable` — see reason 20
+- `fieldNullability Category.updated_at: required -> nullable` — see reason 20
+- `fieldType Category.id: int -> bigInt` — see reason 19
+- `fieldNullability Post.created_at: required -> nullable` — see reason 20
+- `fieldNullability Post.updated_at: required -> nullable` — see reason 20
+- `fieldType Post.id: int -> bigInt` — see reason 19
+- `fieldType Tag.id: int -> bigInt` — see reason 19
+- `fieldType Profile.id: int -> bigInt` — see reason 19
 
 Emit warnings: none.
 
@@ -1885,7 +1637,7 @@ Stable: converting gorm → sqlalchemy → gorm again changes nothing further.
 
 Differences found:
 
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 14
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 13
 - `modelAdded PostTag: (absent) -> model PostTag` — see reason 8
 
 Emit warnings: none.
@@ -1898,26 +1650,12 @@ Stable: converting drizzle → sqlalchemy → drizzle again changes nothing furt
 
 Differences found:
 
-- `tableName User: auth_user -> User` — see reason 10
-- `tableName Category: blog_category -> Category` — see reason 10
-- `fieldUnique Category.name: true -> false` — see reason 10
-- `tableName Post: blog_post -> Post` — see reason 10
-- `fieldUnique Post.public_id: true -> false` — see reason 10
-- `fieldNullability Post.metadata: required -> nullable` — see reason 11
-- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 11
-- `relationOnDelete Post.author: cascade -> restrict` — see reason 10
-- `indexRemoved Post: index (title) -> (absent)` — see reason 10
-- `indexRemoved Post: unique (authorid, title) -> (absent)` — see reason 10
-- `indexRemoved Post: index (publishedat, status) -> (absent)` — see reason 10
-- `tableName Tag: blog_tag -> Tag` — see reason 10
-- `tableName Profile: blog_profile -> Profile` — see reason 10
-- `relationOnDelete Profile.user: cascade -> restrict` — see reason 10
+- `fieldNullability Post.metadata: required -> nullable` — see reason 10
+- `fieldDefault Post.metadata: literal "{}" -> (none)` — see reason 10
 
 Emit warnings: none.
 
-Warnings when the output is read back:
-
-- User.posts: Post has 2 properties that reference User (author, editor) and User has as many arrays of Post, so they were matched in order of appearance and this array is the reverse of Post.author. Set "x-related-name": "posts" on the right property to say so explicitly.
+Warnings when the output is read back: none.
 
 Stable: converting json-schema → sqlalchemy → json-schema again changes nothing further.
 
@@ -1925,15 +1663,15 @@ Stable: converting json-schema → sqlalchemy → json-schema again changes noth
 
 Differences found:
 
-- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 16
-- `relationRelatedName Category.parent: children -> blogcategories` — see reason 13
-- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 16
-- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 13
-- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 13
-- `relationRelatedName Post.category: posts -> blogposts` — see reason 13
-- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 14
-- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 13
-- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 18
+- `fieldAutoUpdated Category.updated_at: true -> false` — see reason 15
+- `relationRelatedName Category.parent: children -> blogcategories` — see reason 12
+- `fieldAutoUpdated Post.updated_at: true -> false` — see reason 15
+- `relationRelatedName Post.author: posts -> authorblogposts` — see reason 12
+- `relationRelatedName Post.editor: editedposts -> editorblogposts` — see reason 12
+- `relationRelatedName Post.category: posts -> blogposts` — see reason 12
+- `relationRemoved Post.tags: manyToMany -> Tag -> (absent)` — see reason 13
+- `relationRelatedName Profile.user: profile -> blogprofile` — see reason 12
+- `modelAdded BlogPostTag: (absent) -> model BlogPostTag` — see reason 17
 
 Emit warnings:
 

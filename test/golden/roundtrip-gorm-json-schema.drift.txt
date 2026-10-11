@@ -1,3 +1,6 @@
++ "$ref": "#/$defs/Category",
 + "metadata",
 + "postSet": {
++ "x-related-name": "postSet"
+- "$ref": "#/$defs/Category"
 - "post_set": {

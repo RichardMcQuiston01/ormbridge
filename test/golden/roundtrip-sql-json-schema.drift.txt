@@ -1,18 +1,22 @@
-+ "$ref": "#/$defs/BlogPost"
-+ "$ref": "#/$defs/BlogTag"
++ "$ref": "#/$defs/BlogPost",
++ "$ref": "#/$defs/BlogTag",
 + "$ref": "#/$defs/BlogTagBlogPost"
 + "$ref": "#/$defs/BlogTagBlogPost"
 + "BlogTagBlogPost": {
-+ "additionalProperties": false
++ "additionalProperties": false,
++ "blog_post"
 + "blog_post": {
 + "blog_post_id"
 + "blog_post_id": {
++ "blog_tag",
 + "blog_tag": {
 + "blog_tag_blog_posts": {
 + "blog_tag_blog_posts": {
 + "blog_tag_id",
 + "blog_tag_id": {
++ "fields": [
 + "id": {
++ "name": "blog_tag_blog_posts_blog_tag_id_blog_post_id_key"
 + "properties": {
 + "readOnly": true
 + "required": [
@@ -20,7 +24,18 @@
 + "type": "integer"
 + "type": "integer",
 + "type": "object",
++ "unique": true,
++ "x-indexes": [
++ "x-on-delete": "cascade"
++ "x-on-delete": "cascade"
++ "x-related-name": "blog_tag_blog_posts",
++ "x-related-name": "blog_tag_blog_posts",
++ "x-table-name": "blog_tag_blog_posts",
++ ]
 + ],
++ ],
++ {
++ }
 + }
 + },
 + },
