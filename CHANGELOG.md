@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-10-11
+
+The JSON Schema writer now carries table names, composite and non-`id` primary keys, unique columns, indexes, referential actions and related names as `x-table-name`, `x-primary-key`, `x-unique`, `x-indexes`, `x-on-delete` and `x-related-name` keywords, so they survive a round trip. **Output change:** Ajv in strict mode rejects these unknown keywords; register them with `ajv.addVocabulary(JSON_SCHEMA_CONVENTION_KEYWORDS)` or pass `conventions: false` to `emitJsonSchema` for the previous output.
+
 ### Added
 
 - JSON Schema writer: the database details that JSON Schema has no keyword for are written as ormbridge's own `x-table-name`, `x-primary-key` (a key not called `id`, or a composite key), `x-unique`, `x-indexes`, `x-on-delete` and `x-related-name` keywords, which the reader already understood, so table names, unique constraints, indexes, composite keys, referential actions and related names now survive a round trip through JSON Schema (the conversion matrix no longer lists them as losses). `x-on-delete` is written only when it differs from the reader's default. These keywords are unknown to Ajv in strict mode: register them with `ajv.addVocabulary(JSON_SCHEMA_CONVENTION_KEYWORDS)` (new export) or pass `conventions: false` to `emitJsonSchema` for the previous output. The real-Ajv test registers the vocabulary.
