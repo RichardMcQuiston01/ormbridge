@@ -75,12 +75,6 @@ export const LOSS_REASONS: readonly LossReason[] = [
       'Drizzle has no related name: each side of a relation is a key in `relations()`, named after the plural of the model (`posts`). A Django `related_name` or an ORM-specific default such as `postset` is therefore replaced by the Drizzle key, and the Drizzle reader recovers that name rather than the original.',
   },
   {
-    id: 'json-schema-constraints',
-    title: 'JSON Schema does not carry database constraints',
-    explanation:
-      'The JSON Schema writer describes the rows of each model, not the tables that store them: table names, unique constraints, indexes, composite primary keys and referential actions (`on_delete`) are not written, and a model is read back under its own name with the default `restrict` action. The JSON Schema reader understands the `x-table-name`, `x-unique`, `x-indexes` and `x-on-delete` conventions, but the writer does not produce them yet, so these details are lost on a round trip.',
-  },
-  {
     id: 'json-schema-defaults',
     title:
       'JSON Schema describes defaults and nullability of values, not columns',
@@ -91,7 +85,7 @@ export const LOSS_REASONS: readonly LossReason[] = [
     id: 'json-schema-join-tables',
     title: 'Many-to-many becomes an array property in JSON Schema',
     explanation:
-      'A many-to-many relation is written as an array of references on each side and is read back as a many-to-many field on the model defined first, with a join table named after the two models rather than the source table. An explicit join model (Prisma) is a model with two single references, which is read back as an ordinary model and loses its composite key and unique pair.',
+      'A many-to-many relation is written as an array of references on each side and is read back as a many-to-many field on the model defined first, with a join table named after the two models rather than the source table. An explicit join model (Prisma) is a model with two single references; it is read back as an ordinary model and keeps its composite key through `x-primary-key`.',
   },
   {
     id: 'sqlalchemy-reverse-name',
@@ -167,7 +161,7 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
         id: 'json-schema-no-constraints',
         title: 'Database constraints are not validation rules',
         explanation:
-          'Unique, primary-key, index and foreign-key constraints, referential actions and table names have no JSON Schema keyword and are not written; the document only describes the shape of one row. Column comments do not exist in the IR, so `description` carries only enum labels and generated-column expressions.',
+          "Unique, primary-key, index and foreign-key constraints, referential actions and table names have no JSON Schema keyword, so they are written as ormbridge's own `x-table-name`, `x-primary-key`, `x-unique`, `x-indexes`, `x-on-delete` and `x-related-name` keywords (other tools ignore them; Ajv in strict mode needs them registered, or `conventions: false`). Index methods, operator classes, sort orders, full-text kinds, `onUpdate` actions and constraint names have no convention and are not written. Column comments do not exist in the IR, so `description` carries only enum labels and generated-column expressions.",
       },
       {
         id: 'json-schema-types',
@@ -716,15 +710,6 @@ export function explainDifference(
         return 'gorm-auto-timestamps';
       }
       return undefined;
-    case 'tableName':
-    case 'indexRemoved':
-    case 'indexAdded':
-    case 'fieldUnique':
-    case 'relationOnDelete':
-    case 'compositePrimaryKey':
-      return involves(cell, 'json-schema')
-        ? 'json-schema-constraints'
-        : undefined;
     case 'relationRelatedName':
       if (involves(cell, 'drizzle')) {
         return 'drizzle-reverse-name';
