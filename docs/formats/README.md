@@ -14,7 +14,7 @@ One guide per format: what is read, what is written, the options that apply, and
 | [JSON Schema / OpenAPI](json-schema.md) |  yes  |  yes   | Draft 2020-12 and `components.schemas`                    |
 | [SQL DDL](sql.md)                       |  yes  |  yes   | PostgreSQL, MySQL, SQLite, SQL Server                     |
 | [SQLAlchemy / SQLModel](sqlalchemy.md)  |  yes  |  yes   | Declarative, `Column()` and `Table()` styles              |
-| [Sequelize](sequelize.md)               |  yes  |   no   | Sequelize 6: `define`, `Model.init`, sequelize-typescript |
+| [Sequelize](sequelize.md)               |  yes  |  yes   | Sequelize 6: `define`, `Model.init`, sequelize-typescript |
 | [Graphene](graphene.md)                 |  no   |  yes   | graphene-django GraphQL schema                            |
 | [TypeScript](typescript.md)             |  no   |  yes   | Plain interfaces and enums                                |
 | [Zod](zod.md)                           |  no   |  yes   | Zod 4 schemas                                             |

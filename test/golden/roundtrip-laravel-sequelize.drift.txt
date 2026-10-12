@@ -1,0 +1,66 @@
+@@ category.ts
++ created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
++ declare created_at: CreationOptional<Date | null>;
++ declare id: CreationOptional<string>;
++ declare parent_id: CreationOptional<string | null>;
++ declare updated_at: CreationOptional<Date | null>;
++ id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
++ parent_id: DataTypes.BIGINT,
++ updated_at: DataTypes.DATE,
+- created_at: { type: DataTypes.DATE, allowNull: false },
+- declare id: CreationOptional<number>;
+- declare parent_id: CreationOptional<number | null>;
+- declare readonly created_at: CreationOptional<Date>;
+- declare readonly updated_at: CreationOptional<Date>;
+- id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+- parent_id: DataTypes.INTEGER,
+- updated_at: { type: DataTypes.DATE, allowNull: false },
+@@ index.ts
++ export { Category, Tag, User, Post, Profile };
++ return { Category, Tag, User, Post, Profile };
+- export { User, Category, Tag, Post, Profile };
+- return { User, Category, Tag, Post, Profile };
+@@ post.ts
++ author_id: { type: DataTypes.BIGINT, allowNull: false },
++ category_id: { type: DataTypes.BIGINT, allowNull: false },
++ created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
++ declare author_id: string;
++ declare category_id: string;
++ declare created_at: CreationOptional<Date | null>;
++ declare editor_id: CreationOptional<string | null>;
++ declare id: CreationOptional<string>;
++ declare updated_at: CreationOptional<Date | null>;
++ editor_id: DataTypes.BIGINT,
++ id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
++ updated_at: DataTypes.DATE,
+- author_id: { type: DataTypes.INTEGER, allowNull: false },
+- category_id: { type: DataTypes.INTEGER, allowNull: false },
+- created_at: { type: DataTypes.DATE, allowNull: false },
+- declare author_id: number;
+- declare category_id: number;
+- declare editor_id: CreationOptional<number | null>;
+- declare id: CreationOptional<number>;
+- declare readonly created_at: CreationOptional<Date>;
+- declare readonly updated_at: CreationOptional<Date>;
+- editor_id: DataTypes.INTEGER,
+- id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+- updated_at: { type: DataTypes.DATE, allowNull: false },
+@@ profile.ts
++ declare id: CreationOptional<string>;
++ declare user_id: string;
++ id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
++ user_id: { type: DataTypes.BIGINT, allowNull: false, unique: true },
+- declare id: CreationOptional<number>;
+- declare user_id: number;
+- id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+- user_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
+@@ tag.ts
++ declare id: CreationOptional<string>;
++ id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+- declare id: CreationOptional<number>;
+- id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+@@ user.ts
++ declare id: CreationOptional<string>;
++ id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+- declare id: CreationOptional<number>;
+- id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },

@@ -14,7 +14,7 @@ One runnable project per format. Each folder converts the shared blog schema in 
 | [`json-schema`](json-schema) | JSON Schema / OpenAPI   | both ways                                           |
 | [`sql`](sql)                 | SQL DDL                 | both ways                                           |
 | [`sqlalchemy`](sqlalchemy)   | SQLAlchemy / SQLModel   | both ways                                           |
-| [`sequelize`](sequelize)     | Sequelize models        | read only: `models/` (by hand) to Prisma            |
+| [`sequelize`](sequelize)     | Sequelize models        | both ways                                           |
 | [`graphene`](graphene)       | Graphene (GraphQL)      | write only (`generated/`)                           |
 | [`typescript`](typescript)   | TypeScript interfaces   | write only (`generated/`)                           |
 | [`zod`](zod)                 | Zod schemas             | write only (`generated/`)                           |
@@ -22,7 +22,7 @@ One runnable project per format. Each folder converts the shared blog schema in 
 Folder layout:
 
 - `ormbridge.config.json` lists the conversions ([config file reference](../docs/CLI.md#config-file)).
-- `models/` (or `generated/` for write-only formats) holds the files written from the shared schema. The exception is `sequelize`, which cannot be written: its `models/` are hand-written Sequelize sources that are read.
+- `models/` (or `generated/` for write-only formats) holds the files written from the shared schema.
 - `prisma/schema.prisma` holds the schema read back from `models/`, so you can compare it with the original.
 
 Run an example from its folder:

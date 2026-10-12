@@ -1,0 +1,3 @@
+Item.full_name: Sequelize has no generated columns, so the expression Concat("first_name", Value(" "), "last_name") was dropped and the column written as a regular one.
+Item.total_cents: Sequelize has no generated columns, so the expression F("quantity") * 100 was dropped and the column written as a regular one.
+Item.shelf_life: Sequelize has no interval type; the duration was written as BIGINT (microseconds).

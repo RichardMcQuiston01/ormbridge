@@ -8,6 +8,8 @@ export default tseslint.config(
       'dist',
       'node_modules',
       'test/fixtures',
+      'test/golden/**/*.js',
+      'test/golden-extras/**/*.js',
       'examples/*/models',
       'examples/*/generated',
     ],

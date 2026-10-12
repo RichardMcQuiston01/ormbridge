@@ -1,0 +1,1 @@
+Weird.a;b: "a;b" is not a valid JavaScript identifier; it was written as "a_b".

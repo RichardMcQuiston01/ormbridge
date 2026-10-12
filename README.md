@@ -25,7 +25,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON) |
 | SQL DDL                     |  ✔   |   ✔   | `CREATE TABLE` and more for PostgreSQL, MySQL, SQLite, SQL Server     |
 | SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 (declarative, `Column()`, `Table()`) and SQLModel      |
-| Sequelize (JavaScript/TS)   |  ✔   |       | Sequelize 6: `define`, `Model.init` and sequelize-typescript          |
+| Sequelize (JavaScript/TS)   |  ✔   |   ✔   | Sequelize 6; writes TypeScript or `sequelize-cli` (`--style define`)  |
 | TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                             |
 | Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django            |
 | Zod schemas                 |      |   ✔   | Zod 4 schemas and inferred types                                      |

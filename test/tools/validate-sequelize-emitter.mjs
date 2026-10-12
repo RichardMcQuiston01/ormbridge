@@ -22,6 +22,7 @@
 //                                                             (belongsToMany) through the association
 //     errors:       [string]                                 anything that threw unexpectedly
 //   }
+import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
@@ -60,6 +61,7 @@ function sampleValue(attribute) {
       return counter;
     case 'FLOAT':
     case 'DOUBLE':
+    case 'DOUBLE PRECISION':
     case 'REAL':
       return counter + 0.5;
     case 'DECIMAL':

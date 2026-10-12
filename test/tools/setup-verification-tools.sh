@@ -54,14 +54,16 @@ mkdir -p "${target}/drizzle"
     @types/better-sqlite3
 )
 
-echo "Installing Sequelize 6, sqlite3 and sequelize-typescript into ${target}/sequelize" >&2
+echo "Installing Sequelize 6, sqlite3, sequelize-typescript and the PostgreSQL, MySQL and SQL Server drivers into ${target}/sequelize" >&2
 mkdir -p "${target}/sequelize"
 (
   cd "${target}/sequelize"
   [ -f package.json ] || npm init -y > /dev/null
   # Sequelize does not support better-sqlite3: its SQLite dialect needs sqlite3. sequelize-typescript,
   # reflect-metadata and typescript load the decorator fixtures (compiled with tsc, no database server needed).
-  npm install --silent sequelize@6 sqlite3 sequelize-typescript reflect-metadata typescript @types/node
+  # pg, pg-hstore, mysql2 and tedious let Sequelize build the CREATE TABLE statements of the other dialects (no server needed).
+  npm install --silent sequelize@6 sqlite3 sequelize-typescript reflect-metadata typescript @types/node \
+    pg pg-hstore mysql2 tedious
 )
 
 echo "Installing Zod 4, TypeScript and tsx into ${target}/zod" >&2

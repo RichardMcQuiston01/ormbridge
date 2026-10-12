@@ -1,0 +1,5 @@
+@@ index.ts
++ export { Category, Post, PostTags, Profile, Tag, User };
++ return { Category, Post, PostTags, Profile, Tag, User };
+- export { Category, Post, Tag, Profile, User, PostTags };
+- return { Category, Post, Tag, Profile, User, PostTags };
