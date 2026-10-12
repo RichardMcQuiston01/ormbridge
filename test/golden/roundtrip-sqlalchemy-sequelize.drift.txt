@@ -1,0 +1,14 @@
+@@ index.ts
++ export { Category, User, Post, Profile, Tag };
++ return { Category, User, Post, Profile, Tag };
+- export { User, Category, Post, Tag, Profile };
+- return { User, Category, Post, Tag, Profile };
+@@ post.ts
++ fields: ['author_id', 'title'],
++ name: 'uq_blog_post_author_id_title',
++ unique: true,
++ {
++ { name: 'ix_blog_post_title', fields: ['title'] },
++ },
+- { fields: ['title'] },
+- { unique: true, fields: ['author_id', 'title'] },

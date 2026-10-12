@@ -1,0 +1,5 @@
+fieldDefault Customer.created_at: now -> (none)
+fieldMaxLength Customer.role: 20 -> (none)
+fieldEnum Customer.role: Role -> CustomerRole
+enumRemoved Role: enum Role -> (absent)
+enumAdded CustomerRole: (absent) -> enum CustomerRole

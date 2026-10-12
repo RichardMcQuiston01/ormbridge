@@ -1,0 +1,5 @@
+fieldType Weird.a;b: string -> text
+fieldType Weird.quote: string -> text
+fieldType Weird.tick: string -> text
+enumRemoved Status: enum Status -> (absent)
+enumRemoved Other: enum Other -> (absent)

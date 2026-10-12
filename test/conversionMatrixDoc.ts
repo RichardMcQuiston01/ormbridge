@@ -151,7 +151,13 @@ export const LOSS_REASONS: readonly LossReason[] = [
     id: 'sequelize-timestamps',
     title: 'Sequelize fills in timestamps itself',
     explanation:
-      'Sequelize adds `createdAt` and `updatedAt` as `NOT NULL` columns with no database default and sets them in JavaScript, so the IR of a Sequelize model records no default for them. The GORM writer turns a `created_at` column into `autoCreateTime` and the Laravel writer into `timestamps()`, and both readers report that as a `now` default, so the value Sequelize left to the application comes back as a default.',
+      "Sequelize adds `createdAt` and `updatedAt` as `NOT NULL` columns with no database default and sets them in JavaScript, so the IR of a Sequelize model records no default for them. The Sequelize writer maps a required `created_at` date-time column onto the `timestamps` option (`createdAt: 'created_at'`), so a `now` default the source had does not come back from Sequelize. The other way round, the GORM writer turns a `created_at` column into `autoCreateTime` and the Laravel writer into `timestamps()`, and both readers report that as a `now` default, so the value Sequelize left to the application comes back as a default.",
+  },
+  {
+    id: 'sequelize-enum-names',
+    title: 'Sequelize enums have no name of their own',
+    explanation:
+      'A Sequelize `ENUM(...)` column carries its values inline, so the Sequelize reader names the enum after the model and the attribute (`PostStatus` for `Post.status`, `BlogPostStatus` for `BlogPost.status`). A source whose enum is called something else (a SQL enum type, a Prisma enum shared by several models) comes back under the derived name.',
   },
 ];
 
@@ -691,18 +697,24 @@ function explainSqlDifference(difference: IrDifference): string | undefined {
   }
 }
 
-/** Differences that come from Sequelize leaving the creation time to the application. */
+/** Differences that come from Sequelize leaving the creation time to the application and from how it names enums. */
 function explainSequelizeDifference(
-  difference: IrDifference,
-  cell: MatrixCell
+  difference: IrDifference
 ): string | undefined {
-  return cell.source === 'sequelize' &&
-    difference.kind === 'fieldDefault' &&
-    /^created_?at$/i.test(difference.field ?? '') &&
-    difference.before === '(none)' &&
-    difference.after === 'now'
-    ? 'sequelize-timestamps'
-    : undefined;
+  switch (difference.kind) {
+    case 'fieldDefault':
+      return /^created_?at$/i.test(difference.field ?? '') &&
+        ((difference.before === '(none)' && difference.after === 'now') ||
+          (difference.before === 'now' && difference.after === '(none)'))
+        ? 'sequelize-timestamps'
+        : undefined;
+    case 'fieldEnum':
+    case 'enumAdded':
+    case 'enumRemoved':
+      return 'sequelize-enum-names';
+    default:
+      return undefined;
+  }
 }
 
 /** Returns the id of the reason that explains a difference, or undefined when it is unexplained. */
@@ -711,11 +723,9 @@ export function explainDifference(
   cell: MatrixCell
 ): string | undefined {
   const schema: IrSchema = cell.sourceSchema;
-  if (cell.source === 'sequelize') {
-    const sequelizeReason: string | undefined = explainSequelizeDifference(
-      difference,
-      cell
-    );
+  if (involves(cell, 'sequelize')) {
+    const sequelizeReason: string | undefined =
+      explainSequelizeDifference(difference);
     if (sequelizeReason !== undefined) {
       return sequelizeReason;
     }

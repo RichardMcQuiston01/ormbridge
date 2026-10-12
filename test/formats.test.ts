@@ -169,7 +169,7 @@ describe('formats command output', () => {
       /sqlalchemy\s+extensions: \(none\) {2}read \+ write {2}SQLAlchemy 2\.0 and SQLModel models \(Python; declarative, Column\(\) and Table\(\) styles; --style sqlmodel writes SQLModel classes\)\n/
     );
     expect(text).toMatch(
-      /sequelize\s+extensions: \(none\) {2}read {2}Sequelize 6 models \(JavaScript or TypeScript; define, Model\.init and sequelize-typescript\)\n/
+      /sequelize\s+extensions: \(none\) {2}read \+ write {2}Sequelize 6 models \(JavaScript or TypeScript; define, Model\.init and sequelize-typescript; --style define writes sequelize-cli files\)\n/
     );
   });
 

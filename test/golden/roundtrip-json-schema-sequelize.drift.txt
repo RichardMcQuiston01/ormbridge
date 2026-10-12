@@ -1,0 +1,18 @@
+@@ category.ts
++ declare post_set?: NonAttribute<Post[]>;
++ import type { Post } from './post.js';
+@@ index.ts
++ Category.hasMany(Post, {
++ as: 'post_set',
++ export { Category, Post, Profile, Tag, User };
++ foreignKey: 'category_id',
++ onDelete: 'RESTRICT',
++ return { Category, Post, Profile, Tag, User };
++ });
+- export { Category, Post, Tag, Profile, User };
+- return { Category, Post, Tag, Profile, User };
+@@ post.ts
++ declare metadata: CreationOptional<unknown | null>;
++ metadata: DataTypes.JSONB,
+- declare metadata: CreationOptional<unknown>;
+- metadata: { type: DataTypes.JSONB, allowNull: false, defaultValue: {} },

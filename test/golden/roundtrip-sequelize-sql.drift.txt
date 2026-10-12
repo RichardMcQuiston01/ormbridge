@@ -1,0 +1,4 @@
++ CREATE TYPE "BlogPostStatus" AS ENUM ('draft', 'published');
++ status "BlogPostStatus" NOT NULL DEFAULT 'draft',
+- CREATE TYPE "PostStatus" AS ENUM ('draft', 'published');
+- status "PostStatus" NOT NULL DEFAULT 'draft',

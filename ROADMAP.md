@@ -113,6 +113,6 @@ Pairs M/N, O/P, R/S and T/U run in parallel; Q is independent of P. After they l
 ## Backlog (unscheduled)
 
 - Additional ORMs (Entity Framework, Hibernate/JPA)
-- Sequelize: the parser is done (`parseSequelize`, the read-only `sequelize` format for Sequelize 6: `define`, `Model.init` and sequelize-typescript). The emitter, Sequelize 7 (`@sequelize/core` decorators) and migration replay (`sequelize-cli` migrations, as the Laravel reader does) remain
+- Sequelize 7 (`@sequelize/core` decorators) and `sequelize-cli` migration replay (as the Laravel reader does); Sequelize 6 is read and written
 - A Zod parser, and Drizzle/SQLAlchemy migration replay (the SQL reader replays only added columns, constraints and column defaults; renames, dropped columns and type changes are skipped with a warning)
 - Watch mode for regenerating shared models during development

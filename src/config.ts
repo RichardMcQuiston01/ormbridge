@@ -1,12 +1,8 @@
 import { readFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { PRISMA_PROVIDERS } from './emitters/prisma.js';
-import {
-  isSqlAlchemyStyle,
-  SQLALCHEMY_STYLES,
-  type SqlAlchemyStyle,
-} from './emitters/sqlalchemy.js';
 import { describeThrown, err, ok, type Result } from './result.js';
+import { isOutputStyle, OUTPUT_STYLES, type OutputStyle } from './styles.js';
 
 /** File names searched for in each directory, in priority order. */
 export const CONFIG_FILE_NAMES: readonly string[] = [
@@ -35,8 +31,11 @@ export interface ConversionConfig {
   goPackage?: string;
   /** Prisma major version of the generated header (6 or 7). */
   prismaVersion?: 6 | 7;
-  /** Flavour of the SQLAlchemy output: plain SQLAlchemy 2.0 or SQLModel. */
-  style?: SqlAlchemyStyle;
+  /**
+   * Layout of the SQLAlchemy output (`sqlalchemy` or `sqlmodel`) or the Sequelize output (`init` or `define`).
+   * Which one applies depends on `to`, which is checked when the conversion runs.
+   */
+  style?: OutputStyle;
   /** Write the `x-` convention keywords into JSON Schema output (default true). */
   conventions?: boolean;
 }
@@ -320,10 +319,10 @@ function parseConversion(
 
   const style: unknown = raw['style'];
   if (style !== undefined) {
-    if (typeof style !== 'string' || !isSqlAlchemyStyle(style)) {
+    if (typeof style !== 'string' || !isOutputStyle(style)) {
       return fail(
         'style',
-        `must be one of ${SQLALCHEMY_STYLES.join(', ')} (got ${describeValue(style)}).`
+        `must be one of ${OUTPUT_STYLES.join(', ')} (got ${describeValue(style)}).`
       );
     }
     config.style = style;

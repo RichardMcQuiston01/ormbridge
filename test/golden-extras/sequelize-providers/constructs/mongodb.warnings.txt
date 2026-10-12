@@ -1,0 +1,2 @@
+Provider "mongodb": Sequelize is relational (it has no MongoDB dialect; use Mongoose); PostgreSQL column types were written.
+Book.read_time: Sequelize has no interval type; the duration was written as BIGINT (microseconds).

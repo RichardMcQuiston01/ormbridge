@@ -1,0 +1,1 @@
+Product index (title): full-text indexes are a MySQL feature in Sequelize; it was written as an ordinary index.

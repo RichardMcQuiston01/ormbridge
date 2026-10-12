@@ -1,0 +1,54 @@
+@@ blogCategory.ts
++ allowNull: false,
++ name: {
++ type: DataTypes.STRING(100),
++ unique: 'blog_category_name_key',
++ },
+- name: { type: DataTypes.STRING(100), allowNull: false, unique: true },
+@@ blogPost.ts
++ declare blog_post_tags?: NonAttribute<BlogPostTag[]>;
++ import type { BlogPostTag } from './blogPostTag.js';
++ unique: 'blog_post_public_id_key',
+- declare tags?: NonAttribute<BlogTag[]>;
+- import type { BlogTag } from './blogTag.js';
+- unique: true,
++ file blogPostTag.ts
+@@ blogTag.ts
++ declare blog_post_tags?: NonAttribute<BlogPostTag[]>;
++ import type { BlogPostTag } from './blogPostTag.js';
+- declare blog_posts?: NonAttribute<BlogPost[]>;
+- import type { BlogPost } from './blogPost.js';
+@@ index.ts
++ 
++ BlogPost.hasMany(BlogPostTag, {
++ BlogPostTag.belongsTo(BlogPost, {
++ BlogPostTag.belongsTo(BlogTag, {
++ BlogPostTag.initModel(sequelize);
++ BlogTag.hasMany(BlogPostTag, {
++ as: 'blog_post',
++ as: 'blog_post_tags',
++ as: 'blog_post_tags',
++ as: 'blog_tag',
++ export { BlogCategory, BlogUser, BlogPost, BlogProfile, BlogTag, BlogPostTag };
++ foreignKey: 'blog_post_id',
++ foreignKey: 'blog_tag_id',
++ import { BlogPostTag } from './blogPostTag.js';
++ onDelete: 'CASCADE',
++ onDelete: 'CASCADE',
++ onDelete: 'CASCADE',
++ onDelete: 'CASCADE',
++ return { BlogCategory, BlogUser, BlogPost, BlogProfile, BlogTag, BlogPostTag };
++ });
++ });
+- BlogPost.belongsToMany(BlogTag, {
+- BlogTag.belongsToMany(BlogPost, {
+- as: 'blog_posts',
+- as: 'tags',
+- export { BlogUser, BlogCategory, BlogTag, BlogPost, BlogProfile };
+- otherKey: 'blog_post_id',
+- otherKey: 'blog_tag_id',
+- return { BlogUser, BlogCategory, BlogTag, BlogPost, BlogProfile };
+- through: 'blog_post_tags',
+- through: 'blog_post_tags',
+- timestamps: false,
+- timestamps: false,

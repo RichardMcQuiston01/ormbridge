@@ -96,6 +96,17 @@ export type {
   SqlAlchemyEmitOptions,
   SqlAlchemyStyle,
 } from './emitters/sqlalchemy.js';
+export {
+  emitSequelize,
+  isSequelizeStyle,
+  SEQUELIZE_STYLES,
+} from './emitters/sequelize.js';
+export type {
+  SequelizeEmitOptions,
+  SequelizeStyle,
+} from './emitters/sequelize.js';
+export { checkStyle, isOutputStyle, OUTPUT_STYLES } from './styles.js';
+export type { OutputStyle } from './styles.js';
 export { emitGraphene } from './emitters/graphene.js';
 export { emitTypeorm } from './emitters/typeorm.js';
 export type { TypeormEmitOptions } from './emitters/typeorm.js';
