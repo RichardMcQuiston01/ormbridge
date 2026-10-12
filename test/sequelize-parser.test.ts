@@ -98,10 +98,10 @@ async function parseAttribute(
 }
 
 describe('sequelize adapter registration', () => {
-  it('is registered as a read-only format that does not claim .js or .ts', () => {
+  it('is registered as a read and write format that does not claim .js or .ts', () => {
     const adapter = expectOk(getFormat('sequelize'));
     expect(adapter.parse).toBeDefined();
-    expect(adapter.emit).toBeUndefined();
+    expect(adapter.emit).toBeDefined();
     expect(adapter.extensions).toEqual([]);
     expect(getFormatByExtension('.js')).toBeUndefined();
     expect(getFormatByExtension('.ts')).toBeUndefined();
@@ -126,17 +126,17 @@ describe('sequelize adapter registration', () => {
     expect(result.output).toContain('@@map("Users")');
   });
 
-  it('cannot be a target', async () => {
-    const result = await convertText(
-      [{ path: 'schema.prisma', text: 'model A {\n  id Int @id\n}\n' }],
-      { ...DEFAULT_OPTIONS, from: 'prisma', to: 'sequelize' }
+  it('is a target: it writes one file per model and an index', async () => {
+    const result: ConvertResult = expectOk(
+      await convertText(
+        [{ path: 'schema.prisma', text: 'model A {\n  id Int @id\n}\n' }],
+        { ...DEFAULT_OPTIONS, from: 'prisma', to: 'sequelize' }
+      )
     );
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.message).toContain(
-        'The format "sequelize" can only be used as an input'
-      );
-    }
+    expect(Object.keys(result.files ?? {}).sort()).toEqual([
+      'a.ts',
+      'index.ts',
+    ]);
   });
 
   it('fails with a descriptive error when no model is found', async () => {
