@@ -246,9 +246,12 @@ describe('parseConfig validation', () => {
     [{ goPackage: '' }, '"goPackage" must be a non-empty string'],
     [
       { style: 'peewee' },
-      '"style" must be one of sqlalchemy, sqlmodel (got "peewee")',
+      '"style" must be one of sqlalchemy, sqlmodel, init, define (got "peewee")',
     ],
-    [{ style: 3 }, '"style" must be one of sqlalchemy, sqlmodel (got 3)'],
+    [
+      { style: 3 },
+      '"style" must be one of sqlalchemy, sqlmodel, init, define (got 3)',
+    ],
     [{ prismaVersion: 8 }, '"prismaVersion" must be the number 6 or 7 (got 8)'],
     [
       { prismaVersion: '7' },

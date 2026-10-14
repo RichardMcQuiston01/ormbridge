@@ -5,6 +5,8 @@ package-lock.json
 docs/CONVERSION_MATRIX.md
 test/golden/**/*.ts
 test/golden-extras/**/*.ts
+test/golden/**/*.js
+test/golden-extras/**/*.js
 examples/*/models
 examples/*/generated
 examples/*/prisma

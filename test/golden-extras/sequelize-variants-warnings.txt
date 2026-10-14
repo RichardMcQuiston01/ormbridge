@@ -1,0 +1,5 @@
+variants.js: model "Order", field "auditorId": the association uses constraints: false, so there is no foreign key in the database; the column is read as a plain column.
+variants.js: model "Account", field "fullName": DataTypes.VIRTUAL has no database column, so the field was skipped.
+variants.js: model "Account": custom getters or setters on fullName are behaviour, not schema, and were ignored.
+variants.js: model "Person": the join table "friendships" (columns person_id, friend_id) of Person.belongsToMany(Person) is not preserved by name; formats that derive join tables will use "people_friends" (columns from_person_id, to_person_id).
+variants.js: model "Setting": the uniqueKeys option replaces the unique constraints named on attributes (setting_scope_key), so Sequelize does not create them; they were ignored.

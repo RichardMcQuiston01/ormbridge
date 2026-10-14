@@ -902,8 +902,8 @@ describe('gorm output', () => {
     expect(overridden.stdout).toContain('class Post(Base):');
   });
 
-  it.each(['peewee', 'SQLModel', ''])(
-    'rejects --style "%s" with a usage error',
+  it.each(['peewee', 'SQLModel', '', 'init'])(
+    'rejects --style "%s" for sqlalchemy with a usage error',
     async (value: string) => {
       const run: CliRun = await cli([
         'convert',
@@ -916,7 +916,7 @@ describe('gorm output', () => {
       ]);
       expect(run.code).toBe(EXIT_USAGE_ERROR);
       expect(run.stderr).toContain(
-        `Invalid --style value "${value}". Expected one of: sqlalchemy, sqlmodel.`
+        `Invalid --style value "${value}" for the sqlalchemy format. Expected one of: sqlalchemy, sqlmodel.`
       );
     }
   );
@@ -926,7 +926,7 @@ describe('gorm output', () => {
     const run: CliRun = await cli(['convert']);
     expect(run.code).toBe(EXIT_USAGE_ERROR);
     expect(run.stderr).toContain(
-      '"style" must be one of sqlalchemy, sqlmodel (got "peewee")'
+      '"style" must be one of sqlalchemy, sqlmodel, init, define (got "peewee")'
     );
   });
 
@@ -938,7 +938,20 @@ describe('gorm output', () => {
     expect(formats.stdout).toMatch(/sqlalchemy\s+extensions: \(none\)/);
   });
 
-  it('ignores --style for other targets', async () => {
+  it('ignores --style for other targets, but not an unknown one', async () => {
+    const unknown: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'typescript',
+      '--style',
+      'peewee',
+    ]);
+    expect(unknown.code).toBe(EXIT_USAGE_ERROR);
+    expect(unknown.stderr).toContain(
+      'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define (sqlalchemy, sqlmodel for sqlalchemy; init, define for sequelize).'
+    );
     const run: CliRun = await cli([
       'convert',
       '-i',
@@ -967,5 +980,131 @@ describe('gorm output', () => {
     const stale: CliRun = await cli([...args, '--check']);
     expect(stale.code).toBe(EXIT_CHECK_FAILED);
     expect(stale.stderr).toMatch(/models[\\/]tag\.go is out of date/);
+  });
+});
+
+describe('sequelize input', () => {
+  const MODELS: string = fileURLToPath(
+    new URL('./fixtures/sequelize/models', import.meta.url)
+  );
+
+  it('reads a directory of models with --from sequelize', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      MODELS,
+      '--from',
+      'sequelize',
+      '--to',
+      'prisma',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(run.stdout).toContain('model Post {');
+    expect(run.stdout).toContain('@@map("blog_post_tags")');
+    expect(run.stderr).not.toContain('warning');
+  });
+
+  it('reads a single model file and needs --from, because .js is not inferred', async () => {
+    const file: string = join(MODELS, 'tag.js');
+    const explicit: CliRun = await cli([
+      'convert',
+      '-i',
+      file,
+      '--from',
+      'sequelize',
+      '--to',
+      'prisma',
+    ]);
+    expect(explicit.code).toBe(EXIT_OK);
+    expect(explicit.stdout).toContain('model Tag {');
+    const inferred: CliRun = await cli([
+      'convert',
+      '-i',
+      file,
+      '--to',
+      'prisma',
+    ]);
+    expect(inferred.code).toBe(EXIT_CONVERSION_ERROR);
+  });
+
+  it('writes Sequelize models with --to sequelize and lists the format as read and write', async () => {
+    const out: string = join(workDirectory, 'models');
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'sequelize',
+      '-o',
+      out,
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(await readdir(out)).toEqual(
+      expect.arrayContaining(['index.ts', 'post.ts', 'user.ts'])
+    );
+    expect(await readFile(join(out, 'post.ts'), 'utf8')).toContain(
+      'export class Post extends Model<'
+    );
+    const formats: CliRun = await cli(['formats']);
+    expect(formats.stdout).toMatch(
+      /sequelize\s+extensions: \(none\)\s+read \+ write\s+/
+    );
+  });
+
+  it('writes the sequelize-cli layout with --style define and rejects the SQLAlchemy styles', async () => {
+    const out: string = join(workDirectory, 'cli-models');
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'sequelize',
+      '--style',
+      'define',
+      '-o',
+      out,
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(await readFile(join(out, 'post.js'), 'utf8')).toContain(
+      'module.exports = (sequelize, DataTypes) => {'
+    );
+    const wrong: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'sequelize',
+      '--style',
+      'sqlmodel',
+      '-o',
+      out,
+    ]);
+    expect(wrong.code).toBe(EXIT_USAGE_ERROR);
+    expect(wrong.stderr).toContain(
+      'Invalid --style value "sqlmodel" for the sequelize format. Expected one of: init, define.'
+    );
+  });
+
+  it('applies the style config key to a sequelize conversion', async () => {
+    const out: string = join(workDirectory, 'configured');
+    await writeConfig({
+      input: BLOG_FIXTURE_PATH,
+      to: 'sequelize',
+      style: 'define',
+      output: out,
+    });
+    expect((await cli(['convert'])).code).toBe(EXIT_OK);
+    expect(await readdir(out)).toContain('post.js');
+    await writeConfig({
+      input: BLOG_FIXTURE_PATH,
+      to: 'sequelize',
+      style: 'sqlalchemy',
+      output: out,
+    });
+    const invalid: CliRun = await cli(['convert']);
+    expect(invalid.code).toBe(EXIT_USAGE_ERROR);
+    expect(invalid.stderr).toContain(
+      'Invalid --style value "sqlalchemy" for the sequelize format. Expected one of: init, define.'
+    );
   });
 });

@@ -13,11 +13,6 @@ import {
   type PrismaVersion,
 } from './emitters/prisma.js';
 import {
-  isSqlAlchemyStyle,
-  SQLALCHEMY_STYLES,
-  type SqlAlchemyStyle,
-} from './emitters/sqlalchemy.js';
-import {
   describeFormats,
   getFormat,
   getFormatByExtension,
@@ -26,6 +21,7 @@ import {
   type FormatAdapter,
   type FormatName,
 } from './formats.js';
+import { checkStyle, OUTPUT_STYLES, type OutputStyle } from './styles.js';
 import {
   countLines,
   runConversion,
@@ -190,15 +186,14 @@ function buildRunOptions(
     );
   }
 
-  let style: SqlAlchemyStyle | undefined;
+  let style: OutputStyle | undefined;
   if (settings.style !== undefined) {
-    if (!isSqlAlchemyStyle(settings.style)) {
-      return failure(
-        'INVALID_OPTION',
-        `Invalid --style value "${settings.style}". Expected one of: ${SQLALCHEMY_STYLES.join(', ')}.`
-      );
+    // The styles depend on the target: SQLAlchemy has sqlalchemy and sqlmodel, Sequelize init and define.
+    const checked: Result<OutputStyle> = checkStyle(toValue, settings.style);
+    if (!checked.ok) {
+      return failure('INVALID_OPTION', checked.error.message);
     }
-    style = settings.style;
+    style = checked.value;
   }
 
   let prismaVersion: PrismaVersion | undefined;
@@ -595,7 +590,7 @@ export async function runCli(
     )
     .option(
       '--style <name>',
-      `flavour of the SQLAlchemy output (${SQLALCHEMY_STYLES.join(' | ')}); sqlmodel writes SQLModel classes (--to sqlalchemy only) (default: sqlalchemy)`
+      `layout of the SQLAlchemy and Sequelize output (${OUTPUT_STYLES.join(' | ')}): sqlalchemy | sqlmodel for --to sqlalchemy (default: sqlalchemy), init | define for --to sequelize (default: init)`
     )
     .option(
       '--dry-run',

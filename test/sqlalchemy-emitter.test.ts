@@ -2009,7 +2009,7 @@ describe('sqlalchemy emitter: the format adapter', () => {
     if (result !== undefined && !result.ok) {
       expect(result.error.code).toBe('INVALID_OPTION');
       expect(result.error.message).toBe(
-        'Invalid style "peewee". Expected one of: sqlalchemy, sqlmodel.'
+        'Invalid style "peewee" for the sqlalchemy format. Expected one of: sqlalchemy, sqlmodel.'
       );
     }
   });

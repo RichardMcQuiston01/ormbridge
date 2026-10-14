@@ -14,6 +14,7 @@ One runnable project per format. Each folder converts the shared blog schema in 
 | [`json-schema`](json-schema) | JSON Schema / OpenAPI   | both ways                                           |
 | [`sql`](sql)                 | SQL DDL                 | both ways                                           |
 | [`sqlalchemy`](sqlalchemy)   | SQLAlchemy / SQLModel   | both ways                                           |
+| [`sequelize`](sequelize)     | Sequelize models        | both ways                                           |
 | [`graphene`](graphene)       | Graphene (GraphQL)      | write only (`generated/`)                           |
 | [`typescript`](typescript)   | TypeScript interfaces   | write only (`generated/`)                           |
 | [`zod`](zod)                 | Zod schemas             | write only (`generated/`)                           |

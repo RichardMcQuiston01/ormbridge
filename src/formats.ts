@@ -11,12 +11,8 @@ import {
 } from './emitters/prisma.js';
 import { emitTypeorm } from './emitters/typeorm.js';
 import { emitJsonSchema } from './emitters/jsonSchema.js';
-import {
-  emitSqlAlchemy,
-  isSqlAlchemyStyle,
-  SQLALCHEMY_STYLES,
-  type SqlAlchemyStyle,
-} from './emitters/sqlalchemy.js';
+import { emitSequelize, isSequelizeStyle } from './emitters/sequelize.js';
+import { emitSqlAlchemy, isSqlAlchemyStyle } from './emitters/sqlalchemy.js';
 import { emitSqlDdl } from './emitters/sqlDdl.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import { emitZod } from './emitters/zod.js';
@@ -28,10 +24,12 @@ import { parseGorm } from './parsers/gorm.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
 import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
+import { parseSequelize } from './parsers/sequelize.js';
 import { parseSqlAlchemy } from './parsers/sqlalchemy.js';
 import { parseSqlDdl } from './parsers/sqlDdl.js';
 import { parseTypeorm } from './parsers/typeorm.js';
 import { err, ok, type Result } from './result.js';
+import { checkStyle, type OutputStyle } from './styles.js';
 import {
   expandManyToMany,
   normalizeSchema,
@@ -75,11 +73,12 @@ export interface FormatOptions {
   /** Go package name of the generated GORM models (default `models`); also the output directory. */
   goPackage?: string;
   /**
-   * Flavour of the SQLAlchemy output: `sqlalchemy` (default; `DeclarativeBase`, `Mapped[...]` and
-   * `mapped_column`) or `sqlmodel` (`SQLModel, table=True` classes with `Field` and `Relationship`).
-   * Only the `sqlalchemy` format reads it.
+   * Layout of the output of the formats that have styles. SQLAlchemy: `sqlalchemy` (default; `DeclarativeBase`,
+   * `Mapped[...]` and `mapped_column`) or `sqlmodel` (`SQLModel, table=True` classes with `Field` and
+   * `Relationship`). Sequelize: `init` (default; TypeScript classes with `Model.init`) or `define`
+   * (the CommonJS files `sequelize-cli` generates). Only the `sqlalchemy` and `sequelize` formats read it.
    */
-  style?: SqlAlchemyStyle;
+  style?: OutputStyle;
   /**
    * Write ormbridge's `x-` convention keywords (table names, keys, indexes, referential actions) into JSON Schema
    * output (default true). Turn it off for validators that reject unknown keywords. Only `json-schema` reads it.
@@ -566,16 +565,65 @@ const sqlalchemyAdapter: FormatAdapter = {
       { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
     ),
   emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
-    if (options.style !== undefined && !isSqlAlchemyStyle(options.style)) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid style "${String(options.style)}". Expected one of: ${SQLALCHEMY_STYLES.join(', ')}.`
+    if (options.style !== undefined) {
+      const checked: Result<OutputStyle> = checkStyle(
+        'sqlalchemy',
+        String(options.style),
+        'style'
       );
+      if (!checked.ok) {
+        return checked;
+      }
     }
     return ok(
       emitSqlAlchemy(schema, {
         naming: options.naming,
-        ...(options.style === undefined ? {} : { style: options.style }),
+        ...(options.style === undefined || !isSqlAlchemyStyle(options.style)
+          ? {}
+          : { style: options.style }),
+      })
+    );
+  },
+};
+
+const sequelizeAdapter: FormatAdapter = {
+  name: 'sequelize',
+  // No extension is claimed: ".js" and ".ts" are too generic to infer, so pass --from/--to sequelize.
+  extensions: [],
+  description:
+    'Sequelize 6 models (JavaScript or TypeScript; define, Model.init and sequelize-typescript; --style define writes sequelize-cli files)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseSequelize(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+  emit: (
+    schema: IrSchema,
+    options: FormatOptions
+  ): Result<FormatEmitOutput> => {
+    if (options.style !== undefined) {
+      const checked: Result<OutputStyle> = checkStyle(
+        'sequelize',
+        String(options.style),
+        'style'
+      );
+      if (!checked.ok) {
+        return checked;
+      }
+    }
+    return ok(
+      emitSequelize(schema, {
+        provider: options.provider,
+        naming: options.naming,
+        ...(options.style === undefined || !isSequelizeStyle(options.style)
+          ? {}
+          : { style: options.style }),
       })
     );
   },
@@ -596,6 +644,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(jsonSchemaAdapter),
   registerFormat(sqlAdapter),
   registerFormat(sqlalchemyAdapter),
+  registerFormat(sequelizeAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

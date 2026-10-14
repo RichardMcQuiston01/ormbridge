@@ -1,0 +1,7 @@
+fieldDefault Item.tags: literal "[]" -> (none)
+fieldMaxLength Item.kinds: 32 -> (none)
+fieldEnum Item.kinds: ItemKind -> ItemKinds
+fieldDefault Item.attributes: literal "{}" -> (none)
+fieldType Item.shelf_life: duration -> bigInt
+enumRemoved ItemKind: enum ItemKind -> (absent)
+enumAdded ItemKinds: (absent) -> enum ItemKinds

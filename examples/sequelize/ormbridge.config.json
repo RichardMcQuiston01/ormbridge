@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-sequelize",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "sequelize",
+      "output": "models"
+    },
+    {
+      "name": "from-sequelize",
+      "input": "models",
+      "from": "sequelize",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}
