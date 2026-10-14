@@ -129,6 +129,24 @@ const SEQUELIZE_SOURCE_FILE: RegExp = /\.(?:[cm]?js|ts)$/;
 const SEQUELIZE_NON_MODEL_FILE: RegExp =
   /(?:\.d\.ts|\.(?:test|spec)\.[cm]?[jt]s)$/;
 
+/**
+ * Directories skipped when reading Entity Framework Core projects: migrations (their snapshot restates the
+ * model as history), build output and installed packages.
+ */
+const EFCORE_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
+  'migrations',
+  'bin',
+  'obj',
+  'packages',
+  'node_modules',
+  '.vs',
+  '.git',
+]);
+
+/** Generated C# files: migration designers, the model snapshot and compiler output. */
+const EFCORE_NON_MODEL_FILE: RegExp =
+  /(?:\.(?:Designer|g|generated)\.cs|ModelSnapshot\.cs)$/i;
+
 export interface RunOptions extends ConvertOptions {
   /** Files or directories to read. */
   inputs: string[];
@@ -472,7 +490,9 @@ async function discoverInputFiles(
                         ? 'Python (.py) files with SQLAlchemy or SQLModel models'
                         : format === 'sequelize'
                           ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files'
-                          : '.prisma files';
+                          : format === 'efcore'
+                            ? 'C# (.cs) files with Entity Framework Core models'
+                            : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -496,6 +516,12 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
     return (
       SEQUELIZE_SOURCE_FILE.test(fileName) &&
       !SEQUELIZE_NON_MODEL_FILE.test(fileName)
+    );
+  }
+  if (format === 'efcore') {
+    return (
+      extname(filePath) === '.cs' &&
+      !EFCORE_NON_MODEL_FILE.test(basename(filePath))
     );
   }
   if (format === 'gorm') {
@@ -564,6 +590,9 @@ function isSkippedDirectory(
   }
   if (format === 'sequelize') {
     return SEQUELIZE_SKIPPED_DIRECTORIES.has(name);
+  }
+  if (format === 'efcore') {
+    return EFCORE_SKIPPED_DIRECTORIES.has(name.toLowerCase());
   }
   return (
     SKIPPED_DIRECTORIES.has(name) ||

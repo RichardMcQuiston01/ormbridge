@@ -19,6 +19,7 @@ import { emitZod } from './emitters/zod.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDrizzle } from './parsers/drizzle.js';
+import { parseEfcore } from './parsers/efcore.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parseGorm } from './parsers/gorm.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
@@ -629,6 +630,25 @@ const sequelizeAdapter: FormatAdapter = {
   },
 };
 
+const efcoreAdapter: FormatAdapter = {
+  name: 'efcore',
+  // Input only, and no extension is claimed: ".cs" is too generic to infer, so pass --from efcore.
+  extensions: [],
+  description:
+    'Entity Framework Core models (C#; DbContext, data annotations and the fluent API)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseEfcore(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -645,6 +665,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(sqlAdapter),
   registerFormat(sqlalchemyAdapter),
   registerFormat(sequelizeAdapter),
+  registerFormat(efcoreAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>
