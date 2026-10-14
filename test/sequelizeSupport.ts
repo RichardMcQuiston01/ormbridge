@@ -108,7 +108,7 @@ export function compareWithDatabase(ir: IrSchema, db: DbSchema): string[] {
   for (const model of ir.models) {
     const table: DbTable | undefined = db.tables[model.tableName];
     if (table === undefined) {
-      problems.push(`table ${model.tableName} was not created by Sequelize`);
+      problems.push(`table ${model.tableName} was not created by the ORM`);
       continue;
     }
     const label: string = model.tableName;
