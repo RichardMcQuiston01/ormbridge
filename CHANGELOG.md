@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.9.0 - 2026-10-15
+
+Entity Framework Core support: `efcore` is now a read and write format. The parser reads EF Core 8 models written in C# (data annotations, the fluent API and EF Core's conventions) and the writer produces them in two styles (`--style annotations`, the default, and `--style fluent`). Both are checked against the real EF Core 8 with the .NET 8 SDK. **Output change:** the error for an invalid `--style` now lists the EF Core styles too.
+
 ### Added
 
 - Entity Framework Core parser (`parseEfcore`, `--from efcore`, `src/parsers/efcore.ts`, `csharpSyntax.ts` and the `efcore*.ts` helpers, the `efcore` format; `.cs` is not inferred, so pass `--from efcore`). Reads EF Core models (C#) statically with tree-sitter (nothing is compiled or run): entities found through `DbSet<T>` properties of a `DbContext`, `modelBuilder.Entity<T>()`, `IEntityTypeConfiguration<T>` classes (also through `ApplyConfiguration`, helper and extension methods), navigation properties and data annotations; the annotations `[Table]`, `[Column]`, `[Key]`, `[PrimaryKey]`, `[Required]`, `[MaxLength]`, `[StringLength]`, `[ForeignKey]`, `[InverseProperty]`, `[Index]`, `[NotMapped]`, `[DatabaseGenerated]`, `[Timestamp]`, `[Precision]`, `[Comment]`, `[Keyless]` and `[Owned]`; the fluent API (`ToTable`, `HasKey`, `HasIndex`, `Property(...)` settings and defaults, `HasConversion<string>()`, `HasOne` / `HasMany` / `WithOne` / `WithMany`, `HasForeignKey`, `OnDelete`, `UsingEntity`, `OwnsOne`, `HasDiscriminator`, `Ignore`); and EF Core's conventions (keys, foreign keys, shadow keys, nullable reference types, delete behaviors, table-per-hierarchy inheritance, skip-navigation many-to-many with the join table EF Core would create). C# enums become enums of the model (integer-stored ones with a warning). Constructs it cannot represent (`OwnsMany`, table-per-type, conditionals and loops in `OnModelCreating`, value converters, filtered indexes, comments, seed data and so on) are warnings.
