@@ -1,0 +1,5 @@
+@@ Models/Post.cs
++ [Index(nameof(AuthorId), nameof(Title), IsUnique = true, Name = "blog_post_author_id_title_key")]
++ [Index(nameof(Title), Name = "blog_post_title_idx")]
+- [Index(nameof(AuthorId), nameof(Title), IsUnique = true)]
+- [Index(nameof(Title))]

@@ -1,0 +1,8 @@
+@@ AppDbContext.cs
++ .HasMaxLength(32)
+- .HasMaxLength(20)
+@@ Models/Post.cs
++ [Index(nameof(AuthorId), nameof(Title), IsUnique = true, Name = "blog_post_author_title_uniq")]
++ [Index(nameof(Title), Name = "post_title_idx")]
+- [Index(nameof(AuthorId), nameof(Title), IsUnique = true)]
+- [Index(nameof(Title))]

@@ -1,0 +1,8 @@
+@@ AppDbContext.cs
++ .WithMany(r => r.PostSet)
++ entity.Property(e => e.Metadata).HasDefaultValueSql("'[]'");
+- .WithMany()
+- entity.Property(e => e.Metadata).HasDefaultValueSql("'{}'");
+@@ Models/Category.cs
++ 
++ public ICollection<Post> PostSet { get; set; } = new List<Post>();

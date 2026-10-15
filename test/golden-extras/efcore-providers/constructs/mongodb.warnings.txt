@@ -1,0 +1,6 @@
+Book.author: the onUpdate action "cascade" is not supported by this format and was ignored.
+Provider "mongodb": EF Core is relational (use the MongoDB EF Core provider by hand); PostgreSQL column types were written.
+Book.tags: an array default cannot be written; the default was dropped.
+Book.grid: a nested array is written as a multidimensional array (int[,]), which only Npgsql maps.
+Book.colors: an array of the enum Color is stored as numbers by EF Core, not as names.
+Book.window: the range column uses NpgsqlRange<int>, which needs the Npgsql.EntityFrameworkCore.PostgreSQL package.

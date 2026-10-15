@@ -1,0 +1,6 @@
+Object: "Object" is a name the generated code uses or another type has, so the class was named "ObjectEntity".
+Account.Equals: "Equals" cannot be a property of Account, so the property was named "EqualsValue".
+Account.account: "Account" cannot be a property of Account, so the property was named "AccountValue".
+LedgerEntry.ledger: SET NULL on a required relation; the column is NOT NULL, so deleting a Ledger that is referenced fails.
+LedgerEntry.other: EF Core has no SET DEFAULT delete behavior; NO ACTION was written.
+Log: the model has no primary key; EF Core needs a key, so the class was written as keyless ([Keyless]).

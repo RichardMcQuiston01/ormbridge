@@ -1,0 +1,8 @@
+fieldType Weird.a;b: string -> text
+fieldType Weird.quote: string -> text
+fieldType Weird.tick: string -> text
+relationTarget Weird.other: Other -> OtherEntity
+modelRemoved Other: model Other -> (absent)
+modelAdded OtherEntity: (absent) -> model OtherEntity
+enumRemoved Status: enum Status -> (absent)
+enumRemoved Other: enum Other -> (absent)

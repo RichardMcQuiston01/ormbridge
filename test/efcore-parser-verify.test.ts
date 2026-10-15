@@ -1,23 +1,21 @@
-import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import {
-  copyFileSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import type { IrSchema } from '../src/ir.js';
 import { parseEfcore } from '../src/parsers/efcore.js';
 import { CANONICAL_FIXTURES } from './fixtures/canonical.js';
-import { toDbSchema, type EfcoreToolOutput } from './efcoreSupport.js';
+import {
+  csharpFiles,
+  isToolError,
+  probeDotnet,
+  runEfcoreTool,
+  toDbSchema,
+  type EfcoreDatabase,
+  type EfcoreToolOutput,
+} from './efcoreSupport.js';
 import { expectOk } from './helpers.js';
-import { titleWithReason, type ToolProbe } from './realToolSupport.js';
+import { titleWithReason } from './realToolSupport.js';
 import { compareWithDatabase } from './sequelizeSupport.js';
 
 /**
@@ -32,9 +30,6 @@ import { compareWithDatabase } from './sequelizeSupport.js';
  */
 
 const FIXTURES: string = fileURLToPath(new URL('./fixtures', import.meta.url));
-const TOOL: string = fileURLToPath(
-  new URL('./tools/efcore-verify', import.meta.url)
-);
 
 interface VerifyGroup {
   label: string;
@@ -42,18 +37,6 @@ interface VerifyGroup {
   context: string;
   /** The C# files the parser reads (absolute paths). */
   sources: readonly string[];
-}
-
-function csharpFiles(directory: string): string[] {
-  return readdirSync(directory)
-    .sort()
-    .flatMap((entry: string): string[] => {
-      const path: string = join(directory, entry);
-      if (statSync(path).isDirectory()) {
-        return csharpFiles(path);
-      }
-      return path.endsWith('.cs') ? [path] : [];
-    });
 }
 
 const GROUPS: readonly VerifyGroup[] = [
@@ -81,83 +64,18 @@ const GROUPS: readonly VerifyGroup[] = [
   },
 ];
 
-function probeDotnet(): ToolProbe & { dotnet: string; directory: string } {
-  const directory: string = process.env.EFCORE_DIR ?? '';
-  const dotnet: string = process.env.DOTNET ?? 'dotnet';
-  if (directory === '') {
-    return {
-      available: false,
-      reason:
-        'set EFCORE_DIR to a scratch directory and have the .NET 8 SDK installed (DOTNET names the dotnet executable; see test/README.md)',
-      dotnet,
-      directory,
-    };
-  }
-  const version: SpawnSyncReturns<string> = spawnSync(dotnet, ['--version'], {
-    encoding: 'utf8',
-  });
-  if (version.error !== undefined || version.status !== 0) {
-    return {
-      available: false,
-      reason: `the .NET SDK was not found (${dotnet} --version failed); install .NET 8 or set DOTNET (see test/README.md)`,
-      dotnet,
-      directory,
-    };
-  }
-  return { available: true, reason: '', dotnet, directory };
-}
-
 const probe: ReturnType<typeof probeDotnet> = probeDotnet();
-const directories: string[] = [];
 let output: EfcoreToolOutput = {};
 
 beforeAll(() => {
   if (!probe.available) {
     return;
   }
-  const work: string = mkdtempSync(join(tmpdir(), 'ormbridge-efcore-'));
-  directories.push(work);
-  for (const file of ['EfcoreVerify.csproj', 'Program.cs']) {
-    copyFileSync(join(TOOL, file), join(work, file));
-  }
-  mkdirSync(join(probe.directory, 'nuget'), { recursive: true });
-  const run: SpawnSyncReturns<string> = spawnSync(
-    probe.dotnet,
-    [
-      'run',
-      '--configuration',
-      'Release',
-      `-p:FixturesDir=${FIXTURES}`,
-      '--',
-      ...GROUPS.map((group: VerifyGroup) => group.context),
-    ],
-    {
-      cwd: work,
-      encoding: 'utf8',
-      timeout: 600_000,
-      env: {
-        ...process.env,
-        NUGET_PACKAGES: join(probe.directory, 'nuget'),
-        DOTNET_CLI_HOME: join(probe.directory, 'home'),
-        DOTNET_CLI_TELEMETRY_OPTOUT: '1',
-        DOTNET_NOLOGO: '1',
-        DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1',
-      },
-    }
-  );
-  if (run.status !== 0) {
-    throw new Error(
-      `dotnet run failed (${run.status}):\n${run.stdout}\n${run.stderr}`
-    );
-  }
-  output = JSON.parse(run.stdout) as EfcoreToolOutput;
-}, 660_000);
-
-afterAll(() => {
-  for (const directory of directories) {
-    rmSync(directory, { recursive: true, force: true });
-  }
-});
+  output = runEfcoreTool(probe, {
+    fixturesDir: FIXTURES,
+    contexts: GROUPS.map((group: VerifyGroup) => group.context),
+  });
+}, 960_000);
 
 describe(titleWithReason('efcore parser: real EF Core', probe), () => {
   it.skipIf(!probe.available).each(GROUPS)(
@@ -174,9 +92,17 @@ describe(titleWithReason('efcore parser: real EF Core', probe), () => {
       );
       const database = output[group.context];
       expect(database, `no output for ${group.context}`).toBeDefined();
-      expect(compareWithDatabase(ir, toDbSchema(database ?? {}, ir))).toEqual(
-        []
-      );
+      if (isToolError(database)) {
+        throw new Error(
+          `EF Core rejected ${group.context}: ${database.__error}`
+        );
+      }
+      expect(
+        compareWithDatabase(
+          ir,
+          toDbSchema((database ?? {}) as EfcoreDatabase, ir)
+        )
+      ).toEqual([]);
     }
   );
 });
