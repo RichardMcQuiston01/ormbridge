@@ -1,0 +1,26 @@
+@@ AppDbContext.cs
++ .WithMany(r => r.PostSet)
+- .WithMany()
+- entity.Property(e => e.Metadata).HasDefaultValueSql("'{}'");
+@@ Models/Category.cs
++ 
++ [Column("createdAt")]
++ [Column("updatedAt")]
++ public ICollection<Post> PostSet { get; set; } = new List<Post>();
+- [Column("created_at")]
+- [Column("updated_at")]
+@@ Models/Post.cs
++ [Column("createdAt")]
++ [Column("isFeatured")]
++ [Column("publicId")]
++ [Column("publishedAt")]
++ [Column("updatedAt")]
++ [Column("viewCount")]
++ public string? Metadata { get; set; }
+- [Column("created_at")]
+- [Column("is_featured")]
+- [Column("public_id")]
+- [Column("published_at")]
+- [Column("updated_at")]
+- [Column("view_count")]
+- public string Metadata { get; set; } = null!;

@@ -1,0 +1,74 @@
+@@ AppDbContext.cs
++ 
++ 
++ 
++ 
++ 
++ .HasConstraintName("blog_category_parent_id_fkey")
++ .HasConstraintName("blog_post_author_id_fkey");
++ .HasConstraintName("blog_post_editor_id_fkey")
++ .HasConstraintName("blog_post_tags_blog_post_id_fkey");
++ .HasConstraintName("blog_post_tags_blog_tag_id_fkey");
++ .HasConstraintName("blog_profile_user_id_fkey");
++ .HasForeignKey(e => e.AuthorId)
++ .HasForeignKey(e => e.BlogPostId)
++ .HasForeignKey(e => e.BlogTagId)
++ .HasForeignKey<BlogProfile>(e => e.UserId)
++ .HasOne(e => e.Author)
++ .HasOne(e => e.BlogPost)
++ .HasOne(e => e.BlogTag)
++ .HasOne(e => e.User)
++ .WithMany(r => r.AuthorBlogPosts)
++ .WithMany(r => r.BlogPostTags)
++ .WithMany(r => r.BlogPostTags)
++ .WithOne(r => r.BlogProfile)
++ entity
++ entity
++ entity
++ entity.HasKey(e => e.Id).HasName("blog_category_pkey");
++ entity.HasKey(e => e.Id).HasName("blog_post_pkey");
++ entity.HasKey(e => e.Id).HasName("blog_post_tags_pkey");
++ entity.HasKey(e => e.Id).HasName("blog_profile_pkey");
++ entity.HasKey(e => e.Id).HasName("blog_tag_pkey");
++ entity.HasKey(e => e.Id).HasName("blog_user_pkey");
++ modelBuilder.Entity<BlogPostTag>(entity =>
++ modelBuilder.Entity<BlogProfile>(entity =>
++ modelBuilder.Entity<BlogTag>(entity =>
++ modelBuilder.Entity<BlogUser>(entity =>
++ public DbSet<BlogPostTag> BlogPostTags => Set<BlogPostTag>();
++ {
++ {
++ {
++ {
++ });
++ });
++ });
++ });
+- "blog_post_tags",
+- .HasMany(e => e.Tags)
+- .UsingEntity<Dictionary<string, object>>(
+- .WithMany(r => r.BlogPosts)
+- join => join.ToTable("blog_post_tags"));
+- left => left.HasOne<BlogPost>().WithMany().HasForeignKey("blog_post_id"),
+- right => right.HasOne<BlogTag>().WithMany().HasForeignKey("blog_tag_id"),
+- using System.Collections.Generic;
+@@ Models/BlogCategory.cs
++ [Index(nameof(Name), IsUnique = true, Name = "blog_category_name_key")]
+- [Index(nameof(Name), IsUnique = true)]
+@@ Models/BlogPost.cs
++ [Index(nameof(PublicId), IsUnique = true, Name = "blog_post_public_id_key")]
++ public ICollection<BlogPostTag> BlogPostTags { get; set; } = new List<BlogPostTag>();
+- [ForeignKey(nameof(AuthorId))]
+- [Index(nameof(PublicId), IsUnique = true)]
+- [InverseProperty(nameof(BlogUser.AuthorBlogPosts))]
+- public ICollection<BlogTag> Tags { get; set; } = new List<BlogTag>();
++ file Models/BlogPostTag.cs
+@@ Models/BlogProfile.cs
+- [ForeignKey(nameof(UserId))]
+- [InverseProperty(nameof(BlogUser.BlogProfile))]
+@@ Models/BlogTag.cs
++ public ICollection<BlogPostTag> BlogPostTags { get; set; } = new List<BlogPostTag>();
+- public ICollection<BlogPost> BlogPosts { get; set; } = new List<BlogPost>();
+@@ Models/BlogUser.cs
+- [InverseProperty(nameof(BlogPost.Author))]
+- [InverseProperty(nameof(BlogProfile.User))]

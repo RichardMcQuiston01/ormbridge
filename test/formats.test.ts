@@ -172,7 +172,7 @@ describe('formats command output', () => {
       /sequelize\s+extensions: \(none\) {2}read \+ write {2}Sequelize 6 models \(JavaScript or TypeScript; define, Model\.init and sequelize-typescript; --style define writes sequelize-cli files\)\n/
     );
     expect(text).toMatch(
-      /efcore\s+extensions: \(none\) {2}read {2}Entity Framework Core models \(C#; DbContext, data annotations and the fluent API\)\n/
+      /efcore\s+extensions: \(none\) {2}read \+ write {2}Entity Framework Core 8 models \(C#; DbContext, data annotations and the fluent API; --style fluent writes plain classes and configuration classes\)\n/
     );
   });
 

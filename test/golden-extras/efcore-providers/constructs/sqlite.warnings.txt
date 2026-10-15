@@ -1,0 +1,7 @@
+Book.author: the onUpdate action "cascade" is not supported by this format and was ignored.
+Book.tags: an array default cannot be written; the default was dropped.
+Book.grid: a nested array has no EF Core mapping outside PostgreSQL; the column was written as a string.
+Book.colors: an array of the enum Color is stored as numbers by EF Core, not as names.
+Book.settings: SQLite has no JSON column type in EF Core 8; the column was written as a string and stored as text.
+Book.window: range types exist only in PostgreSQL; the column was written as a string.
+Book.extra: hstore is a PostgreSQL type; the column was written as a string.

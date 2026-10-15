@@ -610,7 +610,7 @@ export const READ_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
         id: 'efcore-not-schema',
         title: 'Behaviour that is not schema',
         explanation:
-          'Comments (`[Comment]`, `HasComment`), concurrency tokens and row versions (`[Timestamp]`, `[ConcurrencyCheck]`, `IsRowVersion`), check constraints, seed data (`HasData`), query filters, filtered and covering indexes (the index is kept as a full index) and value converters have no place in the model; each is reported once per model or column. Validation attributes (`[Range]`, `[EmailAddress]`) and serialization attributes (`[JsonIgnore]`) are not EF Core and are ignored silently. A fluent call the reader does not know (`HasPostgresExtension`, `UseHiLo`, `IsFixedLength`) warns once per call and place. Default values come from `HasDefaultValue`, `HasDefaultValueSql` and `HasComputedColumnSql` only: a C# property initializer is not a database default.',
+          'Comments (`[Comment]`, `HasComment`), concurrency tokens and row versions (`[Timestamp]`, `[ConcurrencyCheck]`, `IsRowVersion`), check constraints, seed data (`HasData`), query filters, filtered and covering indexes (the index is kept as a full index) and value converters have no place in the model; each is reported once per model or column. The one converter that is read is the enum-to-string `ValueConverter<TEnum, string>` class ormbridge writes, whose switch arms list the stored values (`"draft" => PostStatus.Draft`); a converter written any other way is not evaluated. Validation attributes (`[Range]`, `[EmailAddress]`) and serialization attributes (`[JsonIgnore]`) are not EF Core and are ignored silently. A fluent call the reader does not know (`HasPostgresExtension`, `UseHiLo`, `IsFixedLength`) warns once per call and place. Default values come from `HasDefaultValue`, `HasDefaultValueSql` and `HasComputedColumnSql` only: a C# property initializer is not a database default.',
       },
     ],
   };
@@ -1177,7 +1177,8 @@ export function renderMatrixMarkdown(
     lines.push(...emitOnlySection(emitOnly));
   }
 
-  for (const name of readOnly) {
+  // The reader notes of every format that has them, whether or not it can also be written.
+  for (const name of formats) {
     const readNotes: readonly LossReason[] = READ_ONLY_NOTES[name] ?? [];
     if (readNotes.length === 0) {
       continue;

@@ -105,11 +105,11 @@ function warningsMatching(schema: IrSchema, pattern: RegExp): string[] {
 }
 
 describe('format registration', () => {
-  it('registers efcore as a read-only format without a file extension', () => {
+  it('registers efcore as a read and write format without a file extension', () => {
     const adapter = expectOk(getFormat('efcore'));
     expect(adapter.extensions).toEqual([]);
     expect(adapter.parse).toBeDefined();
-    expect(adapter.emit).toBeUndefined();
+    expect(adapter.emit).toBeDefined();
     expect(getFormatByExtension('.cs')).toBeUndefined();
   });
 
@@ -128,17 +128,16 @@ describe('format registration', () => {
     expect(converted.output).toContain('@@map("Things")');
   });
 
-  it('refuses to write EF Core models', async () => {
+  it('writes EF Core models through the adapter', async () => {
     const result: Result<ConvertResult> = await convertText(
       [{ path: 'a.prisma', text: 'model A { id Int @id }' }],
       { ...DEFAULT_OPTIONS, from: 'prisma', to: 'efcore' }
     );
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.message).toContain(
-        'The format "efcore" can only be used as an input'
-      );
-    }
+    const converted: ConvertResult = expectOk(result);
+    expect(Object.keys(converted.files ?? {}).sort()).toEqual([
+      'AppDbContext.cs',
+      'Models/A.cs',
+    ]);
   });
 });
 
@@ -1083,6 +1082,62 @@ public class T { public int Id { get; set; } public Kind Kind { get; set; } publ
     expect(warningsMatching(schema, /stores Guid as string/)).toHaveLength(1);
   });
 
+  it('reads the stored values of an enum from a ValueConverter class that lists them as switch arms', async () => {
+    const schema: IrSchema = await parse(
+      context(
+        `modelBuilder.Entity<T>(e => {
+          e.Property(t => t.Kind).HasConversion(new KindConverter()).HasDefaultValue(Kind.Live);
+          e.Property(t => t.Other).HasConversion<KindConverter>();
+          e.Property(t => t.Odd).HasConversion(new OddConverter());
+        });`,
+        `public enum Kind { Draft, Live }
+public class KindConverter : ValueConverter<Kind, string>
+{
+    public KindConverter() : base(v => ToDatabase(v), v => FromDatabase(v)) { }
+    private static string ToDatabase(Kind v) => v switch { Kind.Draft => "draft", Kind.Live => "li\\"ve", _ => throw new ArgumentOutOfRangeException(nameof(v)) };
+    private static Kind FromDatabase(string v) => v switch { "draft" => Kind.Draft, "li\\"ve" => Kind.Live, _ => throw new ArgumentOutOfRangeException(nameof(v)) };
+}
+public class OddConverter : ValueConverter<Kind, string>
+{
+    public OddConverter() : base(v => v.ToString(), v => Enum.Parse<Kind>(v)) { }
+}
+public class T { public int Id { get; set; } public Kind Kind { get; set; } public Kind Other { get; set; } public Kind Odd { get; set; } }`
+      )
+    );
+    expect(field(schema, 'T', 'kind')).toMatchObject({
+      type: 'string',
+      enumName: 'Kind',
+      default: { kind: 'enumValue', value: 'Live' },
+    });
+    expect(field(schema, 'T', 'other').type).toBe('string');
+    expect(
+      schema.enums
+        .find((candidate) => candidate.name === 'Kind')
+        ?.values.map((value) => value.dbValue)
+    ).toEqual(['draft', 'li"ve']);
+    // A converter that does not list the values is still reported.
+    expect(
+      warningsMatching(schema, /T\.Odd: a custom value converter/)
+    ).toHaveLength(1);
+    expect(
+      warningsMatching(schema, /T\.Kind: a custom value converter/)
+    ).toEqual([]);
+  });
+
+  it('reads HasValueGenerator<GuidValueGenerator>() as a UUID default, and a value generator of another kind as nothing', async () => {
+    const schema: IrSchema = await parse(
+      context(
+        `modelBuilder.Entity<T>(e => {
+          e.Property(t => t.Token).ValueGeneratedOnAdd().HasValueGenerator<GuidValueGenerator>();
+          e.Property(t => t.Other).HasValueGenerator<CustomGenerator>();
+        });`,
+        `public class T { public int Id { get; set; } public Guid Token { get; set; } public Guid Other { get; set; } }`
+      )
+    );
+    expect(field(schema, 'T', 'token').default).toEqual({ kind: 'uuid' });
+    expect(field(schema, 'T', 'other').default).toBeUndefined();
+  });
+
   it('flattens OwnsOne with a column prefix, nested owned types, renamed columns and optional owners', async () => {
     const schema: IrSchema = await parse(
       context(
@@ -1289,6 +1344,24 @@ public class Ctx : DbContext { public DbSet<Doc> Docs => Set<Doc>(); }`);
       'ReviewerPersonId'
     );
     expect(relation(schema, 'Doc', 'subject').columnName).toBe('PersonId');
+  });
+
+  it('finds the dependent side of a one-to-one from [ForeignKey], whichever class is read first', async () => {
+    const schema: IrSchema = await parse(`
+public class Account { public int Id { get; set; }
+  [InverseProperty(nameof(Profile.Owner))] public Profile? Profile { get; set; } }
+public class Profile { public int Id { get; set; }
+  [Column("owner_account_id")] public int OwnerId { get; set; }
+  [ForeignKey(nameof(OwnerId))] [InverseProperty(nameof(Account.Profile))] public Account Owner { get; set; } = null!; }
+public class Ctx : DbContext { public DbSet<Account> Accounts => Set<Account>(); public DbSet<Profile> Profiles => Set<Profile>(); }`);
+    expect(model(schema, 'Account').relations).toEqual([]);
+    expect(relation(schema, 'Profile', 'owner')).toMatchObject({
+      kind: 'oneToOne',
+      targetModel: 'Account',
+      columnName: 'owner_account_id',
+      relatedName: 'profile',
+    });
+    expect(names(schema, 'Profile')).toEqual(['id']);
   });
 
   it('uses a shadow foreign key when the class has no key property', async () => {

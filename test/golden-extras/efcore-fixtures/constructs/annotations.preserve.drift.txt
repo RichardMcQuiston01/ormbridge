@@ -1,0 +1,11 @@
+fieldType Book.tags: string -> text
+fieldDefault Book.tags: literal "[]" -> (none)
+fieldType Book.colors: string -> unsupported
+fieldEnum Book.colors: color -> (none)
+fieldEnum Book.color: color -> Color
+fieldType Book.window: range -> unsupported
+modelRemoved index: model index -> (absent)
+modelAdded Index: (absent) -> model Index
+enumRemoved color: enum color -> (absent)
+enumRemoved Status: enum Status -> (absent)
+enumAdded Color: (absent) -> enum Color

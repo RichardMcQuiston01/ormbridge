@@ -1,0 +1,4 @@
+Session.account: the onUpdate action "cascade" is not supported by this format and was ignored.
+Account.payload: SQLite has no JSON column type in EF Core 8; the column was written as a string and stored as text.
+Account.ip: only PostgreSQL maps IPAddress; the column was written as a string of at most 45 characters.
+Session.token: SQLite has no database-side UUID default; EF Core generates the Guid when the row is added through it.

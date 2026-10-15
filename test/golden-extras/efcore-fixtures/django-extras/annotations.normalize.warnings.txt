@@ -1,0 +1,12 @@
+Item.full_name: the generated column expression Concat("first_name", Value(" "), "last_name") is Python, not SQL; the column was written as a regular column.
+Item.total_cents: the generated column expression F("quantity") * 100 is Python, not SQL; the column was written as a regular column.
+Item.tags: an array default cannot be written; the default was dropped.
+Item.grid: a nested array is written as a multidimensional array (int[,]), which only Npgsql maps.
+Item.kinds: an array of the enum ItemKind is stored as numbers by EF Core, not as names.
+Item.kinds: the enum default "[]" matches no member; the default was dropped.
+Item.attributes: a literal default on a hstore column cannot be written; the default was dropped.
+Item.stock_range: the range column uses NpgsqlRange<int>, which needs the Npgsql.EntityFrameworkCore.PostgreSQL package.
+Item.big_range: the range column uses NpgsqlRange<long>, which needs the Npgsql.EntityFrameworkCore.PostgreSQL package.
+Item.price_range: the range column uses NpgsqlRange<decimal>, which needs the Npgsql.EntityFrameworkCore.PostgreSQL package.
+Item.available: the range column uses NpgsqlRange<DateOnly>, which needs the Npgsql.EntityFrameworkCore.PostgreSQL package.
+Item.valid_during: the range column uses NpgsqlRange<DateTime>, which needs the Npgsql.EntityFrameworkCore.PostgreSQL package.

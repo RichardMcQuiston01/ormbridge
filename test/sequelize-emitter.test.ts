@@ -203,7 +203,14 @@ describe('sequelize emitter: layout', () => {
     expect(SEQUELIZE_STYLES).toEqual(['init', 'define']);
     expect(isSequelizeStyle('define')).toBe(true);
     expect(isSequelizeStyle('sqlmodel')).toBe(false);
-    expect(OUTPUT_STYLES).toEqual(['sqlalchemy', 'sqlmodel', 'init', 'define']);
+    expect(OUTPUT_STYLES).toEqual([
+      'sqlalchemy',
+      'sqlmodel',
+      'init',
+      'define',
+      'annotations',
+      'fluent',
+    ]);
   });
 
   it('checks a style against the target format', () => {
@@ -222,7 +229,7 @@ describe('sequelize emitter: layout', () => {
     expect(unknown.ok).toBe(false);
     if (!unknown.ok) {
       expect(unknown.error.message).toBe(
-        'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define (sqlalchemy, sqlmodel for sqlalchemy; init, define for sequelize).'
+        'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define, annotations, fluent (sqlalchemy, sqlmodel for sqlalchemy; init, define for sequelize; annotations, fluent for efcore).'
       );
     }
   });

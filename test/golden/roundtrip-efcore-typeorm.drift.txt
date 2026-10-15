@@ -1,0 +1,4 @@
++ @ManyToOne(() => Category, (entity) => entity.postSet, {
++ postSet!: Post[];
+- @ManyToOne(() => Category, (entity) => entity.post_set, {
+- post_set!: Post[];
