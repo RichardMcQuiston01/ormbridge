@@ -605,6 +605,12 @@ export abstract class FluentSteps {
       case 'ValueGeneratedNever':
         cfg.generated = 'never';
         return target;
+      case 'HasValueGenerator':
+        // EF Core creates the Guids itself (what ormbridge writes for a UUID default on SQLite).
+        if (/GuidValueGenerator/.test(call.typeArgs[0]?.name ?? '')) {
+          cfg.defaultSql ??= 'uuid()';
+        }
+        return target;
       case 'HasConversion': {
         const typeArg: string | undefined = call.typeArgs[0]?.name;
         const argument: SyntaxNode | undefined = call.args[0];
@@ -616,6 +622,7 @@ export abstract class FluentSteps {
               : typeArg;
           if (/Converter$/.test(typeArg) && !/^Enum/.test(typeArg)) {
             cfg.customConversion = true;
+            cfg.converterClass = typeArg;
             delete cfg.conversion;
           }
         } else if (argument !== undefined) {
@@ -624,6 +631,13 @@ export abstract class FluentSteps {
             cfg.conversion = value.type;
           } else {
             cfg.customConversion = true;
+            // `new PostStatusConverter()`: remembered so an enum converter written in the input can be read.
+            const created: RegExpMatchArray | null = argument.text.match(
+              /^new\s+(?:\w+\.)*([A-Za-z_]\w*)\s*\(\s*\)$/
+            );
+            if (created?.[1] !== undefined) {
+              cfg.converterClass = created[1];
+            }
           }
         }
         return target;

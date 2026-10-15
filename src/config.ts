@@ -25,14 +25,15 @@ export interface ConversionConfig {
   header?: boolean;
   appLabel?: string;
   autoField?: 'int' | 'bigint';
-  /** PHP namespace of the Doctrine entities or Laravel models. */
+  /** Namespace of the generated classes: PHP for Doctrine and Laravel, C# for EF Core. */
   namespace?: string;
   /** Go package name of the GORM models. */
   goPackage?: string;
   /** Prisma major version of the generated header (6 or 7). */
   prismaVersion?: 6 | 7;
   /**
-   * Layout of the SQLAlchemy output (`sqlalchemy` or `sqlmodel`) or the Sequelize output (`init` or `define`).
+   * Layout of the SQLAlchemy output (`sqlalchemy` or `sqlmodel`), the Sequelize output (`init` or `define`) or the
+   * EF Core output (`annotations` or `fluent`).
    * Which one applies depends on `to`, which is checked when the conversion runs.
    */
   style?: OutputStyle;

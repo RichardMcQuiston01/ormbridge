@@ -8,6 +8,7 @@ import type {
 import { toCamelCase } from '../naming.js';
 import {
   parseTypeText,
+  type CsClass,
   type CsEnum,
   type CsType,
   type CsValue,
@@ -72,14 +73,57 @@ export function columnNameOf(member: ScalarMember): string {
   );
 }
 
-function buildEnum(definition: CsEnum, stringStored: boolean): IrEnum {
+function buildEnum(
+  definition: CsEnum,
+  stringStored: boolean,
+  stored: ReadonlyMap<string, string> = new Map()
+): IrEnum {
   const values: IrEnumValue[] = definition.members.map(
     (value, index): IrEnumValue => ({
       name: value.name,
-      dbValue: stringStored ? value.name : String(value.value ?? index),
+      dbValue: stringStored
+        ? (stored.get(value.name) ?? value.name)
+        : String(value.value ?? index),
     })
   );
   return { name: definition.name, values };
+}
+
+/**
+ * Reads the stored values of an enum from a value converter class of the input: a `ValueConverter<TEnum, string>`
+ * whose conversion is written as switch arms (`"draft" => PostStatus.Draft`), the shape ormbridge writes.
+ * Returns the stored string by member name, or undefined when the class is not such a converter.
+ */
+function converterValues(
+  project: Project,
+  className: string,
+  definition: CsEnum
+): Map<string, string> | undefined {
+  const converter: CsClass | undefined = project.classes.get(className);
+  const isEnumConverter: boolean =
+    converter?.bases.some(
+      (base: CsType) =>
+        base.name === 'ValueConverter' &&
+        base.args[0]?.name === definition.name &&
+        base.args[1]?.name === 'string'
+    ) ?? false;
+  if (converter === undefined || !isEnumConverter) {
+    return undefined;
+  }
+  const stored: Map<string, string> = new Map();
+  const arm: RegExp = /"((?:[^"\\]|\\.)*)"\s*=>\s*(?:\w+\.)*(\w+)\s*[,;]/g;
+  for (const method of converter.methods) {
+    for (const match of method.node.text.matchAll(arm)) {
+      const value: string = (match[1] ?? '').replace(/\\(.)/g, '$1');
+      const member: string = match[2] ?? '';
+      if (definition.members.some((item) => item.name === member)) {
+        stored.set(member, value);
+      }
+    }
+  }
+  return definition.members.every((item) => stored.has(item.name))
+    ? stored
+    : undefined;
 }
 
 /** Maps a configured default (HasDefaultValue) to an IR default, with a warning when it cannot be read. */
@@ -165,9 +209,25 @@ export function buildField(
   let shape: ColumnShape | undefined;
   let enumDefinition: IrEnum | undefined;
   let stringStored: boolean = false;
-  const conversion: string | undefined = config.conversion;
+  let conversion: string | undefined = config.conversion;
+  let storedValues: Map<string, string> | undefined;
+  if (
+    config.customConversion === true &&
+    config.converterClass !== undefined &&
+    definition !== undefined &&
+    type.arrayDepth === 0
+  ) {
+    storedValues = converterValues(
+      ctx.project,
+      config.converterClass,
+      definition
+    );
+    if (storedValues !== undefined) {
+      conversion = 'string';
+    }
+  }
 
-  if (config.customConversion === true) {
+  if (config.customConversion === true && storedValues === undefined) {
     ctx.warn(
       `${place}: a custom value converter is not evaluated; the column was read from the property type ${type.text}.`
     );
@@ -180,7 +240,7 @@ export function buildField(
     const integerType: IrScalarType =
       shape?.type === 'bigInt' ? 'bigInt' : 'int';
     shape = stringStored ? { type: 'string' } : { type: integerType };
-    enumDefinition = buildEnum(definition, stringStored);
+    enumDefinition = buildEnum(definition, stringStored, storedValues);
     if (!stringStored) {
       ctx.warn(
         `${place}: the enum ${definition.name} is stored as an integer by EF Core; it is read as an enum with the numbers as values, and writers that create enum types will store text instead. Add HasConversion<string>() to store the names.`

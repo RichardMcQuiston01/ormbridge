@@ -453,10 +453,28 @@ export function resolveRelationships(
         other: EntityInfo,
         otherNav: NavMember,
         allowKeyName: boolean
-      ): boolean =>
-        attributeKey(side, sideNav, otherNav) !== undefined ||
-        conventionKey(side, sideNav.name, other, keyOf(other), allowKeyName) !==
-          undefined;
+      ): boolean => {
+        // A [ForeignKey] on either navigation names the key, but only the side that has those properties holds it.
+        const named: string[] | undefined = attributeKey(
+          side,
+          sideNav,
+          otherNav
+        );
+        if (named !== undefined) {
+          return named.every(
+            (name: string) => findScalar(side, name) !== undefined
+          );
+        }
+        return (
+          conventionKey(
+            side,
+            sideNav.name,
+            other,
+            keyOf(other),
+            allowKeyName
+          ) !== undefined
+        );
+      };
       let keyOnInfo: boolean = keyOn(info, nav, target, inverse, false);
       let keyOnTarget: boolean = keyOn(target, inverse, info, nav, false);
       if (!keyOnInfo && !keyOnTarget) {

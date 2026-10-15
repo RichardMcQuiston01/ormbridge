@@ -20,6 +20,8 @@ export interface PropConfig {
   conversion?: string;
   /** True when a converter was given that cannot be evaluated statically. */
   customConversion?: boolean;
+  /** The class of `HasConversion(new X())` / `HasConversion<X>()`, so an enum-to-string converter can be read. */
+  converterClass?: string;
   isRowVersion?: boolean;
   isConcurrencyToken?: boolean;
   isUnicode?: boolean;
