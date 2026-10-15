@@ -15,8 +15,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <!-- Strict builds turn warnings into errors; a package advisory is not a problem of the code under test. -->
+    <!--
+      Strict builds turn warnings into errors; a package advisory, the end of support of a target framework or a
+      package that a newer SDK would prune is not a problem of the code under test.
+    -->
     <NuGetAudit>false</NuGetAudit>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NETSDK1138;NU1510</WarningsNotAsErrors>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <NoWarn>$(NoWarn);CS0169;EF1001</NoWarn>
     <FixturesDir Condition="'$(FixturesDir)' == ''">Fixtures</FixturesDir>
