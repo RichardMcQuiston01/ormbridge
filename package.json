@@ -54,6 +54,8 @@
     "typeorm",
     "drizzle",
     "sequelize",
+    "efcore",
+    "entity-framework",
     "graphene",
     "doctrine",
     "laravel",

@@ -88,6 +88,24 @@ export const CANONICAL_FIXTURES: readonly CanonicalFixture[] = [
     ].map(fixturePath),
   },
   {
+    // Entity Framework Core (C#): the data annotations live on the entity classes, the relationships, defaults and
+    // the join table in an IEntityTypeConfiguration<Post> class and in OnModelCreating of the DbContext. Read only,
+    // so the matrix lists it among the read-only sources. Fluent-only, owned-type, inheritance and many-to-many
+    // variants live in efcore-extras.
+    format: 'efcore',
+    paths: [
+      './efcore/TimeStamped.cs',
+      './efcore/PostStatus.cs',
+      './efcore/Category.cs',
+      './efcore/Post.cs',
+      './efcore/Tag.cs',
+      './efcore/Profile.cs',
+      './efcore/User.cs',
+      './efcore/PostConfiguration.cs',
+      './efcore/BlogContext.cs',
+    ].map(fixturePath),
+  },
+  {
     format: 'json-schema',
     paths: [fixturePath('./json-schema/blog.schema.json')],
   },

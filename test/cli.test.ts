@@ -1108,3 +1108,64 @@ describe('sequelize input', () => {
     );
   });
 });
+
+describe('efcore input', () => {
+  const MODELS: string = fileURLToPath(
+    new URL('./fixtures/efcore', import.meta.url)
+  );
+
+  it('reads a directory of C# files with --from efcore', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      MODELS,
+      '--from',
+      'efcore',
+      '--to',
+      'prisma',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(run.stdout).toContain('model Post {');
+    expect(run.stdout).toContain('@@map("blog_post_tags")');
+    expect(run.stderr).not.toContain('warning');
+  });
+
+  it('reads a single file and needs --from, because .cs is not inferred', async () => {
+    const file: string = join(MODELS, 'Tag.cs');
+    const explicit: CliRun = await cli([
+      'convert',
+      '-i',
+      file,
+      '--from',
+      'efcore',
+      '--to',
+      'prisma',
+    ]);
+    expect(explicit.code).toBe(EXIT_OK);
+    expect(explicit.stdout).toContain('model Tag {');
+    const inferred: CliRun = await cli([
+      'convert',
+      '-i',
+      file,
+      '--to',
+      'prisma',
+    ]);
+    expect(inferred.code).toBe(EXIT_CONVERSION_ERROR);
+  });
+
+  it('refuses to write EF Core models and lists the format as read-only', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'efcore',
+    ]);
+    expect(run.code).not.toBe(EXIT_OK);
+    expect(run.stderr).toContain(
+      'The format "efcore" can only be used as an input'
+    );
+    const formats: CliRun = await cli(['formats']);
+    expect(formats.stdout).toMatch(/efcore\s+extensions: \(none\)\s+read\s+/);
+  });
+});

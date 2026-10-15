@@ -1,0 +1,1 @@
+Vehicle: Car, Truck derive from Vehicle in one table (table per hierarchy). The hierarchy was read as a single model with the columns of every type (those of the derived types nullable) and a discriminator column; derived types are not separate models.

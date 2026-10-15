@@ -171,6 +171,9 @@ describe('formats command output', () => {
     expect(text).toMatch(
       /sequelize\s+extensions: \(none\) {2}read \+ write {2}Sequelize 6 models \(JavaScript or TypeScript; define, Model\.init and sequelize-typescript; --style define writes sequelize-cli files\)\n/
     );
+    expect(text).toMatch(
+      /efcore\s+extensions: \(none\) {2}read {2}Entity Framework Core models \(C#; DbContext, data annotations and the fluent API\)\n/
+    );
   });
 
   it('marks one-way formats', () => {

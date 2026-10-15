@@ -1,0 +1,5 @@
+Order.State: the enum OrderState is stored as an integer by EF Core; it is read as an enum with the numbers as values, and writers that create enum types will store text instead. Add HasConversion<string>() to store the names.
+Order.Version: the row version ([Timestamp] / IsRowVersion) has no equivalent in the shared model; it was read as an ordinary column.
+Product.Categories: the join table "CategoryProduct" (columns ProductsId, CategoriesId) is not preserved by name; formats that derive join tables will use "Products_categories" (columns product_id, category_id).
+OrderLine.doubleQuantity: the generated column expression Quantity * 2 has no Prisma equivalent; it was written as a regular column, so Prisma will try to write to it.
+Product.shelfLife: Prisma has no interval type; the duration was written as BigInt (microseconds).

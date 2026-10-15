@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Loads the EF Core fixtures of this repository with the real library and prints what SQLite ends up with.
+    test/efcore-parser-verify.test.ts copies this project to a temporary directory and passes FixturesDir
+    (the directory that holds the C# fixtures, compiled together: each uses its own namespace).
+    The fixtures rely on the implicit usings of the SDK (System, System.Collections.Generic, System.Linq).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS8618;CS0169;EF1001</NoWarn>
+    <FixturesDir Condition="'$(FixturesDir)' == ''">Fixtures</FixturesDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="$(FixturesDir)/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
+  </ItemGroup>
+
+</Project>

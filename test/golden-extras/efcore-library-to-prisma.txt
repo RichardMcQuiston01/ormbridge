@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Author {
+  authorNo Int       @id @map("AuthorNo")
+  fullName String    @map("FullName") @db.VarChar(80)
+  bornOn   DateTime? @map("born_on") @db.Date
+  books    Book[]    @relation("Book_author")
+  reviewed Book[]    @relation("Book_reviewer")
+
+  @@map("authors")
+}
+
+model Book {
+  isbn       String    @id @map("Isbn") @db.VarChar(13)
+  title      String    @map("Title") @db.VarChar(200)
+  price      Decimal   @map("Price") @db.Decimal(8, 2)
+  revision   Int       @map("Revision")
+  stamp      Bytes?    @map("Stamp")
+  AuthorNo   Int
+  author     Author    @relation("Book_author", fields: [AuthorNo], references: [authorNo], onDelete: NoAction)
+  ReviewerNo Int?
+  reviewer   Author?   @relation("Book_reviewer", fields: [ReviewerNo], references: [authorNo], onDelete: NoAction)
+  editions   Edition[]
+
+  @@map("Books")
+}
+
+model Edition {
+  number    Int      @map("Number")
+  published DateTime @map("Published") @db.Timestamptz(6)
+  BookIsbn  String   @db.VarChar(13)
+  book      Book     @relation(fields: [BookIsbn], references: [isbn], onDelete: NoAction)
+
+  @@id([BookIsbn, number])
+  @@index([published(sort: Desc)])
+  @@map("Editions")
+}
