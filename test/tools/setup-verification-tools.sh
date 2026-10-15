@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 # Installs the real tools that the optional verification tests use (Django, graphene-django,
 # TypeORM with SQLite, Drizzle ORM with drizzle-kit, Ajv for JSON Schema, Zod, better-sqlite3 for the SQL DDL
-# tests, SQLAlchemy 2 with SQLModel for the SQLAlchemy parser and emitter tests, and Sequelize 6 with SQLite for the
-# Sequelize parser tests) into a scratch directory outside
-# this repository, then prints the environment variables that switch the tests on.
+# tests, SQLAlchemy 2 with SQLModel for the SQLAlchemy parser and emitter tests, Sequelize 6 with SQLite for the
+# Sequelize parser and emitter tests, and the .NET 8 SDK with EF Core 8, its SQLite provider and the Npgsql provider
+# for the EF Core parser and emitter tests) into a scratch directory
+# outside this repository, then prints the environment variables that switch the tests on.
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
 #   eval "$(test/tools/setup-verification-tools.sh /tmp/ormbridge-tools | grep '^export ')"
 #   npx vitest run
 #
-# Needs python3 with venv + pip, and node with npm, and network access (or a package proxy).
+# Needs python3 with venv + pip, and node with npm, and network access (or a package proxy). The EF Core part also
+# needs the .NET SDK (8 or later): an existing `dotnet` on the PATH (or named by DOTNET) is used, otherwise the official
+# dotnet-install.sh is tried, and when neither works that part is skipped with a message and the EF Core verification
+# tests skip themselves (EFCORE_DIR and DOTNET are then not printed).
 set -euo pipefail
 
 target="${1:-${TMPDIR:-/tmp}/ormbridge-verification-tools}"
@@ -66,6 +70,36 @@ mkdir -p "${target}/sequelize"
     pg pg-hstore mysql2 tedious
 )
 
+echo "Preparing the .NET SDK and the EF Core 8 packages (SQLite and Npgsql providers) in ${target}/efcore" >&2
+here="$(cd "$(dirname "$0")" && pwd)"
+dotnet_bin="${DOTNET:-$(command -v dotnet || true)}"
+if [ -z "${dotnet_bin}" ]; then
+  # No SDK installed: try Microsoft's installer (needs network access to dot.net and the download hosts).
+  if curl -fsSL https://dot.net/v1/dotnet-install.sh -o "${target}/dotnet-install.sh" \
+    && bash "${target}/dotnet-install.sh" --channel 8.0 --install-dir "${target}/dotnet" >&2; then
+    dotnet_bin="${target}/dotnet/dotnet"
+  else
+    echo "The .NET SDK could not be installed (dot.net may be blocked: 'apt-get install dotnet-sdk-8.0' works on Ubuntu); the EF Core verification tests will be skipped." >&2
+  fi
+fi
+efcore_ready=""
+if [ -n "${dotnet_bin}" ]; then
+  mkdir -p "${target}/efcore"
+  scratch="$(mktemp -d)"
+  cp "${here}/efcore-verify/EfcoreVerify.csproj" "${here}/efcore-verify/Program.cs" "${scratch}/"
+  # Restoring fills the NuGet cache that the test uses (NUGET_PACKAGES); the test then needs no network.
+  if (
+    cd "${scratch}"
+    NUGET_PACKAGES="${target}/efcore/nuget" DOTNET_CLI_HOME="${target}/efcore/home" \
+      DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 "${dotnet_bin}" restore --verbosity quiet >&2
+  ); then
+    efcore_ready="yes"
+  else
+    echo "Restoring the EF Core packages failed; the EF Core verification tests will be skipped." >&2
+  fi
+  rm -rf "${scratch}"
+fi
+
 echo "Installing Zod 4, TypeScript and tsx into ${target}/zod" >&2
 mkdir -p "${target}/zod"
 (
@@ -92,3 +126,7 @@ echo "export SEQUELIZE_DIR=${target}/sequelize"
 echo "export AJV_DIR=${target}/ajv"
 echo "export ZOD_DIR=${target}/zod"
 echo "export SQL_DIR=${target}/sql"
+if [ -n "${efcore_ready}" ]; then
+  echo "export EFCORE_DIR=${target}/efcore"
+  echo "export DOTNET=${dotnet_bin}"
+fi

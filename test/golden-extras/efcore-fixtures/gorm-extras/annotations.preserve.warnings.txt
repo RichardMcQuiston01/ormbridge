@@ -1,0 +1,2 @@
+Order.customer: the onUpdate action "cascade" is not supported by this format and was ignored.
+Product index (title): full-text indexes are not supported here; it was written as an ordinary index.

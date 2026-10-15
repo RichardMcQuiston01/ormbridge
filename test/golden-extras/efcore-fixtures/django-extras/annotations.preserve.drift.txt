@@ -1,0 +1,14 @@
+fieldType Item.tags: string -> text
+fieldDefault Item.tags: literal "[]" -> (none)
+fieldMaxLength Item.tags: 20 -> (none)
+fieldType Item.kinds: string -> unsupported
+fieldDefault Item.kinds: literal "[]" -> (none)
+fieldMaxLength Item.kinds: 32 -> (none)
+fieldEnum Item.kinds: ItemKind -> (none)
+fieldDefault Item.attributes: literal "{}" -> (none)
+fieldType Item.stock_range: range -> unsupported
+fieldType Item.big_range: range -> unsupported
+fieldType Item.price_range: range -> unsupported
+fieldType Item.available: range -> unsupported
+fieldType Item.valid_during: range -> unsupported
+enumRemoved ItemKind: enum ItemKind -> (absent)

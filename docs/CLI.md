@@ -31,6 +31,13 @@ ormbridge convert -i ./internal/models --from gorm -o ./prisma/schema.prisma
 # Drizzle ORM (pgTable / mysqlTable / sqliteTable) -> Prisma (every .ts file is read and the tables are picked out; node_modules/, *.d.ts and *.test.ts are skipped)
 ormbridge convert -i ./src/db/schema --from drizzle -o ./prisma/schema.prisma
 
+# Entity Framework Core models (C#: entities, DbContext and configuration classes) -> Prisma (every .cs file is read and the entities are picked out; Migrations/, bin/, obj/, *.Designer.cs and *ModelSnapshot.cs are skipped)
+ormbridge convert -i ./Models --from efcore -o ./prisma/schema.prisma
+
+# Prisma -> Entity Framework Core 8 models (".cs" is not inferred, so pass --to efcore; -o is a directory; --style fluent writes plain classes and IEntityTypeConfiguration<T> classes)
+ormbridge convert -i ./prisma/schema.prisma --to efcore -o ./Data
+ormbridge convert -i ./prisma/schema.prisma --to efcore --style fluent --namespace Shop.Data -o ./Data
+
 # Sequelize 6 models (JavaScript or TypeScript) -> Prisma (every .js, .cjs, .mjs and .ts file is read and the models are picked out; node_modules/, migrations/, seeders/, config/, dist/, build/, *.d.ts, *.test.* and *.spec.* are skipped)
 ormbridge convert -i ./models --from sequelize -o ./prisma/schema.prisma
 
@@ -53,28 +60,28 @@ ormbridge convert -i ./prisma/schema.prisma --to sqlalchemy -o ./app/models.py
 ormbridge convert -i ./prisma/schema.prisma --to sqlalchemy --style sqlmodel -o ./app/models.py
 ```
 
-Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `.ts` = TypeORM, `.sql` = SQL), or set explicitly with `--from` / `--to`. Passing a directory does not infer the format, so add `--from typeorm` (or `--from drizzle`, `--from sequelize`, `--from json-schema`, `--from doctrine`, `--from laravel`, `--from gorm`) when reading a folder of entities (or `--from sql` for a folder of `.sql` files); `.php`, `.go` and `.json` are not inferred either, and `.ts` always means TypeORM, so Drizzle needs `--from drizzle` and Sequelize (`.js` or `.ts`) needs `--from sequelize`. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
+Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `.ts` = TypeORM, `.sql` = SQL), or set explicitly with `--from` / `--to`. Passing a directory does not infer the format, so add `--from typeorm` (or `--from drizzle`, `--from sequelize`, `--from efcore`, `--from json-schema`, `--from doctrine`, `--from laravel`, `--from gorm`) when reading a folder of entities (or `--from sql` for a folder of `.sql` files); `.php`, `.go`, `.cs` and `.json` are not inferred either, and `.ts` always means TypeORM, so Drizzle needs `--from drizzle` and Sequelize (`.js` or `.ts`) needs `--from sequelize`. Run `ormbridge formats` to list every supported format, its file extensions, and whether it can be read, written, or both. Without `-o`, the result is printed to stdout. Warnings go to stderr.
 
-| Flag                      | Default                    | Description                                                                                                                                                                                                                                              |
-| ------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-i, --input <paths...>`  | required (or config)       | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.                                                                                                                               |
-| `-o, --output <path>`     | stdout                     | File to write. Parent directories are created.                                                                                                                                                                                                           |
-| `-f, --from <format>`     | inferred                   | `django`, `prisma`, `typeorm`, `drizzle`, `doctrine`, `laravel`, `gorm`, `json-schema`, `sql`, `sqlalchemy` or `sequelize`                                                                                                                               |
-| `-t, --to <format>`       | inferred                   | `django`, `prisma`, `typeorm`, `drizzle`, `doctrine`, `laravel`, `gorm`, `json-schema`, `sql`, `sqlalchemy` or `sequelize` (`drizzle`, `doctrine`, `laravel`, `gorm` and `sequelize` write a directory), `typescript`, `zod` or `graphene` (output only) |
-| `--naming <mode>`         | `preserve`                 | `preserve` or `normalize` (see below)                                                                                                                                                                                                                    |
-| `--provider <name>`       | `postgresql`               | Database: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Picks Prisma native types, the Drizzle, GORM and SQL dialects and the Sequelize data types (`JSONB`, `ARRAY`, `INET` on PostgreSQL).                                   |
-| `--no-header`             | off                        | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema).                                                                                                                                                  |
-| `--no-conventions`        | off                        | Omit the `x-table-name`, `x-primary-key`, `x-unique`, `x-indexes`, `x-on-delete` and `x-related-name` keywords from JSON Schema output (`--to json-schema` only), for validators such as Ajv in strict mode that reject unknown keywords.                |
-| `--app-label <name>`      | directory name             | Django app label used for default table names (`<app>_<model>`).                                                                                                                                                                                         |
-| `--auto-field <type>`     | `int`                      | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                                                                                                                                           |
-| `--namespace <name>`      | `App\Entity`, `App\Models` | PHP namespace of the Doctrine entities or Laravel models (`--to doctrine` / `--to laravel` only). Enums go in a sibling namespace.                                                                                                                       |
-| `--go-package <name>`     | `models`                   | Go package name of the GORM models, also the output sub-directory (`--to gorm` only). Must be a valid Go identifier.                                                                                                                                     |
-| `--prisma-version <6\|7>` | `6`                        | Prisma major version of the header (`--to prisma` only). `7` writes the `prisma-client` generator (with an `output`) and no datasource `url`.                                                                                                            |
-| `--style <name>`          | `sqlalchemy`, `init`       | Layout of the SQLAlchemy output (`sqlalchemy` or `sqlmodel`) or the Sequelize output (`init` or `define`). A value that does not belong to `--to` fails with the valid values; other targets ignore it.                                                  |
-| `--dry-run`               | off                        | Run the whole conversion and report what would be written, without touching the filesystem.                                                                                                                                                              |
-| `--check`                 | off                        | Exit with code 3 if an output file is missing or differs from the conversion. Writes nothing. Needs an output path.                                                                                                                                      |
-| `--config <path>`         | searched                   | Read settings from this JSON config file instead of searching for one.                                                                                                                                                                                   |
-| `--no-config`             | off                        | Ignore any config file.                                                                                                                                                                                                                                  |
+| Flag                      | Default                                  | Description                                                                                                                                                                                                                                                                  |
+| ------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-i, --input <paths...>`  | required (or config)                     | Files or directories to read. Several files are merged into one schema, so abstract base classes can live in another file.                                                                                                                                                   |
+| `-o, --output <path>`     | stdout                                   | File to write. Parent directories are created.                                                                                                                                                                                                                               |
+| `-f, --from <format>`     | inferred                                 | `django`, `prisma`, `typeorm`, `drizzle`, `doctrine`, `laravel`, `gorm`, `json-schema`, `sql`, `sqlalchemy`, `sequelize` or `efcore`                                                                                                                                         |
+| `-t, --to <format>`       | inferred                                 | `django`, `prisma`, `typeorm`, `drizzle`, `doctrine`, `laravel`, `gorm`, `json-schema`, `sql`, `sqlalchemy`, `sequelize` or `efcore` (`drizzle`, `doctrine`, `laravel`, `gorm`, `sequelize` and `efcore` write a directory), `typescript`, `zod` or `graphene` (output only) |
+| `--naming <mode>`         | `preserve`                               | `preserve` or `normalize` (see below)                                                                                                                                                                                                                                        |
+| `--provider <name>`       | `postgresql`                             | Database: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb`. Picks Prisma native types, the Drizzle, GORM and SQL dialects, the Sequelize data types (`JSONB`, `ARRAY`, `INET` on PostgreSQL) and the EF Core column types and default SQL.             |
+| `--no-header`             | off                                      | Omit the Prisma `generator` / `datasource` blocks (useful when pasting models into an existing schema), or the `// <auto-generated>` comment of EF Core files.                                                                                                               |
+| `--no-conventions`        | off                                      | Omit the `x-table-name`, `x-primary-key`, `x-unique`, `x-indexes`, `x-on-delete` and `x-related-name` keywords from JSON Schema output (`--to json-schema` only), for validators such as Ajv in strict mode that reject unknown keywords.                                    |
+| `--app-label <name>`      | directory name                           | Django app label used for default table names (`<app>_<model>`).                                                                                                                                                                                                             |
+| `--auto-field <type>`     | `int`                                    | Key type for Django models without an explicit primary key: `int` or `bigint`.                                                                                                                                                                                               |
+| `--namespace <name>`      | `App\Entity`, `App\Models`, `App.Models` | Namespace of the generated classes: PHP for Doctrine and Laravel (enums go in a sibling namespace), a C# namespace for EF Core (`--to efcore`; the entities, enums, configurations and the context share it).                                                                |
+| `--go-package <name>`     | `models`                                 | Go package name of the GORM models, also the output sub-directory (`--to gorm` only). Must be a valid Go identifier.                                                                                                                                                         |
+| `--prisma-version <6\|7>` | `6`                                      | Prisma major version of the header (`--to prisma` only). `7` writes the `prisma-client` generator (with an `output`) and no datasource `url`.                                                                                                                                |
+| `--style <name>`          | `sqlalchemy`, `init`, `annotations`      | Layout of the SQLAlchemy output (`sqlalchemy` or `sqlmodel`), the Sequelize output (`init` or `define`) or the EF Core output (`annotations` or `fluent`). A value that does not belong to `--to` fails with the valid values; other targets ignore it.                      |
+| `--dry-run`               | off                                      | Run the whole conversion and report what would be written, without touching the filesystem.                                                                                                                                                                                  |
+| `--check`                 | off                                      | Exit with code 3 if an output file is missing or differs from the conversion. Writes nothing. Needs an output path.                                                                                                                                                          |
+| `--config <path>`         | searched                                 | Read settings from this JSON config file instead of searching for one.                                                                                                                                                                                                       |
+| `--no-config`             | off                                      | Ignore any config file.                                                                                                                                                                                                                                                      |
 
 [Back to Top](#command-line-reference)
 
@@ -117,23 +124,23 @@ Instead of repeating flags, put them in `ormbridge.config.json` (or `.ormbridger
 }
 ```
 
-| Key             | Type                  | Same as                                                          |
-| --------------- | --------------------- | ---------------------------------------------------------------- |
-| `input`         | string or string list | `-i, --input`                                                    |
-| `output`        | string                | `-o, --output`                                                   |
-| `from`          | string                | `-f, --from`                                                     |
-| `to`            | string                | `-t, --to`                                                       |
-| `naming`        | string                | `--naming` (`preserve` or `normalize`)                           |
-| `provider`      | string                | `--provider`                                                     |
-| `header`        | boolean               | `--no-header` when `false`                                       |
-| `conventions`   | boolean               | `--no-conventions` when `false` (JSON Schema output)             |
-| `appLabel`      | string                | `--app-label`                                                    |
-| `autoField`     | string                | `--auto-field` (`int` or `bigint`)                               |
-| `namespace`     | string                | `--namespace` (Doctrine or Laravel output)                       |
-| `goPackage`     | string                | `--go-package` (GORM output)                                     |
-| `prismaVersion` | number                | `--prisma-version` (`6` or `7`; Prisma output)                   |
-| `style`         | string                | `--style` (`sqlalchemy`, `sqlmodel`, `init` or `define`)         |
-| `conversions`   | list of objects       | Several named conversions; each takes the keys above plus `name` |
+| Key             | Type                  | Same as                                                                           |
+| --------------- | --------------------- | --------------------------------------------------------------------------------- |
+| `input`         | string or string list | `-i, --input`                                                                     |
+| `output`        | string                | `-o, --output`                                                                    |
+| `from`          | string                | `-f, --from`                                                                      |
+| `to`            | string                | `-t, --to`                                                                        |
+| `naming`        | string                | `--naming` (`preserve` or `normalize`)                                            |
+| `provider`      | string                | `--provider`                                                                      |
+| `header`        | boolean               | `--no-header` when `false`                                                        |
+| `conventions`   | boolean               | `--no-conventions` when `false` (JSON Schema output)                              |
+| `appLabel`      | string                | `--app-label`                                                                     |
+| `autoField`     | string                | `--auto-field` (`int` or `bigint`)                                                |
+| `namespace`     | string                | `--namespace` (Doctrine, Laravel or EF Core output)                               |
+| `goPackage`     | string                | `--go-package` (GORM output)                                                      |
+| `prismaVersion` | number                | `--prisma-version` (`6` or `7`; Prisma output)                                    |
+| `style`         | string                | `--style` (`sqlalchemy`, `sqlmodel`, `init`, `define`, `annotations` or `fluent`) |
+| `conversions`   | list of objects       | Several named conversions; each takes the keys above plus `name`                  |
 
 Top-level keys are defaults for every entry in `conversions`. Flags override config values. With no `-i`, `ormbridge convert` runs every conversion in the list (and `-o` is rejected, since the conversions write to different paths); with `-i`, it runs a single conversion from the top-level settings. Unknown keys and bad values fail with a message naming the key, such as `"conversions[1].naming" must be "preserve" or "normalize" (got "weird")`.
 

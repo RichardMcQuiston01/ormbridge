@@ -1,0 +1,3 @@
+Book.Revision: the concurrency token has no equivalent in the shared model; it was read as an ordinary column.
+Book.Stamp: the row version ([Timestamp] / IsRowVersion) has no equivalent in the shared model; it was read as an ordinary column.
+Book: comments (Price) are not preserved.

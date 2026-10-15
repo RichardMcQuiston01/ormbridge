@@ -92,8 +92,17 @@ function expectedKeyColumn(
   return first === undefined ? 'id' : columnOf(target, first);
 }
 
+export interface ComparisonOptions {
+  /** Also expect the multi-column foreign keys of `compositeForeignKeys` (only the EF Core writer creates them). */
+  compositeForeignKeys?: boolean;
+}
+
 /** Lists everything in which the database differs from the IR; empty when they agree. */
-export function compareWithDatabase(ir: IrSchema, db: DbSchema): string[] {
+export function compareWithDatabase(
+  ir: IrSchema,
+  db: DbSchema,
+  options: ComparisonOptions = {}
+): string[] {
   const problems: string[] = [];
   const byTable: Map<string, IrModel> = new Map(
     ir.models.map((model: IrModel): [string, IrModel] => [
@@ -108,7 +117,7 @@ export function compareWithDatabase(ir: IrSchema, db: DbSchema): string[] {
   for (const model of ir.models) {
     const table: DbTable | undefined = db.tables[model.tableName];
     if (table === undefined) {
-      problems.push(`table ${model.tableName} was not created by Sequelize`);
+      problems.push(`table ${model.tableName} was not created by the ORM`);
       continue;
     }
     const label: string = model.tableName;
@@ -219,6 +228,26 @@ export function compareWithDatabase(ir: IrSchema, db: DbSchema): string[] {
           : (ACTIONS[relation.onUpdate] ?? 'any'),
       ].join('|');
     });
+    for (const composite of options.compositeForeignKeys === true
+      ? (model.compositeForeignKeys ?? [])
+      : []) {
+      const target: IrModel | undefined = byName.get(composite.targetModel);
+      keys.push(
+        [
+          composite.fields
+            .map((name: string) => columnOf(model, name))
+            .join(','),
+          target?.tableName ?? composite.targetModel,
+          composite.references
+            .map((name: string) =>
+              target === undefined ? name : columnOf(target, name)
+            )
+            .join(','),
+          ACTIONS[composite.onDelete],
+          'any',
+        ].join('|')
+      );
+    }
     const dbKeys: string[] = table.foreignKeys.map((foreign: DbForeignKey) => {
       const owner: IrRelation | undefined = relations.find(
         (relation: IrRelation) => relation.columnName === foreign.column

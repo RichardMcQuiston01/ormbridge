@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Loads C# EF Core models with the real library and prints what SQLite ends up with. Two tests copy this project
+    to a temporary directory and pass FixturesDir (the directory that holds the C# files, compiled together: each
+    group uses its own namespace): test/efcore-parser-verify.test.ts for the fixtures of the reader and
+    test/efcore-emitter-verify.test.ts for the models the writer produces.
+    The fixtures rely on the implicit usings of the SDK (System, System.Collections.Generic, System.Linq).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!--
+      Strict builds turn warnings into errors; a package advisory, the end of support of a target framework or a
+      package that a newer SDK would prune is not a problem of the code under test.
+    -->
+    <NuGetAudit>false</NuGetAudit>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NETSDK1138;NU1510</WarningsNotAsErrors>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS0169;EF1001</NoWarn>
+    <FixturesDir Condition="'$(FixturesDir)' == ''">Fixtures</FixturesDir>
+  </PropertyGroup>
+
+  <!--
+    The hand-written fixtures leave non-nullable properties uninitialised (CS8618). The code ormbridge writes must
+    compile without a single warning, and without the implicit usings: test/efcore-emitter-verify.test.ts passes
+    -p:Strict=true.
+  -->
+  <PropertyGroup Condition="'$(Strict)' != 'true'">
+    <NoWarn>$(NoWarn);CS8618</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Strict)' == 'true'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- A project without implicit usings must compile the generated files too: they carry their own. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="$(FixturesDir)/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
+    <!--
+      Only compiled against, never run: the PostgreSQL output of the writer uses IPAddress, NpgsqlRange<T> and
+      HasMethod(...), which belong to this provider.
+    -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
+  </ItemGroup>
+
+</Project>

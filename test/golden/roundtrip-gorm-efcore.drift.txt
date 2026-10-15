@@ -1,0 +1,6 @@
+@@ AppDbContext.cs
++ .WithMany(r => r.Posts)
+- .WithMany()
+@@ Models/Category.cs
++ 
++ public ICollection<Post> Posts { get; set; } = new List<Post>();

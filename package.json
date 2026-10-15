@@ -1,6 +1,6 @@
 {
   "name": "ormbridge",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Convert ORM models between frameworks and languages (Django, Prisma, TypeORM, Doctrine, Laravel). Define your data model once and share typed schemas across your stack.",
   "author": {
     "name": "Richard McQuiston",
@@ -54,6 +54,8 @@
     "typeorm",
     "drizzle",
     "sequelize",
+    "efcore",
+    "entity-framework",
     "graphene",
     "doctrine",
     "laravel",

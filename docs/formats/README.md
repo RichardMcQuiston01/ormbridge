@@ -15,6 +15,7 @@ One guide per format: what is read, what is written, the options that apply, and
 | [SQL DDL](sql.md)                       |  yes  |  yes   | PostgreSQL, MySQL, SQLite, SQL Server                     |
 | [SQLAlchemy / SQLModel](sqlalchemy.md)  |  yes  |  yes   | Declarative, `Column()` and `Table()` styles              |
 | [Sequelize](sequelize.md)               |  yes  |  yes   | Sequelize 6: `define`, `Model.init`, sequelize-typescript |
+| [Entity Framework Core](efcore.md)      |  yes  |  yes   | EF Core 8: annotations or fluent API, `DbContext`         |
 | [Graphene](graphene.md)                 |  no   |  yes   | graphene-django GraphQL schema                            |
 | [TypeScript](typescript.md)             |  no   |  yes   | Plain interfaces and enums                                |
 | [Zod](zod.md)                           |  no   |  yes   | Zod 4 schemas                                             |

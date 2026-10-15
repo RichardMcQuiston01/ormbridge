@@ -112,7 +112,8 @@ Pairs M/N, O/P, R/S and T/U run in parallel; Q is independent of P. After they l
 
 ## Backlog (unscheduled)
 
-- Additional ORMs (Entity Framework, Hibernate/JPA)
+- Additional ORMs (Hibernate/JPA)
+- Entity Framework Core: the parser and the writer are done (`parseEfcore`, `emitEfcore`, the `efcore` format for C# data annotations, `DbContext` and the fluent API, `--style annotations` or `fluent`, checked against EF Core 8). Migration replay and the options the reader skips (`OwnsMany`, table-per-type inheritance) remain
 - Sequelize 7 (`@sequelize/core` decorators) and `sequelize-cli` migration replay (as the Laravel reader does); Sequelize 6 is read and written
 - A Zod parser, and Drizzle/SQLAlchemy migration replay (the SQL reader replays only added columns, constraints and column defaults; renames, dropped columns and type changes are skipped with a warning)
 - Watch mode for regenerating shared models during development

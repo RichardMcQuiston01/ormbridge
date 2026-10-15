@@ -1,0 +1,18 @@
+{
+  "conversions": [
+    {
+      "name": "to-efcore",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "efcore",
+      "output": "models"
+    },
+    {
+      "name": "from-efcore",
+      "input": "models",
+      "from": "efcore",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}

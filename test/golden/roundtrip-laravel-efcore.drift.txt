@@ -1,0 +1,33 @@
+@@ Models/Category.cs
++ public DateTime? CreatedAt { get; set; }
++ public DateTime? UpdatedAt { get; set; }
++ public long Id { get; set; }
++ public long? ParentId { get; set; }
+- public DateTime CreatedAt { get; set; }
+- public DateTime UpdatedAt { get; set; }
+- public int Id { get; set; }
+- public int? ParentId { get; set; }
+@@ Models/Post.cs
++ public DateTime? CreatedAt { get; set; }
++ public DateTime? UpdatedAt { get; set; }
++ public long AuthorId { get; set; }
++ public long CategoryId { get; set; }
++ public long Id { get; set; }
++ public long? EditorId { get; set; }
+- public DateTime CreatedAt { get; set; }
+- public DateTime UpdatedAt { get; set; }
+- public int AuthorId { get; set; }
+- public int CategoryId { get; set; }
+- public int Id { get; set; }
+- public int? EditorId { get; set; }
+@@ Models/Profile.cs
++ public long Id { get; set; }
++ public long UserId { get; set; }
+- public int Id { get; set; }
+- public int UserId { get; set; }
+@@ Models/Tag.cs
++ public long Id { get; set; }
+- public int Id { get; set; }
+@@ Models/User.cs
++ public long Id { get; set; }
+- public int Id { get; set; }

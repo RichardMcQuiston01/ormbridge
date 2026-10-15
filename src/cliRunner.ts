@@ -563,7 +563,10 @@ export async function runCli(
       '--provider <name>',
       `database provider (${PRISMA_PROVIDERS.join(' | ')}); the Prisma datasource, the Drizzle/GORM dialect and the SQL dialect of --to sql (postgresql | mysql | sqlite | sqlserver) (default: postgresql)`
     )
-    .option('--no-header', 'omit the Prisma generator and datasource blocks')
+    .option(
+      '--no-header',
+      'omit the Prisma generator and datasource blocks, and the auto-generated comment of EF Core files'
+    )
     .option(
       '--no-conventions',
       'omit the x-table-name, x-primary-key, x-unique, x-indexes, x-on-delete and x-related-name keywords from JSON Schema output (for validators that reject unknown keywords)'
@@ -578,7 +581,7 @@ export async function runCli(
     )
     .option(
       '--namespace <name>',
-      'PHP namespace of the Doctrine entities (default: App\\Entity) or Laravel models (default: App\\Models)'
+      'namespace of the generated classes: PHP for Doctrine (default: App\\Entity) and Laravel (default: App\\Models), C# for EF Core (default: App.Models)'
     )
     .option(
       '--go-package <name>',
@@ -590,7 +593,7 @@ export async function runCli(
     )
     .option(
       '--style <name>',
-      `layout of the SQLAlchemy and Sequelize output (${OUTPUT_STYLES.join(' | ')}): sqlalchemy | sqlmodel for --to sqlalchemy (default: sqlalchemy), init | define for --to sequelize (default: init)`
+      `layout of the SQLAlchemy, Sequelize and EF Core output (${OUTPUT_STYLES.join(' | ')}): sqlalchemy | sqlmodel for --to sqlalchemy (default: sqlalchemy), init | define for --to sequelize (default: init), annotations | fluent for --to efcore (default: annotations)`
     )
     .option(
       '--dry-run',

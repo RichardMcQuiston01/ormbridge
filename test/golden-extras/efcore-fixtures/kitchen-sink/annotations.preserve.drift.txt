@@ -1,0 +1,8 @@
+fieldType Account.payload: json -> text
+fieldType Account.labels: string -> text
+fieldType Account.ip: ipAddress -> string
+fieldMaxLength Account.ip: (none) -> 45
+fieldType Account.homepage_url: string -> text
+modelRemoved legacy_order: model legacy_order -> (absent)
+modelAdded LegacyOrder: (absent) -> model LegacyOrder
+enumValueLabel Status.draft: Draft -> (none)

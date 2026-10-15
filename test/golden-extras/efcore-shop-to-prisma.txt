@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Tier {
+  Bronze
+  Silver
+  Gold
+}
+
+enum OrderState {
+  Pending @map("0")
+  Paid @map("1")
+  Shipped @map("2")
+}
+
+model Customer {
+  customerId            Int     @id @default(autoincrement()) @map("CustomerId")
+  name                  String  @map("Name") @db.VarChar(120)
+  email                 String? @map("Email") @db.VarChar(254)
+  tier                  Tier    @default(Bronze) @map("Tier")
+  billingAddressStreet  String? @map("BillingAddress_Street") @db.Text
+  billingAddressCity    String? @map("BillingAddress_City") @db.Text
+  billingAddressZip     String? @map("BillingAddress_Zip") @db.Text
+  shippingAddressStreet String  @map("ShippingAddress_Street") @db.Text
+  shippingAddressCity   String? @map("ShippingAddress_City") @db.Text
+  shippingAddressZip    String  @map("ship_zip") @db.VarChar(10)
+  orders                Order[]
+
+  @@unique([email], map: "ux_customer_email")
+  @@map("Customers")
+}
+
+model Coupon {
+  id        Int     @id @default(autoincrement()) @map("Id")
+  code      String  @map("Code") @db.Text
+  order_set Order[]
+}
+
+model Order {
+  id         String      @id @default(uuid()) @map("Id") @db.Uuid
+  state      OrderState  @map("State")
+  placedAt   DateTime    @default(now()) @map("PlacedAt") @db.Timestamptz(6)
+  total      Decimal     @map("Total") @db.Decimal(12, 2)
+  version    Bytes?      @map("Version")
+  CustomerId Int
+  customer   Customer    @relation(fields: [CustomerId], references: [customerId], onDelete: Cascade)
+  CouponId   Int?
+  coupon     Coupon?     @relation(fields: [CouponId], references: [id], onDelete: NoAction)
+  lines      OrderLine[]
+
+  @@map("orders")
+}
+
+model OrderLine {
+  lineNo         Int      @map("LineNo")
+  quantity       Int      @map("Quantity")
+  discount       Decimal? @map("Discount")
+  doubleQuantity Int      @map("DoubleQuantity")
+  OrderId        String   @db.Uuid
+  order          Order    @relation(fields: [OrderId], references: [id], onDelete: Cascade)
+  ProductId      Int?
+  product        Product? @relation(fields: [ProductId], references: [id], onDelete: SetNull)
+
+  @@id([OrderId, lineNo])
+  @@map("order_lines")
+}
+
+model Product {
+  id             Int                 @id @default(autoincrement()) @map("Id")
+  sku            String              @map("Sku") @db.Text
+  name           String              @map("Name") @db.VarChar(120)
+  description    String?             @map("Description") @db.Text
+  weight         Float               @default(1.5) @map("Weight")
+  stock          BigInt              @map("Stock")
+  rank           Int                 @map("Rank")
+  active         Boolean             @default(true) @map("Active")
+  releasedOn     DateTime?           @map("ReleasedOn") @db.Date
+  shelfLife      BigInt?             @map("ShelfLife")
+  legacyCode     Int?                @map("LegacyCode")
+  aliases        String[]            @map("Aliases") @db.Text
+  order_line_set OrderLine[]
+  categories     ProductCategories[]
+
+  @@unique([sku], map: "ux_product_sku")
+  @@index([name, rank])
+  @@map("Products")
+}
+
+model Category {
+  id       Int                 @id @default(autoincrement()) @map("Id")
+  title    String              @map("Title") @db.Text
+  products ProductCategories[]
+}
+
+model ProductCategories {
+  id          Int      @id @default(autoincrement())
+  product_id  Int
+  product     Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  category_id Int
+  category    Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, category_id])
+  @@map("Products_categories")
+}

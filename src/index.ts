@@ -36,6 +36,8 @@ export type {
   DrizzleSourceFile,
   DrizzleParseOptions,
 } from './parsers/drizzle.js';
+export { parseEfcore, isSkippedEfcorePath } from './parsers/efcore.js';
+export type { EfcoreParseOptions, EfcoreSourceFile } from './parsers/efcore.js';
 export { parseGorm } from './parsers/gorm.js';
 export type { GormSourceFile, GormParseOptions } from './parsers/gorm.js';
 export { parseJsonSchema } from './parsers/jsonSchema.js';
@@ -105,6 +107,14 @@ export type {
   SequelizeEmitOptions,
   SequelizeStyle,
 } from './emitters/sequelize.js';
+export {
+  DEFAULT_EFCORE_NAMESPACE,
+  EFCORE_STYLES,
+  emitEfcore,
+  isEfcoreStyle,
+  isValidCsharpNamespace,
+} from './emitters/efcore.js';
+export type { EfcoreEmitOptions, EfcoreStyle } from './emitters/efcore.js';
 export { checkStyle, isOutputStyle, OUTPUT_STYLES } from './styles.js';
 export type { OutputStyle } from './styles.js';
 export { emitGraphene } from './emitters/graphene.js';
