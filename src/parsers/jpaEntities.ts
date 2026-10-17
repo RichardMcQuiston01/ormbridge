@@ -1,5 +1,10 @@
 import type { Ann } from './jpaAnnotations.js';
-import type { JavaAnnotation, JavaClass, JavaField } from './javaSyntax.js';
+import type {
+  JavaAnnotation,
+  JavaClass,
+  JavaField,
+  JavaType,
+} from './javaSyntax.js';
 import {
   accessOf,
   classNotes,
@@ -125,6 +130,34 @@ export function discoverEntities(
   return [...infos.values()];
 }
 
+/**
+ * The type arguments the classes below `position` of a chain gave to its generic class:
+ * `class User extends BaseEntity<Long>` makes the parameter `T` of `BaseEntity` a `Long`.
+ */
+function genericsAt(
+  chain: readonly JavaClass[],
+  position: number
+): Map<string, JavaType> {
+  const generics: Map<string, JavaType> = new Map();
+  for (let index = chain.length - 2; index >= position; index -= 1) {
+    const parent: JavaClass | undefined = chain[index];
+    const child: JavaClass | undefined = chain[index + 1];
+    const given: JavaType[] = child?.superclass?.args ?? [];
+    const next: Map<string, JavaType> = new Map();
+    parent?.typeParameters.forEach((name: string, argument: number) => {
+      const type: JavaType | undefined = given[argument];
+      if (type !== undefined) {
+        next.set(name, generics.get(type.name) ?? type);
+      }
+    });
+    generics.clear();
+    for (const [name, type] of next) {
+      generics.set(name, type);
+    }
+  }
+  return generics;
+}
+
 /** True for a class whose attributes JPA maps into the tables of its subclasses or itself. */
 function isPersistentClass(project: Project, cls: JavaClass): boolean {
   return isEntityClass(project, cls) || isMappedSuperclass(project, cls);
@@ -184,6 +217,7 @@ export function entityMembers(
             project,
             warn,
             declaredIn: entity.name,
+            generics: genericsAt(entity.chain, position),
           },
           cls,
           entity.accesses[position] ?? 'field',

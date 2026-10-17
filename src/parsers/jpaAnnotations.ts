@@ -16,6 +16,15 @@ const CLASHING_NAMES: ReadonlySet<string> = new Set([
   'Cascade',
 ]);
 
+/** The clashing names that only Hibernate has. */
+const HIBERNATE_ONLY: ReadonlySet<string> = new Set([
+  'Check',
+  'Type',
+  'Filter',
+  'Cache',
+  'Cascade',
+]);
+
 /** The full name of an annotation written as a simple name, from the imports of its file. */
 function resolveName(
   annotation: JavaAnnotation,
@@ -132,10 +141,26 @@ export class Annotated {
     if (!CLASHING_NAMES.has(annotation.name)) {
       return true;
     }
+    return this.isHibernate(annotation) === hibernate;
+  }
+
+  /** True when a clashing name is the Hibernate annotation, judging by its qualifier and the imports. */
+  private isHibernate(annotation: JavaAnnotation): boolean {
     const full: string | undefined = resolveName(annotation, this.imports);
-    const isHibernate: boolean =
-      full !== undefined && full.startsWith('org.hibernate.');
-    return isHibernate === hibernate;
+    if (full !== undefined) {
+      return full.startsWith('org.hibernate.');
+    }
+    if (HIBERNATE_ONLY.has(annotation.name)) {
+      return true;
+    }
+    // Only a wildcard import tells the two apart: `import org.hibernate.annotations.*;` without the JPA package.
+    const fromHibernate: boolean = this.imports.includes(
+      'org.hibernate.annotations.*'
+    );
+    const fromJpa: boolean = this.imports.some((item: string) =>
+      /^(?:jakarta|javax)\.persistence\.\*$/.test(item)
+    );
+    return fromHibernate && !fromJpa;
   }
 
   /** The first annotation with this simple name. `hibernate` selects the Hibernate one of a clashing name. */

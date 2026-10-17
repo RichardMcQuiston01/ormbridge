@@ -93,6 +93,28 @@ export interface JoinPair {
   constraint?: Ann;
 }
 
+/** The column a join column refers to: a key column, or any other column of the target (a unique one, usually). */
+function referencedKey(
+  keys: readonly KeyColumn[],
+  target: EntityInfo,
+  columnName: string,
+  resolver: Resolver
+): KeyColumn | undefined {
+  const wanted: string = columnName.toLowerCase();
+  const key: KeyColumn | undefined = keys.find(
+    (item: KeyColumn) => item.columnName.toLowerCase() === wanted
+  );
+  if (key !== undefined) {
+    return key;
+  }
+  const other: BuiltField | undefined = resolver
+    .fieldsOf(target)
+    .find((item: BuiltField) => item.field.columnName.toLowerCase() === wanted);
+  return other === undefined
+    ? undefined
+    : { name: other.field.name, columnName: other.field.columnName };
+}
+
 /** Pairs each join column with the target key column it refers to, applying the JPA default names. */
 export function joinPairs(
   member: Member,
@@ -124,11 +146,7 @@ export function joinPairs(
     const key: KeyColumn | undefined =
       referenced === undefined || referenced === ''
         ? (keys[position] ?? keys[0])
-        : keys.find(
-            (item: KeyColumn) =>
-              item.columnName.toLowerCase() ===
-              cleanIdentifier(referenced).toLowerCase()
-          );
+        : referencedKey(keys, target, cleanIdentifier(referenced), resolver);
     const named: string | undefined = column.string('name');
     if (key === undefined) {
       resolver.warn(

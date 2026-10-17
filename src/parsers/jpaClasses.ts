@@ -1,5 +1,10 @@
 import { Annotated, type Ann } from './jpaAnnotations.js';
-import type { JavaAnnotation, JavaClass, JavaField } from './javaSyntax.js';
+import type {
+  JavaAnnotation,
+  JavaClass,
+  JavaField,
+  JavaType,
+} from './javaSyntax.js';
 import type { Attribute, Member, MemberKind, Project } from './jpaModel.js';
 import { decapitalize, isMapType } from './jpaTypes.js';
 
@@ -232,6 +237,29 @@ export interface FlattenContext {
   warn: (message: string) => void;
   /** The entity (or subclass) the members are collected for. */
   declaredIn: string;
+  /** Type arguments a subclass gives its generic superclass: `BaseEntity<Long>` makes `T` a `Long`. */
+  generics?: ReadonlyMap<string, JavaType>;
+}
+
+/** Replaces the type parameters of a generic superclass by the arguments a subclass gave it. */
+function substitute(
+  type: JavaType,
+  generics: ReadonlyMap<string, JavaType> | undefined
+): JavaType {
+  if (generics === undefined || generics.size === 0) {
+    return type;
+  }
+  const replacement: JavaType | undefined = generics.get(type.name);
+  const args: JavaType[] = type.args.map((item: JavaType) =>
+    substitute(item, generics)
+  );
+  if (replacement !== undefined && type.args.length === 0) {
+    return {
+      ...replacement,
+      arrayDepth: replacement.arrayDepth + type.arrayDepth,
+    };
+  }
+  return { ...type, args };
 }
 
 /**
@@ -252,7 +280,10 @@ export function membersOf(
     cls,
     access,
     ctx.warn
-  );
+  ).map((attribute: Attribute): Attribute => ({
+    ...attribute,
+    type: substitute(attribute.type, ctx.generics),
+  }));
   for (const attribute of attributes) {
     const place: string = `${ctx.declaredIn}.${[...path, attribute.name].join('.')}`;
     if (attribute.notes.has('Formula', true)) {
@@ -304,6 +335,12 @@ export function membersOf(
           nested,
           insideId || idRole
         )
+      );
+      continue;
+    }
+    if (attribute.type.name === 'Optional') {
+      ctx.warn(
+        `${place}: JPA does not allow Optional on a field or getter (Hibernate rejects it); use a nullable type. The attribute was skipped.`
       );
       continue;
     }

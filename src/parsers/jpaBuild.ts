@@ -165,11 +165,39 @@ export function buildSchema(
       owning.relatedName = link.relatedName;
     }
   }
+  const all: IrModel[] = [...models.values(), ...extraModels];
+  dropDanglingRelations(all, warn);
   return {
-    models: [...models.values(), ...extraModels],
+    models: all,
     enums: [...enums.values()],
     warnings: project.warnings,
   };
+}
+
+/** Removes relationships whose target has no table (an abstract table-per-class root, a skipped entity). */
+function dropDanglingRelations(
+  models: IrModel[],
+  warn: (message: string) => void
+): void {
+  const known: Set<string> = new Set(
+    models.map((model: IrModel) => model.name)
+  );
+  for (const model of models) {
+    model.relations = model.relations.filter((relation: IrRelation) => {
+      if (known.has(relation.targetModel)) {
+        return true;
+      }
+      warn(
+        `${model.name}.${relation.name}: the target ${relation.targetModel} has no table of its own in the input (an abstract table-per-class entity, or one that was skipped); the relationship was dropped.`
+      );
+      return false;
+    });
+    if (model.compositeForeignKeys !== undefined) {
+      model.compositeForeignKeys = model.compositeForeignKeys.filter((key) =>
+        known.has(key.targetModel)
+      );
+    }
+  }
 }
 
 /** The primary key columns of an entity's table. */
