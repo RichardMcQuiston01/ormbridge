@@ -26,6 +26,7 @@ model Ledger {
   parent_id  BigInt?
   parent     Ledger?                 @relation("Ledger_parent", fields: [parent_id], references: [id], onDelete: NoAction)
   ledger_set Ledger[]                @relation("Ledger_parent")
+  wallet     Wallet?
 
   @@map("ledger")
   @@schema("finance")
@@ -39,4 +40,10 @@ model First {
 model Second {
   id   BigInt @id
   mode Modes?
+}
+
+model Wallet {
+  balance Int?
+  id      BigInt @id
+  owner   Ledger @relation(fields: [id], references: [id], onDelete: NoAction)
 }

@@ -96,13 +96,16 @@ function toOne(
   const isOneToOne: boolean = annotation.name === 'OneToOne';
   const optional: boolean = annotation.boolean('optional') !== false;
   const mapsId: Ann | undefined = member.attr.notes.get('MapsId');
+  // The older way to share a key: @PrimaryKeyJoinColumn makes the id column the foreign key.
+  const sharesKey: boolean =
+    mapsId !== undefined || member.attr.notes.has('PrimaryKeyJoinColumn');
   const declaredNotNull: boolean = member.attr.notes.has('NotNull');
   const nullable: boolean =
     optional &&
     !declaredNotNull &&
     pairs.every((pair: JoinPair) => pair.nullable !== false) &&
     !member.isId &&
-    mapsId === undefined;
+    !sharesKey;
   const name: string = irFieldName(member);
   const onDelete: IrOnDelete = onDeleteOf(member, place, resolver);
   const unique: boolean =
@@ -120,10 +123,10 @@ function toOne(
   }
 
   // A shared key: @MapsId makes the foreign key the primary key (or a part of the embedded id).
-  const columnName: string = first.columnName;
+  let columnName: string = first.columnName;
   let isKey: boolean = member.isId;
-  if (mapsId !== undefined) {
-    const part: string | undefined = mapsId.string('value');
+  if (sharesKey) {
+    const part: string | undefined = mapsId?.string('value');
     const idMembers: Member[] = model.members.filter(
       (item: Member) => item.isId
     );
@@ -136,9 +139,15 @@ function toOne(
     if (mapped !== undefined) {
       output.consumed.set(mapped.path.join('.'), name);
       isKey = true;
+      if (mapsId === undefined) {
+        columnName = columnNameOf(mapped);
+        resolver.warn(
+          `${place}: @PrimaryKeyJoinColumn shares the primary key, but Hibernate creates no foreign key constraint for it; it was read as a one-to-one primary key relation, so writers will add the constraint (@MapsId creates it in Hibernate, too).`
+        );
+      }
     } else {
       resolver.warn(
-        `${place}: @MapsId names "${part ?? ''}", which is not an id attribute of ${model.name}.`
+        `${place}: the shared key names "${part ?? ''}", which is not an id attribute of ${model.name}.`
       );
     }
   }

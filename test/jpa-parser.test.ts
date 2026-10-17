@@ -773,6 +773,46 @@ describe('relationships', () => {
     });
   });
 
+  it('reads the legacy Hibernate @ForeignKey and warns about NO_CONSTRAINT', async () => {
+    const schema: IrSchema = expectOk(
+      await parseJpa(
+        [
+          {
+            path: 'T.java',
+            text: `package demo;
+import jakarta.persistence.*;
+import org.hibernate.annotations.ForeignKey;
+@Entity class Owner { @Id Long id; }
+@Entity class T { @Id Long id;
+  @ManyToOne @ForeignKey(name = "fk_legacy") Owner legacy;
+  @ManyToOne @JoinColumn(name = "free_id", foreignKey = @jakarta.persistence.ForeignKey(value = ConstraintMode.NO_CONSTRAINT)) Owner free; }`,
+          },
+        ],
+        { appLabel: 'app' }
+      )
+    );
+    expect(relation(schema, 'T', 'legacy').constraintName).toBe('fk_legacy');
+    expect(
+      warningsMatching(schema, /T\.free: ConstraintMode\.NO_CONSTRAINT/)
+    ).toHaveLength(1);
+  });
+
+  it('reads @PrimaryKeyJoinColumn on a one-to-one as a shared key, with a warning', async () => {
+    const schema: IrSchema = await parse(
+      `@Entity class Person { @Id Long id; }
+       @Entity class Wallet { @Id Long id; @OneToOne @PrimaryKeyJoinColumn Person owner; }`
+    );
+    expect(names(schema, 'Wallet')).toEqual([]);
+    expect(relation(schema, 'Wallet', 'owner')).toMatchObject({
+      isPrimaryKey: true,
+      columnName: 'id',
+      kind: 'oneToOne',
+    });
+    expect(
+      warningsMatching(schema, /Wallet\.owner: @PrimaryKeyJoinColumn/)
+    ).toHaveLength(1);
+  });
+
   it('reads a one-to-one as unique and an inverse side through mappedBy', async () => {
     const schema: IrSchema = await parse(
       `@Entity class Owner { @Id Long id; @OneToOne(mappedBy = "owner") Thing thing; }`,

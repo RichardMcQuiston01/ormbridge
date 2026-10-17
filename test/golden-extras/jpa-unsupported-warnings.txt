@@ -9,6 +9,7 @@ Ledger.converted: the converter MissingConverter is not run; its column type is 
 Ledger.converted: the type Missing has no column type in the shared model (add @Convert, @JdbcTypeCode or @Embedded); the column is read as unsupported (Missing).
 Second.mode: the enum Modes is stored as its ordinal number (the default of @Enumerated); it was read as an enum with the numbers as values, and writers that create enum types will store text instead. Use @Enumerated(EnumType.STRING) to store the names.
 Ledger.unknown: the target type Unknown of @OneToMany is not an entity in the input; the relationship was skipped.
+Wallet.owner: @PrimaryKeyJoinColumn shares the primary key, but Hibernate creates no foreign key constraint for it; it was read as a one-to-one primary key relation, so writers will add the constraint (@MapsId creates it in Hibernate, too).
 Ledger: @SecondaryTable stores some attributes in a second table; all attributes were read into the primary table.
 Ledger: the @Check constraint has no equivalent in the shared model and was dropped.
 Ledger: comments (the table) are not preserved.
