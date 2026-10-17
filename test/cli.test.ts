@@ -1239,3 +1239,80 @@ describe('efcore input', () => {
     );
   });
 });
+
+describe('jpa input', () => {
+  const MODELS: string = fileURLToPath(
+    new URL('./fixtures/jpa', import.meta.url)
+  );
+
+  it('reads a directory of Java files with --from jpa', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      MODELS,
+      '--from',
+      'jpa',
+      '--to',
+      'prisma',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(run.stdout).toContain('model Post {');
+    expect(run.stdout).toContain('@@map("blog_post_tags")');
+    expect(run.stderr).not.toContain('warning');
+  });
+
+  it('reads a single file and needs --from, because .java is not inferred', async () => {
+    const file: string = join(MODELS, 'Tag.java');
+    const explicit: CliRun = await cli([
+      'convert',
+      '-i',
+      file,
+      '--from',
+      'jpa',
+      '--to',
+      'prisma',
+    ]);
+    expect(explicit.code).toBe(EXIT_OK);
+    expect(explicit.stdout).toContain('model Tag {');
+    const inferred: CliRun = await cli([
+      'convert',
+      '-i',
+      file,
+      '--to',
+      'prisma',
+    ]);
+    expect(inferred.code).toBe(EXIT_CONVERSION_ERROR);
+  });
+
+  it('applies --naming normalize on top of the JPA names', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      join(MODELS, 'Tag.java'),
+      '--from',
+      'jpa',
+      '--to',
+      'sql',
+      '--naming',
+      'normalize',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(run.stdout).toContain('CREATE TABLE tag');
+  });
+
+  it('refuses to write JPA entities and lists the format as read-only', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'jpa',
+    ]);
+    expect(run.code).not.toBe(EXIT_OK);
+    expect(run.stderr).toContain(
+      'The format "jpa" can only be used as an input'
+    );
+    const formats: CliRun = await cli(['formats']);
+    expect(formats.stdout).toMatch(/jpa\s+extensions: \(none\)\s+read\s+/);
+  });
+});

@@ -1,0 +1,21 @@
+test/fixtures/jpa-extras/unsupported/Broken.java: the file contains Java syntax errors; some classes or fields may be missing from the output.
+Ledger: the superclass AbstractPersistable is not in the input, so the attributes it declares are not read.
+Report: @Subselect maps a SQL query, not a table; the entity was skipped.
+Ledger: @AssociationOverride is not applied; the join columns of the embedded relationship keep their default names.
+Ledger.doubled: @Formula is computed in queries, not stored in a column; the attribute was skipped.
+Ledger.note: JPA does not allow Optional on a field or getter (Hibernate rejects it); use a nullable type. The attribute was skipped.
+Ledger.missing: the embedded type Missing is not in the input (or is nested too deeply); its columns were not read.
+Ledger.converted: the converter MissingConverter is not run; its column type is not known.
+Ledger.converted: the type Missing has no column type in the shared model (add @Convert, @JdbcTypeCode or @Embedded); the column is read as unsupported (Missing).
+Second.mode: the enum Modes is stored as its ordinal number (the default of @Enumerated); it was read as an enum with the numbers as values, and writers that create enum types will store text instead. Use @Enumerated(EnumType.STRING) to store the names.
+Ledger.unknown: the target type Unknown of @OneToMany is not an entity in the input; the relationship was skipped.
+Ledger: @SecondaryTable stores some attributes in a second table; all attributes were read into the primary table.
+Ledger: the @Check constraint has no equivalent in the shared model and was dropped.
+Ledger: comments (the table) are not preserved.
+Ledger: @SqlResultSetMapping maps query results, not tables, and was ignored.
+Ledger: @Audited (Hibernate Envers) also creates an audit table and a revision table, which are not read.
+Ledger: a @TenantId column is part of the table; it was read as an ordinary column of the attribute's type.
+Ledger.labels: an @ElementCollection that is not a List, Set or array of basic values (a Map, for example) is not read; its table was skipped.
+Ledger.entries: an @ElementCollection of the embeddable Entry is stored in its own table, which is not read; the attribute was skipped.
+Second.mode: the enum Modes is stored differently in different columns (name and ordinal); the IR keeps one definition, with the names.
+Ledger.converted: Unsupported("Missing") is kept as an opaque column; Prisma Client cannot read, filter or write it.

@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cat {
+  id    BigInt @id @default(autoincrement())
+  name  String @db.VarChar(255)
+  lives Int?
+}
+
+model Dog {
+  id      BigInt  @id @default(autoincrement())
+  name    String  @db.VarChar(255)
+  trained Boolean
+}

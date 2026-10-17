@@ -1,0 +1,1 @@
+Article.version: the @Version attribute is Hibernate's optimistic-locking counter; it was read as an ordinary column.

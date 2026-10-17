@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id                 BigInt  @id @default(autoincrement())
+  headquartersStreet String? @map("street") @db.VarChar(80)
+  headquartersCity   String  @map("city") @db.VarChar(255)
+  headquartersGeoLat Float?  @map("lat")
+  headquartersGeoLon Float?  @map("lon")
+  branchStreet       String? @map("branch_street") @db.VarChar(60)
+  branchCity         String? @map("branch_city") @db.VarChar(255)
+  branchGeoLat       Float?  @map("branch_lat")
+  branchGeoLon       Float?  @map("branch_lon")
+  contactPhone       String? @map("phone_number") @db.VarChar(20)
+  contactEmail       String? @map("email") @db.VarChar(255)
+}

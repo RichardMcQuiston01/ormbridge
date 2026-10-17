@@ -1,0 +1,2 @@
+BankPayment: extends Payment with joined table inheritance. It was read as a model of its own whose primary key is also a foreign key to Payment (a one-to-one primary key relation); the attributes inherited from Payment stay on Payment.
+CardPayment: extends Payment with joined table inheritance. It was read as a model of its own whose primary key is also a foreign key to Payment (a one-to-one primary key relation); the attributes inherited from Payment stay on Payment.

@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model BankPayment {
+  iban       String? @db.VarChar(255)
+  payment_id BigInt  @id
+  payment    Payment @relation(fields: [payment_id], references: [id], onDelete: NoAction)
+}
+
+model CardPayment {
+  cardNumber String  @map("card_number") @db.VarChar(16)
+  id         BigInt  @id
+  payment    Payment @relation(fields: [id], references: [id], onDelete: NoAction)
+}
+
+model Payment {
+  id           BigInt       @id @default(autoincrement())
+  amount       Decimal      @db.Decimal(12, 2)
+  bank_payment BankPayment?
+  card_payment CardPayment?
+}

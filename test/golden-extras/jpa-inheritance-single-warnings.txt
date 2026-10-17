@@ -1,0 +1,1 @@
+Vehicle: Car, Truck extend Vehicle in one table (single table inheritance). The hierarchy was read as a single model with the columns of every class and the discriminator column "kind" (values: V = Vehicle, C = Car, T = Truck); the subclasses are not separate models. A column that a subclass declares NOT NULL stays NOT NULL, as in the DDL Hibernate writes.

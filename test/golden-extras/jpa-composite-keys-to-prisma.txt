@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Course {
+  id             BigInt       @id
+  title          String?      @db.VarChar(255)
+  enrollment_set Enrollment[]
+}
+
+model Enrollment {
+  grade      Int?
+  student_id BigInt
+  student    Student @relation(fields: [student_id], references: [id], onDelete: NoAction)
+  course_id  BigInt
+  course     Course  @relation(fields: [course_id], references: [id], onDelete: NoAction)
+
+  @@id([student_id, course_id])
+}
+
+model OrderLine {
+  orderId      BigInt
+  lineNo       Int
+  sku          String?    @db.VarChar(255)
+  shipment_set Shipment[]
+
+  @@id([orderId, lineNo])
+}
+
+model Parcel {
+  id          BigInt    @id
+  shipment_id BigInt?
+  shipment    Shipment? @relation(fields: [shipment_id], references: [id], onDelete: NoAction)
+}
+
+model Passport {
+  number    String? @db.VarChar(255)
+  person_id BigInt  @id
+  holder    Person  @relation(fields: [person_id], references: [id], onDelete: NoAction)
+}
+
+model Person {
+  id            BigInt        @id @default(autoincrement())
+  passport      Passport?
+  person_detail PersonDetail?
+  shipment_set  Shipment[]
+}
+
+model PersonDetail {
+  nickname String? @db.VarChar(255)
+  id       BigInt  @id
+  person   Person  @relation(fields: [id], references: [id], onDelete: NoAction)
+}
+
+model Shipment {
+  id          BigInt     @id @default(autoincrement())
+  lineOrderId BigInt?    @map("line_order_id")
+  lineNo      Int?       @map("line_no")
+  sender_id   BigInt
+  sender      Person     @relation(fields: [sender_id], references: [id], onDelete: NoAction)
+  line        OrderLine? @relation(fields: [lineOrderId, lineNo], references: [orderId, lineNo], onDelete: NoAction)
+  parcel_set  Parcel[]
+}
+
+model Student {
+  id             BigInt       @id
+  name           String?      @db.VarChar(255)
+  enrollment_set Enrollment[]
+}
