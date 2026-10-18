@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["finance"]
+}
+
+enum Modes {
+  ON
+  OFF
+}
+
+model Broken {
+  id   BigInt  @id
+  name String? @db.VarChar(255)
+}
+
+model Ledger {
+  id         BigInt                  @id
+  memo       String?                 @db.VarChar(255)
+  tenant     String?                 @db.VarChar(255)
+  converted  Unsupported("Missing")?
+  parent_id  BigInt?
+  parent     Ledger?                 @relation("Ledger_parent", fields: [parent_id], references: [id], onDelete: NoAction)
+  ledger_set Ledger[]                @relation("Ledger_parent")
+  wallet     Wallet?
+
+  @@map("ledger")
+  @@schema("finance")
+}
+
+model First {
+  id   BigInt @id
+  mode Modes?
+}
+
+model Second {
+  id   BigInt @id
+  mode Modes?
+}
+
+model Wallet {
+  balance Int?
+  id      BigInt @id
+  owner   Ledger @relation(fields: [id], references: [id], onDelete: NoAction)
+}

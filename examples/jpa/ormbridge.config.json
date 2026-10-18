@@ -1,0 +1,11 @@
+{
+  "conversions": [
+    {
+      "name": "from-jpa",
+      "input": "models",
+      "from": "jpa",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
+    }
+  ]
+}

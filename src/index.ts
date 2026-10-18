@@ -38,6 +38,8 @@ export type {
 } from './parsers/drizzle.js';
 export { parseEfcore, isSkippedEfcorePath } from './parsers/efcore.js';
 export type { EfcoreParseOptions, EfcoreSourceFile } from './parsers/efcore.js';
+export { parseJpa, isSkippedJpaPath } from './parsers/jpa.js';
+export type { JpaParseOptions, JpaSourceFile } from './parsers/jpa.js';
 export { parseGorm } from './parsers/gorm.js';
 export type { GormSourceFile, GormParseOptions } from './parsers/gorm.js';
 export { parseJsonSchema } from './parsers/jsonSchema.js';

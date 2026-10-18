@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Book {
+  id       BigInt  @id @default(autoincrement())
+  title    String  @db.VarChar(150)
+  shelf_id BigInt?
+  shelf    Shelf?  @relation(fields: [shelf_id], references: [id], onDelete: NoAction)
+}
+
+model Shelf {
+  id       BigInt  @id
+  label    String? @db.VarChar(255)
+  book_set Book[]
+}

@@ -1,0 +1,11 @@
+Sample.doubled: @Formula is computed in queries, not stored in a column; the attribute was skipped.
+Sample.color: the enum Color is stored as its ordinal number (the default of @Enumerated); it was read as an enum with the numbers as values, and writers that create enum types will store text instead. Use @Enumerated(EnumType.STRING) to store the names.
+Sample.price: the converter MoneyConverter is not run; the column was read as String.
+Sample.version: the @Version attribute is Hibernate's optimistic-locking counter; it was read as an ordinary column.
+Sample: comments (commented) are not preserved.
+Sample.nicknames: the @ElementCollection is stored in the child table "Sample_nicknames"; it was read as the model SampleNicknames, with a foreign key to Sample and no primary key (as in Hibernate: a Set has one only when its column is NOT NULL, a List only with @OrderColumn; other formats expect one).
+Sample.levels: the @ElementCollection is stored in the child table "Sample_levels"; it was read as the model SampleLevels, with a foreign key to Sample and no primary key (as in Hibernate: a Set has one only when its column is NOT NULL, a List only with @OrderColumn; other formats expect one).
+Sample.ordered: the @ElementCollection is stored in the child table "Sample_ordered"; it was read as the model SampleOrdered, with a foreign key to Sample.
+Sample.duration: Prisma has no interval type; the duration was written as BigInt (microseconds).
+SampleNicknames: the model has no primary key; Prisma requires one (@id or @@id).
+SampleLevels: the model has no primary key; Prisma requires one (@id or @@id).

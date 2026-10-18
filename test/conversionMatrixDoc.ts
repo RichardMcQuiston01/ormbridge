@@ -613,6 +613,50 @@ export const READ_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
           'Comments (`[Comment]`, `HasComment`), concurrency tokens and row versions (`[Timestamp]`, `[ConcurrencyCheck]`, `IsRowVersion`), check constraints, seed data (`HasData`), query filters, filtered and covering indexes (the index is kept as a full index) and value converters have no place in the model; each is reported once per model or column. The one converter that is read is the enum-to-string `ValueConverter<TEnum, string>` class ormbridge writes, whose switch arms list the stored values (`"draft" => PostStatus.Draft`); a converter written any other way is not evaluated. Validation attributes (`[Range]`, `[EmailAddress]`) and serialization attributes (`[JsonIgnore]`) are not EF Core and are ignored silently. A fluent call the reader does not know (`HasPostgresExtension`, `UseHiLo`, `IsFixedLength`) warns once per call and place. Default values come from `HasDefaultValue`, `HasDefaultValueSql` and `HasComputedColumnSql` only: a C# property initializer is not a database default.',
       },
     ],
+    jpa: [
+      {
+        id: 'jpa-static',
+        title: 'The model is read, not built',
+        explanation:
+          'The reader parses the Java with tree-sitter; nothing is compiled, loaded or run, so Hibernate never builds its metamodel. It understands what is written literally: annotations from `jakarta.persistence` or the legacy `javax.persistence` (matched by simple name, so wildcard imports work), and string, number, boolean, enum-constant and class-literal arguments, including constants (`static final String`) and `+` on them. `orm.xml`, `persistence.xml`, `hbm.xml` mappings, Kotlin and Groovy sources are not read. Lombok needs nothing, because the mapping is on the fields, and Spring Data annotations are read where they matter (auditing). `target/`, `build/`, `out/`, `.gradle/`, `node_modules/` and `src/test/` directories, `*Test.java` / `*Tests.java`, `module-info.java`, `package-info.java`, generated metamodel classes (`*_.java`) and `db/migration` folders are skipped. Target: JPA 2.2 and 3, Hibernate 5 and 6, checked against Hibernate 6.4 on H2.',
+      },
+      {
+        id: 'jpa-entities',
+        title: 'Which classes are entities',
+        explanation:
+          "An entity is a class annotated with `@Entity`. A `@MappedSuperclass` has no table: its attributes are copied into every entity that extends it, before the entity's own, and a generic one (`Base<ID>`) takes the type its subclass gives. `@Embeddable` classes are flattened into the owner, also nested, with `@AttributeOverride` applied at any depth. Records, enums, interfaces and `@Subselect` entities (a query, not a table) are not entities. A superclass that is not in the input (`AbstractPersistable<Long>`) cannot be read and is reported. The table is named by `@Table(name)`, else the entity name (`@Entity(name)`, else the class name), and a column by `@Column(name)`, else the attribute name, as JPA and Hibernate's own naming strategy do.",
+      },
+      {
+        id: 'jpa-naming',
+        title: 'Names follow plain JPA, not Spring Boot',
+        explanation:
+          'Without `@Table` and `@Column`, JPA keeps the Java names: `BlogPost` is the table `BlogPost` and `createdAt` the column `createdAt`, and a join column is `<attribute>_<key>` (`author_id`). Spring Boot changes that with `CamelCaseToUnderscoresNamingStrategy` (`blog_post`, `created_at`), which lives in `application.properties` and is not read. Choose with `--naming`: `preserve` (default) keeps the names as JPA derives them; `normalize` applies the fresh-schema style of the other readers (snake_case, singular tables), which is also what Spring Boot gives for ordinary names, but it replaces integer keys by UUIDs and adds timestamps. Explicit names in `@Table` and `@Column` are the same under both.',
+      },
+      {
+        id: 'jpa-types',
+        title: 'Column types follow the Java type',
+        explanation:
+          "`int`, `short` and `byte` are `int`, `long` `bigInt`, `boolean` boolean, `float` and `double` float, `BigDecimal` a decimal (38, 2 unless `@Column(precision, scale)` or `@Digits` say otherwise), `BigInteger` a decimal of 38 digits, `String` a string of 255 (`@Column(length)`, then `@Size(max)` / `@Length(max)`) and `text` with `@Lob`, `LocalDate`, `LocalTime` and the date-time types date, time and date-time (`@Temporal` selects for `java.util.Date` and `Calendar`), `Duration` a duration, `UUID` uuid, `byte[]` and `Blob` bytes, `JsonNode` and `@JdbcTypeCode(SqlTypes.JSON)` json, `List<String>` an array column. Primitives are NOT NULL; `@Id`, `@Column(nullable = false)`, `@Basic(optional = false)` and `@NotNull` too, in that order of precedence (`@NotBlank` and `@NotEmpty` change nothing in Hibernate's DDL and are ignored). `@Column(columnDefinition)` is read for its type, `not null`, `unique` and `default`. An enum is an enum of the model: `@Enumerated(STRING)` stores its names, the JPA default stores the ordinal number, so the numbers are the values and a warning says writers that create enum types will store text. Types with no column (your own classes, `Object`) are unsupported columns with a warning, and `@Convert` is not run: the column type is read from the `AttributeConverter` of the input when there is one.",
+      },
+      {
+        id: 'jpa-relationships',
+        title: 'Relationships and join tables',
+        explanation:
+          "`@ManyToOne` and `@OneToOne` become foreign keys (a one-to-one is unique), with `@JoinColumn` (name, `referencedColumnName`, `nullable`, `foreignKey`), `@JoinColumns` (a composite foreign key), `optional`, `@NotNull`, `@MapsId` and `@Id` on the relationship (the key is the foreign key). `@OnDelete` sets the action; without it the database has none (`noAction`), and `cascade = REMOVE/ALL` and `orphanRemoval` act in the ORM only, which a warning says. An inverse side (`mappedBy`) adds nothing: it names the reverse accessor of the owning side. A `@ManyToMany` is a many-to-many relation; the model derives its own join table, so a warning names the table and columns the other formats will use whenever `@JoinTable` (or Hibernate's default `Book_Author`) does not already match them. A unidirectional `@OneToMany` is a key on the target with `@JoinColumn`, else a join table read as a many-to-many (that each target belongs to one owner is not represented). `@ElementCollection` of basic values is read as a child table without the primary key Hibernate does not create either.",
+      },
+      {
+        id: 'jpa-inheritance',
+        title: 'Inheritance strategies',
+        explanation:
+          "Single-table inheritance (the default) becomes one model with the columns of every class and the discriminator column (`DTYPE`, or `@DiscriminatorColumn`); the discriminator values are listed in a warning and the subclasses are not separate models. Joined inheritance is read as one model per class, the subclass's primary key being a foreign key to its parent (a one-to-one primary key relation); the inherited attributes stay on the parent. Table-per-class entities are independent tables with the inherited columns, and an abstract root without a table cannot be a relationship target. Each case warns.",
+      },
+      {
+        id: 'jpa-not-schema',
+        title: 'Behaviour that is not schema',
+        explanation:
+          'Optimistic-locking `@Version`, `@Comment`, `@Check`, `@SecondaryTable` (everything is read into the primary table), `@Formula` (no column), `@TenantId`, Envers `@Audited` (its audit tables), sequence and table generators (read as auto-increment keys), and `@SqlResultSetMapping` have no place in the model; each is reported, by class and attribute. Named queries, `@Filter`, `@Where`, `@SQLDelete`, `@Cache`, entity listeners and fetch types are not schema and are ignored silently. A Java feature the reader does not know (`Optional` on a field, a `Map` without `@ElementCollection`) warns and skips the attribute. A `@ColumnDefault` is the only default: a field initializer (`= 5`) is not a database default.',
+      },
+    ],
   };
 
 /** True when either end of the pair is the given format. */
