@@ -57,8 +57,19 @@ export interface JpaTable {
   foreignKeys: JpaForeignKey[];
 }
 
+/** What `Exercise.java` saw when it added a row to every table through the entity classes. */
+export interface JpaExercise {
+  /** The row read back with SQL, by table. */
+  rows: Record<string, Record<string, unknown> | null>;
+  /** The columns Hibernate refreshed on update (`@UpdateTimestamp`): [before, after] by table and column. */
+  updates: Record<string, Record<string, [unknown, unknown]>>;
+  errors: string[];
+}
+
 export interface JpaDatabase {
   tables: Record<string, JpaTable>;
+  /** Present when the tool ran with `exercise`. */
+  exercise?: JpaExercise;
 }
 
 /** What the tool prints for a group that Hibernate (or the compiler) rejected. */
@@ -139,24 +150,41 @@ export interface ToolGroup {
   directory: string;
 }
 
-/** Copies a fixture directory; Hibernate 6 reads `jakarta.persistence`, so the `javax` imports are rewritten. */
-function stage(source: string, target: string): void {
+/**
+ * Copies a fixture directory. Hibernate 6 reads `jakarta.persistence`, so the `javax` imports of the reader's
+ * fixtures are rewritten, unless the files are kept as they are (the writer's output, which has to compile as written).
+ */
+function stage(source: string, target: string, rewrite: boolean): void {
   mkdirSync(target, { recursive: true });
   for (const entry of readdirSync(source).sort()) {
     const from: string = join(source, entry);
     const to: string = join(target, entry);
     if (statSync(from).isDirectory()) {
-      stage(from, to);
+      stage(from, to, rewrite);
     } else if (entry.endsWith('.java')) {
+      const text: string = readFileSync(from, 'utf8');
       writeFileSync(
         to,
-        readFileSync(from, 'utf8').replace(
-          /\bjavax\.(persistence|validation)\b/g,
-          'jakarta.$1'
-        )
+        rewrite
+          ? text.replace(/\bjavax\.(persistence|validation)\b/g, 'jakarta.$1')
+          : text
       );
     }
   }
+}
+
+/** How `runJpaTool` builds and runs the tool. */
+export interface JpaToolOptions {
+  /** `javax` builds the tool against Hibernate 5 (`pom-javax.xml`); `jakarta` (default) against Hibernate 6. */
+  variant?: 'jakarta' | 'javax';
+  /** Also add a row to every table through the entity classes (`--exercise`). */
+  exercise?: boolean;
+  /** Only compile the sources (`--compile-only`); no schema is created. */
+  compileOnly?: boolean;
+  /** Keep `javax.persistence` imports as written (default: rewrite them for Hibernate 6, as the reader's fixtures need). */
+  keepImports?: boolean;
+  /** Compile with every lint warning as an error (`--strict`). */
+  strict?: boolean;
 }
 
 function fail(what: string, result: SpawnSyncReturns<string>): never {
@@ -168,11 +196,16 @@ function fail(what: string, result: SpawnSyncReturns<string>): never {
 /** Builds `test/tools/jpa-verify` with Maven and runs it over the groups; throws with the output on failure. */
 export function runJpaTool(
   probe: JpaProbe,
-  groups: readonly ToolGroup[]
+  groups: readonly ToolGroup[],
+  options: JpaToolOptions = {}
 ): JpaToolOutput {
   const work: string = mkdtempSync(join(tmpdir(), 'ormbridge-jpa-'));
+  const javax: boolean = options.variant === 'javax';
   try {
-    cpSync(join(TOOL, 'pom.xml'), join(work, 'pom.xml'));
+    cpSync(
+      join(TOOL, javax ? 'pom-javax.xml' : 'pom.xml'),
+      join(work, 'pom.xml')
+    );
     cpSync(join(TOOL, 'src'), join(work, 'src'), { recursive: true });
     mkdirSync(join(probe.directory, 'm2'), { recursive: true });
     const javaHome: string = dirname(dirname(realJava(probe.java)));
@@ -192,15 +225,23 @@ export function runJpaTool(
     if (build.status !== 0) {
       fail('mvn package', build);
     }
-    const classPath: string = `${join(work, 'target', 'classes')}:${readFileSync(join(work, 'cp.txt'), 'utf8').trim()}`;
+    const classPath: string = `${join(work, javax ? 'target-javax' : 'target', 'classes')}:${readFileSync(join(work, 'cp.txt'), 'utf8').trim()}`;
     const arguments_: string[] = groups.map((group: ToolGroup): string => {
       const staged: string = join(work, 'fixtures', group.name);
-      stage(group.directory, staged);
+      stage(group.directory, staged, options.keepImports !== true);
       return `${group.name}=${staged}`;
     });
     const run: SpawnSyncReturns<string> = spawnSync(
       probe.java,
-      ['-cp', classPath, 'dev.ormbridge.jpaverify.Main', ...arguments_],
+      [
+        '-cp',
+        classPath,
+        'dev.ormbridge.jpaverify.Main',
+        ...(options.exercise === true ? ['--exercise'] : []),
+        ...(options.compileOnly === true ? ['--compile-only'] : []),
+        ...(options.strict === true ? ['--strict'] : []),
+        ...arguments_,
+      ],
       {
         cwd: work,
         encoding: 'utf8',
@@ -259,7 +300,7 @@ export function toDbSchema(database: JpaDatabase, ir: IrSchema): DbSchema {
     const indexes: DbIndex[] = table.indexes
       .filter(
         (index) =>
-          index.unique || !/^FK[0-9a-z]+_INDEX_[0-9A-F]+$/.test(index.name)
+          index.unique || !/^[0-9A-Za-z_]+_INDEX_[0-9A-F]+$/.test(index.name)
       )
       .map((index): DbIndex => ({
         name: index.name,

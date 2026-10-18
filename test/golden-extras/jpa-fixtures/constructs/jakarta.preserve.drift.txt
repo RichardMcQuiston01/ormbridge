@@ -1,0 +1,13 @@
+fieldDefault Book.tags: literal "[]" -> (none)
+fieldMaxLength Book.tags: (none) -> 255
+fieldEnum Book.colors: color -> (none)
+fieldEnum Book.color: color -> Color
+fieldType Book.window: range -> string
+fieldMaxLength Book.window: (none) -> 255
+fieldUnique Series.handle: true -> false
+indexAdded Series: (absent) -> unique (handle)
+modelRemoved index: model index -> (absent)
+modelAdded IndexEntity: (absent) -> model IndexEntity
+enumRemoved color: enum color -> (absent)
+enumRemoved Status: enum Status -> (absent)
+enumAdded Color: (absent) -> enum Color

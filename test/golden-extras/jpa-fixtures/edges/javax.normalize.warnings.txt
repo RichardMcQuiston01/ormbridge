@@ -1,0 +1,11 @@
+enum mode: the member "default" was written as "default_".
+enum mode: the member "new" was written as "new_".
+Object: "Object" is a name the generated code uses or another type has, so the class was named "ObjectEntity".
+Log: the table has no primary key, but a JPA entity needs an identifier; the column "at" was written as the @Id (Hibernate would create a primary key on it).
+Account.meta: Hibernate 5 has no JSON type; the column was written as a String with the column definition jsonb, and the JSON text is yours to read and write (the hibernate-types library adds a mapping).
+Object.account: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the RESTRICT action was dropped and the database default (no action) applies.
+LedgerEntry.ledger: SET NULL on a required relation; the column is NOT NULL, so deleting a Ledger that is referenced fails.
+LedgerEntry.ledger: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the SET NULL action was dropped and the database default (no action) applies.
+LedgerEntry.other: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the SET DEFAULT action was dropped and the database default (no action) applies.
+Parcel.shipment: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the SET NULL action was dropped and the database default (no action) applies.
+Person.boss: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the SET NULL action was dropped and the database default (no action) applies.

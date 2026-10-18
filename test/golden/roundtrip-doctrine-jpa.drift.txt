@@ -1,0 +1,22 @@
+@@ app/models/Category.java
++ 
++ 
++ 
++ @OneToMany(mappedBy = "category")
++ private List<Post> postSet = new ArrayList<>();
++ public List<Post> getPostSet() {
++ public void setPostSet(List<Post> postSet) {
++ return postSet;
++ this.postSet = postSet;
++ }
++ }
+@@ app/models/Post.java
++ @Column(name = "status", nullable = false, length = 255)
++ @ColumnDefault("'[]'")
++ @DynamicInsert
++ import org.hibernate.annotations.DynamicInsert;
++ private Map<String, Object> metadata;
+- @Column(name = "status", nullable = false)
+- @ColumnDefault("'{}'")
+- import java.util.HashMap;
+- private Map<String, Object> metadata = new HashMap<>();

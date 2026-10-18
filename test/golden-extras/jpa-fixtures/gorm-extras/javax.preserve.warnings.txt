@@ -1,0 +1,5 @@
+Customer.settings: Hibernate 5 has no JSON type; the column was written as a String with the column definition jsonb, and the JSON text is yours to read and write (the hibernate-types library adds a mapping).
+Order.customer: JPA has no setting for the onUpdate action "cascade", so it was ignored.
+Order.customer: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the RESTRICT action was dropped and the database default (no action) applies.
+Product index (title): JPA cannot express the full-text kind; the index was written as an ordinary index.
+Product index (slug): JPA cannot express the index type Hash; the index was written as an ordinary index.

@@ -175,7 +175,7 @@ describe('formats command output', () => {
       /efcore\s+extensions: \(none\) {2}read \+ write {2}Entity Framework Core 8 models \(C#; DbContext, data annotations and the fluent API; --style fluent writes plain classes and configuration classes\)\n/
     );
     expect(text).toMatch(
-      /jpa\s+extensions: \(none\) {2}read {2}Hibernate \/ JPA entities \(Java; jakarta\.persistence and javax\.persistence annotations\)\n/
+      /jpa\s+extensions: \(none\) {2}read \+ write {2}Hibernate \/ JPA entities \(Java; jakarta\.persistence and javax\.persistence annotations; --style javax writes Hibernate 5 entities\)\n/
     );
   });
 

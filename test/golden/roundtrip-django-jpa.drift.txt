@@ -1,0 +1,9 @@
+@@ app/models/Post.java
++ @Column(name = "status", nullable = false, length = 32)
++ @Index(name = "post_title_idx", columnList = "title"),
++ columnNames = {"author_id", "title"}),
++ name = "blog_post_author_title_uniq",
++ uniqueConstraints = @UniqueConstraint(
+- @Column(name = "status", nullable = false, length = 20)
+- @Index(columnList = "title"),
+- uniqueConstraints = @UniqueConstraint(columnNames = {"author_id", "title"}),

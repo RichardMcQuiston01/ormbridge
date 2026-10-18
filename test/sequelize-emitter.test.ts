@@ -210,6 +210,8 @@ describe('sequelize emitter: layout', () => {
       'define',
       'annotations',
       'fluent',
+      'jakarta',
+      'javax',
     ]);
   });
 
@@ -229,7 +231,7 @@ describe('sequelize emitter: layout', () => {
     expect(unknown.ok).toBe(false);
     if (!unknown.ok) {
       expect(unknown.error.message).toBe(
-        'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define, annotations, fluent (sqlalchemy, sqlmodel for sqlalchemy; init, define for sequelize; annotations, fluent for efcore).'
+        'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax (sqlalchemy, sqlmodel for sqlalchemy; init, define for sequelize; annotations, fluent for efcore; jakarta, javax for jpa).'
       );
     }
   });

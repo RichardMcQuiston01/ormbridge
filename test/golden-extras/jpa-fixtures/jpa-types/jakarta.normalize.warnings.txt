@@ -1,0 +1,2 @@
+SampleNicknames: the table has no primary key, but a JPA entity needs an identifier; the column "created_at" was written as the @Id (Hibernate would create a primary key on it).
+SampleLevels: the table has no primary key, but a JPA entity needs an identifier; the column "created_at" was written as the @Id (Hibernate would create a primary key on it).

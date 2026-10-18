@@ -1,6 +1,6 @@
 # Hibernate / JPA
 
-ormbridge reads Hibernate and JPA entities written in Java (`ormbridge formats` lists `jpa` as `read`). It cannot write them yet: the writer is the next item on the [roadmap](../../ROADMAP.md). It claims no file extension, because `.java` is far too generic: always pass `--from jpa`. Without it a `.java` input is read as Django and fails with `No concrete Django models were found in: ...`. The Java is parsed statically with tree-sitter; nothing is compiled or run, so no JDK, Maven, Gradle or database is needed.
+ormbridge reads and writes Hibernate and JPA entities written in Java (`ormbridge formats` lists `jpa` as `read + write`). It claims no file extension, because `.java` is far too generic: always pass `--from jpa` or `--to jpa`. Without `--from` a `.java` input is read as Django and fails with `No concrete Django models were found in: ...`. The Java is parsed statically with tree-sitter; nothing is compiled or run, so no JDK, Maven, Gradle or database is needed.
 
 A JPA model is the entity classes and their annotations, and ormbridge reads exactly that:
 
@@ -12,19 +12,20 @@ Not read: `orm.xml`, `persistence.xml` and `hbm.xml` mapping files (a model mapp
 
 ## Try it
 
-The example in [`examples/jpa`](../../examples/jpa/) has one conversion in `ormbridge.config.json`:
+The example in [`examples/jpa`](../../examples/jpa/) has two conversions in `ormbridge.config.json`:
 
 ```bash
 cd examples/jpa
-npx ormbridge convert            # reads models/ and writes prisma/schema.prisma
+npx ormbridge convert            # writes models/ from ../schema/schema.prisma, then reads it back to prisma/schema.prisma
 npx ormbridge convert --check
 ```
 
-| Conversion | Input    | Output                 |
-| ---------- | -------- | ---------------------- |
-| `from-jpa` | `models` | `prisma/schema.prisma` |
+| Conversion | Input                     | Output                 |
+| ---------- | ------------------------- | ---------------------- |
+| `to-jpa`   | `../schema/schema.prisma` | `models`               |
+| `from-jpa` | `models`                  | `prisma/schema.prisma` |
 
-`models/` is a hand-written folder: entity classes, a mapped superclass and an enum. Inside this repository run `node ../../dist/cli.js convert` after `npm run build`. Without the config file: `ormbridge convert -i models -f jpa -t prisma -o prisma/schema.prisma`.
+`models/` is generated (one `@Entity` class per model under `models/app/models/`, the `PostStatus` enum with its converter), so edit the schema rather than the Java. Inside this repository run `node ../../dist/cli.js convert` after `npm run build`. Without the config file: `ormbridge convert -i schema.prisma -t jpa -o src/main/java` writes the entities and `ormbridge convert -i src/main/java -f jpa -t prisma -o schema.prisma` reads them.
 
 ## Reading
 
@@ -94,7 +95,70 @@ JPA derives names when the annotations say nothing, and the reader derives them 
 
 ## Writing
 
-Not supported yet. `--to jpa` fails with `The format "jpa" can only be used as an input`. Use the [conversion matrix](../CONVERSION_MATRIX.md) to see what survives when JPA entities are written to every other format. The writer is the next item on the [roadmap](../../ROADMAP.md).
+`--to jpa` writes a multi-file output: one `@Entity` class per model, one Java `enum` per enum and, where needed, an `AttributeConverter` and an `@IdClass` class. Files go below `-o`, in the folder of the Java package (`app/models/Post.java`).
+
+```bash
+ormbridge convert -i schema.prisma --to jpa -o src/main/java
+ormbridge convert -i schema.prisma --to jpa --style javax --namespace com.shop.data -o src/main/java
+```
+
+| Option               | Effect                                                                                                                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--style jakarta`    | The default. `jakarta.persistence`, Hibernate 6, Spring Boot 3. Uses `@JdbcTypeCode(SqlTypes.JSON)`, `@UuidGenerator`, `@GeneratedColumn` and every `@OnDelete` action.                                |
+| `--style javax`      | `javax.persistence`, Hibernate 5, Spring Boot 2. Where Hibernate 5 has no mapping the closest type is written and a warning says so (JSON, arrays, generated columns, `@OnDelete` other than CASCADE). |
+| `--namespace <name>` | The Java package of every generated class (default `app.models`). It must be a dotted name of Java identifiers; anything else is an `INVALID_OPTION` error.                                            |
+| `--provider <name>`  | Picks the column types and the SQL of defaults: `text` columns, `@Lob`, booleans as `true` or `1`, expression defaults in parentheses for MySQL and SQLite. Default `postgresql`.                      |
+| `--naming <mode>`    | `preserve` keeps the database names, `normalize` applies the fresh-schema style (singular snake_case tables, UUID keys, `created_at` / `updated_at`).                                                  |
+| `--no-header`        | Leaves out the `// <auto-generated>` comment at the top of every file.                                                                                                                                 |
+
+The classes are plain: private fields, getters and setters, no Lombok. They compile against the persistence API and Hibernate's annotations (`hibernate-core`) alone; Jackson is needed at run time for the JSON columns of Hibernate 6. An unknown `--style` is an error that lists the values of the format (`Invalid --style value "fluent" for the jpa format. Expected one of: jakarta, javax.`).
+
+Every table, column, join column and join table is written with its name (`@Table(name)`, `@Column(name)`, `@JoinColumn(name, referencedColumnName)`), so the schema does not depend on a naming strategy.
+
+### What is written
+
+| IR                                             | Java                                                                                                                                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| primary key, auto-increment                    | `@Id @GeneratedValue(strategy = GenerationType.IDENTITY)` on an `Integer` or `Long`                                                                                            |
+| primary key, UUID default                      | `@Id @GeneratedValue(strategy = GenerationType.UUID)`; with `javax` `@GeneratedValue(generator = "uuid2")` and `@GenericGenerator`                                             |
+| composite primary key                          | `@IdClass(PostTagId.class)` and an `@Id` on every column; a relationship that is part of the key is an `@Id @ManyToOne` and the id class holds the key of its target           |
+| shared primary key (one-to-one primary key)    | `@Id @OneToOne @JoinColumn` (the entity is `Serializable`, as Hibernate 5 requires)                                                                                            |
+| no primary key                                 | one required column becomes the `@Id`, with a warning                                                                                                                          |
+| `string`                                       | `String` with `@Column(length)`; without a length `text` on PostgreSQL and 255 characters elsewhere                                                                            |
+| `text`                                         | `String` with `columnDefinition = "text"` on PostgreSQL, `@Lob` elsewhere                                                                                                      |
+| `int`, `bigInt`, `float`, `boolean`            | `int`, `long`, `double`, `boolean` when required and without a database-only default, otherwise `Integer`, `Long`, `Double`, `Boolean`                                         |
+| `decimal`                                      | `BigDecimal` with `@Column(precision, scale)`                                                                                                                                  |
+| `dateTime`, `date`, `time`, `duration`         | `LocalDateTime` (`OffsetDateTime` when the source says `timestamptz`), `LocalDate`, `LocalTime`, `Duration`                                                                    |
+| `uuid`, `bytes`                                | `UUID`; `byte[]` (with `@Lob` outside PostgreSQL)                                                                                                                              |
+| `json`                                         | `Map<String, Object>` with `@JdbcTypeCode(SqlTypes.JSON)`; a `String` with the column definition `jsonb` / `json` on `javax`                                                   |
+| arrays                                         | `String[]`, `Integer[]` on PostgreSQL; a JSON array elsewhere; a `String` with the column definition `text[]` on `javax`                                                       |
+| `ipAddress`                                    | `InetAddress` with `@JdbcTypeCode(SqlTypes.INET)` on PostgreSQL, a `String` of 45 characters elsewhere                                                                         |
+| enum, names equal the stored values            | a Java `enum` and `@Enumerated(EnumType.STRING)`                                                                                                                               |
+| enum, stored values are positions `0, 1, 2`    | `@Enumerated(EnumType.ORDINAL)`                                                                                                                                                |
+| enum, other stored values                      | constants that carry the value (`DRAFT("draft")`), a `PostStatusConverter` (`AttributeConverter<PostStatus, String>`) and `@Convert(converter = ...)`                          |
+| default                                        | `@ColumnDefault("...")` and, for a literal or `now`, the field initializer (`private int viewCount = 0;`); a database expression sets no initializer and adds `@DynamicInsert` |
+| `now` default on `created_at`, `isAutoUpdated` | `@CreationTimestamp`, `@UpdateTimestamp`                                                                                                                                       |
+| UUID default on a column that is not the key   | `@UuidGenerator`                                                                                                                                                               |
+| generated column                               | `@GeneratedColumn("expression")` with a read-only `@Column` (`jakarta` only)                                                                                                   |
+| unique column, unique and plain indexes        | `@Column(unique = true)`, `@Table(uniqueConstraints, indexes)` (`DESC` kept in `columnList`)                                                                                   |
+| foreign key, one-to-one                        | `@ManyToOne` / `@OneToOne(optional, fetch = LAZY)` with `@JoinColumn(name, referencedColumnName, nullable, foreignKey = @ForeignKey(name))`                                    |
+| `onDelete`                                     | `@OnDelete(action = OnDeleteAction.X)` (CASCADE, SET_NULL, SET_DEFAULT, RESTRICT; `javax` keeps CASCADE only)                                                                  |
+| reverse side (`relatedName`)                   | `@OneToMany(mappedBy)` with a `List`, `@OneToOne(mappedBy)`, `@ManyToMany(mappedBy)` with a `Set`                                                                              |
+| many-to-many                                   | `@ManyToMany @JoinTable(name = "<table>_<field>", joinColumns, inverseJoinColumns)` with a `Set` (`from_` / `to_` columns for a self reference)                                |
+| composite foreign key                          | `@ManyToOne @JoinColumns({...})` with `insertable = false, updatable = false` next to the scalar columns, which stay ordinary attributes                                       |
+| schema                                         | `@Table(schema = ...)`                                                                                                                                                         |
+
+**Composite keys use `@IdClass`.** The entity keeps one `@Id` per column in the order of the key and the id class (`<Entity>Id`, `Serializable`, with `equals` and `hashCode`) repeats them, which keeps the columns flat and is what the reader reads back. `@EmbeddedId` is not written.
+
+**Defaults and Hibernate.** The database default is declared with `@ColumnDefault`, but Hibernate inserts every column of the entity, null included, so a default only applies when the property is left out of the insert. Literal and `now` defaults therefore also set the field initializer, so a new object already carries the value. A default that only the database can compute leaves the property null; the class gets `@DynamicInsert` (null properties are left out of the insert) and Hibernate's nullability check must not reject the null: Bean Validation on the class path (Spring Boot's validation starter) or `hibernate.check_nullability=false`. A `now` default is `@CreationTimestamp` only on a column named like a creation time (`created_at`), because Hibernate overwrites such a column on every insert.
+
+**Warnings** (named by model and field, never silent): ON UPDATE actions, index types, clustering, prefix lengths and operator classes, full-text indexes, hstore and range columns, `Unsupported` types (written as a `String` with the column definition), client-generated defaults (`cuid()`), auto-increment on a column that is not the key, computed columns on Hibernate 5 or with a Python expression, JSON, arrays and UUID defaults on Hibernate 5, `ON DELETE` actions other than CASCADE on Hibernate 5, unbounded strings outside PostgreSQL, views (mapped `@Immutable`; Hibernate would create a table of that name if it manages the schema), a model without a key, a relation to a model that is missing, and class or enum names that clash with the types the generated code imports (`Table` becomes `TableEntity`).
+
+**Not written.** `@Version` (the IR has no optimistic-locking column), cascade types, fetch strategies other than LAZY on to-one relations, inheritance (the IR has none), Bean Validation annotations, Lombok and Spring Data annotations.
+
+**Round trip.** `parse(emit(x))` equals `x` for the canonical schema of every format apart from what the other format already loses (enum labels, Django's enum length) and, with `javax`, the `ON DELETE` actions Hibernate 5 cannot express. The reader changed in one place for this: an `AttributeConverter<Enum, String|Integer>` named by `@Convert` on an enum whose constants carry the stored value as their only constructor argument is read with those values.
+
+**Checked against Hibernate.** When Java 17 and Maven are installed and `JPA_DIR` is set, `test/jpa-emitter-verify.test.ts` writes the canonical schema of every format, the larger extras, the IR fixtures and the reader's own fixtures in both styles and both naming modes, compiles them with `-Xlint:all -Werror`, lets Hibernate 6.4 (`jakarta`) and Hibernate 5.6 (`javax`) create the schema in H2, compares tables, columns, nullability, keys, unique keys, indexes and foreign keys with the IR, and saves a row into every table through the entity classes to check defaults, enum values, generated keys and `@UpdateTimestamp`. The output for the other providers is compiled too.
 
 ## Limitations and warnings
 
@@ -119,6 +183,7 @@ The reader is checked against the real library: when Java 17 and Maven are insta
 ```ts
 import {
   convertText,
+  emitJpa,
   parseJpa,
   type ConvertResult,
   type IrSchema,
@@ -157,7 +222,18 @@ const parsed: Result<IrSchema> = await parseJpa(
 if (parsed.ok) {
   console.log(parsed.value.models.map((model) => model.tableName));
   console.log(parsed.value.warnings);
+
+  // IR -> Hibernate 5 entities: a map of relative paths to Java source, and the warnings.
+  const written = emitJpa(parsed.value, {
+    provider: 'postgresql',
+    naming: 'preserve',
+    style: 'javax',
+    packageName: 'com.shop.data',
+  });
+  console.log(Object.keys(written.files)); // ['com/shop/data/Post.java', ...]
 }
 ```
+
+`emitJpa` returns the files and the warnings and never throws; through `convertText` (`to: 'jpa'`, with `style` and `namespace`) an invalid style or package is an `INVALID_OPTION` error.
 
 `parseJpa` returns a `Result` and never throws: input without entities is an error with the code `NO_MODELS_FOUND`, and constructs it cannot read are warnings in `schema.warnings`. `isSkippedJpaPath(path)` tells whether a path is one of the build-output, test, generated or migration files the reader skips.

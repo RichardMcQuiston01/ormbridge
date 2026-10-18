@@ -10,7 +10,8 @@ import {
   jdbcTypeColumn,
   temporalColumn,
 } from './jpaTypes.js';
-import type { JavaClass, JavaType } from './javaSyntax.js';
+import type { JavaClass, JavaType, JavaValue } from './javaSyntax.js';
+import { evaluate } from './javaValues.js';
 
 /** What building a column needs to know. */
 export interface ColumnContext {
@@ -93,6 +94,55 @@ function enumDefinition(definition: JavaClass, stringStored: boolean): IrEnum {
   };
 }
 
+/** The stored values of an enum written with a converter: the constants' arguments (`DRAFT("draft")`). */
+interface ConvertedEnum {
+  values: string[];
+  numeric: boolean;
+}
+
+/**
+ * Reads an enum that an `AttributeConverter<Enum, String|Integer>` stores under other values than its names, the
+ * way ormbridge writes it: every constant carries its stored value as the only constructor argument. The converter
+ * is not run, so any other shape (a converter that computes the value) is not understood and returns undefined.
+ */
+function convertedEnum(
+  member: Member,
+  definition: JavaClass,
+  ctx: ColumnContext
+): ConvertedEnum | undefined {
+  const named: string | undefined = member.attr.notes
+    .get('Convert')
+    ?.className('converter');
+  const converter: ConverterInfo | undefined =
+    named === undefined ? undefined : ctx.project.converters.get(named);
+  if (
+    converter === undefined ||
+    converter.attributeType.name !== definition.name
+  ) {
+    return undefined;
+  }
+  const numeric: boolean = /^(int|Integer|long|Long|short|Short)$/.test(
+    converter.columnType.name
+  );
+  if (!numeric && converter.columnType.name !== 'String') {
+    return undefined;
+  }
+  const values: string[] = [];
+  for (const constant of definition.enumConstants) {
+    const only = constant.args.length === 1 ? constant.args[0] : undefined;
+    const value: JavaValue | undefined =
+      only === undefined ? undefined : evaluate(only, ctx.project.lookup);
+    if (numeric && value?.kind === 'number') {
+      values.push(String(value.value));
+    } else if (!numeric && value?.kind === 'string') {
+      values.push(value.value);
+    } else {
+      return undefined;
+    }
+  }
+  return { values, numeric };
+}
+
 /** Reads `default ...` out of a `columnDefinition` such as `varchar(20) not null default 'x'`. */
 function definitionParts(definition: string): {
   type: string;
@@ -160,6 +210,8 @@ export function buildField(
     type.arrayDepth === 0 ? ctx.project.enums.get(type.name) : undefined;
   const converter: ConverterInfo | undefined =
     enumClass === undefined ? converterFor(member, ctx) : undefined;
+  const converted: ConvertedEnum | undefined =
+    enumClass === undefined ? undefined : convertedEnum(member, enumClass, ctx);
   const jdbc: Ann | undefined = notes.get('JdbcTypeCode', true);
   const hibernateType: Ann | undefined = notes.get('Type', true);
 
@@ -174,6 +226,17 @@ export function buildField(
           : `the column was read as ${target.name}`
       }.`
     );
+  } else if (enumClass !== undefined && converted !== undefined) {
+    enumDef = {
+      name: enumClass.name,
+      values: enumClass.enumConstants.map((constant, index) => ({
+        name: constant.name,
+        dbValue: converted.values[index] ?? constant.name,
+      })),
+    };
+    shape = converted.numeric
+      ? { type: 'int' }
+      : { type: 'string', maxLength: 255 };
   } else if (enumClass !== undefined) {
     const mode: string | undefined = notes.get('Enumerated')?.member('value');
     const stringStored: boolean = mode === 'STRING';
@@ -357,7 +420,11 @@ export function buildField(
       `${place}: the @Version attribute is Hibernate's optimistic-locking counter; it was read as an ordinary column.`
     );
   }
-  if (notes.has('Convert') && converter === undefined) {
+  if (
+    notes.has('Convert') &&
+    converter === undefined &&
+    converted === undefined
+  ) {
     ctx.warn(`${place}: @Convert(disableConversion = true) was ignored.`);
   }
 

@@ -1,0 +1,15 @@
+index: "Index" is a name the generated code uses or another type has, so the class was named "IndexEntity".
+Book.tags: Hibernate 5 cannot map arrays; the column was written as a String with the column definition text[].
+Book.tags: an array default cannot be written; the default was dropped.
+Book.grid: Hibernate maps one-dimensional arrays only; the 2-dimensional array was written as a one-dimensional one.
+Book.grid: Hibernate 5 cannot map arrays; the column was written as a String with the column definition text[].
+Book.colors: an array of the enum Color is stored as an array of its stored values, not as an enum.
+Book.colors: Hibernate 5 cannot map arrays; the column was written as a String with the column definition text[].
+Book.settings: Hibernate 5 has no JSON type; the column was written as a String with the column definition jsonb, and the JSON text is yours to read and write (the hibernate-types library adds a mapping).
+Book.window: Hibernate has no range mapping; the column was written as a String with the column definition int4range.
+Book.extra: Hibernate has no hstore mapping; the column was written as a String with the column definition hstore.
+Author.latest_book: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the SET NULL action was dropped and the database default (no action) applies.
+Book.author: JPA has no setting for the onUpdate action "cascade", so it was ignored.
+Book.editor: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the SET NULL action was dropped and the database default (no action) applies.
+Book.series: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the SET NULL action was dropped and the database default (no action) applies.
+Series.parent: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the SET NULL action was dropped and the database default (no action) applies.

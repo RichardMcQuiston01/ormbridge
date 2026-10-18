@@ -1,0 +1,3 @@
+Order.customer: JPA has no setting for the onUpdate action "cascade", so it was ignored.
+Product index (title): JPA cannot express the full-text kind; the index was written as an ordinary index.
+Product index (slug): JPA cannot express the index type Hash; the index was written as an ordinary index.
