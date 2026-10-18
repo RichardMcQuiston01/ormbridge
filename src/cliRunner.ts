@@ -565,7 +565,7 @@ export async function runCli(
     )
     .option(
       '--no-header',
-      'omit the Prisma generator and datasource blocks, and the auto-generated comment of EF Core files'
+      'omit the Prisma generator and datasource blocks, and the auto-generated comment of EF Core and JPA files'
     )
     .option(
       '--no-conventions',
@@ -581,7 +581,7 @@ export async function runCli(
     )
     .option(
       '--namespace <name>',
-      'namespace of the generated classes: PHP for Doctrine (default: App\\Entity) and Laravel (default: App\\Models), C# for EF Core (default: App.Models)'
+      'namespace of the generated classes: PHP for Doctrine (default: App\\Entity) and Laravel (default: App\\Models), C# for EF Core (default: App.Models), Java package for JPA (default: app.models)'
     )
     .option(
       '--go-package <name>',
@@ -593,7 +593,7 @@ export async function runCli(
     )
     .option(
       '--style <name>',
-      `layout of the SQLAlchemy, Sequelize and EF Core output (${OUTPUT_STYLES.join(' | ')}): sqlalchemy | sqlmodel for --to sqlalchemy (default: sqlalchemy), init | define for --to sequelize (default: init), annotations | fluent for --to efcore (default: annotations)`
+      `layout of the SQLAlchemy, Sequelize, EF Core and JPA output (${OUTPUT_STYLES.join(' | ')}): sqlalchemy | sqlmodel for --to sqlalchemy (default: sqlalchemy), init | define for --to sequelize (default: init), annotations | fluent for --to efcore (default: annotations), jakarta | javax for --to jpa (default: jakarta)`
     )
     .option(
       '--dry-run',

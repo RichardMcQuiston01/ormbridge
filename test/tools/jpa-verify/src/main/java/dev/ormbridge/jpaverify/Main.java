@@ -37,18 +37,43 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
  * in-memory H2 database ({@code hbm2ddl.auto=create}, identifiers quoted so that names keep their case). What
  * JDBC metadata reports (tables, columns, nullability, primary keys, indexes, foreign keys) is printed as JSON,
  * keyed by name; a directory Hibernate rejects is printed as {@code {"__error": "..."}}.
+ *
+ * <p>With {@code --compile-only} the sources are only compiled (a group that does not compile is an
+ * {@code __error}); no schema is created.
+ *
+ * <p>With {@code --exercise} the tool also adds one row to every table through the entity classes ({@link
+ * Exercise}) and prints what it saw under the key {@code __exercise} of the group. The same sources build against
+ * Hibernate 5 and {@code javax.persistence} (see {@code pom-javax.xml}): nothing here depends on Jakarta.
  */
 public final class Main {
   private Main() {}
 
+  /** With {@code --strict} the compiler reports every lint warning as an error (the writer's output must be clean). */
+  private static boolean strict = false;
+
   public static void main(String[] args) throws Exception {
     Map<String, Object> output = new LinkedHashMap<>();
+    boolean exercise = false;
+    boolean compileOnly = false;
     for (String argument : args) {
+      if (argument.equals("--strict")) {
+        strict = true;
+      }
+      if (argument.equals("--exercise")) {
+        exercise = true;
+      } else if (argument.equals("--compile-only")) {
+        compileOnly = true;
+      }
+    }
+    for (String argument : args) {
+      if (argument.startsWith("--")) {
+        continue;
+      }
       int split = argument.indexOf('=');
       String name = argument.substring(0, split);
       Path directory = Path.of(argument.substring(split + 1));
       try {
-        output.put(name, load(name, directory));
+        output.put(name, load(name, directory, exercise, compileOnly));
       } catch (Throwable thrown) {
         Map<String, Object> error = new LinkedHashMap<>();
         Throwable root = thrown;
@@ -64,10 +89,16 @@ public final class Main {
     System.out.println(new ObjectMapper().writeValueAsString(output));
   }
 
-  private static Map<String, Object> load(String name, Path directory) throws Exception {
+  private static Map<String, Object> load(
+      String name, Path directory, boolean exercise, boolean compileOnly) throws Exception {
     Path classes = Files.createTempDirectory("jpa-verify-" + name);
     try {
       compile(directory, classes);
+      if (compileOnly) {
+        Map<String, Object> compiled = new LinkedHashMap<>();
+        compiled.put("tables", new LinkedHashMap<String, Object>());
+        return compiled;
+      }
       try (URLClassLoader loader =
           new URLClassLoader(
               new URL[] {classes.toUri().toURL()}, Main.class.getClassLoader())) {
@@ -84,7 +115,7 @@ public final class Main {
           }
         }
         Thread.currentThread().setContextClassLoader(loader);
-        return create(name, entities);
+        return create(name, entities, exercise);
       }
     } finally {
       try (Stream<Path> files = Files.walk(classes)) {
@@ -96,7 +127,8 @@ public final class Main {
   private static boolean isMapped(Class<?> type) {
     for (java.lang.annotation.Annotation annotation : type.getDeclaredAnnotations()) {
       String simple = annotation.annotationType().getSimpleName();
-      if (annotation.annotationType().getName().startsWith("jakarta.persistence.")
+      String full = annotation.annotationType().getName();
+      if ((full.startsWith("jakarta.persistence.") || full.startsWith("javax.persistence."))
           && (simple.equals("Entity")
               || simple.equals("MappedSuperclass")
               || simple.equals("Embeddable"))) {
@@ -116,14 +148,17 @@ public final class Main {
     try (StandardJavaFileManager manager = compiler.getStandardFileManager(null, null, null)) {
       Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(sources);
       String classPath = System.getProperty("java.class.path");
-      List<String> options =
+      List<String> options = new ArrayList<>(
           List.of(
               "-d", output.toString(),
               "-classpath", classPath,
               "-processorpath", classPath,
               "-parameters",
               "--release", "17",
-              "-Xlint:-options");
+              "-Xlint:-options"));
+      if (strict) {
+        options.addAll(List.of("-Xlint:all,-path,-processing,-options", "-Werror"));
+      }
       java.io.StringWriter log = new java.io.StringWriter();
       boolean success = compiler.getTask(log, manager, null, options, null, units).call();
       if (!success) {
@@ -132,13 +167,18 @@ public final class Main {
     }
   }
 
-  private static Map<String, Object> create(String name, List<Class<?>> entities) throws SQLException {
+  private static Map<String, Object> create(String name, List<Class<?>> entities, boolean exercise)
+      throws SQLException {
     String url = "jdbc:h2:mem:" + name + ";DB_CLOSE_DELAY=-1";
     StandardServiceRegistry registry =
         new StandardServiceRegistryBuilder()
             .applySetting("hibernate.connection.url", url)
             .applySetting("hibernate.connection.driver_class", "org.h2.Driver")
             .applySetting("hibernate.hbm2ddl.auto", "create")
+            .applySetting("hibernate.hbm2ddl.create_namespaces", "true")
+            // A column with a database default is left out of the insert when its property is null; as in an
+            // application with Bean Validation, Hibernate must not reject the null before the database fills it in.
+            .applySetting("hibernate.check_nullability", "false")
             .applySetting("hibernate.globally_quoted_identifiers", "true")
             .applySetting("hibernate.globally_quoted_identifiers_skip_column_definitions", "true")
             .applySetting("hibernate.show_sql", "false")
@@ -152,6 +192,9 @@ public final class Main {
       try (SessionFactory factory = metadata.buildSessionFactory();
           Connection connection = DriverManager.getConnection(url)) {
         Map<String, Object> schema = introspect(connection);
+        if (exercise) {
+          schema.put("exercise", new Exercise(factory, metadata, connection).run(entities));
+        }
         // Hibernate only logs a DDL statement that fails, so check that every table it maps was created.
         @SuppressWarnings("unchecked")
         Map<String, Object> created = (Map<String, Object>) schema.get("tables");
@@ -186,17 +229,22 @@ public final class Main {
   private static Map<String, Object> introspect(Connection connection) throws SQLException {
     DatabaseMetaData meta = connection.getMetaData();
     Map<String, Object> tables = new LinkedHashMap<>();
-    List<String> names = new ArrayList<>();
-    try (ResultSet rows = meta.getTables(null, "PUBLIC", "%", new String[] {"TABLE"})) {
+    List<String[]> names = new ArrayList<>();
+    try (ResultSet rows = meta.getTables(null, null, "%", new String[] {"TABLE", "BASE TABLE"})) {
       while (rows.next()) {
-        names.add(rows.getString("TABLE_NAME"));
+        String owner = rows.getString("TABLE_SCHEM");
+        if (owner != null && !owner.equalsIgnoreCase("INFORMATION_SCHEMA")) {
+          names.add(new String[] {owner, rows.getString("TABLE_NAME")});
+        }
       }
     }
-    names.sort(String::compareTo);
-    for (String table : names) {
+    names.sort((first, second) -> first[1].compareTo(second[1]));
+    for (String[] qualified : names) {
+      String owner = qualified[0];
+      String table = qualified[1];
       Map<String, Object> entry = new LinkedHashMap<>();
       List<Map<String, Object>> columns = new ArrayList<>();
-      try (ResultSet rows = meta.getColumns(null, "PUBLIC", table, "%")) {
+      try (ResultSet rows = meta.getColumns(null, owner, table, "%")) {
         while (rows.next()) {
           Map<String, Object> column = new LinkedHashMap<>();
           column.put("name", rows.getString("COLUMN_NAME"));
@@ -210,7 +258,7 @@ public final class Main {
       entry.put("columns", columns);
 
       Map<Short, String> keyColumns = new java.util.TreeMap<>();
-      try (ResultSet rows = meta.getPrimaryKeys(null, "PUBLIC", table)) {
+      try (ResultSet rows = meta.getPrimaryKeys(null, owner, table)) {
         while (rows.next()) {
           keyColumns.put(rows.getShort("KEY_SEQ"), rows.getString("COLUMN_NAME"));
         }
@@ -218,7 +266,7 @@ public final class Main {
       entry.put("primaryKey", new ArrayList<>(keyColumns.values()));
 
       Map<String, Map<String, Object>> indexes = new LinkedHashMap<>();
-      try (ResultSet rows = meta.getIndexInfo(null, "PUBLIC", table, false, false)) {
+      try (ResultSet rows = meta.getIndexInfo(null, owner, table, false, false)) {
         while (rows.next()) {
           String indexName = rows.getString("INDEX_NAME");
           if (indexName == null) {
@@ -240,7 +288,7 @@ public final class Main {
       entry.put("indexes", new ArrayList<>(indexes.values()));
 
       Map<String, Map<String, Object>> foreignKeys = new LinkedHashMap<>();
-      try (ResultSet rows = meta.getImportedKeys(null, "PUBLIC", table)) {
+      try (ResultSet rows = meta.getImportedKeys(null, owner, table)) {
         while (rows.next()) {
           String keyName = rows.getString("FK_NAME");
           Map<String, Object> key = foreignKeys.get(keyName);

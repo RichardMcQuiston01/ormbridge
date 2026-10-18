@@ -117,6 +117,14 @@ export {
   isValidCsharpNamespace,
 } from './emitters/efcore.js';
 export type { EfcoreEmitOptions, EfcoreStyle } from './emitters/efcore.js';
+export {
+  DEFAULT_JPA_PACKAGE,
+  emitJpa,
+  isJpaStyle,
+  isValidJavaPackage,
+  JPA_STYLES,
+} from './emitters/jpa.js';
+export type { JpaEmitOptions, JpaStyle } from './emitters/jpa.js';
 export { checkStyle, isOutputStyle, OUTPUT_STYLES } from './styles.js';
 export type { OutputStyle } from './styles.js';
 export { emitGraphene } from './emitters/graphene.js';

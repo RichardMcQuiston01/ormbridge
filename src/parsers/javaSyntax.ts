@@ -70,6 +70,8 @@ export type JavaClassKind =
 
 export interface JavaEnumConstant {
   name: string;
+  /** The constructor arguments of the constant: `DRAFT("draft")` has one. */
+  args: SyntaxNode[];
 }
 
 export interface JavaClass {
@@ -401,7 +403,13 @@ function readType(
     if (member.type === 'enum_constant') {
       const constant: SyntaxNode | null = member.childForFieldName('name');
       if (constant !== null) {
-        cls.enumConstants.push({ name: constant.text });
+        const list: SyntaxNode | null = member.childForFieldName('arguments');
+        cls.enumConstants.push({
+          name: constant.text,
+          args: (list?.namedChildren ?? []).filter(
+            (child: SyntaxNode) => !child.type.includes('comment')
+          ),
+        });
       }
     } else if (member.type === 'field_declaration') {
       readFields(member, cls.fields, readModifiers(member));
