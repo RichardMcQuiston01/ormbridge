@@ -1,0 +1,15 @@
+@@ app/models/Category.java
++ 
++ 
++ 
++ @OneToMany(mappedBy = "category")
++ private List<Post> posts = new ArrayList<>();
++ public List<Post> getPosts() {
++ public void setPosts(List<Post> posts) {
++ return posts;
++ this.posts = posts;
++ }
++ }
+@@ app/models/Post.java
++ @Column(name = "status", nullable = false, length = 255)
+- @Column(name = "status", nullable = false)

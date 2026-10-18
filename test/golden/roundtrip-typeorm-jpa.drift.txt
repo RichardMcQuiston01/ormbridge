@@ -1,0 +1,12 @@
+@@ app/models/Category.java
++ 
++ 
++ 
++ @OneToMany(mappedBy = "category")
++ private List<Post> postSet = new ArrayList<>();
++ public List<Post> getPostSet() {
++ public void setPostSet(List<Post> postSet) {
++ return postSet;
++ this.postSet = postSet;
++ }
++ }

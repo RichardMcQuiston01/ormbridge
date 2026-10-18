@@ -1,0 +1,2 @@
+Other: "Other" is a name the generated code uses or another type has, so the class was named "Other2".
+Weird.self: Hibernate 5 knows only ON DELETE CASCADE (@OnDelete); the SET NULL action was dropped and the database default (no action) applies.

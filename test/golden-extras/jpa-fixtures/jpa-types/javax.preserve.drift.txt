@@ -1,0 +1,4 @@
+fieldPrimaryKey SampleNicknames.nicknames: false -> true
+fieldNullability SampleNicknames.nicknames: nullable -> required
+fieldPrimaryKey SampleLevels.levels: false -> true
+fieldNullability SampleLevels.levels: nullable -> required

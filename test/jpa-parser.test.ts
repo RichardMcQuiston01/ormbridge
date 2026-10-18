@@ -106,11 +106,11 @@ function warningsMatching(schema: IrSchema, pattern: RegExp): string[] {
 }
 
 describe('format registration', () => {
-  it('registers jpa as a read-only format without a file extension', () => {
+  it('registers jpa as a read and write format without a file extension', () => {
     const adapter = expectOk(getFormat('jpa'));
     expect(adapter.extensions).toEqual([]);
     expect(adapter.parse).toBeDefined();
-    expect(adapter.emit).toBeUndefined();
+    expect(adapter.emit).toBeDefined();
     expect(getFormatByExtension('.java')).toBeUndefined();
   });
 
@@ -127,17 +127,6 @@ describe('format registration', () => {
     const converted: ConvertResult = expectOk(result);
     expect(converted.output).toContain('model Thing {');
     expect(converted.output).toContain('name');
-  });
-
-  it('refuses to write JPA entities', async () => {
-    const result: Result<ConvertResult> = await convertText(
-      [{ path: 'a.prisma', text: 'model A { id Int @id }' }],
-      { ...DEFAULT_OPTIONS, from: 'prisma', to: 'jpa' }
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.message).toContain('can only be used as an input');
-    }
   });
 });
 

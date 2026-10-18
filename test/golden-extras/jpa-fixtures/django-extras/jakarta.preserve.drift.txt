@@ -1,0 +1,15 @@
+fieldDefault Item.tags: literal "[]" -> (none)
+fieldDefault Item.kinds: literal "[]" -> (none)
+fieldEnum Item.kinds: ItemKind -> (none)
+fieldDefault Item.attributes: literal "{}" -> (none)
+fieldType Item.stock_range: range -> string
+fieldMaxLength Item.stock_range: (none) -> 255
+fieldType Item.big_range: range -> string
+fieldMaxLength Item.big_range: (none) -> 255
+fieldType Item.price_range: range -> string
+fieldMaxLength Item.price_range: (none) -> 255
+fieldType Item.available: range -> string
+fieldMaxLength Item.available: (none) -> 255
+fieldType Item.valid_during: range -> string
+fieldMaxLength Item.valid_during: (none) -> 255
+enumRemoved ItemKind: enum ItemKind -> (absent)

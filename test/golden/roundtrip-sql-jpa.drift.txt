@@ -1,0 +1,88 @@
+@@ app/models/BlogCategory.java
++ @Column(name = "name", nullable = false, length = 100)
++ @JoinColumn(
++ @Table(
++ foreignKey = @ForeignKey(name = "blog_category_parent_id_fkey"))
++ import jakarta.persistence.ForeignKey;
++ import jakarta.persistence.UniqueConstraint;
++ name = "blog_category",
++ name = "parent_id",
++ referencedColumnName = "id",
++ uniqueConstraints = @UniqueConstraint(name = "blog_category_name_key", columnNames = "name"))
+- @Column(name = "name", nullable = false, unique = true, length = 100)
+- @JoinColumn(name = "parent_id", referencedColumnName = "id")
+- @Table(name = "blog_category")
+@@ app/models/BlogPost.java
++ @Column(name = "public_id", nullable = false)
++ @JoinColumn(
++ @JoinColumn(
++ @OneToMany(mappedBy = "blogPost")
++ @UniqueConstraint(
++ @UniqueConstraint(name = "blog_post_public_id_key", columnNames = "public_id"),
++ columnNames = {"author_id", "title"})
++ foreignKey = @ForeignKey(name = "blog_post_author_id_fkey"))
++ foreignKey = @ForeignKey(name = "blog_post_editor_id_fkey"))
++ import jakarta.persistence.OneToMany;
++ import java.util.ArrayList;
++ import java.util.List;
++ name = "author_id",
++ name = "blog_post_author_id_title_key",
++ name = "editor_id",
++ nullable = false,
++ private List<BlogPostTag> blogPostTags = new ArrayList<>();
++ public List<BlogPostTag> getBlogPostTags() {
++ public void setBlogPostTags(List<BlogPostTag> blogPostTags) {
++ referencedColumnName = "id",
++ referencedColumnName = "id",
++ return blogPostTags;
++ this.blogPostTags = blogPostTags;
++ uniqueConstraints = {
++ },
+- @Column(name = "public_id", nullable = false, unique = true)
+- @JoinColumn(name = "author_id", referencedColumnName = "id", nullable = false)
+- @JoinColumn(name = "editor_id", referencedColumnName = "id")
+- @JoinTable(
+- @ManyToMany
+- columnNames = {"author_id", "title"}),
+- import jakarta.persistence.JoinTable;
+- import jakarta.persistence.ManyToMany;
+- import java.util.HashSet;
+- import java.util.Set;
+- inverseJoinColumns = @JoinColumn(name = "blog_tag_id", referencedColumnName = "id"))
+- joinColumns = @JoinColumn(name = "blog_post_id", referencedColumnName = "id"),
+- name = "blog_post_author_id_title_key",
+- name = "blog_post_tags",
+- private Set<BlogTag> tags = new HashSet<>();
+- public Set<BlogTag> getTags() {
+- public void setTags(Set<BlogTag> tags) {
+- return tags;
+- this.tags = tags;
+- uniqueConstraints = @UniqueConstraint(
++ file app/models/BlogPostTag.java
+@@ app/models/BlogProfile.java
++ @JoinColumn(
++ foreignKey = @ForeignKey(name = "blog_profile_user_id_fkey"))
++ import jakarta.persistence.ForeignKey;
++ name = "user_id",
++ nullable = false,
++ referencedColumnName = "id",
+- @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
+@@ app/models/BlogTag.java
++ @OneToMany(mappedBy = "blogTag")
++ import jakarta.persistence.OneToMany;
++ import java.util.ArrayList;
++ import java.util.List;
++ private List<BlogPostTag> blogPostTags = new ArrayList<>();
++ public List<BlogPostTag> getBlogPostTags() {
++ public void setBlogPostTags(List<BlogPostTag> blogPostTags) {
++ return blogPostTags;
++ this.blogPostTags = blogPostTags;
+- @ManyToMany(mappedBy = "tags")
+- import jakarta.persistence.ManyToMany;
+- import java.util.HashSet;
+- import java.util.Set;
+- private Set<BlogPost> blogPosts = new HashSet<>();
+- public Set<BlogPost> getBlogPosts() {
+- public void setBlogPosts(Set<BlogPost> blogPosts) {
+- return blogPosts;
+- this.blogPosts = blogPosts;

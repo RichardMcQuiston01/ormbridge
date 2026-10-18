@@ -1,0 +1,25 @@
+fieldType Order.region: string -> text
+fieldMaxDigits Order.total: (none) -> 38
+fieldDecimalPlaces Order.total: (none) -> 2
+fieldType OrderLine.orderRegion: string -> text
+fieldType Account.email: string -> text
+fieldUnique Account.email: true -> false
+indexAdded Account: (absent) -> unique (email)
+fieldType Profile.region: string -> text
+fieldType Document.id: string -> text
+fieldDefault Document.id: clientGenerated -> (none)
+fieldType Document.ulid: string -> text
+fieldUnique Document.ulid: true -> false
+fieldDefault Document.ulid: clientGenerated -> (none)
+fieldType Document.short: string -> text
+fieldDefault Document.short: clientGenerated -> (none)
+fieldDefault Document.token: dbExpression -> uuid
+fieldType Document.title: string -> text
+fieldMaxDigits Document.cost: (none) -> 38
+fieldDecimalPlaces Document.cost: (none) -> 2
+fieldType Document.legacy_name: string -> text
+indexAdded Document: (absent) -> unique (ulid)
+fieldType DocumentSummary.id: string -> text
+fieldPrimaryKey DocumentSummary.id: false -> true
+fieldUnique DocumentSummary.id: true -> false
+fieldType DocumentSummary.title: string -> text

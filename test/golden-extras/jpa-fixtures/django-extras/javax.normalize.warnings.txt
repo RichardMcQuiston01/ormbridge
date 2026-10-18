@@ -1,0 +1,18 @@
+Item.full_name: the generated column expression Concat("first_name", Value(" "), "last_name") is Python, not SQL; the column was written as a regular column.
+Item.total_cents: the generated column expression F("quantity") * 100 is Python, not SQL; the column was written as a regular column.
+Item.tags: Hibernate 5 cannot map arrays; the column was written as a String with the column definition text[].
+Item.tags: an array default cannot be written; the default was dropped.
+Item.grid: Hibernate maps one-dimensional arrays only; the 2-dimensional array was written as a one-dimensional one.
+Item.grid: Hibernate 5 cannot map arrays; the column was written as a String with the column definition text[].
+Item.kinds: an array of the enum ItemKind is stored as an array of its stored values, not as an enum.
+Item.kinds: Hibernate 5 cannot map arrays; the column was written as a String with the column definition text[].
+Item.kinds: the enum default "[]" matches no member; the default was dropped.
+Item.attributes: Hibernate has no hstore mapping; the column was written as a String with the column definition hstore.
+Item.attributes: a literal default on a hstore column cannot be written; the default was dropped.
+Item.stock_range: Hibernate has no range mapping; the column was written as a String with the column definition int4range.
+Item.big_range: Hibernate has no range mapping; the column was written as a String with the column definition int8range.
+Item.price_range: Hibernate has no range mapping; the column was written as a String with the column definition numrange.
+Item.available: Hibernate has no range mapping; the column was written as a String with the column definition daterange.
+Item.valid_during: Hibernate has no range mapping; the column was written as a String with the column definition tsrange.
+Item.last_ip: Hibernate 5 has no inet mapping; the column was written as a String with the column definition inet.
+Item.legacy_ip: Hibernate 5 has no inet mapping; the column was written as a String with the column definition inet.
