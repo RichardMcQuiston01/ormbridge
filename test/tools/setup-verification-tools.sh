@@ -3,8 +3,8 @@
 # TypeORM with SQLite, Drizzle ORM with drizzle-kit, Ajv for JSON Schema, Zod, better-sqlite3 for the SQL DDL
 # tests, SQLAlchemy 2 with SQLModel for the SQLAlchemy parser and emitter tests, Sequelize 6 with SQLite for the
 # Sequelize parser and emitter tests, the .NET 8 SDK with EF Core 8, its SQLite provider and the Npgsql provider
-# for the EF Core parser and emitter tests, and the Maven packages of Hibernate ORM 6 with H2 for the Hibernate / JPA
-# parser tests) into a scratch directory
+# for the EF Core parser and emitter tests, and the Maven packages of Hibernate ORM 6 and 5 with H2 for the Hibernate / JPA
+# parser and writer tests) into a scratch directory
 # outside this repository, then prints the environment variables that switch the tests on.
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
@@ -118,7 +118,17 @@ if [ -n "${java_bin}" ] && [ -n "${mvn_bin}" ]; then
     JAVA_HOME="${java_home}" "${mvn_bin}" -B -q -Dmaven.repo.local="${target}/jpa/m2" \
       package dependency:build-classpath -Dmdep.outputFile="${scratch}/cp.txt" >&2
   ); then
-    jpa_ready="yes"
+    # The writer's javax style runs against Hibernate 5 (pom-javax.xml); its packages go into the same repository.
+    cp "${here}/jpa-verify/pom-javax.xml" "${scratch}/pom.xml"
+    if (
+      cd "${scratch}"
+      JAVA_HOME="${java_home}" "${mvn_bin}" -B -q -Dmaven.repo.local="${target}/jpa/m2" \
+        package dependency:build-classpath -Dmdep.outputFile="${scratch}/cp5.txt" >&2
+    ); then
+      jpa_ready="yes"
+    else
+      echo "Resolving the Hibernate 5 packages with Maven failed; the JPA verification tests will be skipped." >&2
+    fi
   else
     echo "Resolving the Hibernate packages with Maven failed; the JPA verification tests will be skipped." >&2
   fi

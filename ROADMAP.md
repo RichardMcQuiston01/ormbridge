@@ -112,7 +112,7 @@ Pairs M/N, O/P, R/S and T/U run in parallel; Q is independent of P. After they l
 
 ## Backlog (unscheduled)
 
-- Hibernate / JPA: the parser is done (`parseJpa`, the read-only `jpa` format for `jakarta.persistence` and `javax.persistence` entities, checked against Hibernate ORM 6.4 on H2); the writer is next (entities, mapped superclasses, `@JoinTable`, `--style` for Lombok or getters). `orm.xml` mapping and Flyway / Liquibase migration replay remain
+- Hibernate / JPA: the parser and the writer are done (`parseJpa`, `emitJpa`, the `jpa` format for `jakarta.persistence` and `javax.persistence` entities, `--style jakarta` or `javax`, checked against Hibernate ORM 6.4 and 5.6 on H2). Remaining: Lombok accessors as a separate option, `@EmbeddedId` and `@Embeddable` output for composite keys and value objects, inheritance (the IR has none), `@Version` (the IR has no optimistic-locking column), a Kotlin / Spring Data flavour, and JSON mapping for Hibernate 5 (`hibernate-types`). `orm.xml` mapping and Flyway / Liquibase migration replay remain
 - Entity Framework Core: the parser and the writer are done (`parseEfcore`, `emitEfcore`, the `efcore` format for C# data annotations, `DbContext` and the fluent API, `--style annotations` or `fluent`, checked against EF Core 8). Migration replay and the options the reader skips (`OwnsMany`, table-per-type inheritance) remain
 - Sequelize 7 (`@sequelize/core` decorators) and `sequelize-cli` migration replay (as the Laravel reader does); Sequelize 6 is read and written
 - A Zod parser, and Drizzle/SQLAlchemy migration replay (the SQL reader replays only added columns, constraints and column defaults; renames, dropped columns and type changes are skipped with a warning)
