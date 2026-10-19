@@ -1,0 +1,588 @@
+=== src/Entity/Account.php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+use App\Enum\Status;
+use DateInterval;
+use DateTimeImmutable;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity]
+#[ORM\Table(name: 'accounts')]
+#[ORM\Index(columns: ['created_at'])]
+#[ORM\UniqueConstraint(columns: ['email', 'status'])]
+#[ORM\Index(columns: ['prefs'])]
+#[ORM\Index(columns: ['labels'])]
+#[ORM\Index(columns: ['email'])]
+#[ORM\Index(columns: ['stock_range'])]
+#[ORM\Index(columns: ['age'])]
+#[ORM\Index(columns: ['visits'])]
+#[ORM\HasLifecycleCallbacks]
+class Account
+{
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'AUTO')]
+    #[ORM\Column(name: 'id', type: 'integer')]
+    private ?int $id = null;
+
+    #[ORM\Column(name: 'email', type: 'string', length: 255, unique: true)]
+    private string $email;
+
+    #[ORM\Column(name: 'age', type: 'integer', nullable: true)]
+    private ?int $age = null;
+
+    #[ORM\Column(name: 'visits', type: 'bigint', options: ['default' => '0'])]
+    private string $visits = '0';
+
+    #[ORM\Column(name: 'balance', type: 'decimal', precision: 12, scale: 2)]
+    private string $balance;
+
+    #[ORM\Column(name: 'bio', type: 'text', nullable: true)]
+    private ?string $bio = null;
+
+    #[ORM\Column(name: 'active', type: 'boolean', options: ['default' => true])]
+    private bool $active = true;
+
+    #[ORM\Column(
+        name: 'created_at',
+        type: 'datetimetz_immutable',
+        options: ['default' => 'CURRENT_TIMESTAMP'],
+    )]
+    private DateTimeImmutable $created_at;
+
+    #[ORM\Column(name: 'updated_at', type: 'datetimetz_immutable')]
+    private DateTimeImmutable $updated_at;
+
+    #[ORM\Column(name: 'prefs', type: 'json', nullable: true, options: ['jsonb' => true])]
+    private mixed $prefs = null;
+
+    #[ORM\Column(name: 'labels', type: 'json')]
+    private array $labels;
+
+    #[ORM\Column(name: 'grid', type: 'json', nullable: true)]
+    private ?array $grid = null;
+
+    #[ORM\Column(name: 'attributes', type: 'json')]
+    private array $attributes = [];
+
+    #[ORM\Column(name: 'stock_range', type: 'string', nullable: true)]
+    private ?string $stock_range = null;
+
+    #[ORM\Column(name: 'last_ip', type: 'string', length: 45, nullable: true)]
+    private ?string $last_ip = null;
+
+    #[ORM\Column(name: 'shelf_life', type: 'dateinterval', nullable: true)]
+    private ?DateInterval $shelf_life = null;
+
+    #[ORM\Column(name: 'avatar', type: 'blob', nullable: true)]
+    private mixed $avatar = null;
+
+    #[ORM\Column(
+        name: 'status',
+        type: 'string',
+        length: 10,
+        enumType: Status::class,
+        options: ['default' => 'draft'],
+    )]
+    private Status $status = Status::DRAFT;
+
+    #[ORM\ManyToOne(targetEntity: Tenant::class, inversedBy: 'account_set')]
+    #[ORM\JoinColumn(
+        name: 'tenant_id',
+        referencedColumnName: 'id',
+        nullable: false,
+        onDelete: 'CASCADE',
+    )]
+    private Tenant $tenant;
+
+    /** @var Collection<int, Event> */
+    #[ORM\OneToMany(targetEntity: Event::class, mappedBy: 'account')]
+    private Collection $event_set;
+
+    public function __construct()
+    {
+        $this->created_at = new DateTimeImmutable();
+        $this->event_set = new ArrayCollection();
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+
+    public function getEmail(): string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(string $email): static
+    {
+        $this->email = $email;
+
+        return $this;
+    }
+
+    public function getAge(): ?int
+    {
+        return $this->age;
+    }
+
+    public function setAge(?int $age): static
+    {
+        $this->age = $age;
+
+        return $this;
+    }
+
+    public function getVisits(): string
+    {
+        return $this->visits;
+    }
+
+    public function setVisits(string $visits): static
+    {
+        $this->visits = $visits;
+
+        return $this;
+    }
+
+    public function getBalance(): string
+    {
+        return $this->balance;
+    }
+
+    public function setBalance(string $balance): static
+    {
+        $this->balance = $balance;
+
+        return $this;
+    }
+
+    public function getBio(): ?string
+    {
+        return $this->bio;
+    }
+
+    public function setBio(?string $bio): static
+    {
+        $this->bio = $bio;
+
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->active;
+    }
+
+    public function setActive(bool $active): static
+    {
+        $this->active = $active;
+
+        return $this;
+    }
+
+    public function getCreatedAt(): DateTimeImmutable
+    {
+        return $this->created_at;
+    }
+
+    public function setCreatedAt(DateTimeImmutable $createdAt): static
+    {
+        $this->created_at = $createdAt;
+
+        return $this;
+    }
+
+    public function getUpdatedAt(): DateTimeImmutable
+    {
+        return $this->updated_at;
+    }
+
+    public function setUpdatedAt(DateTimeImmutable $updatedAt): static
+    {
+        $this->updated_at = $updatedAt;
+
+        return $this;
+    }
+
+    public function getPrefs(): mixed
+    {
+        return $this->prefs;
+    }
+
+    public function setPrefs(mixed $prefs): static
+    {
+        $this->prefs = $prefs;
+
+        return $this;
+    }
+
+    public function getLabels(): array
+    {
+        return $this->labels;
+    }
+
+    public function setLabels(array $labels): static
+    {
+        $this->labels = $labels;
+
+        return $this;
+    }
+
+    public function getGrid(): ?array
+    {
+        return $this->grid;
+    }
+
+    public function setGrid(?array $grid): static
+    {
+        $this->grid = $grid;
+
+        return $this;
+    }
+
+    public function getAttributes(): array
+    {
+        return $this->attributes;
+    }
+
+    public function setAttributes(array $attributes): static
+    {
+        $this->attributes = $attributes;
+
+        return $this;
+    }
+
+    public function getStockRange(): ?string
+    {
+        return $this->stock_range;
+    }
+
+    public function setStockRange(?string $stockRange): static
+    {
+        $this->stock_range = $stockRange;
+
+        return $this;
+    }
+
+    public function getLastIp(): ?string
+    {
+        return $this->last_ip;
+    }
+
+    public function setLastIp(?string $lastIp): static
+    {
+        $this->last_ip = $lastIp;
+
+        return $this;
+    }
+
+    public function getShelfLife(): ?DateInterval
+    {
+        return $this->shelf_life;
+    }
+
+    public function setShelfLife(?DateInterval $shelfLife): static
+    {
+        $this->shelf_life = $shelfLife;
+
+        return $this;
+    }
+
+    public function getAvatar(): mixed
+    {
+        return $this->avatar;
+    }
+
+    public function setAvatar(mixed $avatar): static
+    {
+        $this->avatar = $avatar;
+
+        return $this;
+    }
+
+    public function getStatus(): Status
+    {
+        return $this->status;
+    }
+
+    public function setStatus(Status $status): static
+    {
+        $this->status = $status;
+
+        return $this;
+    }
+
+    public function getTenant(): Tenant
+    {
+        return $this->tenant;
+    }
+
+    public function setTenant(Tenant $tenant): static
+    {
+        $this->tenant = $tenant;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Event>
+     */
+    public function getEventSet(): Collection
+    {
+        return $this->event_set;
+    }
+
+    public function addEvent(Event $event): static
+    {
+        if (!$this->event_set->contains($event)) {
+            $this->event_set->add($event);
+            $event->setAccount($this);
+        }
+
+        return $this;
+    }
+
+    public function removeEvent(Event $event): static
+    {
+        if ($this->event_set->removeElement($event)) {
+            if ($event->getAccount() === $this) {
+                $event->setAccount(null);
+            }
+        }
+
+        return $this;
+    }
+
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
+    public function refreshAutoUpdatedFields(): void
+    {
+        $this->updated_at = new DateTimeImmutable();
+    }
+}
+
+=== src/Entity/Event.php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity]
+#[ORM\Table(name: 'events')]
+class Event
+{
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'AUTO')]
+    #[ORM\Column(name: 'id', type: 'bigint')]
+    private ?string $id = null;
+
+    #[ORM\Column(name: 'kind', type: 'integer', options: ['default' => 0])]
+    private int $kind = 0;
+
+    #[ORM\Column(name: 'payload', type: 'json', options: ['jsonb' => true])]
+    private mixed $payload = [];
+
+    #[ORM\ManyToOne(targetEntity: Account::class, inversedBy: 'event_set')]
+    #[ORM\JoinColumn(
+        name: 'account_id',
+        referencedColumnName: 'id',
+        nullable: true,
+        onDelete: 'SET NULL',
+    )]
+    private ?Account $account = null;
+
+    public function getId(): ?string
+    {
+        return $this->id;
+    }
+
+    public function getKind(): int
+    {
+        return $this->kind;
+    }
+
+    public function setKind(int $kind): static
+    {
+        $this->kind = $kind;
+
+        return $this;
+    }
+
+    public function getPayload(): mixed
+    {
+        return $this->payload;
+    }
+
+    public function setPayload(mixed $payload): static
+    {
+        $this->payload = $payload;
+
+        return $this;
+    }
+
+    public function getAccount(): ?Account
+    {
+        return $this->account;
+    }
+
+    public function setAccount(?Account $account): static
+    {
+        $this->account = $account;
+
+        return $this;
+    }
+}
+
+=== src/Entity/Tenant.php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+use App\Enum\Status;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity]
+#[ORM\Table(name: 'tenants')]
+class Tenant
+{
+    #[ORM\Id]
+    #[ORM\Column(name: 'id', type: 'guid')]
+    private string $id;
+
+    #[ORM\Column(name: 'name', type: 'string', length: 80, unique: true)]
+    private string $name;
+
+    #[ORM\Column(
+        name: 'status',
+        type: 'string',
+        length: 10,
+        enumType: Status::class,
+        options: ['default' => 'draft'],
+    )]
+    private Status $status = Status::DRAFT;
+
+    /** @var Collection<int, Account> */
+    #[ORM\OneToMany(targetEntity: Account::class, mappedBy: 'tenant')]
+    private Collection $account_set;
+
+    public function __construct()
+    {
+        $this->id = self::generateUuid();
+        $this->account_set = new ArrayCollection();
+    }
+
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function setId(string $id): static
+    {
+        $this->id = $id;
+
+        return $this;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): static
+    {
+        $this->name = $name;
+
+        return $this;
+    }
+
+    public function getStatus(): Status
+    {
+        return $this->status;
+    }
+
+    public function setStatus(Status $status): static
+    {
+        $this->status = $status;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Account>
+     */
+    public function getAccountSet(): Collection
+    {
+        return $this->account_set;
+    }
+
+    public function addAccount(Account $account): static
+    {
+        if (!$this->account_set->contains($account)) {
+            $this->account_set->add($account);
+            $account->setTenant($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAccount(Account $account): static
+    {
+        if ($this->account_set->removeElement($account)) {
+            // The owning side is required, so it is not unset here.
+        }
+
+        return $this;
+    }
+
+    private static function generateUuid(): string
+    {
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+    }
+}
+
+=== src/Enum/Status.php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Enum;
+
+enum Status: string
+{
+    /** Draft */
+    case DRAFT = 'draft';
+    case LIVE = 'live';
+}
+
+--- warnings
+Account index (prefs): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (labels): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (email): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (stock_range): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (age): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (visits): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Provider "cockroachdb": Doctrine DBAL has no CockroachDB platform, so the entities are mapped for its PostgreSQL platform (connect with the pdo_pgsql or pgsql driver). Schema introspection differs (a schema:update or migrations:diff can report changes that are not real), integer columns are 64-bit INT8 there, and hstore and range types (which CockroachDB lacks) are written as json or string columns.
+Account.labels: Doctrine has no array column type that works on every platform; the array was written as a json column (PHP array).
+Account.grid: Doctrine has no array column type that works on every platform; the array was written as a json column (PHP array).
+Account.attributes: Doctrine has no hstore type; the field was written as a json column (PHP array).
+Account.stock_range: Doctrine has no range column type; the field was written as a string column holding the range text.
+Account.shelf_life: Doctrine has no database interval type; the duration was written as a dateinterval column (an ISO 8601 string such as P1DT2H), so the stored values differ from the source column.
+Provider "cockroachdb": Account.id, Event.id are auto-increment keys: GeneratedValue(strategy: 'AUTO') creates SERIAL or an identity column through the PostgreSQL platform; on CockroachDB SERIAL is unique_rowid() (64-bit and not consecutive); sequential keys send every insert to the same range (a hot spot); CockroachDB recommends UUID keys with gen_random_uuid().

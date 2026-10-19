@@ -1,0 +1,19 @@
+Customer.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Customer.email: ClickHouse has no unique constraints; the unique constraint on "email" was dropped (a ReplacingMergeTree with that column in its ORDER BY can deduplicate rows).
+Order.customer: ClickHouse has no foreign keys; the relation to Customer was written as the plain column "customer_id" (no constraint, no ON DELETE action).
+OrderItem.product: ClickHouse has no foreign keys; the relation to Product was written as the plain column "product_sku" (no constraint, no ON DELETE action).
+OrderItem.order: ClickHouse has no foreign keys; the relation to Order was written as the plain column "order_id" (no constraint, no ON DELETE action).
+Label.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Label.name: ClickHouse has no unique constraints; the unique constraint on "name" was dropped (a ReplacingMergeTree with that column in its ORDER BY can deduplicate rows).
+Comment.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+OrderLabels.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+OrderLabels.order: ClickHouse has no foreign keys; the relation to Order was written as the plain column "order_id" (no constraint, no ON DELETE action).
+OrderLabels.label: ClickHouse has no foreign keys; the relation to Label was written as the plain column "label_id" (no constraint, no ON DELETE action).
+ProductSimilar.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+ProductSimilar.from_product: ClickHouse has no foreign keys; the relation to Product was written as the plain column "from_product_id" (no constraint, no ON DELETE action).
+ProductSimilar.to_product: ClickHouse has no foreign keys; the relation to Product was written as the plain column "to_product_id" (no constraint, no ON DELETE action).
+Order index (customer, placedAt): the index option(s) sort order, prefix length and operator class have no ClickHouse equivalent and were dropped.
+Product index (slug): the index option(s) type Hash have no ClickHouse equivalent and were dropped.
+OrderLabels index (order, label): ClickHouse has no unique indexes; it was written as a data-skipping index (set(100)) and uniqueness is not enforced (a ReplacingMergeTree can deduplicate by ORDER BY key).
+ProductSimilar index (from_product, to_product): ClickHouse has no unique indexes; it was written as a data-skipping index (set(100)) and uniqueness is not enforced (a ReplacingMergeTree can deduplicate by ORDER BY key).
+ClickHouse cannot refresh a column on update from the DDL (Customer.updatedAt); the application has to set it.

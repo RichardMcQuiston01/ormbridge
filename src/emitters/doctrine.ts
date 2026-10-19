@@ -18,6 +18,11 @@ import {
   toPascalCase,
   toSnakeCase,
 } from '../naming.js';
+import {
+  COCKROACH_PREFIX,
+  cockroachSequentialWarning,
+  isCockroach,
+} from './cockroach.js';
 import type { PrismaProvider } from './prisma.js';
 
 /**
@@ -158,6 +163,8 @@ interface EmitContext {
   schema: IrSchema;
   options: DoctrineEmitOptions;
   dialect: Dialect;
+  /** CockroachDB: auto-increment keys, reported in one warning. */
+  sequentialKeys: string[];
   warnings: string[];
   entityNamespace: string;
   enumNamespace: string;
@@ -188,6 +195,7 @@ export function emitDoctrine(
     schema,
     options,
     dialect: dialectOf(options.provider),
+    sequentialKeys: [],
     warnings,
     entityNamespace,
     enumNamespace: siblingEnumNamespace(entityNamespace),
@@ -198,6 +206,12 @@ export function emitDoctrine(
   if (options.provider === 'mongodb') {
     warnings.push(
       'Provider "mongodb": Doctrine ORM is relational (use Doctrine MongoDB ODM for MongoDB); relational entity mappings were written.'
+    );
+  }
+
+  if (isCockroach(options.provider)) {
+    warnings.push(
+      `${COCKROACH_PREFIX} Doctrine DBAL has no CockroachDB platform, so the entities are mapped for its PostgreSQL platform (connect with the pdo_pgsql or pgsql driver). Schema introspection differs (a schema:update or migrations:diff can report changes that are not real), integer columns are 64-bit INT8 there, and hstore and range types (which CockroachDB lacks) are written as json or string columns.`
     );
   }
 
@@ -221,6 +235,14 @@ export function emitDoctrine(
     if (plan !== undefined) {
       files[entityPath(context, plan)] = renderClass(context, plan);
     }
+  }
+  if (context.sequentialKeys.length > 0) {
+    warnings.push(
+      cockroachSequentialWarning(
+        context.sequentialKeys,
+        "GeneratedValue(strategy: 'AUTO') creates SERIAL or an identity column through the PostgreSQL platform; on CockroachDB SERIAL is unique_rowid() (64-bit and not consecutive)"
+      )
+    );
   }
   return { files, warnings };
 }
@@ -978,6 +1000,9 @@ function planField(
       result.push(attribute('Id', []));
     }
     if (generatedKey) {
+      if (isCockroach(context.options.provider)) {
+        context.sequentialKeys.push(label);
+      }
       result.push(attribute('GeneratedValue', [`strategy: 'AUTO'`]));
     }
     const entries: string[] = [];

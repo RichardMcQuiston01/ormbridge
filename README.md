@@ -13,24 +13,24 @@ ormbridge converts data models from one Object-Relational Mapper (ORM) to anothe
 
 It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you do not need Python, PHP, Go, or a database. The default `preserve` mode keeps your table and column names, so a new tool can sit on top of the database you already have. When something cannot be converted, ormbridge prints a warning that names the model and field.
 
-| Format                      | Read | Write | Notes                                                                 |
-| --------------------------- | :--: | :---: | --------------------------------------------------------------------- |
-| Django models               |  ✔   |   ✔   | `models.py` files or `models/` packages                               |
-| Prisma schema               |  ✔   |   ✔   | All six providers; Prisma 7 header with `--prisma-version 7`          |
-| TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                                        |
-| Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; one file per entity                                 |
-| Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both                    |
-| GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; one file per model                          |
-| Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable`, `mysqlTable`, `sqliteTable` plus `relations()`             |
-| JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON) |
-| SQL DDL                     |  ✔   |   ✔   | `CREATE TABLE` and more for PostgreSQL, MySQL, SQLite, SQL Server     |
-| SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 (declarative, `Column()`, `Table()`) and SQLModel      |
-| Sequelize (JavaScript/TS)   |  ✔   |   ✔   | Sequelize 6; writes TypeScript or `sequelize-cli` (`--style define`)  |
-| Entity Framework Core (C#)  |  ✔   |   ✔   | EF Core 8: annotations or `--style fluent`, and a `DbContext`         |
-| Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` (default) or Hibernate 5 `--style javax`        |
-| TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                             |
-| Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django            |
-| Zod schemas                 |      |   ✔   | Zod 4 schemas and inferred types                                      |
+| Format                      | Read | Write | Notes                                                                                              |
+| --------------------------- | :--: | :---: | -------------------------------------------------------------------------------------------------- |
+| Django models               |  ✔   |   ✔   | `models.py` files or `models/` packages                                                            |
+| Prisma schema               |  ✔   |   ✔   | All six providers; Prisma 7 header with `--prisma-version 7`                                       |
+| TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                                                                     |
+| Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; one file per entity                                                              |
+| Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both                                                 |
+| GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; one file per model                                                       |
+| Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable`, `mysqlTable`, `sqliteTable` plus `relations()`                                          |
+| JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON)                              |
+| SQL DDL                     |  ✔   |   ✔   | `CREATE TABLE` and more for PostgreSQL, CockroachDB, MySQL, SQLite, SQL Server, ClickHouse (write) |
+| SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 (declarative, `Column()`, `Table()`) and SQLModel                                   |
+| Sequelize (JavaScript/TS)   |  ✔   |   ✔   | Sequelize 6; writes TypeScript or `sequelize-cli` (`--style define`)                               |
+| Entity Framework Core (C#)  |  ✔   |   ✔   | EF Core 8: annotations or `--style fluent`, and a `DbContext`                                      |
+| Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` (default) or Hibernate 5 `--style javax`                                     |
+| TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                                                          |
+| Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django                                         |
+| Zod schemas                 |      |   ✔   | Zod 4 schemas and inferred types                                                                   |
 
 Each format has a [guide](./docs/formats/README.md) and a runnable [example project](./examples/README.md).
 
@@ -63,7 +63,7 @@ Django (`.py`), Prisma (`.prisma`), and SQL (`.sql`) files are detected from the
 Useful options:
 
 - `--naming preserve|normalize`: keep existing names (default), or write singular snake_case names with UUID keys.
-- `--provider <name>`: the database to target, such as `postgresql` or `mysql`.
+- `--provider <name>`: the database to target: `postgresql`, `mysql`, `sqlite`, `sqlserver`, `mongodb`, `cockroachdb` or `clickhouse`. `cockroachdb` keeps the PostgreSQL types and warns about every difference (64-bit integers, `unique_rowid()` keys, no hstore or range types). MariaDB and Percona Server are MySQL-compatible, so use `mysql` for them. `clickhouse` is written by `--to sql` only.
 - `--dry-run`: show what would be written, and write nothing.
 - `--check`: exit with code 3 if an output file is out of date. Use it in Continuous Integration (CI).
 

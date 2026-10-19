@@ -61,9 +61,10 @@ export async function convertText(
     return parsed;
   }
 
+  const fallback: ClickhouseFallback = withoutClickhouse(options);
   const emitted: Result<FormatEmitOutput> = emitter.value(
     parsed.value,
-    options
+    fallback.options
   );
   if (!emitted.ok) {
     return emitted;
@@ -71,6 +72,7 @@ export async function convertText(
 
   const warnings: string[] = [
     ...parsed.value.warnings,
+    ...fallback.warnings,
     ...emitted.value.warnings,
   ];
   const modelCount: number = parsed.value.models.length;
@@ -78,6 +80,40 @@ export async function convertText(
     return ok({ output: '', files: emitted.value.files, warnings, modelCount });
   }
   return ok({ output: emitted.value.text, warnings, modelCount });
+}
+
+/** Writers whose output depends on `--provider` and that are relational only. */
+const PROVIDER_WRITERS: ReadonlySet<string> = new Set([
+  'prisma',
+  'typeorm',
+  'doctrine',
+  'laravel',
+  'gorm',
+  'drizzle',
+  'sequelize',
+  'efcore',
+  'jpa',
+]);
+
+interface ClickhouseFallback {
+  options: ConvertOptions;
+  warnings: string[];
+}
+
+/**
+ * ClickHouse is written only by the SQL DDL writer. Another writer asked for it warns, like `mongodb`
+ * does on the relational writers, and writes for PostgreSQL instead of silently picking a dialect.
+ */
+function withoutClickhouse(options: ConvertOptions): ClickhouseFallback {
+  if (options.provider !== 'clickhouse' || !PROVIDER_WRITERS.has(options.to)) {
+    return { options, warnings: [] };
+  }
+  return {
+    options: { ...options, provider: 'postgresql' },
+    warnings: [
+      `Provider "clickhouse": ClickHouse is only supported by the SQL DDL writer (use \`--to sql --provider clickhouse\`); ${options.to} output was written for PostgreSQL.`,
+    ],
+  };
 }
 
 type ParseFunction = NonNullable<FormatAdapter['parse']>;

@@ -37,12 +37,12 @@ Output is multi-file: one Go file per model (`models/post.go`, snake_case), one 
 - Enums are typed strings (`type PostStatus string`) with a `const` block. Indexes are tags (`index`, `uniqueIndex`, `priority:n`).
 - The output needs `gorm.io/gorm`, and `github.com/google/uuid`, `github.com/shopspring/decimal`, `gorm.io/datatypes` for the types that use them (`go get` them).
 
-| Option                | Effect                                                                                                                                       |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--naming preserve`   | Default. Keeps source table and column names (explicit `TableName()` / `column:` where GORM's convention would differ).                      |
-| `--naming normalize`  | GORM conventions: plural snake_case tables, snake_case columns, `created_at` / `updated_at` added where missing. Primary key types are kept. |
-| `--go-package <name>` | Package name and output sub-directory (default `models`; must be a Go identifier, not a keyword). Config key: `goPackage`.                   |
-| `--provider <name>`   | Affects UUID defaults (`gen_random_uuid()` on PostgreSQL, a `BeforeCreate` hook elsewhere) and the `uuid` column type. `mongodb` only warns. |
+| Option                | Effect                                                                                                                                                                                                                                                                                                        |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--naming preserve`   | Default. Keeps source table and column names (explicit `TableName()` / `column:` where GORM's convention would differ).                                                                                                                                                                                       |
+| `--naming normalize`  | GORM conventions: plural snake_case tables, snake_case columns, `created_at` / `updated_at` added where missing. Primary key types are kept.                                                                                                                                                                  |
+| `--go-package <name>` | Package name and output sub-directory (default `models`; must be a Go identifier, not a keyword). Config key: `goPackage`.                                                                                                                                                                                    |
+| `--provider <name>`   | Affects UUID defaults (`gen_random_uuid()` on PostgreSQL, a `BeforeCreate` hook elsewhere) and the `uuid` column type. `mongodb` only warns. `cockroachdb` uses the PostgreSQL driver (`gorm.io/driver/postgres`), writes `int64` for auto-increment keys and the foreign keys that point at them, and warns. |
 
 ## Limitations and warnings
 

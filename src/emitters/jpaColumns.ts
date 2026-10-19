@@ -27,6 +27,8 @@ export interface ColumnContext {
   provider: PrismaProvider;
   enums: ReadonlyMap<string, EnumPlan>;
   warn: (message: string) => void;
+  /** CockroachDB: auto-increment keys, collected so the emitter can report them in one warning. */
+  sequentialKeys?: string[];
 }
 
 export interface KeyRole {
@@ -228,6 +230,7 @@ function keyGenerator(
     }
     const strategy: string = imports.persistence('GenerationType');
     nodes.push(annotation(generated, [['strategy', `${strategy}.IDENTITY`]]));
+    context.sequentialKeys?.push(label);
     return nodes;
   }
   if (field.type === 'uuid' && (defaults.uuid === true || defaults.sql)) {

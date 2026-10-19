@@ -151,7 +151,8 @@ mkdir -p "${target}/sql"
   cd "${target}/sql"
   [ -f package.json ] || npm init -y > /dev/null
   # Runs the SQL DDL output on Node versions without node:sqlite (before 22.5). PostgreSQL and MySQL
-  # need a server: set SQL_POSTGRES_URL / SQL_MYSQL_URL yourself (see test/README.md).
+  # need a server: set SQL_POSTGRES_URL / SQL_MYSQL_URL yourself, and COCKROACH_URL or COCKROACH_DOCKER for
+  # CockroachDB (see test/README.md; the CI job starts the servers itself).
   npm install --silent better-sqlite3
 )
 

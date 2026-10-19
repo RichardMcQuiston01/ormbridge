@@ -36,11 +36,11 @@ Output is two files:
 
 It needs `drizzle-orm` 0.36 or newer, and `drizzle-kit` for the config. TypeScript keys are camelCase in both naming modes (`createdAt`). Foreign keys use `.references(() => table.id, { onDelete: 'set null' })`, annotated `(): AnyPgColumn =>` for self references and later tables. `relations()` is written for both sides, with `relationName` where two relations join the same tables. Enums export `postStatusValues`, a union type and `pgEnum` (PostgreSQL), `mysqlEnum` (MySQL) or `text(..., { enum })` (SQLite). A many-to-many field becomes an explicit join table.
 
-| Option               | Effect                                                                                                                               |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `--provider <name>`  | Dialect: `postgresql` and `cockroachdb` use `pg-core`, `mysql` uses `mysql-core`, `sqlite` uses `sqlite-core`. Default `postgresql`. |
-| `--naming preserve`  | Default. Keeps source table, column and enum names as the string arguments.                                                          |
-| `--naming normalize` | Fresh-schema style: singular snake_case tables, UUID keys, `created_at` / `updated_at`, snake_case columns.                          |
+| Option               | Effect                                                                                                                                                                                                                                                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--provider <name>`  | Dialect: `postgresql` and `cockroachdb` use `pg-core`, `mysql` uses `mysql-core`, `sqlite` uses `sqlite-core`. Default `postgresql`. `cockroachdb` writes auto-increment keys as `generatedByDefaultAsIdentity()` instead of `serial` and warns (Drizzle 1.0 beta also has `drizzle-orm/cockroach-core`, which this writer does not use). |
+| `--naming preserve`  | Default. Keeps source table, column and enum names as the string arguments.                                                                                                                                                                                                                                                               |
+| `--naming normalize` | Fresh-schema style: singular snake_case tables, UUID keys, `created_at` / `updated_at`, snake_case columns.                                                                                                                                                                                                                               |
 
 ## Limitations and warnings
 

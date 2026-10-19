@@ -1,0 +1,22 @@
+Item.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Item.full_name: the generated column expression Concat("first_name", Value(" "), "last_name") is not SQL; the column was written as a regular column.
+Item.grid: ClickHouse cannot make an Array column Nullable; the column was written as Array(Array(Int32)) (empty stands in for NULL).
+Item.attributes: the default {} cannot be written as a ClickHouse Map(String, String) literal; the default was dropped.
+Item.stock_range: ClickHouse has no range type; the column was written as a String.
+Item.big_range: ClickHouse has no range type; the column was written as a String.
+Item.price_range: ClickHouse has no range type; the column was written as a String.
+Item.available: ClickHouse has no range type; the column was written as a String.
+Item.valid_during: ClickHouse has no range type; the column was written as a String.
+Item.legacy_ip: ClickHouse has no unique constraints; the unique constraint on "legacy_ip" was dropped (a ReplacingMergeTree with that column in its ORDER BY can deduplicate rows).
+Item.shelf_life: ClickHouse has no interval column type; the duration was written as an Int64 (microseconds).
+Counter.small_id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Shipment.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Shipment.item: ClickHouse has no foreign keys; the relation to Item was written as the plain column "item_id" (no constraint, no ON DELETE action).
+Shipment.other: ClickHouse has no foreign keys; the relation to Item was written as the plain column "other_id" (no constraint, no ON DELETE action).
+Shipment.content_type: ClickHouse has no foreign keys; the relation to ContentType was written as the plain column "content_type_id" (no constraint, no ON DELETE action).
+Shipment.created_by: ClickHouse has no foreign keys; the relation to Account was written as the plain column "created_by_id" (no constraint, no ON DELETE action).
+Account.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Account.email: ClickHouse has no unique constraints; the unique constraint on "email" was dropped (a ReplacingMergeTree with that column in its ORDER BY can deduplicate rows).
+Assignment.item: ClickHouse has no foreign keys; the relation to Item was written as the plain column "item_id" (no constraint, no ON DELETE action).
+Assignment.account: ClickHouse has no foreign keys; the relation to Account was written as the plain column "account_id" (no constraint, no ON DELETE action).
+ContentType.id: ClickHouse has no auto-increment; the auto-increment was dropped.

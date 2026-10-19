@@ -72,16 +72,16 @@ model Document {
   uid      String                               @default(uuid(7)) @db.Uuid
   token    String                               @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title    String
-  body     String
+  body     String                               @db.String
   tags     String[]
   scores   Int[]                                @default([])
   role     Role                                 @default(USER)
-  small    Int
-  ratio    Float
+  small    Int                                  @db.Int2
+  ratio    Float                                @db.Float4
   price    Decimal                              @db.Decimal(10, 2)
   cost     Decimal
   views    BigInt
-  blob     Bytes
+  blob     Bytes                                @db.Bytes
   meta     Json                                 @db.JsonB
   created  DateTime                             @default(now()) @db.Timestamptz(3)
   updated  DateTime                             @updatedAt @db.Timestamp(0)
@@ -90,7 +90,7 @@ model Document {
   ip       String                               @db.Inet
   area     Unsupported("circle")?
   place    Unsupported("geometry(Point, 4326)") @default(dbgenerated("'POINT(0 0)'::geometry"))
-  window   Unsupported("int4range")?
+  window   String?
   internal Int                                  @ignore
   legacy   String                               @map("legacy_name")
 
@@ -118,16 +118,12 @@ view DocumentSummary {
 // --- warnings ---
 // Order.total: the native type @db.Money is not available for Decimal on cockroachdb; the default column type was used instead.
 // OrderLine.id: CockroachDB allows autoincrement() only on BigInt; the Int default was written as sequence().
-// OrderLine.sku: the native type @db.VarChar is not available for String on cockroachdb; the default column type was used instead.
 // Account.id: CockroachDB allows autoincrement() only on BigInt; the Int default was written as sequence().
 // Tenant.id: CockroachDB allows autoincrement() only on BigInt; the Int default was written as sequence().
 // Document.title: the native type @db.Citext is not available for String on cockroachdb; the default column type was used instead.
-// Document.body: the native type @db.Text is not available for String on cockroachdb; the default column type was used instead.
-// Document.small: the native type @db.SmallInt is not available for Int on cockroachdb; the default column type was used instead.
-// Document.ratio: the native type @db.Real is not available for Float on cockroachdb; the default column type was used instead.
 // Document.cost: the native type @db.Money is not available for Decimal on cockroachdb; the default column type was used instead.
-// Document.blob: the native type @db.ByteA is not available for Bytes on cockroachdb; the default column type was used instead.
 // Document.area: Unsupported("circle") is kept as an opaque column; Prisma Client cannot read, filter or write it.
+// Document.area: CockroachDB has no circle type, so creating this column fails there; change the column type.
 // Document.place: Unsupported("geometry(Point, 4326)") is kept as an opaque column; Prisma Client cannot read, filter or write it.
-// Document.window: range columns are written as Unsupported("int4range"), which Prisma Client cannot read or filter.
+// Document.window: CockroachDB has no range types (int4range, tstzrange, ...); the field was written as String.
 // Document index (meta): the operator class on "meta" is only supported on PostgreSQL and was dropped.

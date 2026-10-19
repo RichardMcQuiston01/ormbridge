@@ -289,6 +289,7 @@ const INT_NAMES: ReadonlySet<string> = new Set([
 const BIG_INT_NAMES: ReadonlySet<string> = new Set([
   'bigint',
   'int8',
+  'int64',
   'big int',
   'unsigned big int',
 ]);
@@ -364,6 +365,7 @@ const DATE_TIME_NAMES: ReadonlySet<string> = new Set([
 ]);
 const BYTES_NAMES: ReadonlySet<string> = new Set([
   'bytea',
+  'bytes',
   'blob',
   'tinyblob',
   'mediumblob',
@@ -475,6 +477,10 @@ export function mapType(raw: RawType, dialect: SqlDialect): MappedType {
         ? { type: 'text' }
         : { type: 'string', maxLength: 1 };
     }
+    return { type: 'string', maxLength: first };
+  }
+  if (name === 'string' && first !== undefined) {
+    // CockroachDB: STRING(n) is VARCHAR(n); a bare STRING is unbounded text.
     return { type: 'string', maxLength: first };
   }
   if (TEXT_NAMES.has(name)) {
@@ -640,6 +646,33 @@ function isCastOnly(tokens: readonly Token[]): boolean {
   );
 }
 
+/**
+ * Drops a trailing cast (`:: type`) from a number or a function call, so `5:::INT8` and
+ * `now():::TIMESTAMPTZ` (the way CockroachDB writes defaults) read like `5` and `now()`. A string literal
+ * keeps its cast, which the string rules below read themselves.
+ */
+function withoutTrailingCast(tokens: readonly Token[]): readonly Token[] {
+  const first: Token | undefined = tokens[0];
+  if (first === undefined || first.kind === 'string') {
+    return tokens;
+  }
+  let depth: number = 0;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token: Token | undefined = tokens[index];
+    if (token?.kind !== 'punct') {
+      continue;
+    }
+    if (token.text === '(' || token.text === '[') {
+      depth += 1;
+    } else if (token.text === ')' || token.text === ']') {
+      depth -= 1;
+    } else if (token.text === '::' && depth === 0 && index > 0) {
+      return isCastOnly(tokens.slice(index)) ? tokens.slice(0, index) : tokens;
+    }
+  }
+  return tokens;
+}
+
 function numberLiteral(text: string): number | string {
   const value: number = Number(text);
   if (
@@ -671,7 +704,9 @@ export function interpretDefault(
   target: DefaultTarget,
   dialect: SqlDialect
 ): IrDefault | null | undefined {
-  const tokens: readonly Token[] = stripOuterParens(allTokens);
+  const tokens: readonly Token[] = withoutTrailingCast(
+    stripOuterParens(allTokens)
+  );
   const first: Token | undefined = tokens[0];
   if (first === undefined) {
     return null;
@@ -817,9 +852,10 @@ export function interpretDefault(
     }
     if (
       callGroup &&
-      first.up === 'NEXTVAL' &&
+      (first.up === 'NEXTVAL' || first.up === 'UNIQUE_ROWID') &&
       (target.type === 'int' || target.type === 'bigInt')
     ) {
+      // unique_rowid() is CockroachDB's SERIAL.
       return { kind: 'autoIncrement' };
     }
     if (
