@@ -144,7 +144,7 @@ describe('SQL DDL emitter: the format', () => {
     ]);
     expect(emit(schema, 'cockroachdb').warnings[0]).toContain('CockroachDB');
     expect(emit(schema, 'cockroachdb').text).toContain(
-      '-- SQL DDL for PostgreSQL'
+      '-- SQL DDL for CockroachDB'
     );
   });
 

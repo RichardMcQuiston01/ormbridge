@@ -1,0 +1,91 @@
+=== models/account.go
+package models
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
+	"gorm.io/datatypes"
+)
+
+// Account maps to the "accounts" table.
+type Account struct {
+	ID         int64                       `gorm:"primaryKey;autoIncrement"`
+	Email      string                      `gorm:"size:255;not null;unique;uniqueIndex:uni_accounts_email_status,priority:1;index"`
+	Age        *int32                      `gorm:"index"`
+	Visits     int64                       `gorm:"not null;default:0;index"`
+	Balance    decimal.Decimal             `gorm:"type:decimal(12,2);not null"`
+	Bio        *string                     `gorm:"type:text"`
+	Active     bool                        `gorm:"not null;default:true"`
+	CreatedAt  time.Time                   `gorm:"not null;autoCreateTime;index"`
+	UpdatedAt  time.Time                   `gorm:"not null;autoUpdateTime"`
+	Prefs      datatypes.JSON              `gorm:"index"`
+	Labels     datatypes.JSONSlice[string] `gorm:"not null;index"`
+	Grid       datatypes.JSONSlice[[]int32]
+	Attributes datatypes.JSON `gorm:"not null;default:'{}'"`
+	StockRange *string        `gorm:"index"`
+	LastIP     *string        `gorm:"size:45"`
+	ShelfLife  *time.Duration
+	Avatar     []byte
+	Status     Status    `gorm:"size:10;not null;default:draft;uniqueIndex:uni_accounts_email_status,priority:2"`
+	TenantID   uuid.UUID `gorm:"type:uuid;not null"`
+
+	Tenant Tenant  `gorm:"foreignKey:TenantID;constraint:OnDelete:CASCADE"`
+	Events []Event `gorm:"foreignKey:AccountID;constraint:OnDelete:SET NULL"`
+}
+
+=== models/event.go
+package models
+
+import "gorm.io/datatypes"
+
+// Event maps to the "events" table.
+type Event struct {
+	ID        int64          `gorm:"primaryKey;autoIncrement"`
+	Kind      int32          `gorm:"not null;default:0"`
+	Payload   datatypes.JSON `gorm:"not null;default:'{}'"`
+	AccountID *int64
+
+	Account *Account `gorm:"foreignKey:AccountID;constraint:OnDelete:SET NULL"`
+}
+
+=== models/status.go
+package models
+
+// Status is a database enum, stored as text.
+type Status string
+
+const (
+	StatusDraft Status = "draft" // Draft
+	StatusLive  Status = "live"
+)
+
+=== models/tenant.go
+package models
+
+import "github.com/google/uuid"
+
+// Tenant maps to the "tenants" table.
+type Tenant struct {
+	ID     uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Name   string    `gorm:"size:80;not null;unique"`
+	Status Status    `gorm:"size:10;not null;default:draft"`
+
+	Accounts []Account `gorm:"foreignKey:TenantID;constraint:OnDelete:CASCADE"`
+}
+
+--- warnings
+Account index (prefs): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (labels): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (email): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (stock_range): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (age): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (visits): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Provider "cockroachdb": the models use the PostgreSQL column types and are opened with gorm.Open(postgres.Open(dsn)) from gorm.io/driver/postgres, which speaks to CockroachDB; uuid keys use default:gen_random_uuid(); arrays, hstore and range columns are written as JSON or text, as for every provider (CockroachDB has no hstore or range types).
+Account.labels: GORM has no portable array column type; the array was written as a JSON column (datatypes.JSONSlice).
+Account.grid: GORM has no portable array column type; the array was written as a JSON column (datatypes.JSONSlice).
+Account.attributes: GORM has no hstore type; the field was written as a JSON column (datatypes.JSON).
+Account.stock_range: GORM has no range column type; the field was written as a string column holding the range text.
+Account.shelf_life: GORM has no interval column; the duration was written as a time.Duration, stored as nanoseconds in a bigint column.
+Provider "cockroachdb": Account.id, Event.id are auto-increment keys: written as int64 with autoIncrement (the postgres driver creates SERIAL, which CockroachDB fills with unique_rowid(): 64-bit values that overflow an int32), and the foreign keys that point at them are int64 too; sequential keys send every insert to the same range (a hot spot); CockroachDB recommends UUID keys with gen_random_uuid().

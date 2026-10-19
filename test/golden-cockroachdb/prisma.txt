@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "cockroachdb"
+  url      = env("DATABASE_URL")
+}
+
+enum Status {
+  DRAFT @map("draft")
+  LIVE @map("live")
+}
+
+model Tenant {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique @db.String(80)
+  status      Status    @default(DRAFT)
+  account_set Account[]
+
+  @@map("tenants")
+}
+
+model Account {
+  id          Int      @id @default(sequence())
+  email       String   @unique @db.String(255)
+  age         Int?
+  visits      BigInt   @default(0)
+  balance     Decimal  @db.Decimal(12, 2)
+  bio         String?
+  active      Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @updatedAt @db.Timestamptz(6)
+  prefs       Json?
+  labels      String[]
+  grid        Json?
+  attributes  Json     @default("{}")
+  stock_range String?
+  last_ip     String?  @db.Inet
+  shelf_life  BigInt?
+  avatar      Bytes?
+  status      Status   @default(DRAFT)
+  tenant_id   String   @db.Uuid
+  tenant      Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  event_set   Event[]
+
+  @@index([created_at])
+  @@unique([email, status])
+  @@index([prefs])
+  @@index([labels])
+  @@index([email])
+  @@index([stock_range])
+  @@index([age])
+  @@index([visits])
+  @@map("accounts")
+}
+
+model Event {
+  id         BigInt   @id @default(autoincrement())
+  kind       Int      @default(0)
+  payload    Json     @default("{}")
+  account_id Int?
+  account    Account? @relation(fields: [account_id], references: [id], onDelete: SetNull)
+
+  @@map("events")
+}
+
+--- warnings
+Account.id: CockroachDB allows autoincrement() only on BigInt; the Int default was written as sequence().
+Account.grid: Prisma supports only one-dimensional scalar lists; the 2-dimensional array was written as Json.
+Account.attributes: Prisma has no hstore type; the field was written as Json.
+Account.stock_range: CockroachDB has no range types (int4range, tstzrange, ...); the field was written as String.
+Account.shelf_life: Prisma has no interval type; the duration was written as BigInt (microseconds).
+Account index (prefs): the operator class on "prefs" is only supported on PostgreSQL and was dropped.
+Account index (prefs): the index type gin is not supported on cockroachdb and was dropped.
+Account index (labels): the index type gin is not supported on cockroachdb and was dropped.
+Account index (email): the index type hash is not supported on cockroachdb and was dropped.
+Account index (stock_range): the index type gist is not supported on cockroachdb and was dropped.
+Account index (age): the index type brin is not supported on cockroachdb and was dropped.
+Account index (visits): the index type gin is not supported on cockroachdb and was dropped.

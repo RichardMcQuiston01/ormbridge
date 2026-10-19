@@ -1,0 +1,129 @@
+// Written for the TypeORM "cockroachdb" driver: new DataSource({ type: 'cockroachdb', url: process.env.DATABASE_URL, ssl: true, entities: [...] }).
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, type Relation, Unique, UpdateDateColumn } from 'typeorm';
+
+export enum Status {
+  DRAFT = 'draft',
+  LIVE = 'live',
+}
+
+@Entity('tenants')
+export class Tenant {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column({ type: 'varchar', length: 80, unique: true })
+  name!: string;
+
+  @Column({ type: 'enum', enum: Status, default: Status.DRAFT })
+  status!: Status;
+
+  @OneToMany(() => Account, (entity) => entity.tenant)
+  account_set!: Account[];
+}
+
+@Entity('accounts')
+@Index(['created_at'])
+@Unique(['email', 'status'])
+@Index(['prefs'])
+@Index(['labels'])
+@Index(['email'])
+@Index(['stock_range'])
+@Index(['age'])
+@Index(['visits'])
+export class Account {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @Column({ type: 'varchar', length: 255, unique: true })
+  email!: string;
+
+  @Column({ type: 'int4', nullable: true })
+  age!: number | null;
+
+  @Column({ type: 'int8', default: 0 })
+  visits!: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  balance!: string;
+
+  @Column({ type: 'text', nullable: true })
+  bio!: string | null;
+
+  @Column({ type: 'boolean', default: true })
+  active!: boolean;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  created_at!: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
+  updated_at!: Date;
+
+  @Column({ type: 'jsonb', nullable: true })
+  prefs!: unknown | null;
+
+  @Column({ type: 'varchar', array: true })
+  labels!: string[];
+
+  @Column({ type: 'jsonb', nullable: true })
+  grid!: number[][] | null;
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  attributes!: Record<string, string | null>;
+
+  @Column({ type: 'varchar', nullable: true })
+  stock_range!: string | null;
+
+  @Column({ type: 'inet', nullable: true })
+  last_ip!: string | null;
+
+  @Column({ type: 'interval', nullable: true })
+  shelf_life!: string | null;
+
+  @Column({ type: 'bytea', nullable: true })
+  avatar!: Buffer | null;
+
+  @Column({ type: 'enum', enum: Status, default: Status.DRAFT })
+  status!: Status;
+
+  @ManyToOne(() => Tenant, (entity) => entity.account_set, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant!: Relation<Tenant>;
+
+  @OneToMany(() => Event, (entity) => entity.account)
+  event_set!: Event[];
+}
+
+@Entity('events')
+export class Event {
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
+
+  @Column({ type: 'int4', default: 0 })
+  kind!: number;
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  payload!: unknown;
+
+  @ManyToOne(() => Account, (entity) => entity.event_set, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'account_id' })
+  account!: Relation<Account> | null;
+}
+
+--- warnings
+Account index (prefs): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (labels): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (email): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (stock_range): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (age): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (visits): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Provider "cockroachdb": the entities use the column types of TypeORM's "cockroachdb" driver (type: 'cockroachdb' in the DataSource): integers are explicit int4 and int8 because int is 64-bit there, and hstore, range types and multi-dimensional arrays (which CockroachDB lacks) are written as jsonb or varchar.
+Account.grid: CockroachDB has no multi-dimensional arrays; the array was written as jsonb.
+Account.attributes: CockroachDB has no hstore type; the field was written as jsonb.
+Account.stock_range: CockroachDB has no range types (int4range, tstzrange, ...); the field was written as varchar.
+Provider "cockroachdb": Account.id, Event.id are auto-increment keys: @PrimaryGeneratedColumn('increment') creates a sequence-backed INT8 column on the cockroachdb driver; sequential keys send every insert to the same range (a hot spot); CockroachDB recommends UUID keys with gen_random_uuid().

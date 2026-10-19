@@ -1,0 +1,256 @@
+=== app/Enums/Status.php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Enums;
+
+enum Status: string
+{
+    case DRAFT = 'draft';
+    case LIVE = 'live';
+}
+
+=== app/Models/Account.php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+use App\Enums\Status;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Account extends Model
+{
+    /** @var list<string> */
+    protected $fillable = [
+        'email',
+        'age',
+        'visits',
+        'balance',
+        'bio',
+        'active',
+        'prefs',
+        'labels',
+        'grid',
+        'attributes',
+        'stock_range',
+        'last_ip',
+        'shelf_life',
+        'avatar',
+        'status',
+        'tenant_id',
+    ];
+
+    /** @var array<string, string> */
+    protected $casts = [
+        'balance' => 'decimal:2',
+        'active' => 'boolean',
+        'prefs' => 'array',
+        'labels' => 'array',
+        'grid' => 'array',
+        'attributes' => 'array',
+        'status' => Status::class,
+    ];
+
+    /** @return BelongsTo<Tenant, $this> */
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    /** @return HasMany<Event, $this> */
+    public function events(): HasMany
+    {
+        return $this->hasMany(Event::class);
+    }
+}
+
+=== app/Models/Event.php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Event extends Model
+{
+    public $timestamps = false;
+
+    /** @var list<string> */
+    protected $fillable = [
+        'kind',
+        'payload',
+        'account_id',
+    ];
+
+    /** @var array<string, string> */
+    protected $casts = [
+        'payload' => 'array',
+    ];
+
+    /** @return BelongsTo<Account, $this> */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
+}
+
+=== app/Models/Tenant.php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+use App\Enums\Status;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Tenant extends Model
+{
+    use HasUuids;
+
+    public $timestamps = false;
+
+    /** @var list<string> */
+    protected $fillable = [
+        'name',
+        'status',
+    ];
+
+    /** @var array<string, string> */
+    protected $casts = [
+        'status' => Status::class,
+    ];
+
+    /** @return HasMany<Account, $this> */
+    public function accounts(): HasMany
+    {
+        return $this->hasMany(Account::class);
+    }
+}
+
+=== database/migrations/2024_01_01_000001_create_tenants_table.php
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('tenants', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+            $table->string('name', 80)->unique();
+            $table->enum('status', ['draft', 'live'])->default('draft');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tenants');
+    }
+};
+
+=== database/migrations/2024_01_01_000002_create_accounts_table.php
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('accounts', function (Blueprint $table): void {
+            $table->id();
+            $table->string('email')->unique();
+            $table->integer('age')->nullable();
+            $table->bigInteger('visits')->default(0);
+            $table->decimal('balance', 12, 2);
+            $table->text('bio')->nullable();
+            $table->boolean('active')->default(true);
+            $table->jsonb('prefs')->nullable();
+            $table->jsonb('labels');
+            $table->jsonb('grid')->nullable();
+            $table->jsonb('attributes')->default('{}');
+            $table->string('stock_range')->nullable();
+            $table->ipAddress('last_ip')->nullable();
+            $table->string('shelf_life')->nullable();
+            $table->binary('avatar')->nullable();
+            $table->enum('status', ['draft', 'live'])->default('draft');
+            $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
+            $table->timestamps();
+            $table->index('created_at');
+            $table->unique(['email', 'status']);
+            $table->index('prefs');
+            $table->index('labels');
+            $table->index('email');
+            $table->index('stock_range');
+            $table->index('age');
+            $table->index('visits');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('accounts');
+    }
+};
+
+=== database/migrations/2024_01_01_000003_create_events_table.php
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('events', function (Blueprint $table): void {
+            $table->id();
+            $table->integer('kind')->default(0);
+            $table->jsonb('payload')->default('{}');
+            $table->foreignId('account_id')->nullable()->constrained('accounts')->nullOnDelete();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('events');
+    }
+};
+
+--- warnings
+Account index (prefs): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (labels): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (email): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (stock_range): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (age): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (visits): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Provider "cockroachdb": Laravel has no CockroachDB driver, so the migrations and models are written for the pgsql driver (DB_CONNECTION=pgsql, port 26257). Auto-incrementing keys are bigserial there, which CockroachDB fills with unique_rowid() (64-bit); hstore and range types (which CockroachDB lacks) are written as json or string columns.
+Account.labels: Laravel has no array column type that works on every database; the array was written as a json column cast to an array.
+Account.grid: Laravel has no array column type that works on every database; the array was written as a json column cast to an array.
+Account.attributes: Laravel has no hstore type; the field was written as a json column cast to an array.
+Account.stock_range: Laravel has no range column type; the field was written as a string column holding the range text.
+Account.shelf_life: Laravel has no interval column type; the duration was written as a string column.
+Provider "cockroachdb": Account.id, Event.id are auto-increment keys: id() and bigIncrements() create bigserial, which CockroachDB fills with unique_rowid() (64-bit and not consecutive); sequential keys send every insert to the same range (a hot spot); CockroachDB recommends UUID keys with gen_random_uuid().

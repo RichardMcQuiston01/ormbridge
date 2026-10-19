@@ -1,0 +1,223 @@
+=== account.ts
+import {
+  DataTypes,
+  Model,
+  type CreationOptional,
+  type InferAttributes,
+  type InferCreationAttributes,
+  type NonAttribute,
+  type Sequelize,
+} from 'sequelize';
+import type { Tenant } from './tenant.js';
+
+export class Account extends Model<
+  InferAttributes<Account>,
+  InferCreationAttributes<Account>
+> {
+  declare id: CreationOptional<string>;
+  declare email: string;
+  declare age: CreationOptional<number | null>;
+  declare visits: CreationOptional<string>;
+  declare balance: string;
+  declare bio: CreationOptional<string | null>;
+  declare active: CreationOptional<boolean>;
+  declare readonly created_at: CreationOptional<Date>;
+  declare readonly updated_at: CreationOptional<Date>;
+  declare prefs: CreationOptional<unknown | null>;
+  declare labels: string[];
+  declare grid: CreationOptional<number[][] | null>;
+  declare attributes: CreationOptional<Record<string, string | null>>;
+  declare stock_range: CreationOptional<string | null>;
+  declare last_ip: CreationOptional<string | null>;
+  declare shelf_life: CreationOptional<string | null>;
+  declare avatar: CreationOptional<Buffer | null>;
+  declare status: CreationOptional<'draft' | 'live'>;
+  declare tenant_id: string;
+
+  declare tenant?: NonAttribute<Tenant>;
+
+  static initModel(sequelize: Sequelize): typeof Account {
+    Account.init(
+      {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        email: { type: DataTypes.STRING(255), allowNull: false, unique: true },
+        age: DataTypes.INTEGER,
+        visits: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
+        balance: { type: DataTypes.DECIMAL(12, 2), allowNull: false },
+        bio: DataTypes.TEXT,
+        active: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: true,
+        },
+        created_at: { type: DataTypes.DATE, allowNull: false },
+        updated_at: { type: DataTypes.DATE, allowNull: false },
+        prefs: DataTypes.JSONB,
+        labels: { type: DataTypes.ARRAY(DataTypes.STRING), allowNull: false },
+        grid: DataTypes.JSONB,
+        attributes: {
+          type: DataTypes.JSONB,
+          allowNull: false,
+          defaultValue: {},
+        },
+        stock_range: DataTypes.TEXT,
+        last_ip: DataTypes.INET,
+        shelf_life: DataTypes.BIGINT,
+        avatar: DataTypes.BLOB,
+        status: {
+          type: DataTypes.ENUM('draft', 'live'),
+          allowNull: false,
+          defaultValue: 'draft',
+        },
+        tenant_id: { type: DataTypes.UUID, allowNull: false },
+      },
+      {
+        sequelize,
+        modelName: 'Account',
+        tableName: 'accounts',
+        timestamps: true,
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
+        indexes: [
+          { fields: ['created_at'] },
+          { unique: true, fields: ['email', 'status'] },
+          { using: 'GIN', fields: ['prefs'] },
+          { using: 'GIN', fields: ['labels'] },
+          { fields: ['email'] },
+          { fields: ['stock_range'] },
+          { fields: ['age'] },
+          { fields: ['visits'] },
+        ],
+      }
+    );
+    return Account;
+  }
+}
+
+=== event.ts
+import {
+  DataTypes,
+  Model,
+  type CreationOptional,
+  type InferAttributes,
+  type InferCreationAttributes,
+  type NonAttribute,
+  type Sequelize,
+} from 'sequelize';
+import type { Account } from './account.js';
+
+export class Event extends Model<
+  InferAttributes<Event>,
+  InferCreationAttributes<Event>
+> {
+  declare id: CreationOptional<string>;
+  declare kind: CreationOptional<number>;
+  declare payload: CreationOptional<unknown>;
+  declare account_id: CreationOptional<string | null>;
+
+  declare account?: NonAttribute<Account>;
+
+  static initModel(sequelize: Sequelize): typeof Event {
+    Event.init(
+      {
+        id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+        kind: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        payload: { type: DataTypes.JSONB, allowNull: false, defaultValue: {} },
+        account_id: DataTypes.INTEGER,
+      },
+      { sequelize, modelName: 'Event', tableName: 'events', timestamps: false }
+    );
+    return Event;
+  }
+}
+
+=== index.ts
+// CockroachDB: import Sequelize from sequelize-cockroachdb (it patches Sequelize 6) and use the postgres dialect:
+//   import { Sequelize } from 'sequelize-cockroachdb';
+//   const sequelize = new Sequelize(process.env.DATABASE_URL!, { dialect: 'postgres' });
+import type { Sequelize } from 'sequelize';
+import { Tenant } from './tenant.js';
+import { Account } from './account.js';
+import { Event } from './event.js';
+
+export { Tenant, Account, Event };
+
+/** Initializes every model on a Sequelize instance, then sets up the associations. */
+export function initModels(sequelize: Sequelize) {
+  Tenant.initModel(sequelize);
+  Account.initModel(sequelize);
+  Event.initModel(sequelize);
+
+  Account.belongsTo(Tenant, {
+    as: 'tenant',
+    foreignKey: 'tenant_id',
+    onDelete: 'CASCADE',
+  });
+
+  Event.belongsTo(Account, {
+    as: 'account',
+    foreignKey: 'account_id',
+    onDelete: 'SET NULL',
+  });
+
+  return { Tenant, Account, Event };
+}
+
+export type Models = ReturnType<typeof initModels>;
+
+=== tenant.ts
+import {
+  DataTypes,
+  Model,
+  type CreationOptional,
+  type InferAttributes,
+  type InferCreationAttributes,
+  type Sequelize,
+} from 'sequelize';
+
+export class Tenant extends Model<
+  InferAttributes<Tenant>,
+  InferCreationAttributes<Tenant>
+> {
+  declare id: CreationOptional<string>;
+  declare name: string;
+  declare status: CreationOptional<'draft' | 'live'>;
+
+  static initModel(sequelize: Sequelize): typeof Tenant {
+    Tenant.init(
+      {
+        id: {
+          type: DataTypes.UUID,
+          primaryKey: true,
+          defaultValue: DataTypes.UUIDV4,
+        },
+        name: { type: DataTypes.STRING(80), allowNull: false, unique: true },
+        status: {
+          type: DataTypes.ENUM('draft', 'live'),
+          allowNull: false,
+          defaultValue: 'draft',
+        },
+      },
+      {
+        sequelize,
+        modelName: 'Tenant',
+        tableName: 'tenants',
+        timestamps: false,
+      }
+    );
+    return Tenant;
+  }
+}
+
+--- warnings
+Provider "cockroachdb": the models use the "postgres" dialect through the sequelize-cockroachdb package (Sequelize 6): DataTypes.INTEGER creates a 64-bit INT8 column there, and hstore, range types and multi-dimensional arrays (which CockroachDB lacks) are written as JSONB or TEXT.
+Account.grid: CockroachDB has no multi-dimensional arrays; the array was written as JSONB.
+Account.attributes: CockroachDB has no hstore type; the field was written as JSONB.
+Account.stock_range: CockroachDB has no range types (int4range, tstzrange, ...); the field was written as TEXT.
+Account.shelf_life: Sequelize has no interval type; the duration was written as BIGINT (microseconds).
+Account index (prefs): CockroachDB supports only trigram operator classes on inverted indexes; the operator class of "prefs" was dropped.
+Account index (email): CockroachDB has no HASH indexes (only B-tree and inverted GIN); USING HASH was dropped.
+Account index (stock_range): CockroachDB has no GIST indexes (only B-tree and inverted GIN); USING GIST was dropped.
+Account index (age): CockroachDB has no BRIN indexes (only B-tree and inverted GIN); USING BRIN was dropped.
+Account index (visits): CockroachDB builds an inverted (GIN) index only over JSON, array or spatial columns, so USING GIN was dropped.
+Provider "cockroachdb": Account.id, Event.id are auto-increment keys: autoIncrement creates a SERIAL column, which CockroachDB fills with unique_rowid() (64-bit values above 2^53 that a JavaScript number cannot hold exactly; sequelize-cockroachdb returns them as strings, so those keys and the foreign keys that point at them are typed string); sequential keys send every insert to the same range (a hot spot); CockroachDB recommends UUID keys with gen_random_uuid().
