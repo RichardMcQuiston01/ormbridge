@@ -457,6 +457,10 @@ Writes one `.sql` script of dialect-specific DDL, so the schema can be created i
 - Warnings name the model and field for what the dialect cannot express: relations to unknown models, views or composite keys, unknown enums or field types, generated-column expressions (not SQL), database schemas (`@@schema`, ignored), unreferenceable targets, `SET NULL` on a required relation and every default or index option that was dropped.
 - The tests execute the output: SQLite always (Node's built-in `node:sqlite`, or `better-sqlite3`), PostgreSQL when `SQL_POSTGRES_URL` is set and MySQL or MariaDB when `SQL_MYSQL_URL` is set (see `test/README.md`). After running the script they read the tables, columns, keys and indexes back and compare them with the schema, and insert rows to check defaults, identity, enums and referential actions. SQL Server has no server in the tests; its output is covered by the golden files and unit tests only.
 
+### ClickHouse (`--to sql --provider clickhouse`)
+
+Write only. Each model is `CREATE TABLE ... ENGINE = MergeTree() ORDER BY (<primary key>) PRIMARY KEY (<primary key>)`, or `ORDER BY tuple()` with a warning when there is no key. Columns are non-nullable and nullable ones are `Nullable(T)` (not for arrays, maps and key columns). Types: `string` / `text` `String`, `int` `Int32`, `bigInt` `Int64` (unsigned only for a Prisma `@db.Unsigned*` native type), `float` `Float64`, `decimal` `Decimal(P, S)`, `boolean` `Bool`, `dateTime` `DateTime64(3)`, `date` `Date32`, `uuid` `UUID`, `ipAddress` `IPv6`, `hstore` `Map(String, String)`, enums `Enum8` / `Enum16`, arrays `Array(T)`, and `json`, `bytes`, `time` and `range` as `String` with a column comment. Foreign keys, unique constraints and auto-increment do not exist in ClickHouse, so relations stay as plain columns and each dropped construct has a warning that names the model and field. Indexes become data-skipping indexes (`minmax`, `bloom_filter`, `set(100)`, `tokenbf_v1`). See [SQL DDL](./formats/sql.md#clickhouse) for the full type table.
+
 [Back to Top](#field-mapping)
 
 ## SQLAlchemy and SQLModel (`--to sqlalchemy`)

@@ -1,0 +1,23 @@
+Everything.time_col: ClickHouse has no stable time-of-day type; the column was written as a String ("HH:MM:SS").
+Everything.time_opt: ClickHouse has no stable time-of-day type; the column was written as a String ("HH:MM:SS").
+Everything.duration_col: ClickHouse has no interval column type; the duration was written as an Int64 (microseconds).
+Everything.duration_opt: ClickHouse has no interval column type; the duration was written as an Int64 (microseconds).
+Everything.hstore_opt: ClickHouse cannot make a Map column Nullable; the column was written as Map(String, String) (empty stands in for NULL).
+Everything.range_col: ClickHouse has no range type; the column was written as a String.
+Everything.range_opt: ClickHouse has no range type; the column was written as a String.
+Everything.tags_opt: ClickHouse cannot make an Array column Nullable; the column was written as Array(String) (empty stands in for NULL).
+Defaults.total: the database default expression 1 + 2 was written as it is; check that ClickHouse accepts it.
+Generated.opaque: the generated column expression Concat(F("a"), Value("x")) is not SQL; the column was written as a regular column.
+Keyless: the model has no primary key, so ORDER BY tuple() was written (no sorting key); choose a sorting key for query performance.
+Author.email: ClickHouse has no unique constraints; the unique constraint on "email" was dropped (a ReplacingMergeTree with that column in its ORDER BY can deduplicate rows).
+Post.seq: ClickHouse has no auto-increment; the auto-increment was dropped.
+Post.author: ClickHouse has no foreign keys; the relation to Author was written as the plain column "author_id" (no constraint, no ON DELETE action).
+Post.editor: ClickHouse has no foreign keys; the relation to Author was written as the plain column "editor_id" (no constraint, no ON DELETE action).
+Post.profile: ClickHouse has no foreign keys; the relation to Author was written as the plain column "profile_id" (no constraint, no ON DELETE action).
+Post.profile: ClickHouse has no unique constraints; the one-to-one uniqueness of "profile_id" was dropped.
+PostTags.post: ClickHouse has no foreign keys; the relation to Post was written as the plain column "post_id" (no constraint, no ON DELETE action).
+PostTags.tag: ClickHouse has no foreign keys; the relation to Tag was written as the plain column "tag_id" (no constraint, no ON DELETE action).
+Everything index (uuid_col): ClickHouse has no unique indexes; it was written as a data-skipping index (bloom_filter) and uniqueness is not enforced (a ReplacingMergeTree can deduplicate by ORDER BY key).
+Everything index (hstore_col): ClickHouse cannot index a Map column with a data-skipping index; the index was skipped.
+PostTags index (post, tag): ClickHouse has no unique indexes; it was written as a data-skipping index (set(100)) and uniqueness is not enforced (a ReplacingMergeTree can deduplicate by ORDER BY key).
+ClickHouse cannot refresh a column on update from the DDL (Everything.updated_at, Defaults.updated_at, Generated.updated_at, Keyed.updated_at, Nullable key.updated_at, Keyless.updated_at, Author.updated_at, Post.updated_at, Tag.updated_at, Awkward.updated_at, Prefixed.updated_at); the application has to set it.
