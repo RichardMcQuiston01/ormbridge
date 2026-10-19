@@ -118,12 +118,12 @@ The CommonJS layout `sequelize-cli` generates: a factory per file with `sequeliz
 
 ### Options
 
-| Option               | Effect                                                                                                                                                                                    |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--style <name>`     | `init` (default) or `define`, as above.                                                                                                                                                   |
-| `--provider <name>`  | Picks the data types (below). `postgresql` is the default; `cockroachdb` is written as PostgreSQL; `mongodb` warns and is written as PostgreSQL.                                          |
-| `--naming preserve`  | Default. Keeps the table names (`tableName`), column names (`field`) and the attribute names of the source, so the models describe the existing database.                                 |
-| `--naming normalize` | Fresh-schema style: singular snake_case tables, UUID keys instead of auto-increment ids, `created_at` / `updated_at`, camelCase attributes over snake_case columns (`underscored: true`). |
+| Option               | Effect                                                                                                                                                                                                                                                                                                                           |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--style <name>`     | `init` (default) or `define`, as above.                                                                                                                                                                                                                                                                                          |
+| `--provider <name>`  | Picks the data types (below). `postgresql` is the default; `cockroachdb` uses the `postgres` dialect through the `sequelize-cockroachdb` package (the generated `index` file says how to create the instance) with warnings for hstore, ranges, sequential keys and index methods; `mongodb` warns and is written as PostgreSQL. |
+| `--naming preserve`  | Default. Keeps the table names (`tableName`), column names (`field`) and the attribute names of the source, so the models describe the existing database.                                                                                                                                                                        |
+| `--naming normalize` | Fresh-schema style: singular snake_case tables, UUID keys instead of auto-increment ids, `created_at` / `updated_at`, camelCase attributes over snake_case columns (`underscored: true`).                                                                                                                                        |
 
 ### What is written
 
