@@ -51,7 +51,7 @@ One `models.py` file, so `-o` is a file and omitting it prints to stdout. It nee
 - **Many-to-many** is a `Table(...)` with two foreign keys as a composite primary key, used as `secondary=` on both sides (no surrogate `id`).
 - **Naming:** attributes are snake_case in both modes. `--naming preserve` (default) keeps table, column, index and enum type names; `--naming normalize` writes singular snake_case tables, UUID keys and `created_at`/`updated_at`. Attributes that would shadow Python or SQLAlchemy names get a trailing underscore, with a warning.
 
-`--provider` is ignored: the models do not depend on the database. `--style` with any other value fails with `Invalid --style value "bogus". Expected one of: sqlalchemy, sqlmodel.`
+`--provider` is ignored except for `cockroachdb`: the models do not otherwise depend on the database. For `cockroachdb` hstore, range and nested-array columns are written as JSON or text, and a warning names the `sqlalchemy-cockroachdb` dialect (`cockroachdb://`) and the auto-increment keys. `--style` with any other value fails with `Invalid --style value "bogus". Expected one of: sqlalchemy, sqlmodel.`
 
 ## Limitations and warnings
 

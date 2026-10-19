@@ -12,7 +12,12 @@ import type {
 } from '../ir.js';
 import { limitIdentifier, toPascalCase, toSnakeCase } from '../naming.js';
 import { normalizeSchema, type NamingMode } from '../transforms.js';
-import type { EmitOutput } from './prisma.js';
+import {
+  COCKROACH_PREFIX,
+  cockroachSequentialWarning,
+  isCockroach,
+} from './cockroach.js';
+import type { EmitOutput, PrismaProvider } from './prisma.js';
 
 /**
  * SQLAlchemy 2.0 emitter, with a SQLModel variant.
@@ -47,6 +52,12 @@ export interface SqlAlchemyEmitOptions {
   naming: NamingMode;
   /** `sqlalchemy` (default) or `sqlmodel`. */
   style?: SqlAlchemyStyle;
+  /**
+   * Database provider. The models always use SQLAlchemy's PostgreSQL types; only `cockroachdb` changes
+   * the output (no HSTORE, range or multi-dimensional array columns) and adds the warnings that
+   * explain the differences.
+   */
+  provider?: PrismaProvider;
 }
 
 // ---------------------------------------------------------------------------
@@ -355,6 +366,10 @@ interface Link {
 
 interface EmitContext {
   schema: IrSchema;
+  /** True for `--provider cockroachdb`: the sqlalchemy-cockroachdb dialect. */
+  cockroach: boolean;
+  /** CockroachDB: auto-increment keys, reported in one warning. */
+  sequentialKeys: string[];
   style: SqlAlchemyStyle;
   naming: NamingMode;
   warnings: string[];
@@ -456,6 +471,8 @@ export function emitSqlAlchemy(
     options.naming === 'normalize' ? normalizeSchema(schema) : schema;
   const context: EmitContext = {
     schema: prepared,
+    cockroach: options.provider !== undefined && isCockroach(options.provider),
+    sequentialKeys: [],
     style,
     naming: options.naming,
     // Views, composite foreign keys, onUpdate actions and database default expressions are written here.
@@ -479,6 +496,12 @@ export function emitSqlAlchemy(
     typingImports: new Set<string>(),
     associations: [],
   };
+
+  if (context.cockroach) {
+    context.warnings.push(
+      `${COCKROACH_PREFIX} the models use SQLAlchemy's PostgreSQL types; connect with the sqlalchemy-cockroachdb dialect (create_engine("cockroachdb://user@host:26257/db"), or cockroachdb+psycopg2, +psycopg and +asyncpg; SQLAlchemy 2.0). Integer columns are INT8 there because a bare INT is 64-bit, and HSTORE, range types and multi-dimensional arrays (which CockroachDB lacks) are written as JSON or text.`
+    );
+  }
 
   const mapped: IrModel[] = prepared.models.filter(
     (model: IrModel) => model.isView !== true
@@ -507,6 +530,15 @@ export function emitSqlAlchemy(
     if (model.isView === true) {
       blocks.push(renderView(context, model));
     }
+  }
+
+  if (context.sequentialKeys.length > 0) {
+    context.warnings.push(
+      cockroachSequentialWarning(
+        context.sequentialKeys,
+        'autoincrement=True makes the dialect create SERIAL, which CockroachDB fills with unique_rowid() (64-bit and not consecutive; use Identity() for a sequence-backed key)'
+      )
+    );
   }
 
   const header: string =
@@ -1319,6 +1351,17 @@ function scalarType(
         fieldArgs: [],
       };
     case 'hstore':
+      if (context.cockroach) {
+        context.warnings.push(
+          `${label}: CockroachDB has no hstore type; the column was written as JSON (stored as JSONB).`
+        );
+        return {
+          sa: sa(context, 'JSON'),
+          py: 'dict[str, str]',
+          needsSaType: true,
+          fieldArgs: [],
+        };
+      }
       return {
         sa: withSqliteFallback(
           context,
@@ -1330,6 +1373,17 @@ function scalarType(
         fieldArgs: [],
       };
     case 'range': {
+      if (context.cockroach) {
+        context.warnings.push(
+          `${label}: CockroachDB has no range types (int4range, tstzrange, ...); the column was written as text.`
+        );
+        return {
+          sa: sa(context, 'Text'),
+          py: 'str',
+          needsSaType: true,
+          fieldArgs: [],
+        };
+      }
       const entry: [string, string] | undefined =
         RANGE_TYPES[field.rangeOf ?? 'int'];
       if (field.rangeOf === undefined) {
@@ -1385,6 +1439,17 @@ function arrayOrScalarType(
   let py: string = element.py;
   for (let level: number = 0; level < depth; level += 1) {
     py = `list[${py}]`;
+  }
+  if (context.cockroach && depth > 1) {
+    context.warnings.push(
+      `${model.name}.${field.name}: CockroachDB has no multi-dimensional arrays; the column was written as JSON.`
+    );
+    return {
+      sa: sa(context, 'JSON'),
+      py,
+      needsSaType: true,
+      fieldArgs: [],
+    };
   }
   const arguments_: Node[] = [element.sa];
   if (depth > 1) {
@@ -1731,6 +1796,9 @@ function scalarColumn(
   let autoincrement: boolean | undefined;
   if (isAutoKey && field.isPrimaryKey) {
     autoincrement = singlePrimary ? true : undefined;
+    if (context.cockroach && singlePrimary) {
+      context.sequentialKeys.push(label);
+    }
   } else if (
     field.isPrimaryKey &&
     (field.type === 'int' || field.type === 'bigInt') &&

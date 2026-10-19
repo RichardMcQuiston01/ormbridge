@@ -42,12 +42,12 @@ Output is multi-file, with fixed names so a rerun overwrites the same files:
 
 Type mappings that matter: an auto-increment key is `id()` (an `int` key becomes a big integer), `created_at` + `updated_at` become `timestamps()`, a nullable `deleted_at` becomes `softDeletes()` with `use SoftDeletes`, JSON is `jsonb` on PostgreSQL and `json` elsewhere, `now` defaults are `useCurrent()`, foreign keys use `foreignId(...)->constrained(...)->cascadeOnDelete()` and friends. Many-to-many becomes a pivot table with a composite primary key and `belongsToMany` on both models.
 
-| Option                         | Effect                                                                                                                                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--naming preserve`            | Default. Keeps table and column names (written as `$table` and in the migrations). The example's `blog_post` stays `blog_post`.                        |
-| `--naming normalize`           | Laravel conventions: plural snake_case tables (`posts`, `post_tags`), snake_case columns, `created_at` / `updated_at` added where missing.             |
-| `--provider <name>`            | Only chooses `jsonb` versus `json` and the MySQL form of JSON defaults. `mongodb` warns that the relational output was written anyway.                 |
-| `--namespace Acme\Blog\Models` | PHP namespace of the models (default `App\Models`); enums go in the sibling `Enums` namespace and files in `app/Blog/Models`. Config key: `namespace`. |
+| Option                         | Effect                                                                                                                                                                                                                                                  |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--naming preserve`            | Default. Keeps table and column names (written as `$table` and in the migrations). The example's `blog_post` stays `blog_post`.                                                                                                                         |
+| `--naming normalize`           | Laravel conventions: plural snake_case tables (`posts`, `post_tags`), snake_case columns, `created_at` / `updated_at` added where missing.                                                                                                              |
+| `--provider <name>`            | Only chooses `jsonb` versus `json` and the MySQL form of JSON defaults. `mongodb` warns that the relational output was written anyway. `cockroachdb` writes the same `jsonb` migrations and warns that Laravel has no CockroachDB driver (use `pgsql`). |
+| `--namespace Acme\Blog\Models` | PHP namespace of the models (default `App\Models`); enums go in the sibling `Enums` namespace and files in `app/Blog/Models`. Config key: `namespace`.                                                                                                  |
 
 Other config-file keys (`input`, `output`, `from`, `to`, `naming`, `provider`, `header`, `namespace`) are the same settings; `--dry-run` and `--check` cover every file.
 

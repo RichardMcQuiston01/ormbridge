@@ -121,7 +121,11 @@ describe('drizzle emitter: files and imports', () => {
           '',
         ].join('\n')
       );
-      expect(output.warnings).toEqual([]);
+      // CockroachDB writes the pg-core tables with a note and a warning about its sequential keys.
+      expect(output.warnings.length > 0).toBe(provider === 'cockroachdb');
+      for (const warning of output.warnings) {
+        expect(warning).toContain('Provider "cockroachdb":');
+      }
     }
   );
 

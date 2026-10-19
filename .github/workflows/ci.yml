@@ -24,7 +24,7 @@ jobs:
       - run: npm test
 
   # The optional verification tests that load generated code with the real tools (Django,
-  # graphene-django, SQLAlchemy and SQLModel, TypeORM, Sequelize, EF Core (reader and writer), Hibernate (reader and writer), Zod, SQL databases, Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
+  # graphene-django, SQLAlchemy and SQLModel, TypeORM, Sequelize, EF Core (reader and writer), Hibernate (reader and writer), Zod, SQL databases (SQLite, PostgreSQL, MySQL, CockroachDB), Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
   # because the tools are not installed there. A separate job keeps `check` fast, and a package
   # registry outage or a tool release then breaks only this job, not lint, build and tests.
   real-tools:
@@ -110,6 +110,25 @@ jobs:
           command -v mysql > /dev/null || sudo apt-get install -y --no-install-recommends mysql-client
           echo "SQL_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres" >> "$GITHUB_ENV"
           echo "SQL_MYSQL_URL=mysql://root:root@127.0.0.1:3306" >> "$GITHUB_ENV"
+      # A service container cannot be given a command, and CockroachDB needs `start-single-node --insecure`,
+      # so it is started here and the step waits until it answers.
+      - name: Start CockroachDB for the CockroachDB tests
+        run: |
+          docker run -d --name cockroach -p 26257:26257 cockroachdb/cockroach:latest start-single-node --insecure
+          for attempt in $(seq 1 60); do
+            if docker exec cockroach ./cockroach sql --insecure -e 'SELECT 1' > /dev/null 2>&1; then
+              echo "CockroachDB is ready after $attempt attempt(s)"
+              break
+            fi
+            if [ "$attempt" = 60 ]; then
+              docker logs cockroach
+              echo "CockroachDB did not start" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          command -v psql > /dev/null || sudo apt-get install -y --no-install-recommends postgresql-client
+          echo "COCKROACH_URL=postgresql://root@127.0.0.1:26257/defaultdb?sslmode=disable" >> "$GITHUB_ENV"
       - name: Point the ClickHouse DDL test at the ClickHouse service
         run: echo "CLICKHOUSE_URL=http://127.0.0.1:8123" >> "$GITHUB_ENV"
       - name: Install Doctrine ORM and Illuminate

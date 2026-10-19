@@ -1,0 +1,140 @@
+=== drizzle.config.ts
+import { defineConfig } from 'drizzle-kit';
+
+export default defineConfig({
+  dialect: 'postgresql',
+  schema: './schema.ts',
+  out: './drizzle',
+});
+
+=== schema.ts
+import { relations } from 'drizzle-orm';
+import {
+  bigint,
+  boolean,
+  customType,
+  index,
+  inet,
+  integer,
+  interval,
+  jsonb,
+  numeric,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
+
+// Status: draft = Draft, live
+export const statusValues = ['draft', 'live'] as const;
+export type Status = (typeof statusValues)[number];
+export const statusEnum = pgEnum('Status', statusValues);
+
+export const tenant = pgTable('tenants', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 80 }).notNull().unique(),
+  status: statusEnum('status').notNull().default('draft'),
+});
+
+export type Tenant = typeof tenant.$inferSelect;
+export type NewTenant = typeof tenant.$inferInsert;
+
+export const account = pgTable(
+  'accounts',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    email: varchar('email', { length: 255 }).notNull().unique(),
+    age: integer('age'),
+    visits: bigint('visits', { mode: 'number' }).notNull().default(0),
+    balance: numeric('balance', { precision: 12, scale: 2 }).notNull(),
+    bio: text('bio'),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .$onUpdate(() => new Date()),
+    prefs: jsonb('prefs'),
+    labels: text('labels').array().notNull(),
+    grid: jsonb('grid').$type<number[][]>(),
+    attributes: jsonb('attributes').$type<Record<string, string | null>>()
+      .notNull()
+      .default({}),
+    stockRange: text('stock_range'),
+    lastIp: inet('last_ip'),
+    shelfLife: interval('shelf_life'),
+    avatar: bytea('avatar'),
+    status: statusEnum('status').notNull().default('draft'),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenant.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    index('accounts_created_at_idx').on(table.createdAt),
+    uniqueIndex('accounts_email_status_key').on(table.email, table.status),
+    index('accounts_prefs_idx').on(table.prefs),
+    index('accounts_labels_idx').on(table.labels),
+    index('accounts_email_idx').on(table.email),
+    index('accounts_stock_range_idx').on(table.stockRange),
+    index('accounts_age_idx').on(table.age),
+    index('accounts_visits_idx').on(table.visits),
+  ]
+);
+
+export type Account = typeof account.$inferSelect;
+export type NewAccount = typeof account.$inferInsert;
+
+export const event = pgTable('events', {
+  id: bigint('id', { mode: 'number' })
+    .primaryKey()
+    .generatedByDefaultAsIdentity(),
+  kind: integer('kind').notNull().default(0),
+  payload: jsonb('payload').notNull().default({}),
+  accountId: integer('account_id')
+    .references(() => account.id, { onDelete: 'set null' }),
+});
+
+export type Event = typeof event.$inferSelect;
+export type NewEvent = typeof event.$inferInsert;
+
+export const tenantRelations = relations(tenant, ({ many }) => ({
+  accounts: many(account),
+}));
+
+export const accountRelations = relations(account, ({ one, many }) => ({
+  tenant: one(tenant, {
+    fields: [account.tenantId],
+    references: [tenant.id],
+  }),
+  events: many(event),
+}));
+
+export const eventRelations = relations(event, ({ one }) => ({
+  account: one(account, {
+    fields: [event.accountId],
+    references: [account.id],
+  }),
+}));
+
+--- warnings
+Account index (prefs): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (labels): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (email): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (stock_range): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (age): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Account index (visits): the index type, clustering, sort order, prefix length and operator class options were dropped.
+Provider "cockroachdb": the tables use drizzle-orm/pg-core with the "postgresql" drizzle-kit dialect, which works against CockroachDB (Drizzle 1.0 beta also has a drizzle-orm/cockroach-core module). integer() creates a 64-bit INT8 column there because a bare INT is INT8; auto-increment keys are written as identity columns instead of serial (SERIAL is unique_rowid(): 64-bit values a JavaScript number cannot hold exactly); hstore, range types and multi-dimensional arrays (which CockroachDB lacks) are written as jsonb or text.
+Account.grid: CockroachDB has no multi-dimensional arrays; the array was written as jsonb.
+Account.attributes: CockroachDB has no hstore type; the field was written as jsonb.
+Account.stock_range: CockroachDB has no range types (int4range, tstzrange, ...); the field was written as text.
+Provider "cockroachdb": Account.id, Event.id are auto-increment keys: written as identity columns (generatedByDefaultAsIdentity), which CockroachDB backs with a sequence; sequential keys send every insert to the same range (a hot spot); CockroachDB recommends UUID keys with gen_random_uuid().

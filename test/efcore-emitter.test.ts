@@ -600,9 +600,15 @@ describe('efcore emitter: column types', () => {
           json: '[Column("doc", TypeName = "jsonb")]',
           warnings: postgres,
         },
+        // The notice, then CockroachDB has no hstore, range or multi-dimensional array type.
         cockroachdb: {
           json: '[Column("doc", TypeName = "jsonb")]',
-          warnings: postgres,
+          warnings: [
+            'Provider "cockroachdb":',
+            'Thing.extra:',
+            'Thing.span:',
+            'Thing.grid:',
+          ],
         },
         mysql: {
           json: '[Column("doc", TypeName = "json")]',

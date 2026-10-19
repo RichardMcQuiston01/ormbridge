@@ -492,7 +492,12 @@ describe('sequelize emitter: column types', () => {
     expect(code(schema, { provider: 'cockroachdb' })).toContain(
       'DataTypes.JSONB'
     );
-    expect(emit(schema, { provider: 'cockroachdb' }).warnings).toEqual([]);
+    // The only warning is the notice about the sequelize-cockroachdb package and the sequential key.
+    expect(
+      emit(schema, { provider: 'cockroachdb' }).warnings.map(
+        (warning: string) => warning.slice(0, warning.indexOf(':') + 1)
+      )
+    ).toEqual(['Provider "cockroachdb":', 'Provider "cockroachdb":']);
     const mongo: MultiFileEmitOutput = emit(schema, { provider: 'mongodb' });
     expect(mongo.warnings).toEqual([
       'Provider "mongodb": Sequelize is relational (it has no MongoDB dialect; use Mongoose); PostgreSQL column types were written.',

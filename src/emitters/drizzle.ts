@@ -23,6 +23,11 @@ import {
   type NamingMode,
 } from '../transforms.js';
 import type { MultiFileEmitOutput } from '../formats.js';
+import {
+  COCKROACH_PREFIX,
+  cockroachSequentialWarning,
+  isCockroach,
+} from './cockroach.js';
 import type { PrismaProvider } from './prisma.js';
 
 export interface DrizzleEmitOptions {
@@ -125,6 +130,10 @@ interface EmitContext {
   schema: IrSchema;
   options: DrizzleEmitOptions;
   dialect: Dialect;
+  /** True for `--provider cockroachdb`: `pg-core` tables with identity keys and no hstore or range columns. */
+  cockroach: boolean;
+  /** CockroachDB: auto-increment keys, reported in one warning. */
+  sequentialKeys: string[];
   warnings: string[];
   /** Names imported from the dialect module. */
   imports: Set<string>;
@@ -292,6 +301,8 @@ export function emitDrizzle(
     schema: prepared,
     options,
     dialect,
+    cockroach: isCockroach(options.provider),
+    sequentialKeys: [],
     // Drizzle writes referential actions on update, so that Prisma-only note does not apply.
     warnings: prismaOnlyWarnings(prepared).filter(
       (warning: string) => !warning.includes('the onUpdate action')
@@ -339,6 +350,14 @@ export function emitDrizzle(
       ? 'export {};\n'
       : `${[importLines.join('\n'), ...body].join('\n\n')}\n`;
 
+  if (context.sequentialKeys.length > 0) {
+    context.warnings.push(
+      cockroachSequentialWarning(
+        context.sequentialKeys,
+        'written as identity columns (generatedByDefaultAsIdentity), which CockroachDB backs with a sequence'
+      )
+    );
+  }
   return {
     files: {
       [DRIZZLE_SCHEMA_FILE]: text,
@@ -369,6 +388,10 @@ function warnAboutProvider(context: EmitContext): void {
   } else if (provider === 'mongodb') {
     context.warnings.push(
       'Provider "mongodb": Drizzle ORM is relational (it has no MongoDB dialect); PostgreSQL tables (pg-core) were written.'
+    );
+  } else if (provider === 'cockroachdb') {
+    context.warnings.push(
+      `${COCKROACH_PREFIX} the tables use drizzle-orm/pg-core with the "postgresql" drizzle-kit dialect, which works against CockroachDB (Drizzle 1.0 beta also has a drizzle-orm/cockroach-core module). integer() creates a 64-bit INT8 column there because a bare INT is INT8; auto-increment keys are written as identity columns instead of serial (SERIAL is unique_rowid(): 64-bit values a JavaScript number cannot hold exactly); hstore, range types and multi-dimensional arrays (which CockroachDB lacks) are written as jsonb or text.`
     );
   }
 }
@@ -856,6 +879,16 @@ function columnBuilder(
   if (depth === 0) {
     return { builder: base };
   }
+  if (context.cockroach && depth > 1) {
+    context.warnings.push(
+      `${label}: CockroachDB has no multi-dimensional arrays; the array was written as jsonb.`
+    );
+    const element: string = tsTypeOf(context, field);
+    const typeText: string = `${/[\s|]/.test(element) ? `(${element})` : element}${'[]'.repeat(depth)}`;
+    return {
+      builder: `${builderCall(context, 'jsonb', columnName)}.$type<${typeText}>()`,
+    };
+  }
   if (context.dialect === 'pg') {
     return { builder: `${base}${'.array()'.repeat(depth)}` };
   }
@@ -1013,6 +1046,12 @@ function scalarBuilder(
         ? builderCall(context, 'varchar', columnName, ['length: 45'])
         : builderCall(context, 'text', columnName);
     case 'hstore':
+      if (context.cockroach) {
+        context.warnings.push(
+          `${label}: CockroachDB has no hstore type; the field was written as jsonb.`
+        );
+        return `${builderCall(context, 'jsonb', columnName)}.$type<Record<string, string | null>>()`;
+      }
       if (dialect === 'pg') {
         return call(helperType(context, 'hstore'), [quote(columnName)]);
       }
@@ -1025,6 +1064,12 @@ function scalarBuilder(
           : builderCall(context, 'text', columnName, [`mode: 'json'`])
       }.$type<Record<string, string | null>>()`;
     case 'range':
+      if (context.cockroach) {
+        context.warnings.push(
+          `${label}: CockroachDB has no range types (int4range, tstzrange, ...); the field was written as text.`
+        );
+        return builderCall(context, 'text', columnName);
+      }
       if (dialect === 'pg') {
         const rangeType: string =
           POSTGRES_RANGE_TYPES[field.rangeOf ?? 'int'] ?? 'int4range';
@@ -1224,10 +1269,10 @@ function literalDefault(
         'a literal default on a binary column cannot be represented'
       );
     case 'hstore':
-      if (context.dialect === 'pg' && value === '{}') {
+      if (context.dialect === 'pg' && !context.cockroach && value === '{}') {
         return `.default(${sqlTemplate(context, "''")})`;
       }
-      if (context.dialect !== 'pg') {
+      if (context.dialect !== 'pg' || context.cockroach) {
         const parsed: ParsedJson = parseJson(String(value));
         return parsed.ok
           ? `.default(${literalOf(parsed.value)})`
@@ -1393,7 +1438,7 @@ function fieldChain(
     field.default?.kind === 'autoIncrement' &&
     isIntegerKey(field);
   if (isAutoKey) {
-    return autoIncrementChain(context, field);
+    return autoIncrementChain(context, label, field);
   }
 
   const chain: string[] = [
@@ -1441,10 +1486,24 @@ function onUpdateSegment(
   return undefined;
 }
 
-function autoIncrementChain(context: EmitContext, field: IrField): string[] {
+function autoIncrementChain(
+  context: EmitContext,
+  label: string,
+  field: IrField
+): string[] {
   const name: string = field.columnName;
   switch (context.dialect) {
     case 'pg':
+      if (context.cockroach) {
+        context.sequentialKeys.push(label);
+        return [
+          field.type === 'bigInt'
+            ? builderCall(context, 'bigint', name, [`mode: 'number'`])
+            : builderCall(context, 'integer', name),
+          '.primaryKey()',
+          '.generatedByDefaultAsIdentity()',
+        ];
+      }
       return [
         field.type === 'bigInt'
           ? builderCall(context, 'bigserial', name, [`mode: 'number'`])

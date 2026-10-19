@@ -6,6 +6,7 @@ import type {
   IrScalarType,
 } from '../ir.js';
 import { csString, verbatim } from './efcoreNames.js';
+import { isCockroach } from './cockroach.js';
 import type { PrismaProvider } from './prisma.js';
 
 /**
@@ -237,6 +238,17 @@ function scalarClr(
         maxLength: 45,
       };
     case 'hstore':
+      if (isCockroach(context.provider)) {
+        context.warn(
+          `${label}: CockroachDB has no hstore type; the column was written as a string stored as jsonb.`
+        );
+        return {
+          name: 'string',
+          valueType: false,
+          initializer: 'string.Empty',
+          columnType: 'jsonb',
+        };
+      }
       if (postgres) {
         return {
           name: 'Dictionary<string, string>',
@@ -251,6 +263,16 @@ function scalarClr(
     case 'range': {
       const element: string | undefined =
         field.rangeOf === undefined ? undefined : RANGE_ELEMENTS[field.rangeOf];
+      if (isCockroach(context.provider)) {
+        context.warn(
+          `${label}: CockroachDB has no range types (int4range, tstzrange, ...); the column was written as a string.`
+        );
+        return {
+          name: 'string',
+          valueType: false,
+          initializer: 'string.Empty',
+        };
+      }
       if (postgres && element !== undefined) {
         context.warn(
           `${label}: the range column uses NpgsqlRange<${element}>, which needs the Npgsql.EntityFrameworkCore.PostgreSQL package.`
@@ -582,7 +604,10 @@ export function buildColumn(
   let columnType: string | undefined = clr.columnType;
   let maxLength: number | undefined = clr.maxLength;
   if (depth > 0) {
-    if (isPostgres(context.provider) || depth === 1) {
+    if (
+      (isPostgres(context.provider) && !isCockroach(context.provider)) ||
+      depth === 1
+    ) {
       clrType = `${clr.name}[${','.repeat(depth - 1)}]`;
       if (depth > 1) {
         context.warn(
@@ -592,7 +617,9 @@ export function buildColumn(
       initializer = depth === 1 ? `Array.Empty<${clr.name}>()` : 'null!';
     } else {
       context.warn(
-        `${label}: a nested array has no EF Core mapping outside PostgreSQL; the column was written as a string.`
+        isCockroach(context.provider)
+          ? `${label}: CockroachDB has no multi-dimensional arrays; the column was written as a string.`
+          : `${label}: a nested array has no EF Core mapping outside PostgreSQL; the column was written as a string.`
       );
       clrType = 'string';
       initializer = 'string.Empty';

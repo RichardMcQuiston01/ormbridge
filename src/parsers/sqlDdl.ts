@@ -80,6 +80,8 @@ interface RawColumn {
   autoIncrement: boolean;
   onUpdateNow: boolean;
   generated?: { expression: string; isStored: boolean };
+  /** CockroachDB: NOT VISIBLE (hidden from `SELECT *`). */
+  hidden?: boolean;
   line: number;
 }
 
@@ -462,6 +464,7 @@ function handleCreate(ctx: Context, file: FileContext, cursor: Cursor): void {
   }
   if (
     kind.up === 'INDEX' ||
+    kind.up === 'INVERTED' ||
     kind.up === 'UNIQUE' ||
     kind.up === 'FULLTEXT' ||
     kind.up === 'SPATIAL' ||
@@ -706,10 +709,37 @@ function isConstraintStart(cursor: Cursor, dialect: SqlDialect): boolean {
     case 'INDEX':
     case 'FULLTEXT':
     case 'SPATIAL':
-      return dialect === 'mysql';
+      // CockroachDB (PostgreSQL syntax) lists its indexes in the table: INDEX name (cols) STORING (...).
+      return (
+        dialect === 'mysql' ||
+        (dialect === 'postgresql' &&
+          head.up === 'INDEX' &&
+          cockroachIndexItem(cursor, 1))
+      );
+    case 'INVERTED':
+    case 'VECTOR':
+      return dialect === 'postgresql' && cursor.isKeyword('INDEX', 1);
+    case 'FAMILY':
+      // A CockroachDB column family: FAMILY "primary" (a, b).
+      return (
+        dialect === 'postgresql' &&
+        (next.kind === 'ident' ||
+          (next.kind === 'word' && /^fam_\d/i.test(next.value))) &&
+        cursor.isPunct('(', 2)
+      );
     default:
       return false;
   }
+}
+
+/** True for `name (a ASC, b)` after INDEX in a table body: a name, then columns rather than a type size. */
+function cockroachIndexItem(cursor: Cursor, offset: number): boolean {
+  const name: Token = cursor.peek(offset);
+  return (
+    (name.kind === 'word' || name.kind === 'ident') &&
+    cursor.isPunct('(', offset + 1) &&
+    cursor.peek(offset + 2).kind !== 'number'
+  );
 }
 
 /** Reads the column names of `( a, b DESC, c(10) )`. */
@@ -1018,6 +1048,8 @@ function parseTableConstraint(
       }
       return { kind: 'ignored' };
     }
+    case 'INVERTED':
+    case 'VECTOR':
     case 'KEY':
     case 'INDEX':
     case 'FULLTEXT':
@@ -1050,6 +1082,8 @@ function parseTableConstraint(
           elements: readIndexElements(group),
           isUnique: false,
           ...(kind === undefined ? {} : { kind }),
+          // An inverted index is CockroachDB's GIN.
+          ...(head.up === 'INVERTED' ? { method: 'gin' } : {}),
           isPartial: false,
           line,
         },
@@ -1239,6 +1273,8 @@ function parseColumn(
         cursor.next();
         if (cursor.acceptKeyword('NULL')) {
           column.notNull = true;
+        } else if (cursor.acceptKeyword('VISIBLE')) {
+          column.hidden = true;
         }
         continue;
       case 'NULL':
@@ -1407,6 +1443,14 @@ function parseColumn(
       );
     }
   }
+  if (column.hidden === true && /^crdb_internal_/i.test(column.name)) {
+    // The hidden computed column CockroachDB adds for a hash-sharded index.
+    warn(
+      ctx,
+      `table "${label}": the hidden shard column "${column.name}" of a hash-sharded index was skipped; the index is read as an ordinary index.`
+    );
+    return column;
+  }
   table.columns.push(column);
   if (!table.columnIndex.has(column.name.toLowerCase())) {
     table.columnIndex.set(column.name.toLowerCase(), column);
@@ -1439,11 +1483,15 @@ function createIndex(
   line: number
 ): void {
   let isUnique: boolean = false;
+  let inverted: boolean = false;
   let kind: 'fulltext' | 'spatial' | undefined;
   let clustered: boolean | undefined;
   for (;;) {
     if (cursor.acceptKeyword('UNIQUE')) {
       isUnique = true;
+    } else if (cursor.acceptKeyword('INVERTED')) {
+      // CockroachDB's inverted index is GIN.
+      inverted = true;
     } else if (cursor.acceptKeyword('FULLTEXT')) {
       kind = 'fulltext';
     } else if (cursor.acceptKeyword('SPATIAL')) {
@@ -1472,7 +1520,7 @@ function createIndex(
     const parsed: QualifiedName | undefined = parseQualifiedName(cursor);
     name = parsed?.name;
   }
-  let method: string | undefined;
+  let method: string | undefined = inverted ? 'gin' : undefined;
   // MySQL: CREATE INDEX name USING BTREE ON table (...)
   if (cursor.isKeyword('USING') && cursor.isKeyword('ON', 2)) {
     cursor.next();

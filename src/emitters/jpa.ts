@@ -33,6 +33,11 @@ import {
   type JpaStyle,
   type ModelPlan,
 } from './jpaTypes.js';
+import {
+  COCKROACH_PREFIX,
+  cockroachSequentialWarning,
+  isCockroach,
+} from './cockroach.js';
 import type { PrismaProvider } from './prisma.js';
 
 /**
@@ -94,6 +99,11 @@ export function emitJpa(
     return { files: {}, warnings };
   }
   const style: JpaStyle = options.style ?? 'jakarta';
+  if (isCockroach(options.provider)) {
+    warnings.push(
+      `${COCKROACH_PREFIX} the entities use the PostgreSQL column types; set hibernate.dialect to ${style === 'jakarta' ? 'org.hibernate.dialect.CockroachDialect (Hibernate 6)' : 'org.hibernate.dialect.CockroachDB201Dialect (Hibernate 5)'} and keep the PostgreSQL JDBC driver. hstore and range types (which CockroachDB lacks) are written as JSON or large text.`
+    );
+  }
   const layout: FileLayout = {
     packageName: options.packageName ?? DEFAULT_JPA_PACKAGE,
     header: options.header !== false,
@@ -150,6 +160,7 @@ function planAndRender(
   const warn = (message: string): void => {
     warnings.push(message);
   };
+  const sequentialKeys: string[] = [];
   const typeNames: Set<string> = new Set<string>(RESERVED_TYPE_NAMES);
   const enums: Map<string, EnumPlan> = planEnums(schema, typeNames, warn);
   const plans: Map<string, ModelPlan> = new Map<string, ModelPlan>();
@@ -187,6 +198,7 @@ function planAndRender(
     provider: options.provider,
     enums,
     warn,
+    ...(isCockroach(options.provider) ? { sequentialKeys } : {}),
   };
   const built: Map<IrField, BuiltColumn> = new Map<IrField, BuiltColumn>();
   for (const model of schema.models) {
@@ -218,6 +230,15 @@ function planAndRender(
       plan.attributes.push(column.attribute);
       plan.dynamicInsert ||= column.dynamicInsert;
     }
+  }
+
+  if (sequentialKeys.length > 0) {
+    warn(
+      cockroachSequentialWarning(
+        sequentialKeys,
+        'GenerationType.IDENTITY relies on a SERIAL-style column, which is unique_rowid() on CockroachDB (64-bit and not consecutive), so the key is a Long'
+      )
+    );
   }
 
   // Relations ----------------------------------------------------------------------------------

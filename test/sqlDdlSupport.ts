@@ -271,7 +271,7 @@ export function openSqlite(): SqlEngine {
 // Command line clients
 // ---------------------------------------------------------------------------
 
-function runClient(
+export function runClient(
   command: string,
   args: string[],
   environment: NodeJS.ProcessEnv,
@@ -294,7 +294,7 @@ function runClient(
   return result.stdout;
 }
 
-function probeCommand(command: string, args: string[]): boolean {
+export function probeCommand(command: string, args: string[]): boolean {
   const result: SpawnSyncReturns<string> = spawnSync(command, args, {
     encoding: 'utf8',
     timeout: 30_000,
@@ -302,7 +302,7 @@ function probeCommand(command: string, args: string[]): boolean {
   return result.error === undefined && result.status === 0;
 }
 
-function randomName(prefix: string): string {
+export function randomName(prefix: string): string {
   return `${prefix}_${process.pid}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -336,7 +336,7 @@ export function probePostgres(): ToolProbe {
   return { available: true, reason: '' };
 }
 
-const POSTGRES_SNAPSHOT: string = `
+export const POSTGRES_SNAPSHOT: string = `
 SELECT json_build_object(
   'columns', (SELECT coalesce(json_agg(json_build_object(
       'table', c.table_name, 'column', c.column_name, 'nullable', c.is_nullable = 'YES',
@@ -397,6 +397,65 @@ interface JsonIndex {
   unique: boolean;
   primary: boolean;
   columns: string[] | null;
+}
+
+/**
+ * Reads what POSTGRES_SNAPSHOT printed (one JSON document) into a snapshot. PostgreSQL and CockroachDB
+ * answer the same query.
+ */
+export function postgresSnapshotFromJson(output: string): DbSnapshot {
+  const parsed: {
+    columns: JsonColumn[];
+    constraints: JsonConstraint[];
+    indexes: JsonIndex[];
+    enums: { name: string; values: string[] }[];
+  } = JSON.parse(output.trim()) as never;
+  const snapshot: DbSnapshot = { tables: {}, enums: {} };
+  for (const column of parsed.columns) {
+    tableOf(snapshot, column.table).columns[column.column] = {
+      nullable: column.nullable,
+      type: column.type.toLowerCase(),
+      ...(column.length === null ? {} : { length: column.length }),
+      ...(column.precision === null || column.type !== 'numeric'
+        ? {}
+        : { precision: column.precision }),
+      ...(column.scale === null || column.type !== 'numeric'
+        ? {}
+        : { scale: column.scale }),
+    };
+  }
+  for (const constraint of parsed.constraints) {
+    const table: DbTable = tableOf(snapshot, constraint.table);
+    const columns: string[] = constraint.columns ?? [];
+    if (constraint.type === 'p') {
+      table.primaryKey = columns;
+    } else if (constraint.type === 'f') {
+      table.foreignKeys.push({
+        columns,
+        refTable: constraint.refTable ?? '',
+        refColumns: constraint.refColumns ?? [],
+        onDelete: action(constraint.onDelete),
+      });
+    }
+  }
+  for (const index of parsed.indexes) {
+    if (index.primary) {
+      continue;
+    }
+    const table: DbTable = tableOf(snapshot, index.table);
+    if (index.unique) {
+      table.uniques.push(index.columns ?? []);
+    } else {
+      table.indexes.push(index.columns ?? []);
+    }
+  }
+  for (const table of Object.values(snapshot.tables)) {
+    table.uniques = sortedUnique(table.uniques);
+  }
+  for (const definition of parsed.enums) {
+    snapshot.enums[definition.name] = definition.values;
+  }
+  return snapshot;
 }
 
 export function openPostgres(): SqlEngine {
@@ -462,58 +521,7 @@ export function openPostgres(): SqlEngine {
         ],
         environment
       );
-      const parsed: {
-        columns: JsonColumn[];
-        constraints: JsonConstraint[];
-        indexes: JsonIndex[];
-        enums: { name: string; values: string[] }[];
-      } = JSON.parse(output.trim()) as never;
-      const snapshot: DbSnapshot = { tables: {}, enums: {} };
-      for (const column of parsed.columns) {
-        tableOf(snapshot, column.table).columns[column.column] = {
-          nullable: column.nullable,
-          type: column.type.toLowerCase(),
-          ...(column.length === null ? {} : { length: column.length }),
-          ...(column.precision === null || column.type !== 'numeric'
-            ? {}
-            : { precision: column.precision }),
-          ...(column.scale === null || column.type !== 'numeric'
-            ? {}
-            : { scale: column.scale }),
-        };
-      }
-      for (const constraint of parsed.constraints) {
-        const table: DbTable = tableOf(snapshot, constraint.table);
-        const columns: string[] = constraint.columns ?? [];
-        if (constraint.type === 'p') {
-          table.primaryKey = columns;
-        } else if (constraint.type === 'f') {
-          table.foreignKeys.push({
-            columns,
-            refTable: constraint.refTable ?? '',
-            refColumns: constraint.refColumns ?? [],
-            onDelete: action(constraint.onDelete),
-          });
-        }
-      }
-      for (const index of parsed.indexes) {
-        if (index.primary) {
-          continue;
-        }
-        const table: DbTable = tableOf(snapshot, index.table);
-        if (index.unique) {
-          table.uniques.push(index.columns ?? []);
-        } else {
-          table.indexes.push(index.columns ?? []);
-        }
-      }
-      for (const table of Object.values(snapshot.tables)) {
-        table.uniques = sortedUnique(table.uniques);
-      }
-      for (const definition of parsed.enums) {
-        snapshot.enums[definition.name] = definition.values;
-      }
-      return snapshot;
+      return postgresSnapshotFromJson(output);
     },
     dispose: (): void => {
       runClient(
