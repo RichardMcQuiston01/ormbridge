@@ -1,0 +1,4 @@
+Book.authors: the join table "Book_Author" (columns Book_id, authors_id) is not preserved by name; formats that derive join tables will use "Book_authors" (columns book_id, author_id).
+Member.friends: the join table "member_friends" (columns member_id, friend_id) is not preserved by name; formats that derive join tables will use "Member_friends" (columns from_member_id, to_member_id).
+Team.players: a unidirectional @OneToMany without @JoinColumn uses a join table; it was read as a many-to-many relation (that each Player belongs to one Team is not represented).
+Team.players: the join table "Team_Player" (columns Team_id, players_id) is not preserved by name; formats that derive join tables will use "Team_players" (columns team_id, player_id).

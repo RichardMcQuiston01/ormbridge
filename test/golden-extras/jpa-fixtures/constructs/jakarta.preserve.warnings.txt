@@ -1,0 +1,7 @@
+index: "Index" is a name the generated code uses or another type has, so the class was named "IndexEntity".
+Book.tags: an array default cannot be written; the default was dropped.
+Book.grid: Hibernate maps one-dimensional arrays only; the 2-dimensional array was written as a one-dimensional one.
+Book.colors: an array of the enum Color is stored as an array of its stored values, not as an enum.
+Book.window: Hibernate has no range mapping; the column was written as a String with the column definition int4range.
+Book.extra: Hibernate has no hstore mapping; the column was written as a String with the column definition hstore.
+Book.author: JPA has no setting for the onUpdate action "cascade", so it was ignored.

@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id       BigInt    @id @default(autoincrement())
+  owner    String    @db.VarChar(120)
+  invoices Invoice[]
+
+  @@map("accounts")
+}
+
+model Invoice {
+  id         BigInt  @id @default(autoincrement())
+  total      Decimal @db.Decimal(10, 2)
+  account_id BigInt
+  account    Account @relation(fields: [account_id], references: [id], onDelete: NoAction)
+}

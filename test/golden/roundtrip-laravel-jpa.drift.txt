@@ -1,0 +1,43 @@
+@@ app/models/Category.java
++ @Column(name = "created_at")
++ @Column(name = "updated_at")
++ private Long id;
++ public Long getId() {
++ public void setId(Long id) {
+- @Column(name = "created_at", nullable = false)
+- @Column(name = "updated_at", nullable = false)
+- private Integer id;
+- public Integer getId() {
+- public void setId(Integer id) {
+@@ app/models/Post.java
++ @Column(name = "created_at")
++ @Column(name = "updated_at")
++ private Long id;
++ public Long getId() {
++ public void setId(Long id) {
+- @Column(name = "created_at", nullable = false)
+- @Column(name = "updated_at", nullable = false)
+- private Integer id;
+- public Integer getId() {
+- public void setId(Integer id) {
+@@ app/models/Profile.java
++ private Long id;
++ public Long getId() {
++ public void setId(Long id) {
+- private Integer id;
+- public Integer getId() {
+- public void setId(Integer id) {
+@@ app/models/Tag.java
++ private Long id;
++ public Long getId() {
++ public void setId(Long id) {
+- private Integer id;
+- public Integer getId() {
+- public void setId(Integer id) {
+@@ app/models/User.java
++ private Long id;
++ public Long getId() {
++ public void setId(Long id) {
+- private Integer id;
+- public Integer getId() {
+- public void setId(Integer id) {

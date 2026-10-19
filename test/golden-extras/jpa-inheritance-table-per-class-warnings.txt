@@ -1,0 +1,4 @@
+Cat.id: the key is generated from a sequence (@GeneratedValue(strategy = SEQUENCE)); it was read as an auto-increment column.
+Dog.id: the key is generated from a sequence (@GeneratedValue(strategy = SEQUENCE)); it was read as an auto-increment column.
+Cat: table per class inheritance (extends Animal). Cat was read as an independent table with all inherited columns; the shared model does not link it to the other classes of the hierarchy.
+Dog: table per class inheritance (extends Animal). Dog was read as an independent table with all inherited columns; the shared model does not link it to the other classes of the hierarchy.

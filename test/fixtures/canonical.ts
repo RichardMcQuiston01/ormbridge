@@ -106,6 +106,22 @@ export const CANONICAL_FIXTURES: readonly CanonicalFixture[] = [
     ].map(fixturePath),
   },
   {
+    // Hibernate / JPA (Java): the mapping lives in jakarta.persistence annotations on the entity classes, with a
+    // @MappedSuperclass for the timestamps and a @JoinTable for the many-to-many. Read only, so the matrix lists it
+    // among the read-only sources. Inheritance, composite keys, embeddables and the javax, property access, Lombok
+    // and Spring Data auditing variants live in jpa-extras.
+    format: 'jpa',
+    paths: [
+      './jpa/TimeStamped.java',
+      './jpa/PostStatus.java',
+      './jpa/Category.java',
+      './jpa/Post.java',
+      './jpa/Tag.java',
+      './jpa/Profile.java',
+      './jpa/User.java',
+    ].map(fixturePath),
+  },
+  {
     format: 'json-schema',
     paths: [fixturePath('./json-schema/blog.schema.json')],
   },

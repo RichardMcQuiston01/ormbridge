@@ -1,0 +1,12 @@
+fieldType Account.account: string -> text
+fieldDefault Account.level: enum member high -> literal 2
+fieldDefault Account.mode: literal "new" -> enum member new
+fieldEnum Account.mode: mode -> Mode
+fieldUnique Account.slug: true -> false
+fieldDefault Account.stamp: dbExpression -> now
+indexAdded Account: (absent) -> unique (slug)
+modelRemoved Object: model Object -> (absent)
+fieldPrimaryKey Log.at: false -> true
+modelAdded ObjectEntity: (absent) -> model ObjectEntity
+enumRemoved mode: enum mode -> (absent)
+enumAdded Mode: (absent) -> enum Mode

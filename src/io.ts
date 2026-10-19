@@ -147,6 +147,23 @@ const EFCORE_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
 const EFCORE_NON_MODEL_FILE: RegExp =
   /(?:\.(?:Designer|g|generated)\.cs|ModelSnapshot\.cs)$/i;
 
+/** Directories skipped when reading Hibernate / JPA projects: build output, tool folders and installed packages. */
+const JPA_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
+  'target',
+  'build',
+  'out',
+  '.gradle',
+  '.mvn',
+  '.idea',
+  '.settings',
+  'node_modules',
+  '.git',
+]);
+
+/** Java files that are not the model: tests, module and package descriptors and generated metamodel classes. */
+const JPA_NON_MODEL_FILE: RegExp =
+  /(?:Tests?|_)\.java$|^(?:module|package)-info\.java$/;
+
 export interface RunOptions extends ConvertOptions {
   /** Files or directories to read. */
   inputs: string[];
@@ -492,7 +509,9 @@ async function discoverInputFiles(
                           ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files'
                           : format === 'efcore'
                             ? 'C# (.cs) files with Entity Framework Core models'
-                            : '.prisma files';
+                            : format === 'jpa'
+                              ? 'Java (.java) files with Hibernate / JPA entities'
+                              : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -522,6 +541,12 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
     return (
       extname(filePath) === '.cs' &&
       !EFCORE_NON_MODEL_FILE.test(basename(filePath))
+    );
+  }
+  if (format === 'jpa') {
+    return (
+      extname(filePath) === '.java' &&
+      !JPA_NON_MODEL_FILE.test(basename(filePath))
     );
   }
   if (format === 'gorm') {
@@ -593,6 +618,14 @@ function isSkippedDirectory(
   }
   if (format === 'efcore') {
     return EFCORE_SKIPPED_DIRECTORIES.has(name.toLowerCase());
+  }
+  if (format === 'jpa') {
+    // src/test holds the tests; db/migration holds Flyway and Liquibase migrations.
+    return (
+      JPA_SKIPPED_DIRECTORIES.has(name) ||
+      (name === 'test' && basename(parent) === 'src') ||
+      (/^migrations?$/.test(name) && basename(parent) === 'db')
+    );
   }
   return (
     SKIPPED_DIRECTORIES.has(name) ||

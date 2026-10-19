@@ -1,0 +1,85 @@
+'use strict';
+
+module.exports = (sequelize, DataTypes) => {
+  const Post = sequelize.define(
+    'Post',
+    {
+      id: {
+        type: DataTypes.UUID,
+        primaryKey: true,
+        defaultValue: DataTypes.UUIDV4,
+      },
+      publicId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        unique: true,
+        defaultValue: DataTypes.UUIDV4,
+      },
+      title: { type: DataTypes.STRING(200), allowNull: false },
+      body: { type: DataTypes.TEXT, allowNull: false },
+      status: {
+        type: DataTypes.ENUM('Draft', 'Published'),
+        allowNull: false,
+        defaultValue: 'Draft',
+      },
+      rating: DataTypes.DECIMAL(4, 2),
+      viewCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+      featured: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        field: 'is_featured',
+      },
+      publishedAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+      metadata: { type: DataTypes.JSONB, allowNull: false, defaultValue: {} },
+      authorId: { type: DataTypes.UUID, allowNull: false },
+      editorId: DataTypes.UUID,
+      categoryId: { type: DataTypes.UUID, allowNull: false },
+    },
+    {
+      tableName: 'post',
+      timestamps: true,
+      underscored: true,
+      indexes: [
+        {
+          name: 'uniq_post_author_title',
+          unique: true,
+          fields: ['author_id', 'title'],
+        },
+        { name: 'post_title_idx', fields: ['title'] },
+        { name: 'post_pub_status_idx', fields: ['published_at', 'status'] },
+      ],
+    }
+  );
+
+  Post.associate = (models) => {
+    Post.belongsTo(models.User, {
+      as: 'author',
+      foreignKey: 'authorId',
+      onDelete: 'CASCADE',
+    });
+    Post.belongsTo(models.User, {
+      as: 'editor',
+      foreignKey: 'editorId',
+      onDelete: 'SET NULL',
+    });
+    Post.belongsTo(models.Category, {
+      as: 'category',
+      foreignKey: 'categoryId',
+      onDelete: 'RESTRICT',
+    });
+    Post.belongsToMany(models.Tag, {
+      as: 'tags',
+      through: 'post_tags',
+      foreignKey: 'post_id',
+      otherKey: 'tag_id',
+      timestamps: false,
+    });
+  };
+
+  return Post;
+};

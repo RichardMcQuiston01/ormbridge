@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Author {
+  id    BigInt        @id
+  name  String?       @db.VarChar(255)
+  books BookAuthors[]
+}
+
+model Book {
+  id      BigInt        @id
+  title   String?       @db.VarChar(255)
+  authors BookAuthors[]
+}
+
+model Folder {
+  id    BigInt       @id
+  files StoredFile[]
+}
+
+model Member {
+  id             BigInt          @id
+  friends        MemberFriends[] @relation("MemberFriends_from_member")
+  member_friends MemberFriends[] @relation("MemberFriends_to_member")
+}
+
+model Player {
+  id           BigInt        @id
+  name         String?       @db.VarChar(255)
+  team_players TeamPlayers[]
+}
+
+model StoredFile {
+  id        BigInt  @id
+  name      String? @db.VarChar(255)
+  folder_id BigInt?
+  folder    Folder? @relation(fields: [folder_id], references: [id], onDelete: NoAction)
+}
+
+model Team {
+  id      BigInt        @id
+  players TeamPlayers[]
+}
+
+model BookAuthors {
+  id        Int    @id @default(autoincrement())
+  book_id   BigInt
+  book      Book   @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  author_id BigInt
+  author    Author @relation(fields: [author_id], references: [id], onDelete: Cascade)
+
+  @@unique([book_id, author_id])
+  @@map("Book_authors")
+}
+
+model MemberFriends {
+  id             Int    @id @default(autoincrement())
+  from_member_id BigInt
+  from_member    Member @relation("MemberFriends_from_member", fields: [from_member_id], references: [id], onDelete: Cascade)
+  to_member_id   BigInt
+  to_member      Member @relation("MemberFriends_to_member", fields: [to_member_id], references: [id], onDelete: Cascade)
+
+  @@unique([from_member_id, to_member_id])
+  @@map("Member_friends")
+}
+
+model TeamPlayers {
+  id        Int    @id @default(autoincrement())
+  team_id   BigInt
+  team      Team   @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  player_id BigInt
+  player    Player @relation(fields: [player_id], references: [id], onDelete: Cascade)
+
+  @@unique([team_id, player_id])
+  @@map("Team_players")
+}

@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Depot {
+  id     BigInt    @id @default(autoincrement())
+  city   String?   @db.VarChar(255)
+  trucks Vehicle[]
+}
+
+model Vehicle {
+  id       BigInt @id @default(autoincrement())
+  name     String @db.VarChar(40)
+  doors    Int
+  axles    Int?
+  kind     String @db.VarChar(10)
+  depot_id BigInt
+  depot    Depot  @relation(fields: [depot_id], references: [id], onDelete: NoAction)
+}

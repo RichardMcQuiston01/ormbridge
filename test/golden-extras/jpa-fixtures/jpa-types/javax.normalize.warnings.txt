@@ -1,0 +1,4 @@
+SampleNicknames: the table has no primary key, but a JPA entity needs an identifier; the column "created_at" was written as the @Id (Hibernate would create a primary key on it).
+SampleLevels: the table has no primary key, but a JPA entity needs an identifier; the column "created_at" was written as the @Id (Hibernate would create a primary key on it).
+Sample.json: Hibernate 5 has no JSON type; the column was written as a String with the column definition jsonb, and the JSON text is yours to read and write (the hibernate-types library adds a mapping).
+Sample.node: Hibernate 5 has no JSON type; the column was written as a String with the column definition jsonb, and the JSON text is yours to read and write (the hibernate-types library adds a mapping).

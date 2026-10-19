@@ -1,6 +1,6 @@
 {
   "name": "ormbridge",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Convert ORM models between frameworks and languages (Django, Prisma, TypeORM, Doctrine, Laravel). Define your data model once and share typed schemas across your stack.",
   "author": {
     "name": "Richard McQuiston",
@@ -55,6 +55,9 @@
     "drizzle",
     "sequelize",
     "efcore",
+    "hibernate",
+    "jpa",
+    "java",
     "entity-framework",
     "graphene",
     "doctrine",
@@ -87,5 +90,9 @@
   "homepage": "https://github.com/RichardMcQuiston01/ormbridge#readme",
   "bugs": {
     "url": "https://github.com/RichardMcQuiston01/ormbridge/issues"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://donate.stripe.com/00w5kD3Gj1Xo9v7gVOcs800"
   }
 }

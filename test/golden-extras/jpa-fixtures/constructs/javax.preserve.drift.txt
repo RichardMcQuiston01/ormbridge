@@ -1,0 +1,18 @@
+relationOnDelete Author.latest_book: setNull -> noAction
+fieldType Book.tags: string -> text
+fieldDefault Book.tags: literal "[]" -> (none)
+fieldType Book.colors: string -> text
+fieldEnum Book.colors: color -> (none)
+fieldEnum Book.color: color -> Color
+fieldType Book.window: range -> string
+fieldMaxLength Book.window: (none) -> 255
+relationOnDelete Book.editor: setNull -> noAction
+relationOnDelete Book.series: setNull -> noAction
+fieldUnique Series.handle: true -> false
+relationOnDelete Series.parent: setNull -> noAction
+indexAdded Series: (absent) -> unique (handle)
+modelRemoved index: model index -> (absent)
+modelAdded IndexEntity: (absent) -> model IndexEntity
+enumRemoved color: enum color -> (absent)
+enumRemoved Status: enum Status -> (absent)
+enumAdded Color: (absent) -> enum Color

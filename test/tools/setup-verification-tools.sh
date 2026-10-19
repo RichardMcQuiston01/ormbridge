@@ -2,8 +2,9 @@
 # Installs the real tools that the optional verification tests use (Django, graphene-django,
 # TypeORM with SQLite, Drizzle ORM with drizzle-kit, Ajv for JSON Schema, Zod, better-sqlite3 for the SQL DDL
 # tests, SQLAlchemy 2 with SQLModel for the SQLAlchemy parser and emitter tests, Sequelize 6 with SQLite for the
-# Sequelize parser and emitter tests, and the .NET 8 SDK with EF Core 8, its SQLite provider and the Npgsql provider
-# for the EF Core parser and emitter tests) into a scratch directory
+# Sequelize parser and emitter tests, the .NET 8 SDK with EF Core 8, its SQLite provider and the Npgsql provider
+# for the EF Core parser and emitter tests, and the Maven packages of Hibernate ORM 6 and 5 with H2 for the Hibernate / JPA
+# parser and writer tests) into a scratch directory
 # outside this repository, then prints the environment variables that switch the tests on.
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
@@ -13,7 +14,9 @@
 # Needs python3 with venv + pip, and node with npm, and network access (or a package proxy). The EF Core part also
 # needs the .NET SDK (8 or later): an existing `dotnet` on the PATH (or named by DOTNET) is used, otherwise the official
 # dotnet-install.sh is tried, and when neither works that part is skipped with a message and the EF Core verification
-# tests skip themselves (EFCORE_DIR and DOTNET are then not printed).
+# tests skip themselves (EFCORE_DIR and DOTNET are then not printed). The Hibernate / JPA part needs Java 17 or later
+# and Maven on the PATH (or named by JAVA and MVN); without them it is skipped with a message and the JPA verification
+# tests skip themselves (JPA_DIR, JAVA and MVN are then not printed).
 set -euo pipefail
 
 target="${1:-${TMPDIR:-/tmp}/ormbridge-verification-tools}"
@@ -100,6 +103,40 @@ if [ -n "${dotnet_bin}" ]; then
   rm -rf "${scratch}"
 fi
 
+echo "Preparing Maven and the Hibernate ORM 6 and H2 packages in ${target}/jpa" >&2
+java_bin="${JAVA:-$(command -v java || true)}"
+mvn_bin="${MVN:-$(command -v mvn || true)}"
+jpa_ready=""
+if [ -n "${java_bin}" ] && [ -n "${mvn_bin}" ]; then
+  mkdir -p "${target}/jpa"
+  scratch="$(mktemp -d)"
+  cp -r "${here}/jpa-verify/pom.xml" "${here}/jpa-verify/src" "${scratch}/"
+  java_home="$(dirname "$(dirname "$(readlink -f "${java_bin}")")")"
+  # Building the tool fills the Maven repository that the test uses (-Dmaven.repo.local); the test then needs no network.
+  if (
+    cd "${scratch}"
+    JAVA_HOME="${java_home}" "${mvn_bin}" -B -q -Dmaven.repo.local="${target}/jpa/m2" \
+      package dependency:build-classpath -Dmdep.outputFile="${scratch}/cp.txt" >&2
+  ); then
+    # The writer's javax style runs against Hibernate 5 (pom-javax.xml); its packages go into the same repository.
+    cp "${here}/jpa-verify/pom-javax.xml" "${scratch}/pom.xml"
+    if (
+      cd "${scratch}"
+      JAVA_HOME="${java_home}" "${mvn_bin}" -B -q -Dmaven.repo.local="${target}/jpa/m2" \
+        package dependency:build-classpath -Dmdep.outputFile="${scratch}/cp5.txt" >&2
+    ); then
+      jpa_ready="yes"
+    else
+      echo "Resolving the Hibernate 5 packages with Maven failed; the JPA verification tests will be skipped." >&2
+    fi
+  else
+    echo "Resolving the Hibernate packages with Maven failed; the JPA verification tests will be skipped." >&2
+  fi
+  rm -rf "${scratch}"
+else
+  echo "Java 17 and Maven were not found ('apt-get install openjdk-17-jdk maven' works on Ubuntu); the JPA verification tests will be skipped." >&2
+fi
+
 echo "Installing Zod 4, TypeScript and tsx into ${target}/zod" >&2
 mkdir -p "${target}/zod"
 (
@@ -129,4 +166,9 @@ echo "export SQL_DIR=${target}/sql"
 if [ -n "${efcore_ready}" ]; then
   echo "export EFCORE_DIR=${target}/efcore"
   echo "export DOTNET=${dotnet_bin}"
+fi
+if [ -n "${jpa_ready}" ]; then
+  echo "export JPA_DIR=${target}/jpa"
+  echo "export MVN=${mvn_bin}"
+  echo "export JAVA=${java_bin}"
 fi

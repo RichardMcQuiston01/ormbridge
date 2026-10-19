@@ -16,6 +16,7 @@ One runnable project per format. Each folder converts the shared blog schema in 
 | [`sqlalchemy`](sqlalchemy)   | SQLAlchemy / SQLModel   | both ways                                           |
 | [`sequelize`](sequelize)     | Sequelize models        | both ways                                           |
 | [`efcore`](efcore)           | Entity Framework Core   | both ways                                           |
+| [`jpa`](jpa)                 | Hibernate / JPA (Java)  | both ways                                           |
 | [`graphene`](graphene)       | Graphene (GraphQL)      | write only (`generated/`)                           |
 | [`typescript`](typescript)   | TypeScript interfaces   | write only (`generated/`)                           |
 | [`zod`](zod)                 | Zod schemas             | write only (`generated/`)                           |

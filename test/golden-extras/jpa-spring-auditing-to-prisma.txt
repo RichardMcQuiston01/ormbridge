@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Article {
+  createdDate      DateTime @default(now()) @db.Timestamptz(6)
+  lastModifiedDate DateTime @updatedAt @db.Timestamptz(6)
+  createdBy        String?  @db.VarChar(255)
+  lastModifiedBy   String?  @db.VarChar(255)
+  version          BigInt?
+  id               BigInt   @id @default(autoincrement())
+  headline         String   @db.VarChar(255)
+}
