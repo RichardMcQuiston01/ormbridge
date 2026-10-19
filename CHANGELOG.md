@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.11.0 - 2026-10-19
+
+Two new database providers. `--provider clickhouse` writes ClickHouse DDL from `--to sql`, and `--provider cockroachdb` is now handled by every writer that reads the provider, with the SQL reader also reading CockroachDB `SHOW CREATE` output. **Output change:** `--provider cockroachdb` output differs from 0.10.0 for several writers (types, header comments and warnings). Output for every other provider is unchanged.
+
 `--provider cockroachdb` is now handled by every writer that reads the provider, instead of falling back to the PostgreSQL path without a word. CockroachDB keeps the PostgreSQL column types and every difference is a warning (`Provider "cockroachdb": ...` or a message that names the model and field). The facts were checked against CockroachDB v26.3. The SQL DDL output (and the Drizzle output through `drizzle-kit generate`) is executed in a real CockroachDB by a new test (see below); the TypeORM, Sequelize, SQLAlchemy and GORM output was also loaded into a v26.3 server by hand (not part of the tests), and every writer is covered by goldens and unit tests. Output for every other provider is unchanged: the existing goldens pass untouched, and `test/cockroachdb-emitters.test.ts` checks that no other provider's output mentions CockroachDB.
 
 ### Added
