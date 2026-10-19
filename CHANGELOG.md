@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.12.0 - 2026-10-19
+
+A new write-only format, Neo4j. `--to neo4j` writes Cypher constraints and indexes, with `--style community | enterprise` to choose whether Enterprise-only constraints are included. **Output change:** none for existing formats. The only visible difference is that the invalid `--style` message now also lists `community` and `enterprise`.
+
 ### Added
 
 - Neo4j writer: `--to neo4j` (`src/emitters/neo4j.ts` and its helpers, the write-only `neo4j` format; it claims no extension, and the output is a `.cypher` file). Each model becomes a node label (PascalCase, singular) and its columns become properties. The primary key, unique columns, one-to-one foreign keys and unique indexes become `CREATE CONSTRAINT ... IF NOT EXISTS ... IS UNIQUE` statements, other indexes `CREATE INDEX`, and full-text indexes `CREATE FULLTEXT INDEX`. Cypher has no relationship schema, so foreign keys, relations and pure join tables are written as comment blocks with the cardinality, the delete action and a `MATCH ... MERGE` query, and the foreign key columns stay as plain properties; a join table with unique columns also gets relationship property uniqueness constraints. A property type comment block lists the Neo4j type of every property. Defaults, auto-increment, generated columns, lengths, unsupported index methods and options, decimals, JSON and the other approximated types each produce a warning that names the model and field.
