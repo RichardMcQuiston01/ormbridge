@@ -1266,7 +1266,16 @@ function buildScalarField(
         : undefined,
       warnings
     );
-    if (parsedDefault !== undefined) {
+    if (
+      provider === 'cockroachdb' &&
+      parsedDefault?.kind === 'dbExpression' &&
+      parsedDefault.isFunction === true &&
+      /^sequence\(\s*\)$/.test(parsedDefault.expression) &&
+      (type === 'int' || type === 'bigInt')
+    ) {
+      // On CockroachDB, sequence() is the auto-increment of an Int (autoincrement() is BigInt only).
+      irField.default = { kind: 'autoIncrement' };
+    } else if (parsedDefault !== undefined) {
       irField.default = parsedDefault;
     }
   }

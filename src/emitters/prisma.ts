@@ -11,6 +11,7 @@ import type {
   IrSchema,
 } from '../ir.js';
 import { findModel } from '../ir.js';
+import { cockroachInvertible, cockroachMissingType } from './cockroach.js';
 import { toCamelCase, toSnakeCase } from '../naming.js';
 
 export type PrismaProvider =
@@ -177,6 +178,23 @@ const NATIVE_TYPES: Readonly<
     Bytes: ['ObjectId', 'BinData'],
   },
   sqlite: {},
+};
+
+/**
+ * The CockroachDB name of a PostgreSQL native type (`@db.VarChar(32)` is `@db.String(32)` there, and
+ * `@db.Integer` is `@db.Int4`). Types without an entry (Money, Xml, Citext) have no CockroachDB native type.
+ */
+const COCKROACH_NATIVE_NAMES: Readonly<Record<string, string>> = {
+  VarChar: 'String',
+  Text: 'String',
+  SmallInt: 'Int2',
+  Integer: 'Int4',
+  BigInt: 'Int8',
+  Real: 'Float4',
+  DoublePrecision: 'Float8',
+  Boolean: 'Bool',
+  ByteA: 'Bytes',
+  Json: 'JsonB',
 };
 
 /** Index access methods (`type:`) accepted per provider. */
@@ -578,7 +596,7 @@ function baseTypeOf(context: EmitContext, field: IrField): string {
     case 'hstore':
       return 'Json';
     case 'range':
-      return isPostgresFamily(provider)
+      return provider === 'postgresql'
         ? `Unsupported(${JSON.stringify(rangeTypeName(field))})`
         : 'String';
     case 'unsupported':
@@ -606,6 +624,18 @@ function resolveNativeType(
   const accepted: readonly string[] = NATIVE_TYPES[provider][baseType] ?? [];
   if (accepted.includes(nativeType.name)) {
     return formatNative(nativeType.name, nativeType.args);
+  }
+  const translated: string | undefined =
+    provider === 'cockroachdb'
+      ? COCKROACH_NATIVE_NAMES[nativeType.name]
+      : undefined;
+  if (translated !== undefined && accepted.includes(translated)) {
+    if (nativeType.name === 'Json' && label !== undefined) {
+      context.warnings.push(
+        `${label}: CockroachDB stores JSON as JSONB (key order and duplicate keys are not kept); @db.Json was written as @db.JsonB.`
+      );
+    }
+    return formatNative(translated, nativeType.args);
   }
   if (label !== undefined) {
     context.warnings.push(
@@ -823,7 +853,6 @@ function warnAboutSpecialField(
 ): void {
   const label: string = `${model.name}.${field.name}`;
   const provider: PrismaProvider = context.options.provider;
-  const postgres: boolean = isPostgresFamily(provider);
   if (field.type === 'duration') {
     context.warnings.push(
       `${label}: Prisma has no interval type; the duration was written as BigInt (microseconds).`
@@ -836,15 +865,26 @@ function warnAboutSpecialField(
   }
   if (field.type === 'range') {
     context.warnings.push(
-      postgres
+      provider === 'postgresql'
         ? `${label}: range columns are written as Unsupported("${rangeTypeName(field)}"), which Prisma Client cannot read or filter.`
-        : `${label}: range columns exist only on PostgreSQL; the field was written as String.`
+        : provider === 'cockroachdb'
+          ? `${label}: CockroachDB has no range types (int4range, tstzrange, ...); the field was written as String.`
+          : `${label}: range columns exist only on PostgreSQL; the field was written as String.`
     );
   }
   if (field.type === 'unsupported') {
     context.warnings.push(
       `${label}: Unsupported("${field.unsupportedType ?? ''}") is kept as an opaque column; Prisma Client cannot read, filter or write it.`
     );
+    const missing: string | undefined =
+      provider === 'cockroachdb'
+        ? cockroachMissingType(field.unsupportedType ?? '')
+        : undefined;
+    if (missing !== undefined) {
+      context.warnings.push(
+        `${label}: CockroachDB has no ${missing} type, so creating this column fails there; change the column type.`
+      );
+    }
   }
   if (field.generated !== undefined) {
     context.warnings.push(
@@ -1478,7 +1518,21 @@ function formatIndex(
   );
   const args: string[] = [`[${entries.join(', ')}]`];
   if (index.method !== undefined && attribute !== '@@fulltext') {
-    if (INDEX_METHODS[provider]?.includes(index.method) === true) {
+    const lastField: string | undefined = index.fields[index.fields.length - 1];
+    if (
+      provider === 'cockroachdb' &&
+      index.method === 'Gin' &&
+      !cockroachInvertible(
+        model.fields.find(
+          (candidate: IrField) =>
+            candidate.name === lastField || candidate.columnName === lastField
+        )
+      )
+    ) {
+      context.warnings.push(
+        `${label}: CockroachDB builds an inverted (Gin) index only over Json, list or spatial columns, so the index type Gin was dropped.`
+      );
+    } else if (INDEX_METHODS[provider]?.includes(index.method) === true) {
       args.push(`type: ${index.method}`);
     } else if (index.method !== 'BTree') {
       // BTree is every database's default index type, so dropping it loses nothing.
