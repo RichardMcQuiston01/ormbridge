@@ -14,6 +14,11 @@ import { findModel } from '../ir.js';
 import { splitWords, toSnakeCase } from '../naming.js';
 import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
 import type { NamingMode } from '../transforms.js';
+import {
+  COCKROACH_PREFIX,
+  cockroachSequentialWarning,
+  isCockroach,
+} from './cockroach.js';
 import type { PrismaProvider } from './prisma.js';
 
 /**
@@ -174,6 +179,10 @@ interface EmitContext {
   schema: IrSchema;
   options: GormEmitOptions;
   dialect: Dialect;
+  /** True for `--provider cockroachdb`: the postgres driver with 64-bit auto-increment keys. */
+  cockroach: boolean;
+  /** CockroachDB: auto-increment keys, reported in one warning. */
+  sequentialKeys: string[];
   warnings: string[];
   packageName: string;
   /** Package-level names: model types, enum types and enum constants. */
@@ -206,6 +215,8 @@ export function emitGorm(
     schema: prepared,
     options,
     dialect: dialectOf(options.provider),
+    cockroach: isCockroach(options.provider),
+    sequentialKeys: [],
     warnings,
     packageName,
     typeNames: new Set<string>(),
@@ -217,6 +228,12 @@ export function emitGorm(
   if (options.provider === 'mongodb') {
     warnings.push(
       'Provider "mongodb": GORM is relational (it has no MongoDB driver); relational models were written.'
+    );
+  }
+
+  if (context.cockroach) {
+    warnings.push(
+      `${COCKROACH_PREFIX} the models use the PostgreSQL column types and are opened with gorm.Open(postgres.Open(dsn)) from gorm.io/driver/postgres, which speaks to CockroachDB; uuid keys use default:gen_random_uuid(); arrays, hstore and range columns are written as JSON or text, as for every provider (CockroachDB has no hstore or range types).`
     );
   }
 
@@ -239,6 +256,14 @@ export function emitGorm(
     }
   }
   removeHandledWarnings(context);
+  if (context.sequentialKeys.length > 0) {
+    warnings.push(
+      cockroachSequentialWarning(
+        context.sequentialKeys,
+        'written as int64 with autoIncrement (the postgres driver creates SERIAL, which CockroachDB fills with unique_rowid(): 64-bit values that overflow an int32), and the foreign keys that point at them are int64 too'
+      )
+    );
+  }
 
   const files: Record<string, string> = {};
   const fileStems: Set<string> = new Set<string>();
@@ -830,8 +855,20 @@ function scalarSpec(
       context.warnings.push(`${label}: ${message}`);
     }
   };
-  const base: ScalarSpec = baseSpec(context, field, warn);
+  let base: ScalarSpec = baseSpec(context, field, warn);
   const depth: number = field.arrayDepth ?? 0;
+  if (
+    context.cockroach &&
+    depth === 0 &&
+    field.default?.kind === 'autoIncrement' &&
+    base.kind === 'int'
+  ) {
+    // GORM's postgres driver creates SERIAL, which CockroachDB fills with 64-bit unique_rowid() values.
+    base = spec('int64', 'int');
+    if (report) {
+      context.sequentialKeys.push(label);
+    }
+  }
   if (depth === 0) {
     return base;
   }

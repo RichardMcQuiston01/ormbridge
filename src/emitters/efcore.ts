@@ -42,6 +42,12 @@ import type {
   NavMember,
   Plan,
 } from './efcoreTypes.js';
+import {
+  COCKROACH_INDEX_METHODS,
+  COCKROACH_PREFIX,
+  cockroachInvertible,
+  isCockroach,
+} from './cockroach.js';
 import type { PrismaProvider } from './prisma.js';
 
 /**
@@ -104,6 +110,11 @@ export function emitEfcore(
   if (options.provider === 'mongodb') {
     warnings.push(
       'Provider "mongodb": EF Core is relational (use the MongoDB EF Core provider by hand); PostgreSQL column types were written.'
+    );
+  }
+  if (isCockroach(options.provider) && prepared.models.length > 0) {
+    warnings.push(
+      `${COCKROACH_PREFIX} the entities use the Npgsql column types (UseNpgsql with a CockroachDB connection string, port 26257); Npgsql speaks the PostgreSQL protocol that CockroachDB implements, but parts of the EF Core migration tooling rely on PostgreSQL-only features, so generate a script (dotnet ef migrations script) and review it. int columns are written as integer, which CockroachDB stores as 64-bit INT8; hstore, range types and multi-dimensional arrays (which CockroachDB lacks) are written as a jsonb or string column.`
     );
   }
   if (prepared.models.length === 0) {
@@ -949,7 +960,29 @@ function indexOf(
   );
   let method: string | undefined;
   if (index.method !== undefined) {
-    if (isPostgres(provider)) {
+    if (isCockroach(provider)) {
+      const lastName: string | undefined =
+        index.fields[index.fields.length - 1];
+      if (
+        index.method.toLowerCase() === 'gin' &&
+        !cockroachInvertible(
+          model.fields.find(
+            (candidate: IrField) =>
+              candidate.name === lastName || candidate.columnName === lastName
+          )
+        )
+      ) {
+        warn(
+          `${label}: CockroachDB builds an inverted (GIN) index only over JSON, array or spatial columns, so the gin method was dropped.`
+        );
+      } else if (COCKROACH_INDEX_METHODS.includes(index.method.toLowerCase())) {
+        method = index.method.toLowerCase();
+      } else {
+        warn(
+          `${label}: CockroachDB has no ${index.method} indexes (only B-tree and inverted GIN); the method was dropped.`
+        );
+      }
+    } else if (isPostgres(provider)) {
       method = index.method.toLowerCase();
     } else {
       warn(

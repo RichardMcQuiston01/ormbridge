@@ -16,6 +16,12 @@ import { toCamelCase, toPascalCase, toSnakeCase } from '../naming.js';
 import { underscore } from '../parsers/sequelizeInflection.js';
 import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
 import { normalizeSchema, type NamingMode } from '../transforms.js';
+import {
+  COCKROACH_PREFIX,
+  cockroachInvertible,
+  cockroachSequentialWarning,
+  isCockroach,
+} from './cockroach.js';
 import type { PrismaProvider } from './prisma.js';
 
 /**
@@ -127,6 +133,10 @@ interface EmitContext {
   options: SequelizeEmitOptions;
   style: SequelizeStyle;
   dialect: Dialect;
+  /** True for `--provider cockroachdb`: the `postgres` dialect through sequelize-cockroachdb. */
+  cockroach: boolean;
+  /** CockroachDB: auto-increment keys, reported in one warning. */
+  sequentialKeys: string[];
   warnings: string[];
   plans: Map<string, ModelPlan>;
   /** "Model.relation" -> alias of the other side on the target model. */
@@ -198,6 +208,12 @@ const POSTGRES_ONLY_TYPES: Readonly<Record<string, string>> = {
   citext: 'CITEXT',
 };
 
+/** Of the types above, the ones CockroachDB rejects (`geometry`, `geography`, `tsvector` and `citext` exist). */
+const COCKROACH_MISSING: ReadonlySet<string> = new Set<string>([
+  'cidr',
+  'macaddr',
+]);
+
 const RANGE_SUBTYPES: Readonly<Record<string, string>> = {
   int: 'INTEGER',
   bigInt: 'BIGINT',
@@ -222,6 +238,8 @@ export function emitSequelize(
     options,
     style,
     dialect: dialectOf(options.provider),
+    cockroach: isCockroach(options.provider),
+    sequentialKeys: [],
     warnings: prismaOnlyWarnings(prepared, true).filter(isUnhandledWarning),
     plans: new Map<string, ModelPlan>(),
     inverseAliases: new Map<string, string>(),
@@ -230,6 +248,12 @@ export function emitSequelize(
   if (options.provider === 'mongodb') {
     context.warnings.push(
       'Provider "mongodb": Sequelize is relational (it has no MongoDB dialect; use Mongoose); PostgreSQL column types were written.'
+    );
+  }
+
+  if (context.cockroach) {
+    context.warnings.push(
+      `${COCKROACH_PREFIX} the models use the "postgres" dialect through the sequelize-cockroachdb package (Sequelize 6): DataTypes.INTEGER creates a 64-bit INT8 column there, and hstore, range types and multi-dimensional arrays (which CockroachDB lacks) are written as JSONB or TEXT.`
     );
   }
 
@@ -269,6 +293,14 @@ export function emitSequelize(
     style === 'init'
       ? writeInitIndex(context, associations)
       : writeDefineIndex(context);
+  if (context.sequentialKeys.length > 0) {
+    context.warnings.push(
+      cockroachSequentialWarning(
+        context.sequentialKeys,
+        'autoIncrement creates a SERIAL column, which CockroachDB fills with unique_rowid() (64-bit values above 2^53 that a JavaScript number cannot hold exactly; sequelize-cockroachdb returns them as strings, so those keys and the foreign keys that point at them are typed string)'
+      )
+    );
+  }
   return { files, warnings: context.warnings };
 }
 
@@ -637,6 +669,12 @@ function typeSpecOf(
     keyLike
   );
   const ts: string = `${element.ts.includes(' ') ? `(${element.ts})` : element.ts}${'[]'.repeat(depth)}`;
+  if (context.cockroach && depth > 1) {
+    context.warnings.push(
+      `${label}: CockroachDB has no multi-dimensional arrays; the array was written as JSONB.`
+    );
+    return { expression: 'DataTypes.JSONB', ts };
+  }
   if (context.dialect === 'postgres') {
     let expression: string = element.expression;
     for (let level: number = 0; level < depth; level += 1) {
@@ -734,7 +772,14 @@ function scalarTypeSpec(
     case 'uuid':
       return { expression: 'DataTypes.UUID', ts: 'string' };
     case 'int':
-      return { expression: 'DataTypes.INTEGER', ts: 'number' };
+      // sequelize-cockroachdb returns the 64-bit unique_rowid() values of a SERIAL key as strings.
+      return {
+        expression: 'DataTypes.INTEGER',
+        ts:
+          context.cockroach && field.default?.kind === 'autoIncrement'
+            ? 'string'
+            : 'number',
+      };
     case 'bigInt':
       return { expression: 'DataTypes.BIGINT', ts: 'string' };
     case 'float':
@@ -775,6 +820,15 @@ function scalarTypeSpec(
         ? { expression: 'DataTypes.INET', ts: 'string' }
         : { expression: 'DataTypes.STRING(45)', ts: 'string' };
     case 'hstore':
+      if (context.cockroach) {
+        context.warnings.push(
+          `${label}: CockroachDB has no hstore type; the field was written as JSONB.`
+        );
+        return {
+          expression: 'DataTypes.JSONB',
+          ts: 'Record<string, string | null>',
+        };
+      }
       if (dialect === 'postgres') {
         return {
           expression: 'DataTypes.HSTORE',
@@ -789,6 +843,12 @@ function scalarTypeSpec(
         ts: 'Record<string, string | null>',
       };
     case 'range': {
+      if (context.cockroach) {
+        context.warnings.push(
+          `${label}: CockroachDB has no range types (int4range, tstzrange, ...); the field was written as TEXT.`
+        );
+        return { expression: 'DataTypes.TEXT', ts: 'string' };
+      }
       if (dialect === 'postgres') {
         const subtype: string =
           RANGE_SUBTYPES[field.rangeOf ?? 'int'] ?? 'INTEGER';
@@ -805,11 +865,15 @@ function scalarTypeSpec(
     case 'unsupported': {
       const raw: string = (field.unsupportedType ?? '').toLowerCase();
       const known: string | undefined = POSTGRES_ONLY_TYPES[raw];
-      if (known !== undefined && dialect === 'postgres') {
+      if (
+        known !== undefined &&
+        dialect === 'postgres' &&
+        !(context.cockroach && COCKROACH_MISSING.has(raw))
+      ) {
         return { expression: `DataTypes.${known}`, ts: 'unknown' };
       }
       context.warnings.push(
-        `${label}: the database type "${field.unsupportedType ?? 'unknown'}" has no Sequelize data type${known === undefined ? '' : ` on ${dialectName(dialect)}`}; the column was written as TEXT.`
+        `${label}: the database type "${field.unsupportedType ?? 'unknown'}" has no Sequelize data type${known === undefined ? '' : ` on ${context.cockroach ? 'CockroachDB' : dialectName(dialect)}`}; the column was written as TEXT.`
       );
       return { expression: 'DataTypes.TEXT', ts: 'string' };
     }
@@ -1011,6 +1075,9 @@ function fieldAttribute(
   if (field.default?.kind === 'autoIncrement') {
     if (field.isPrimaryKey && !inCompositeKey && isIntegerKey(field)) {
       autoIncrement = true;
+      if (context.cockroach) {
+        context.sequentialKeys.push(label);
+      }
     } else {
       context.warnings.push(
         `${label}: an auto-increment default is only supported on a single integer primary key; it was dropped.`
@@ -1148,7 +1215,13 @@ function keyAttribute(
     name,
     type: spec.expression,
     entries,
-    ts: spec.ts,
+    // A key that points at a SERIAL key holds the same string (see the 'int' case of scalarTypeSpec).
+    ts:
+      context.cockroach &&
+      key.field.type === 'int' &&
+      key.field.default?.kind === 'autoIncrement'
+        ? 'string'
+        : spec.ts,
     optional: relation.isNullable,
     isReadonly: false,
     implicit: false,
@@ -1214,7 +1287,16 @@ function indexEntries(
       );
       return undefined;
     }
-    fields.push(indexField(column, index.fieldOptions?.[name]));
+    let options: IrIndexFieldOptions | undefined = index.fieldOptions?.[name];
+    if (context.cockroach && options?.ops !== undefined) {
+      context.warnings.push(
+        `${label}: CockroachDB supports only trigram operator classes on inverted indexes; the operator class of "${name}" was dropped.`
+      );
+      const { ops: _dropped, ...rest } = options;
+      void _dropped;
+      options = Object.keys(rest).length === 0 ? undefined : rest;
+    }
+    fields.push(indexField(column, options));
   }
   const dialect: Dialect = context.dialect;
   let using: string | undefined;
@@ -1224,6 +1306,24 @@ function indexEntries(
     if (method === undefined) {
       context.warnings.push(
         `${label}: the index method "${index.method}" is not known to Sequelize and was dropped.`
+      );
+    } else if (context.cockroach && method !== 'BTREE' && method !== 'GIN') {
+      context.warnings.push(
+        `${label}: CockroachDB has no ${method} indexes (only B-tree and inverted GIN); USING ${method} was dropped.`
+      );
+    } else if (
+      context.cockroach &&
+      method === 'GIN' &&
+      !cockroachInvertible(
+        model.fields.find(
+          (candidate: IrField) =>
+            candidate.name === index.fields[index.fields.length - 1] ||
+            candidate.columnName === index.fields[index.fields.length - 1]
+        )
+      )
+    ) {
+      context.warnings.push(
+        `${label}: CockroachDB builds an inverted (GIN) index only over JSON, array or spatial columns, so USING GIN was dropped.`
       );
     } else if (dialect === 'postgres' || dialect === 'mysql') {
       using = method;
@@ -1772,7 +1872,14 @@ function writeInitIndex(
   const plans: ModelPlan[] = context.schema.models.map((model: IrModel) =>
     planOf(context, model)
   );
-  const lines: string[] = [`import type { Sequelize } from 'sequelize';`];
+  const lines: string[] = context.cockroach
+    ? [
+        '// CockroachDB: import Sequelize from sequelize-cockroachdb (it patches Sequelize 6) and use the postgres dialect:',
+        "//   import { Sequelize } from 'sequelize-cockroachdb';",
+        "//   const sequelize = new Sequelize(process.env.DATABASE_URL!, { dialect: 'postgres' });",
+        `import type { Sequelize } from 'sequelize';`,
+      ]
+    : [`import type { Sequelize } from 'sequelize';`];
   for (const plan of plans) {
     lines.push(`import { ${plan.className} } from './${plan.fileBase}.js';`);
   }
@@ -1861,6 +1968,14 @@ function writeDefineIndex(context: EmitContext): string {
     '',
     `const { DataTypes } = require('sequelize');`,
     '',
+    ...(context.cockroach
+      ? [
+          '// CockroachDB: require sequelize-cockroachdb (it patches Sequelize 6) and use the postgres dialect:',
+          "//   const { Sequelize } = require('sequelize-cockroachdb');",
+          "//   const sequelize = new Sequelize(process.env.DATABASE_URL, { dialect: 'postgres' });",
+          '',
+        ]
+      : []),
     '// Defines every model on a Sequelize instance, then runs the associate functions:',
     "//   const { initModels } = require('./models');",
     '//   const models = initModels(sequelize);',

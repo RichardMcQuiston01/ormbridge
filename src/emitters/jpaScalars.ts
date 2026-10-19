@@ -1,4 +1,5 @@
 import type { IrField, IrRangeSubtype } from '../ir.js';
+import { isCockroach } from './cockroach.js';
 import { isPostgres } from './jpaDefaults.js';
 import { annotation, type AnnotationNode } from './jpaFormat.js';
 import type { Imports, JpaStyle } from './jpaTypes.js';
@@ -152,7 +153,11 @@ export function scalarOf(
     case 'text':
       return largeText(context);
     case 'int':
-      return { boxed: 'Integer', primitive: 'int', extra: [] };
+      // GenerationType.IDENTITY creates SERIAL on CockroachDB, which fills 64-bit unique_rowid() values.
+      return isCockroach(context.provider) &&
+        field.default?.kind === 'autoIncrement'
+        ? { boxed: 'Long', primitive: 'long', extra: [] }
+        : { boxed: 'Integer', primitive: 'int', extra: [] };
     case 'bigInt':
       return { boxed: 'Long', primitive: 'long', extra: [] };
     case 'float':
@@ -223,6 +228,12 @@ export function scalarOf(
       );
       return { ...stringWith(context, undefined), length: 45 };
     case 'hstore':
+      if (isCockroach(context.provider)) {
+        context.warn(
+          `${label}: CockroachDB has no hstore type; the column was written as a JSON column.`
+        );
+        return jsonColumn(context, label);
+      }
       context.warn(
         postgres
           ? `${label}: Hibernate has no hstore mapping; the column was written as a String with the column definition hstore.`
@@ -232,6 +243,12 @@ export function scalarOf(
     case 'range': {
       const range: string | undefined =
         field.rangeOf === undefined ? undefined : RANGE_TYPES[field.rangeOf];
+      if (isCockroach(context.provider)) {
+        context.warn(
+          `${label}: CockroachDB has no range types (int4range, tstzrange, ...); the column was written as large text.`
+        );
+        return largeText(context);
+      }
       if (postgres && range !== undefined) {
         context.warn(
           `${label}: Hibernate has no range mapping; the column was written as a String with the column definition ${range}.`

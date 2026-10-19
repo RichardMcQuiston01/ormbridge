@@ -11,6 +11,11 @@ import type {
   IrSchema,
 } from '../ir.js';
 import { findModel } from '../ir.js';
+import {
+  COCKROACH_PREFIX,
+  cockroachSequentialWarning,
+  isCockroach,
+} from './cockroach.js';
 import { toCamelCase, toSnakeCase } from '../naming.js';
 import type { EmitOutput, PrismaProvider } from './prisma.js';
 
@@ -47,6 +52,10 @@ interface EmitContext {
   schema: IrSchema;
   options: TypeormEmitOptions;
   dialect: Dialect;
+  /** True for `--provider cockroachdb`: the PostgreSQL column types for TypeORM's `cockroachdb` driver. */
+  cockroach: boolean;
+  /** CockroachDB: auto-increment keys, reported in one warning. */
+  sequentialKeys: string[];
   warnings: string[];
   imports: Set<string>;
   names: Map<string, ModelNames>;
@@ -75,6 +84,8 @@ export function emitTypeorm(
     schema,
     options,
     dialect: dialectOf(options.provider),
+    cockroach: isCockroach(options.provider),
+    sequentialKeys: [],
     warnings: prismaOnlyWarnings(schema, true),
     imports: new Set<string>(),
     names: new Map<string, ModelNames>(),
@@ -83,6 +94,12 @@ export function emitTypeorm(
   if (options.provider === 'mongodb') {
     context.warnings.push(
       'Provider "mongodb": TypeORM entities for MongoDB need different decorators; SQL column types (PostgreSQL style) were used.'
+    );
+  }
+
+  if (context.cockroach) {
+    context.warnings.push(
+      `${COCKROACH_PREFIX} the entities use the column types of TypeORM's "cockroachdb" driver (type: 'cockroachdb' in the DataSource): integers are explicit int4 and int8 because int is 64-bit there, and hstore, range types and multi-dimensional arrays (which CockroachDB lacks) are written as jsonb or varchar.`
     );
   }
 
@@ -112,9 +129,20 @@ export function emitTypeorm(
   if (blocks.length === 0) {
     return { text: '', warnings: context.warnings };
   }
+  if (context.sequentialKeys.length > 0) {
+    context.warnings.push(
+      cockroachSequentialWarning(
+        context.sequentialKeys,
+        "@PrimaryGeneratedColumn('increment') creates a sequence-backed INT8 column on the cockroachdb driver"
+      )
+    );
+  }
   const importLine: string = buildImportLine(context.imports);
+  const driverNote: string = context.cockroach
+    ? `// Written for the TypeORM "cockroachdb" driver: new DataSource({ type: 'cockroachdb', url: process.env.DATABASE_URL, ssl: true, entities: [...] }).\n`
+    : '';
   return {
-    text: `${[importLine, ...blocks].join('\n\n')}\n`,
+    text: `${driverNote}${[importLine, ...blocks].join('\n\n')}\n`,
     warnings: context.warnings,
   };
 }
@@ -374,6 +402,12 @@ function columnSpecOf(
     arrayDepth: undefined,
   });
   const tsType: string = `${element.tsType.includes(' ') ? `(${element.tsType})` : element.tsType}${'[]'.repeat(depth)}`;
+  if (context.cockroach && depth > 1) {
+    context.warnings.push(
+      `${label}: CockroachDB has no multi-dimensional arrays; the array was written as jsonb.`
+    );
+    return { typeEntries: [`type: 'jsonb'`], tsType, dbType: 'jsonb' };
+  }
   if (context.dialect === 'postgres') {
     return {
       typeEntries: [...element.typeEntries, 'array: true'],
@@ -459,12 +493,15 @@ function scalarColumnSpec(
           }
         : { typeEntries: [`type: 'uuid'`], tsType: 'string', dbType: 'uuid' };
     case 'int':
-      return { typeEntries: [`type: 'int'`], tsType: 'number', dbType: 'int' };
+      // On the cockroachdb driver `int` is normalised to int8, so the 32-bit type is spelled int4.
+      return context.cockroach
+        ? { typeEntries: [`type: 'int4'`], tsType: 'number', dbType: 'int4' }
+        : { typeEntries: [`type: 'int'`], tsType: 'number', dbType: 'int' };
     case 'bigInt':
       return {
-        typeEntries: [`type: 'bigint'`],
+        typeEntries: [context.cockroach ? `type: 'int8'` : `type: 'bigint'`],
         tsType: 'string',
-        dbType: 'bigint',
+        dbType: context.cockroach ? 'int8' : 'bigint',
       };
     case 'float':
       return {
@@ -571,6 +608,16 @@ function scalarColumnSpec(
         dbType: 'varchar',
       };
     case 'hstore':
+      if (context.cockroach) {
+        context.warnings.push(
+          `${label}: CockroachDB has no hstore type; the field was written as jsonb.`
+        );
+        return {
+          typeEntries: [`type: 'jsonb'`],
+          tsType: 'Record<string, string | null>',
+          dbType: 'jsonb',
+        };
+      }
       if (dialect === 'postgres') {
         return {
           typeEntries: [`type: 'hstore'`],
@@ -589,7 +636,7 @@ function scalarColumnSpec(
         dbType: dialect === 'mysql' ? 'json' : 'simple-json',
       };
     case 'range':
-      if (dialect === 'postgres') {
+      if (dialect === 'postgres' && !context.cockroach) {
         const rangeType: string =
           POSTGRES_RANGE_TYPES[field.rangeOf ?? 'int'] ?? 'int4range';
         return {
@@ -599,7 +646,9 @@ function scalarColumnSpec(
         };
       }
       context.warnings.push(
-        `${label}: range columns exist only on PostgreSQL; the field was written as varchar.`
+        context.cockroach
+          ? `${label}: CockroachDB has no range types (int4range, tstzrange, ...); the field was written as varchar.`
+          : `${label}: range columns exist only on PostgreSQL; the field was written as varchar.`
       );
       return {
         typeEntries: [`type: 'varchar'`],
@@ -694,7 +743,7 @@ function defaultEntryOf(
             : `default: () => ${quote(quote('[]'))}`;
         }
         if (field.type === 'hstore' && defaultValue.value === '{}') {
-          return context.dialect === 'postgres'
+          return context.dialect === 'postgres' && !context.cockroach
             ? `default: () => ${quote(quote(''))}`
             : `default: () => ${quote(quote('{}'))}`;
         }
@@ -782,9 +831,12 @@ function buildFieldMember(
       // wide and read as a number), so a bigint key there is written as a plain integer.
       const sqliteInteger: boolean =
         context.dialect === 'sqlite' && field.type === 'bigInt';
+      if (context.cockroach) {
+        context.sequentialKeys.push(label);
+      }
       const options: string[] = compact([
         nameOption,
-        field.type === 'bigInt' && !sqliteInteger
+        field.type === 'bigInt' && !sqliteInteger && !context.cockroach
           ? `type: 'bigint'`
           : undefined,
       ]);
@@ -795,7 +847,10 @@ function buildFieldMember(
             [`'increment'`],
             options
           ),
-          sqliteInteger ? `  ${propName}!: number;` : property,
+          // The cockroachdb driver reads a sequence-backed key with parseInt, so it is a number.
+          sqliteInteger || context.cockroach
+            ? `  ${propName}!: number;`
+            : property,
         ],
       };
     }

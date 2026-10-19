@@ -15,6 +15,11 @@ import { findModel } from '../ir.js';
 import { toCamelCase, toPascalCase, toSnakeCase } from '../naming.js';
 import type { NamingMode } from '../transforms.js';
 import { isValidPhpNamespace } from './doctrine.js';
+import {
+  COCKROACH_PREFIX,
+  cockroachSequentialWarning,
+  isCockroach,
+} from './cockroach.js';
 import type { PrismaProvider } from './prisma.js';
 
 /**
@@ -242,6 +247,8 @@ interface EmitContext {
   plans: Map<string, ModelPlan>;
   pivots: TablePlan[];
   usedTables: Set<string>;
+  /** CockroachDB: auto-increment keys, reported in one warning. */
+  sequentialKeys: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -280,7 +287,13 @@ export function emitLaravel(
     plans: new Map<string, ModelPlan>(),
     pivots: [],
     usedTables: new Set<string>(),
+    sequentialKeys: [],
   };
+  if (isCockroach(options.provider)) {
+    warnings.push(
+      `${COCKROACH_PREFIX} Laravel has no CockroachDB driver, so the migrations and models are written for the pgsql driver (DB_CONNECTION=pgsql, port 26257). Auto-incrementing keys are bigserial there, which CockroachDB fills with unique_rowid() (64-bit); hstore and range types (which CockroachDB lacks) are written as json or string columns.`
+    );
+  }
   if (options.provider === 'mongodb') {
     warnings.push(
       'Provider "mongodb": Laravel migrations are relational (use the mongodb/laravel-mongodb package for MongoDB); relational migrations and models were written.'
@@ -315,6 +328,14 @@ export function emitLaravel(
   }
   for (const [path, text] of Object.entries(renderMigrations(context))) {
     files[path] = text;
+  }
+  if (context.sequentialKeys.length > 0) {
+    warnings.push(
+      cockroachSequentialWarning(
+        context.sequentialKeys,
+        'id() and bigIncrements() create bigserial, which CockroachDB fills with unique_rowid() (64-bit and not consecutive)'
+      )
+    );
   }
   return { files, warnings };
 }
@@ -1343,6 +1364,9 @@ function planField(
   const quotedName: string = quote(field.columnName);
 
   if (isKey && keyKind === 'increments') {
+    if (isCockroach(context.options.provider)) {
+      context.sequentialKeys.push(label);
+    }
     table.primary =
       field.columnName === 'id'
         ? { method: 'id', args: [], modifiers: [] }
