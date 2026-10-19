@@ -1,0 +1,18 @@
+Account.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Account.email: ClickHouse has no unique constraints; the unique constraint on "email" was dropped (a ReplacingMergeTree with that column in its ORDER BY can deduplicate rows).
+Account.ttl: ClickHouse has no interval column type; the duration was written as an Int64 (microseconds).
+Account.alarm: ClickHouse has no stable time-of-day type; the column was written as a String ("HH:MM:SS").
+Session.account: ClickHouse has no foreign keys; the relation to Account was written as the plain column "account_id" (no constraint, no ON DELETE action).
+Group.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Membership.account: ClickHouse has no foreign keys; the relation to Account was written as the plain column "account_id" (no constraint, no ON DELETE action).
+Membership.group: ClickHouse has no foreign keys; the relation to Group was written as the plain column "group_id" (no constraint, no ON DELETE action).
+Profile.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Profile.owner: ClickHouse has no foreign keys; the relation to Account was written as the plain column "owner_account_id" (no constraint, no ON DELETE action).
+Profile.owner: ClickHouse has no unique constraints; the one-to-one uniqueness of "owner_account_id" was dropped.
+legacy_order.owner: ClickHouse has no foreign keys; the relation to Account was written as the plain column "acct" (no constraint, no ON DELETE action).
+GroupFriends.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+GroupFriends.from_group: ClickHouse has no foreign keys; the relation to Group was written as the plain column "from_group_id" (no constraint, no ON DELETE action).
+GroupFriends.to_group: ClickHouse has no foreign keys; the relation to Group was written as the plain column "to_group_id" (no constraint, no ON DELETE action).
+Session index (account, opened_at): ClickHouse has no unique indexes; it was written as a data-skipping index (set(100)) and uniqueness is not enforced (a ReplacingMergeTree can deduplicate by ORDER BY key).
+GroupFriends index (from_group, to_group): ClickHouse has no unique indexes; it was written as a data-skipping index (set(100)) and uniqueness is not enforced (a ReplacingMergeTree can deduplicate by ORDER BY key).
+ClickHouse cannot refresh a column on update from the DDL (Account.updated_at); the application has to set it.
