@@ -23,7 +23,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; one file per model                          |
 | Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable`, `mysqlTable`, `sqliteTable` plus `relations()`             |
 | JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON) |
-| SQL DDL                     |  ✔   |   ✔   | `CREATE TABLE` and more for PostgreSQL, MySQL, SQLite, SQL Server     |
+| SQL DDL                     |  ✔   |   ✔   | DDL for PostgreSQL, MySQL, SQLite, SQL Server, ClickHouse (write)     |
 | SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 (declarative, `Column()`, `Table()`) and SQLModel      |
 | Sequelize (JavaScript/TS)   |  ✔   |   ✔   | Sequelize 6; writes TypeScript or `sequelize-cli` (`--style define`)  |
 | Entity Framework Core (C#)  |  ✔   |   ✔   | EF Core 8: annotations or `--style fluent`, and a `DbContext`         |
@@ -63,7 +63,7 @@ Django (`.py`), Prisma (`.prisma`), and SQL (`.sql`) files are detected from the
 Useful options:
 
 - `--naming preserve|normalize`: keep existing names (default), or write singular snake_case names with UUID keys.
-- `--provider <name>`: the database to target, such as `postgresql` or `mysql`.
+- `--provider <name>`: the database to target, such as `postgresql`, `mysql` or `clickhouse`.
 - `--dry-run`: show what would be written, and write nothing.
 - `--check`: exit with code 3 if an output file is out of date. Use it in Continuous Integration (CI).
 

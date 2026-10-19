@@ -50,6 +50,16 @@ jobs:
         options: >-
           --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot" --health-interval 5s
           --health-timeout 5s --health-retries 20
+      clickhouse:
+        image: clickhouse/clickhouse-server:latest
+        env:
+          # Lets the default user connect over the network without a password.
+          CLICKHOUSE_SKIP_USER_SETUP: 1
+        ports:
+          - 8123:8123
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"
+          --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v6
       - name: Choose the tools directory (outside the repository)
@@ -100,6 +110,8 @@ jobs:
           command -v mysql > /dev/null || sudo apt-get install -y --no-install-recommends mysql-client
           echo "SQL_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres" >> "$GITHUB_ENV"
           echo "SQL_MYSQL_URL=mysql://root:root@127.0.0.1:3306" >> "$GITHUB_ENV"
+      - name: Point the ClickHouse DDL test at the ClickHouse service
+        run: echo "CLICKHOUSE_URL=http://127.0.0.1:8123" >> "$GITHUB_ENV"
       - name: Install Doctrine ORM and Illuminate
         run: |
           mkdir -p "$TOOLS/doctrine" "$TOOLS/laravel"

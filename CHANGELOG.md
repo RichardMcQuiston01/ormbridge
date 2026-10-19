@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- ClickHouse writer: `--to sql --provider clickhouse` (`src/emitters/sqlClickhouse.ts`, `sqlClickhouseTypes.ts`, `sqlClickhouseIndexes.ts`, called from `emitSqlDdl`). One `CREATE TABLE ... ENGINE = MergeTree() ORDER BY (...) PRIMARY KEY (...)` per model, with the sorting key taken from the primary key (`ORDER BY tuple()` and a warning when there is none), `Nullable(T)` for nullable columns (not for key columns, arrays and maps), `Int8` to `UInt64`, `Float32/64`, `Decimal(P, S)`, `Bool`, `Date32`, `DateTime64`, `UUID`, `IPv6`, `Map`, `Array`, `Enum8`/`Enum16`, `String` for text, JSON, bytes, time and ranges, `DEFAULT` / `MATERIALIZED` / `ALIAS` columns, column and join-table `COMMENT`s and data-skipping indexes. Foreign keys, unique constraints and auto-increment are dropped, each with a warning naming the model and field; relations stay as plain columns. Writing only; reading ClickHouse DDL and `clickhouse-sqlalchemy` models are later work.
+- `clickhouse` is a `--provider` / config `provider` value. Any writer other than `sql` that is given it warns (`ClickHouse is only supported by the SQL DDL writer ...`) and writes for PostgreSQL, like `mongodb` does for the relational writers.
+- Tests: `sql-clickhouse-emitter.test.ts` with goldens (`test/golden-extras/sql-clickhouse*`), and `clickhouse-verify.test.ts`, which runs the output in a real ClickHouse server over HTTP and compares `system.tables`, `system.columns` and `system.data_skipping_indices` with the schema (`CLICKHOUSE_URL` or `CLICKHOUSE_DOCKER=1`; skipped otherwise). The CI `real-tools` job starts a ClickHouse service.
+
 ## 0.10.0 - 2026-10-19
 
 Hibernate / JPA support: `jpa` is now a read and write format. The parser reads Java entities (`jakarta.persistence` and `javax.persistence`) and the writer produces them in two styles (`--style jakarta`, the default, and `--style javax`). Both are checked against real Hibernate with H2. `package.json` also gains a `funding` link. **Output change:** the error for an invalid `--style` now lists the JPA styles.
