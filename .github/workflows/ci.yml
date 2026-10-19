@@ -5,7 +5,7 @@ on:
     branches: [dev, main]
   push:
     branches: [dev, main]
-  # Lets the publish workflow run the same jobs (including `real-tools`) before releasing.
+  # Lets the publish workflow run the same jobs (including the `real-tools` jobs) before releasing.
   workflow_call:
 
 jobs:
@@ -23,11 +23,240 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  # The optional verification tests that load generated code with the real tools (Django,
-  # graphene-django, SQLAlchemy and SQLModel, TypeORM, Sequelize, EF Core (reader and writer), Hibernate (reader and writer), Zod, SQL databases (SQLite, PostgreSQL, MySQL, CockroachDB, ClickHouse), Neo4j, Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
-  # because the tools are not installed there. A separate job keeps `check` fast, and a package
-  # registry outage or a tool release then breaks only this job, not lint, build and tests.
-  real-tools:
+  # The optional verification tests that load generated code with the real tools. They are skipped in `check`
+  # because the tools are not installed there. Separate jobs keep `check` fast, and a package registry outage or a
+  # tool release then breaks only the job of that ecosystem, not lint, build and tests.
+  #
+  # The tools are split into one job per ecosystem so that the installs and the slow test files run in parallel (they
+  # took about 15 minutes in one job). Each job installs only what it needs and runs only the test files that use
+  # those tools, found by the environment variable or executable the file reads (see test/README.md for the table).
+  # The test files that need no tool run in `check`, so they are not repeated here. A test file that needs tools from
+  # two ecosystems has to run in a job that has both; when a test starts to use another tool, move it or add the tool.
+  # `real-tools` at the end waits for all of them and is the one name to require in branch protection.
+
+  # Django, graphene-django, SQLAlchemy 2 and SQLModel, in one virtual environment.
+  real-tools-python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: Choose the tools directory (outside the repository)
+        run: echo "TOOLS=$RUNNER_TEMP/verification-tools" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: test/tools/setup-verification-tools.sh
+      - run: npm ci
+      - name: Install Django, graphene-django, SQLAlchemy 2 and SQLModel
+        run: |
+          test/tools/setup-verification-tools.sh "$TOOLS" python | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
+      - name: Tests with the real Python tools
+        run: >-
+          npx vitest run
+          test/django-verify.test.ts
+          test/graphene-verify.test.ts
+          test/graphene-emitter.test.ts
+          test/sqlalchemy-verify.test.ts
+          test/sqlalchemy-parser-verify.test.ts
+          test/sqlalchemy-emitter.test.ts
+
+  # TypeORM, Drizzle, Sequelize, Ajv, Zod and Prisma.
+  real-tools-node:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: Choose the tools directory (outside the repository)
+        run: echo "TOOLS=$RUNNER_TEMP/verification-tools" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - name: Cache package downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.npm
+          key: real-tools-node-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
+          restore-keys: real-tools-node-${{ runner.os }}-
+      - run: npm ci
+      - name: Install TypeORM, Drizzle, Sequelize, Ajv, Zod and better-sqlite3
+        run: |
+          test/tools/setup-verification-tools.sh "$TOOLS" node | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
+      - name: Install Prisma 6 and 7
+        run: |
+          for major in 6 7; do
+            mkdir -p "$TOOLS/prisma$major"
+            (cd "$TOOLS/prisma$major" && npm init -y > /dev/null && npm install --silent "prisma@$major")
+          done
+      - name: Tests with the real Node tools (Prisma 6)
+        run: >-
+          npx vitest run
+          test/typeorm-verify.test.ts
+          test/drizzle-verify.test.ts
+          test/drizzle-parser-verify.test.ts
+          test/sequelize-verify.test.ts
+          test/sequelize-parser-verify.test.ts
+          test/json-schema-ajv.test.ts
+          test/json-schema-verify.test.ts
+          test/zod-verify.test.ts
+          test/prisma-extras.test.ts
+        env:
+          PRISMA_BIN: ${{ env.TOOLS }}/prisma6/node_modules/.bin/prisma
+          PRISMA_MAJOR: '6'
+      - name: Prisma 7 validation
+        run: npx vitest run test/prisma-extras.test.ts
+        env:
+          PRISMA_BIN: ${{ env.TOOLS }}/prisma7/node_modules/.bin/prisma
+          PRISMA_MAJOR: '7'
+
+  # EF Core 8 (reader and writer) with the SQLite and Npgsql providers.
+  real-tools-dotnet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: Choose the tools directory (outside the repository)
+        run: echo "TOOLS=$RUNNER_TEMP/verification-tools" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+      - name: Cache package downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.npm
+            ${{ env.TOOLS }}/efcore/nuget
+          key: real-tools-dotnet-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
+          restore-keys: real-tools-dotnet-${{ runner.os }}-
+      - run: npm ci
+      - name: Install the EF Core 8 packages
+        run: |
+          test/tools/setup-verification-tools.sh "$TOOLS" dotnet | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
+      - name: Tests with the real EF Core
+        run: >-
+          npx vitest run
+          test/efcore-emitter.test.ts
+          test/efcore-emitter-verify.test.ts
+          test/efcore-parser-verify.test.ts
+
+  # Hibernate ORM 6 and 5 (reader and writer), with Maven.
+  real-tools-java:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: Choose the tools directory (outside the repository)
+        run: echo "TOOLS=$RUNNER_TEMP/verification-tools" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Cache package downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.npm
+            ${{ env.TOOLS }}/jpa/m2
+          key: real-tools-java-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', 'test/tools/jpa-verify/pom.xml', 'test/tools/jpa-verify/pom-javax.xml', '.github/workflows/ci.yml') }}
+          restore-keys: real-tools-java-${{ runner.os }}-
+      - run: npm ci
+      - name: Install Hibernate 6 and 5
+        run: |
+          test/tools/setup-verification-tools.sh "$TOOLS" java | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
+      - name: Tests with the real Hibernate
+        run: >-
+          npx vitest run
+          test/jpa-emitter-verify.test.ts
+          test/jpa-parser-verify.test.ts
+          test/jpa-emitter-golden.test.ts
+          test/jpa-fixtures.test.ts
+
+  # Doctrine ORM and Illuminate (Laravel), with PHP and Composer.
+  real-tools-php:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: Choose the tools directory (outside the repository)
+        run: echo "TOOLS=$RUNNER_TEMP/verification-tools" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          tools: composer
+      - name: Cache package downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/composer
+          key: real-tools-php-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
+          restore-keys: real-tools-php-${{ runner.os }}-
+      - run: npm ci
+      - name: Install Doctrine ORM and Illuminate
+        run: |
+          mkdir -p "$TOOLS/doctrine" "$TOOLS/laravel"
+          (cd "$TOOLS/doctrine" && composer require --no-interaction --no-progress doctrine/orm symfony/cache)
+          (cd "$TOOLS/laravel" && composer require --no-interaction --no-progress illuminate/database illuminate/events illuminate/container illuminate/support ramsey/uuid symfony/uid)
+          echo "DOCTRINE_DIR=$TOOLS/doctrine" >> "$GITHUB_ENV"
+          echo "LARAVEL_DIR=$TOOLS/laravel" >> "$GITHUB_ENV"
+      - name: Tests with the real Doctrine and Illuminate
+        run: >-
+          npx vitest run
+          test/doctrine-emitter.test.ts
+          test/laravel-emitter.test.ts
+          test/laravel-parser.test.ts
+
+  # GORM, with the Go toolchain. The tests `go get` their pinned modules.
+  real-tools-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+      - name: Cache package downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.npm
+            ~/go/pkg/mod
+          key: real-tools-go-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
+          restore-keys: real-tools-go-${{ runner.os }}-
+      - run: npm ci
+      - name: Tests with the real GORM
+        run: >-
+          npx vitest run
+          test/gorm-emitter.test.ts
+          test/gorm-verify.test.ts
+
+  # The SQL DDL, CockroachDB, ClickHouse and Neo4j tests, which execute their output in real servers (SQLite needs
+  # none). Only this job starts the servers. The CockroachDB test also runs drizzle-kit, so Drizzle is installed too.
+  real-tools-databases:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Real servers for the SQL DDL tests, which execute the emitted SQL (SQLite needs none).
@@ -80,41 +309,17 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-          cache: pip
-          cache-dependency-path: test/tools/setup-verification-tools.sh
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: mbstring, pdo_sqlite, sqlite3
-          tools: composer
-      - uses: actions/setup-go@v6
-        with:
-          go-version: stable
-          cache: false
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 8.0.x
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
       - name: Cache package downloads
         uses: actions/cache@v5
         with:
           path: |
             ~/.npm
-            ~/.cache/composer
-            ~/go/pkg/mod
-            ${{ env.TOOLS }}/jpa/m2
-          key: real-tools-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', 'test/tools/jpa-verify/pom.xml', 'test/tools/jpa-verify/pom-javax.xml', '.github/workflows/ci.yml') }}
-          restore-keys: real-tools-${{ runner.os }}-
+          key: real-tools-databases-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
+          restore-keys: real-tools-databases-${{ runner.os }}-
       - run: npm ci
-      - name: Install Django, graphene-django, SQLAlchemy 2, SQLModel, TypeORM, Drizzle, Sequelize, EF Core 8, Hibernate 6 and 5, Ajv, Zod and better-sqlite3
+      - name: Install better-sqlite3 for SQLite and Drizzle for drizzle-kit
         run: |
-          test/tools/setup-verification-tools.sh "$TOOLS" | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
+          test/tools/setup-verification-tools.sh "$TOOLS" sql drizzle | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
       - name: Point the SQL DDL tests at the PostgreSQL and MySQL services
         run: |
           # The psql and mysql clients ship with the runner image; install them if that ever changes.
@@ -148,26 +353,36 @@ jobs:
           echo "NEO4J_URL=http://127.0.0.1:7474" >> "$GITHUB_ENV"
           echo "NEO4J_USER=neo4j" >> "$GITHUB_ENV"
           echo "NEO4J_PASSWORD=ormbridge-ci-password" >> "$GITHUB_ENV"
-      - name: Install Doctrine ORM and Illuminate
-        run: |
-          mkdir -p "$TOOLS/doctrine" "$TOOLS/laravel"
-          (cd "$TOOLS/doctrine" && composer require --no-interaction --no-progress doctrine/orm symfony/cache)
-          (cd "$TOOLS/laravel" && composer require --no-interaction --no-progress illuminate/database illuminate/events illuminate/container illuminate/support ramsey/uuid symfony/uid)
-          echo "DOCTRINE_DIR=$TOOLS/doctrine" >> "$GITHUB_ENV"
-          echo "LARAVEL_DIR=$TOOLS/laravel" >> "$GITHUB_ENV"
-      - name: Install Prisma 6 and 7
-        run: |
-          for major in 6 7; do
-            mkdir -p "$TOOLS/prisma$major"
-            (cd "$TOOLS/prisma$major" && npm init -y > /dev/null && npm install --silent "prisma@$major")
-          done
-      - name: Tests with the real tools (Prisma 6)
-        run: npx vitest run --dir test
+      - name: Tests against the real databases
+        run: >-
+          npx vitest run
+          test/sql-ddl-verify.test.ts
+          test/sql-ddl-parser-verify.test.ts
+          test/cockroachdb-verify.test.ts
+          test/clickhouse-verify.test.ts
+          test/neo4j-verify.test.ts
+
+  # The single name that stands for all of the real-tool jobs above. Branch protection and `needs: ci` in publish.yml
+  # keep working with it, and it fails when any of them failed, was cancelled or did not run.
+  real-tools:
+    if: ${{ always() }}
+    needs:
+      - real-tools-python
+      - real-tools-node
+      - real-tools-dotnet
+      - real-tools-java
+      - real-tools-php
+      - real-tools-go
+      - real-tools-databases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that every real-tool job succeeded
         env:
-          PRISMA_BIN: ${{ env.TOOLS }}/prisma6/node_modules/.bin/prisma
-          PRISMA_MAJOR: '6'
-      - name: Prisma 7 validation
-        run: npx vitest run test/prisma-extras.test.ts
-        env:
-          PRISMA_BIN: ${{ env.TOOLS }}/prisma7/node_modules/.bin/prisma
-          PRISMA_MAJOR: '7'
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS"
+          # Anything but success counts: failure, cancelled, and skipped (a job that did not run proved nothing).
+          if ! echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' > /dev/null; then
+            echo "::error::At least one real-tool job failed, was cancelled or did not run."
+            exit 1
+          fi
