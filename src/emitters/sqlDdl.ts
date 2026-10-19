@@ -18,6 +18,7 @@ import {
   type NamingMode,
 } from '../transforms.js';
 import type { EmitOutput, PrismaProvider } from './prisma.js';
+import { emitClickhouseDdl } from './sqlClickhouse.js';
 
 /**
  * SQL DDL emitter.
@@ -341,7 +342,7 @@ interface ColumnType {
   textual: boolean;
 }
 
-interface ResolvedTarget {
+export interface ResolvedTarget {
   columnName: string;
   /** The field that describes the referenced column's type. */
   field: IrField;
@@ -418,6 +419,9 @@ export function emitSqlDdl(
   schema: IrSchema,
   options: SqlDdlEmitOptions
 ): EmitOutput {
+  if (options.provider === 'clickhouse') {
+    return emitClickhouseDdl(schema, options.naming);
+  }
   // The join table of a many-to-many field is an ordinary table in SQL.
   const expanded: IrSchema = expandManyToMany(schema);
   const prepared: IrSchema =
@@ -1404,8 +1408,8 @@ function isIntegerKey(field: IrField): boolean {
 }
 
 /** Resolves the column a foreign key points at: `toField`, otherwise the target's single-column key. */
-function resolveTarget(
-  context: EmitContext,
+export function resolveTarget(
+  context: Pick<EmitContext, 'schema'>,
   target: IrModel,
   toField: string | undefined,
   depth: number = 0
@@ -1467,7 +1471,7 @@ function resolveTarget(
 
 /** A relation column takes the type of the column it points at. */
 function resolveRelationColumn(
-  context: EmitContext,
+  context: Pick<EmitContext, 'schema'>,
   owner: IrModel,
   relation: IrRelation,
   depth: number
@@ -1494,7 +1498,7 @@ function resolveRelationColumn(
 // Tables
 // ---------------------------------------------------------------------------
 
-function columnNameOf(model: IrModel, name: string): string | undefined {
+export function columnNameOf(model: IrModel, name: string): string | undefined {
   const relation: IrRelation | undefined =
     model.relations.find(
       (candidate: IrRelation) =>

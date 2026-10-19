@@ -1,0 +1,3 @@
+Weird.self: ClickHouse has no foreign keys; the relation to Weird was written as the plain column "self_id" (no constraint, no ON DELETE action).
+Weird.other: ClickHouse has no foreign keys; the relation to Other was written as the plain column "other_id" (no constraint, no ON DELETE action).
+ClickHouse cannot refresh a column on update from the DDL (Weird.updated_at, Other.updated_at); the application has to set it.

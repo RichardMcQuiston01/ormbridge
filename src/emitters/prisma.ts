@@ -14,7 +14,13 @@ import { findModel } from '../ir.js';
 import { toCamelCase, toSnakeCase } from '../naming.js';
 
 export type PrismaProvider =
-  'postgresql' | 'mysql' | 'sqlite' | 'sqlserver' | 'mongodb' | 'cockroachdb';
+  | 'postgresql'
+  | 'mysql'
+  | 'sqlite'
+  | 'sqlserver'
+  | 'mongodb'
+  | 'cockroachdb'
+  | 'clickhouse';
 
 export const PRISMA_PROVIDERS: readonly PrismaProvider[] = [
   'postgresql',
@@ -23,6 +29,7 @@ export const PRISMA_PROVIDERS: readonly PrismaProvider[] = [
   'sqlserver',
   'mongodb',
   'cockroachdb',
+  'clickhouse',
 ];
 
 export interface PrismaEmitOptions {
@@ -177,6 +184,8 @@ const NATIVE_TYPES: Readonly<
     Bytes: ['ObjectId', 'BinData'],
   },
   sqlite: {},
+  // Prisma has no ClickHouse connector; convert() writes the PostgreSQL schema instead.
+  clickhouse: {},
 };
 
 /** Index access methods (`type:`) accepted per provider. */

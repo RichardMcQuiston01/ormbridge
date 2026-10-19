@@ -1,0 +1,13 @@
+Category.name: ClickHouse has no unique constraints; the unique constraint on "name" was dropped (a ReplacingMergeTree with that column in its ORDER BY can deduplicate rows).
+Category.parent: ClickHouse has no foreign keys; the relation to Category was written as the plain column "parent_id" (no constraint, no ON DELETE action).
+Post.publicId: ClickHouse has no unique constraints; the unique constraint on "public_id" was dropped (a ReplacingMergeTree with that column in its ORDER BY can deduplicate rows).
+Post.author: ClickHouse has no foreign keys; the relation to User was written as the plain column "author_id" (no constraint, no ON DELETE action).
+Post.editor: ClickHouse has no foreign keys; the relation to User was written as the plain column "editor_id" (no constraint, no ON DELETE action).
+Post.category: ClickHouse has no foreign keys; the relation to Category was written as the plain column "category_id" (no constraint, no ON DELETE action).
+Profile.user: ClickHouse has no foreign keys; the relation to User was written as the plain column "user_id" (no constraint, no ON DELETE action).
+Profile.user: ClickHouse has no unique constraints; the one-to-one uniqueness of "user_id" was dropped.
+PostTags.post: ClickHouse has no foreign keys; the relation to Post was written as the plain column "post_id" (no constraint, no ON DELETE action).
+PostTags.tag: ClickHouse has no foreign keys; the relation to Tag was written as the plain column "tag_id" (no constraint, no ON DELETE action).
+Post index (author, title): ClickHouse has no unique indexes; it was written as a data-skipping index (set(100)) and uniqueness is not enforced (a ReplacingMergeTree can deduplicate by ORDER BY key).
+PostTags index (post, tag): ClickHouse has no unique indexes; it was written as a data-skipping index (set(100)) and uniqueness is not enforced (a ReplacingMergeTree can deduplicate by ORDER BY key).
+ClickHouse cannot refresh a column on update from the DDL (Category.updatedAt, Post.updatedAt, Tag.updated_at, Profile.updated_at, User.updated_at); the application has to set it.

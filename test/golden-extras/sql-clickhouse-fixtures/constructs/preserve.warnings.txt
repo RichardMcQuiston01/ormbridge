@@ -1,0 +1,24 @@
+Author.handle: ClickHouse has no unique constraints; the unique constraint on "handle" was dropped (a ReplacingMergeTree with that column in its ORDER BY can deduplicate rows).
+Author.latest_book: ClickHouse has no foreign keys; the relation to Book was written as the plain column "latest_book_id" (no constraint, no ON DELETE action).
+Book.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Book.grid: ClickHouse cannot make an Array column Nullable; the column was written as Array(Array(Int32)) (empty stands in for NULL).
+Book.colors: ClickHouse cannot make an Array column Nullable; the column was written as Array(Enum8('red' = 1, 'green' = 2)) (empty stands in for NULL).
+Book.opens_at: ClickHouse has no stable time-of-day type; the column was written as a String ("HH:MM:SS").
+Book.window: ClickHouse has no range type; the column was written as a String.
+Book.extra: ClickHouse cannot make a Map column Nullable; the column was written as Map(String, String) (empty stands in for NULL).
+Book.read_time: ClickHouse has no interval column type; the duration was written as an Int64 (microseconds).
+Book.author: ClickHouse has no foreign keys; the relation to Author was written as the plain column "author_id" (no constraint, no ON DELETE action).
+Book.editor: ClickHouse has no foreign keys; the relation to Author was written as the plain column "editor_id" (no constraint, no ON DELETE action).
+Book.series: ClickHouse has no foreign keys; the relation to Series was written as the plain column "series_handle" (no constraint, no ON DELETE action).
+Series.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Series.handle: ClickHouse has no unique constraints; the unique constraint on "handle" was dropped (a ReplacingMergeTree with that column in its ORDER BY can deduplicate rows).
+Series.parent: ClickHouse has no foreign keys; the relation to Series was written as the plain column "parent_id" (no constraint, no ON DELETE action).
+Audiobook.book: ClickHouse has no foreign keys; the relation to Book was written as the plain column "book_ptr_id" (no constraint, no ON DELETE action).
+index.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+index.table: ClickHouse has no foreign keys; the relation to Series was written as the plain column "table" (no constraint, no ON DELETE action).
+Tagged.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+TaggedBooks.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+TaggedBooks.tagged: ClickHouse has no foreign keys; the relation to Tagged was written as the plain column "tagged_id" (no constraint, no ON DELETE action).
+TaggedBooks.book: ClickHouse has no foreign keys; the relation to Book was written as the plain column "book_id" (no constraint, no ON DELETE action).
+Book index (title, author): ClickHouse has no unique indexes; it was written as a data-skipping index (set(100)) and uniqueness is not enforced (a ReplacingMergeTree can deduplicate by ORDER BY key).
+TaggedBooks index (tagged, book): ClickHouse has no unique indexes; it was written as a data-skipping index (set(100)) and uniqueness is not enforced (a ReplacingMergeTree can deduplicate by ORDER BY key).

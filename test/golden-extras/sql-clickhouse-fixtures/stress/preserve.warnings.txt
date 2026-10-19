@@ -1,0 +1,4 @@
+Weird.id: ClickHouse has no auto-increment; the auto-increment was dropped.
+Weird.self: ClickHouse has no foreign keys; the relation to Weird was written as the plain column "self_id" (no constraint, no ON DELETE action).
+Weird.other: ClickHouse has no foreign keys; the relation to Other was written as the plain column "other_id" (no constraint, no ON DELETE action).
+Other.id: ClickHouse has no auto-increment; the auto-increment was dropped.
