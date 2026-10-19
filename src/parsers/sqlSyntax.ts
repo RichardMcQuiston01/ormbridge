@@ -509,7 +509,18 @@ export function tokenize(text: string, dialect: SqlDialect): TokenizeResult {
       continue;
     }
 
-    // Everything else is punctuation; `::` is one token.
+    // Everything else is punctuation; `::` is one token. CockroachDB writes the casts of its dumps
+    // as `:::` (`now():::TIMESTAMPTZ`), which reads like `::`.
+    if (
+      code === 58 &&
+      text.charCodeAt(index + 1) === 58 &&
+      text.charCodeAt(index + 2) === 58
+    ) {
+      // The token covers the first two colons, so it reads exactly like `::`.
+      push('punct', index, index + 2, startLine, '::');
+      index += 3;
+      continue;
+    }
     if (code === 58 && text.charCodeAt(index + 1) === 58) {
       push('punct', index, index + 2, startLine, '::');
       index += 2;
@@ -656,6 +667,11 @@ export function detectDialect(text: string): SqlDialect {
       /\bSET\s+search_path\b/i,
       /\bCREATE\s+EXTENSION\b/i,
       /\bBYTEA\b/i,
+      // CockroachDB, which speaks the PostgreSQL dialect.
+      /\bunique_rowid\s*\(/i,
+      /:::\s*[a-z_]/i,
+      /\bINVERTED\s+INDEX\b/i,
+      /\bFAMILY\s+("primary"|fam_\d)/i,
     ]),
   };
   let best: SqlDialect = 'postgresql';
