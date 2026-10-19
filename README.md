@@ -31,6 +31,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                                                          |
 | Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django                                         |
 | Zod schemas                 |      |   ✔   | Zod 4 schemas and inferred types                                                                   |
+| Neo4j (Cypher)              |      |   ✔   | Node constraints and indexes; relationships as comments; `--style enterprise` for Enterprise       |
 
 Each format has a [guide](./docs/formats/README.md) and a runnable [example project](./examples/README.md).
 
@@ -87,6 +88,12 @@ Prisma to Zod schemas:
 
 ```bash
 ormbridge convert -i ./prisma/schema.prisma --to zod -o ./src/schemas.ts
+```
+
+Prisma to a Neo4j Cypher schema (constraints and indexes; `--style enterprise` adds Enterprise Edition statements):
+
+```bash
+ormbridge convert -i ./prisma/schema.prisma --to neo4j -o ./neo4j/schema.cypher
 ```
 
 Fail a build when generated files are out of date:

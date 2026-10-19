@@ -24,7 +24,7 @@ jobs:
       - run: npm test
 
   # The optional verification tests that load generated code with the real tools (Django,
-  # graphene-django, SQLAlchemy and SQLModel, TypeORM, Sequelize, EF Core (reader and writer), Hibernate (reader and writer), Zod, SQL databases (SQLite, PostgreSQL, MySQL, CockroachDB), Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
+  # graphene-django, SQLAlchemy and SQLModel, TypeORM, Sequelize, EF Core (reader and writer), Hibernate (reader and writer), Zod, SQL databases (SQLite, PostgreSQL, MySQL, CockroachDB, ClickHouse), Neo4j, Doctrine, Illuminate, Prisma, Go). They are skipped in `check`
   # because the tools are not installed there. A separate job keeps `check` fast, and a package
   # registry outage or a tool release then breaks only this job, not lint, build and tests.
   real-tools:
@@ -60,6 +60,18 @@ jobs:
         options: >-
           --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"
           --health-interval 5s --health-timeout 5s --health-retries 20
+      # Community Edition only. The enterprise-style Neo4j tests need an Enterprise Edition server and a license
+      # acceptance that a person has to make, so they are skipped here (see test/README.md to run them yourself).
+      neo4j:
+        image: neo4j:5-community
+        env:
+          NEO4J_AUTH: neo4j/ormbridge-ci-password
+        ports:
+          - 7474:7474
+          - 7687:7687
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p ormbridge-ci-password 'RETURN 1' || exit 1"
+          --health-interval 5s --health-timeout 10s --health-retries 30
     steps:
       - uses: actions/checkout@v6
       - name: Choose the tools directory (outside the repository)
@@ -131,6 +143,11 @@ jobs:
           echo "COCKROACH_URL=postgresql://root@127.0.0.1:26257/defaultdb?sslmode=disable" >> "$GITHUB_ENV"
       - name: Point the ClickHouse DDL test at the ClickHouse service
         run: echo "CLICKHOUSE_URL=http://127.0.0.1:8123" >> "$GITHUB_ENV"
+      - name: Point the Neo4j test at the Neo4j service
+        run: |
+          echo "NEO4J_URL=http://127.0.0.1:7474" >> "$GITHUB_ENV"
+          echo "NEO4J_USER=neo4j" >> "$GITHUB_ENV"
+          echo "NEO4J_PASSWORD=ormbridge-ci-password" >> "$GITHUB_ENV"
       - name: Install Doctrine ORM and Illuminate
         run: |
           mkdir -p "$TOOLS/doctrine" "$TOOLS/laravel"
