@@ -1,0 +1,19 @@
+{
+  "conversions": [
+    {
+      "name": "to-neo4j",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "neo4j",
+      "output": "generated/schema.cypher"
+    },
+    {
+      "name": "to-neo4j-enterprise",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "neo4j",
+      "style": "enterprise",
+      "output": "generated/schema.enterprise.cypher"
+    }
+  ]
+}

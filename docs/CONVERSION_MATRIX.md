@@ -2710,7 +2710,7 @@ Stable: converting efcore → jpa → efcore again changes nothing further.
 
 ## Write-only targets
 
-Some formats can be written but not read (zod), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. JSON Schema: every model and enum has a `$defs` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
+Some formats can be written but not read (zod, neo4j), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. Neo4j: every model has a node section (or, for a join table, its relationship comment), every column and foreign key has a property line, every relation has its relationship comment and every primary key has a constraint. JSON Schema: every model and enum has a `$defs` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
 
 | Pair | Files | Emit warnings | Missing |
 | --- | --- | --- | --- |
@@ -2727,6 +2727,19 @@ Some formats can be written but not read (zod), so the matrix cannot re-read the
 | sequelize → zod | 1 | 0 | none |
 | efcore → zod | 1 | 0 | none |
 | jpa → zod | 1 | 0 | none |
+| django → neo4j | 1 | 27 | none |
+| prisma → neo4j | 1 | 28 | none |
+| typeorm → neo4j | 1 | 27 | none |
+| doctrine → neo4j | 1 | 28 | none |
+| laravel → neo4j | 1 | 27 | none |
+| gorm → neo4j | 1 | 27 | none |
+| drizzle → neo4j | 1 | 27 | none |
+| json-schema → neo4j | 1 | 27 | none |
+| sql → neo4j | 1 | 25 | none |
+| sqlalchemy → neo4j | 1 | 27 | none |
+| sequelize → neo4j | 1 | 25 | none |
+| efcore → neo4j | 1 | 27 | none |
+| jpa → neo4j | 1 | 27 | none |
 
 ### django → zod
 
@@ -2806,12 +2819,460 @@ The output covers the canonical schema.
 
 Emit warnings: none.
 
+### django → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.public_id: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "DRAFT" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.view_count: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.is_featured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.published_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title, status has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+
+### prisma → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.public_id: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "DRAFT" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.view_count: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.is_featured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.published_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- PostTags: the join table became a relationship, so its surrogate key id was dropped.
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+- PostTags: the join table is documented as the relationship (:Post)-[:TAGS]->(:Tag) instead of a node label.
+
+### typeorm → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.publicId: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "Draft" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.viewCount: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.isFeatured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+
+### doctrine → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updatedAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updatedAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.publicId: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.body: the default "" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "Draft" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.viewCount: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.isFeatured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+
+### laravel → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.public_id: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "Draft" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.view_count: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.is_featured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.published_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+
+### gorm → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.publicId: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "Draft" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.viewCount: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.isFeatured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+
+### drizzle → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.publicId: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "DRAFT" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.viewCount: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.isFeatured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+- PostTag: the join table is documented as the relationship (:Post)-[:TAGS]->(:Tag) instead of a node label.
+
+### json-schema → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.public_id: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "DRAFT" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.view_count: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.is_featured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.published_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+
+### sql → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- BlogUser.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- BlogCategory.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- BlogCategory.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- BlogCategory: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- BlogTag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- BlogTag: the maximum length of label has no Neo4j schema representation and was dropped.
+- BlogPost.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- BlogPost.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- BlogPost.public_id: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- BlogPost.status: the default "DRAFT" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- BlogPost.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- BlogPost.view_count: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- BlogPost.is_featured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- BlogPost.published_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- BlogPost.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- BlogPost.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- BlogPost: the maximum length of title has no Neo4j schema representation and was dropped.
+- BlogProfile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- BlogProfile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- BlogCategory.parent: Neo4j keeps no relationship schema, so the foreign key to BlogCategory (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- BlogPost.author: Neo4j keeps no relationship schema, so the foreign key to BlogUser (on delete cascade) is only documented in a comment; the author_id property was kept.
+- BlogPost.editor: Neo4j keeps no relationship schema, so the foreign key to BlogUser (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- BlogPost.category: Neo4j keeps no relationship schema, so the foreign key to BlogCategory (on delete restrict) is only documented in a comment; the category_id property was kept.
+- BlogPost.tags: the many-to-many relation to BlogTag is documented as the relationship (:BlogPost)-[:TAGS]->(:BlogTag); no join node is created.
+- BlogProfile.user: Neo4j keeps no relationship schema, so the foreign key to BlogUser (on delete cascade) is only documented in a comment; the user_id property was kept.
+
+### sqlalchemy → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.created_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.public_id: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "DRAFT" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.view_count: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.is_featured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.published_at: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata_: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata_: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+
+### sequelize → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.publicId: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "DRAFT" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.viewCount: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.isFeatured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+
+### efcore → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.publicId: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "Draft" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.viewCount: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.isFeatured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title, status has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+
+### jpa → neo4j
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.createdAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Post.publicId: the default of a generated UUID has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.status: the default "Draft" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.viewCount: the default 0 has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.featured: the default false has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.metadata: the default "{}" has no Neo4j schema representation and was dropped; set the value when you create the node.
+- Post: the maximum length of title, status has no Neo4j schema representation and was dropped.
+- Tag.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).
+- Category.parent: Neo4j keeps no relationship schema, so the foreign key to Category (on delete setNull) is only documented in a comment; the parent_id property was kept.
+- Post.author: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the author_id property was kept.
+- Post.editor: Neo4j keeps no relationship schema, so the foreign key to User (on delete setNull) is only documented in a comment; the editor_id property was kept.
+- Post.category: Neo4j keeps no relationship schema, so the foreign key to Category (on delete restrict) is only documented in a comment; the category_id property was kept.
+- Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
+
 ### What zod approximates
 
 1. **Types that JSON cannot carry.** Big integers and decimals are validated as strings of digits (a decimal with `max_digits` and `decimal_places` gets a pattern sized to them), UUIDs with `z.uuid()` (which only accepts RFC 9562 versions and variants), binary data as base64 text, durations and times as plain strings, and JSON columns as `z.unknown()`. Date columns use `z.coerce.date()`, which also accepts `null` and numbers, so a null in a required date column is not rejected; the `dates: "string"` option validates ISO text strictly instead.
 2. **Create and update schemas are inferred.** The IR has no notion of an API payload. `<Model>CreateSchema` leaves out auto-increment keys, generated columns and auto-updated timestamps, and makes columns with a default (or a database default) and nullable columns optional. `<Model>UpdateSchema` is the create schema made partial, so it cannot change a generated column. Views get neither.
 3. **Relations are a separate schema.** Relation fields are not part of `<Model>Schema`; the foreign-key scalar is. A model that takes part in a relation also gets `<Model>WithRelationsSchema`, where every related row is optional and resolved lazily. Referential actions (`onDelete`), `related_name` collisions and composite foreign keys are not validation rules, so they are dropped (a composite key stays as its scalar columns).
 4. **Database-only rules are not checked.** Unique constraints, indexes, check constraints, string lengths below the database limit, integer ranges, enum value order and column names are not validated or kept; only string `max_length`, enum membership, nullability and the types above are. Enum labels are kept as comments. Ranges become an object with `lower`, `upper` and `bounds`, and hstore a record of nullable strings.
+
+### What neo4j approximates
+
+1. **Relationships are comments, foreign keys stay as properties.** Cypher has no relationship schema, so a foreign key, relation or join table cannot be declared. Each one is written as a comment block (`(:Post)-[:AUTHOR]->(:User)` with the cardinality, whether it is required, the referential action and a `MATCH ... MERGE` query that creates it). The foreign key columns stay as plain properties so the data can be loaded first. Neo4j enforces none of it: `ON DELETE` actions and the existence of the target node are left to your queries.
+2. **A pure join table becomes one relationship.** A table with exactly two required foreign keys that nothing else refers to, and either a composite key made of the two or a surrogate key plus a unique pair, is written as a single relationship comment instead of a node label. The surrogate key is dropped and the other columns are listed as relationship properties. The pair cannot be made unique in Neo4j, so the comment says to create the relationships with `MERGE`. Only a join table with unique columns gets statements (relationship property uniqueness constraints).
+3. **Only what Community Edition accepts, unless asked.** The primary key, unique columns, one-to-one foreign keys and unique indexes become uniqueness constraints (a composite primary key a composite uniqueness constraint), other indexes range indexes and full-text indexes full-text indexes. `IS NOT NULL`, `IS NODE KEY` and property type constraints need Enterprise Edition, so they are written only with `--style enterprise`; the community style lists the required properties in a comment instead. Index methods other than B-tree, sort orders, prefix lengths, operator classes and clustering are dropped with a warning, and constraint and index names are derived (`post_author_id_title_unique`), not taken from the source.
+4. **Neo4j property types are approximations.** Integers are `INTEGER` (64-bit), decimals are `STRING` so no precision is lost, JSON, hstore and ranges are serialized `STRING` values, UUIDs and IP addresses are `STRING`, binary data is a byte array (which a type constraint cannot name), dates and times use the `DATE`, `LOCAL`/`ZONED DATETIME`, `LOCAL`/`ZONED TIME` and `DURATION` types, and an array becomes `LIST<T NOT NULL>` (nested arrays become a `STRING`). Enums are `STRING` with the allowed values in a comment, because Neo4j has no enum type.
+5. **Defaults, auto-increment and lengths are dropped.** A schema cannot hold a default value, an auto-increment key, a maximum length, a generated column or an automatically refreshed timestamp, so each is dropped with a warning that names the model and field; set those values when you create the node.
 
 ## What json-schema cannot express
 

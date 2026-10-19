@@ -611,6 +611,7 @@ describe.each([
   ['typescript', 'typescript.txt'],
   ['graphene', 'graphene.txt'],
   ['zod', 'zod.txt'],
+  ['neo4j', 'neo4j.txt'],
 ])('Django extras -> %s', (target, goldenName) => {
   it('matches the stored output', async () => {
     const { output } = await convertExtras(target);

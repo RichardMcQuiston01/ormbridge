@@ -20,6 +20,7 @@ One runnable project per format. Each folder converts the shared blog schema in 
 | [`graphene`](graphene)       | Graphene (GraphQL)      | write only (`generated/`)                           |
 | [`typescript`](typescript)   | TypeScript interfaces   | write only (`generated/`)                           |
 | [`zod`](zod)                 | Zod schemas             | write only (`generated/`)                           |
+| [`neo4j`](neo4j)             | Neo4j (Cypher)          | write only (`generated/`)                           |
 
 Folder layout:
 

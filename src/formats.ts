@@ -17,6 +17,7 @@ import {
   isValidCsharpNamespace,
 } from './emitters/efcore.js';
 import { emitJpa, isJpaStyle, isValidJavaPackage } from './emitters/jpa.js';
+import { emitNeo4j, isNeo4jStyle } from './emitters/neo4j.js';
 import { emitSequelize, isSequelizeStyle } from './emitters/sequelize.js';
 import { emitSqlAlchemy, isSqlAlchemyStyle } from './emitters/sqlalchemy.js';
 import { emitSqlDdl } from './emitters/sqlDdl.js';
@@ -534,6 +535,37 @@ const zodAdapter: FormatAdapter = {
   },
 };
 
+const neo4jAdapter: FormatAdapter = {
+  name: 'neo4j',
+  // Output only, and no extension is claimed: ".cypher" is not read by anything here, so pass --to neo4j.
+  extensions: [],
+  description:
+    'Neo4j Cypher schema: node constraints and indexes, relationships as comments (--style enterprise adds Enterprise Edition constraints)',
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    if (options.style !== undefined) {
+      const checked: Result<OutputStyle> = checkStyle(
+        'neo4j',
+        String(options.style),
+        'style'
+      );
+      if (!checked.ok) {
+        return checked;
+      }
+    }
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitNeo4j(prepared, {
+        camelFields: options.naming === 'normalize',
+        header: options.header,
+        ...(options.style === undefined || !isNeo4jStyle(options.style)
+          ? {}
+          : { style: options.style }),
+      })
+    );
+  },
+};
+
 const sqlAdapter: FormatAdapter = {
   name: 'sql',
   extensions: ['.sql'],
@@ -766,6 +798,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(grapheneAdapter),
   registerFormat(typescriptAdapter),
   registerFormat(zodAdapter),
+  registerFormat(neo4jAdapter),
   registerFormat(jsonSchemaAdapter),
   registerFormat(sqlAdapter),
   registerFormat(sqlalchemyAdapter),
