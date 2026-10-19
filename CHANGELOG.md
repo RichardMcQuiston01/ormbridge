@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.10.0 - 2026-10-19
+
+Hibernate / JPA support: `jpa` is now a read and write format. The parser reads Java entities (`jakarta.persistence` and `javax.persistence`) and the writer produces them in two styles (`--style jakarta`, the default, and `--style javax`). Both are checked against real Hibernate with H2. `package.json` also gains a `funding` link. **Output change:** the error for an invalid `--style` now lists the JPA styles.
+
 ### Added
 
 - `package.json` now has a `funding` entry (the same Stripe donate link as the README), so `npm fund` and the npm page show it.
