@@ -763,6 +763,7 @@ describe.each([
   ['typescript', 'typescript.txt'],
   ['graphene', 'graphene.txt'],
   ['zod', 'zod.txt'],
+  ['neo4j', 'neo4j.txt'],
 ])('Prisma extras -> %s', (target, goldenName) => {
   it('matches the stored output and warns about what it cannot carry', async () => {
     const { output, warnings } = await convertExtras(target);

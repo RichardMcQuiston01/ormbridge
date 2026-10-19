@@ -593,7 +593,7 @@ export async function runCli(
     )
     .option(
       '--style <name>',
-      `layout of the SQLAlchemy, Sequelize, EF Core and JPA output (${OUTPUT_STYLES.join(' | ')}): sqlalchemy | sqlmodel for --to sqlalchemy (default: sqlalchemy), init | define for --to sequelize (default: init), annotations | fluent for --to efcore (default: annotations), jakarta | javax for --to jpa (default: jakarta)`
+      `layout of the SQLAlchemy, Sequelize, EF Core, JPA and Neo4j output (${OUTPUT_STYLES.join(' | ')}): sqlalchemy | sqlmodel for --to sqlalchemy (default: sqlalchemy), init | define for --to sequelize (default: init), annotations | fluent for --to efcore (default: annotations), jakarta | javax for --to jpa (default: jakarta), community | enterprise for --to neo4j (default: community; enterprise adds the statements that need Neo4j Enterprise Edition)`
     )
     .option(
       '--dry-run',

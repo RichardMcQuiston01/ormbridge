@@ -926,7 +926,7 @@ describe('gorm output', () => {
     const run: CliRun = await cli(['convert']);
     expect(run.code).toBe(EXIT_USAGE_ERROR);
     expect(run.stderr).toContain(
-      '"style" must be one of sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax (got "peewee")'
+      '"style" must be one of sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax, community, enterprise (got "peewee")'
     );
   });
 
@@ -950,7 +950,7 @@ describe('gorm output', () => {
     ]);
     expect(unknown.code).toBe(EXIT_USAGE_ERROR);
     expect(unknown.stderr).toContain(
-      'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax (sqlalchemy, sqlmodel for sqlalchemy; init, define for sequelize; annotations, fluent for efcore; jakarta, javax for jpa).'
+      'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax, community, enterprise (sqlalchemy, sqlmodel for sqlalchemy; init, define for sequelize; annotations, fluent for efcore; jakarta, javax for jpa; community, enterprise for neo4j).'
     );
     const run: CliRun = await cli([
       'convert',

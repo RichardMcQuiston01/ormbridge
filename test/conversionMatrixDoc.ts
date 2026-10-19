@@ -308,6 +308,38 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
           'Unique constraints, indexes, check constraints, string lengths below the database limit, integer ranges, enum value order and column names are not validated or kept; only string `max_length`, enum membership, nullability and the types above are. Enum labels are kept as comments. Ranges become an object with `lower`, `upper` and `bounds`, and hstore a record of nullable strings.',
       },
     ],
+    neo4j: [
+      {
+        id: 'neo4j-relationships',
+        title: 'Relationships are comments, foreign keys stay as properties',
+        explanation:
+          'Cypher has no relationship schema, so a foreign key, relation or join table cannot be declared. Each one is written as a comment block (`(:Post)-[:AUTHOR]->(:User)` with the cardinality, whether it is required, the referential action and a `MATCH ... MERGE` query that creates it). The foreign key columns stay as plain properties so the data can be loaded first. Neo4j enforces none of it: `ON DELETE` actions and the existence of the target node are left to your queries.',
+      },
+      {
+        id: 'neo4j-join-tables',
+        title: 'A pure join table becomes one relationship',
+        explanation:
+          'A table with exactly two required foreign keys that nothing else refers to, and either a composite key made of the two or a surrogate key plus a unique pair, is written as a single relationship comment instead of a node label. The surrogate key is dropped and the other columns are listed as relationship properties. The pair cannot be made unique in Neo4j, so the comment says to create the relationships with `MERGE`. Only a join table with unique columns gets statements (relationship property uniqueness constraints).',
+      },
+      {
+        id: 'neo4j-constraints',
+        title: 'Only what Community Edition accepts, unless asked',
+        explanation:
+          'The primary key, unique columns, one-to-one foreign keys and unique indexes become uniqueness constraints (a composite primary key a composite uniqueness constraint), other indexes range indexes and full-text indexes full-text indexes. `IS NOT NULL`, `IS NODE KEY` and property type constraints need Enterprise Edition, so they are written only with `--style enterprise`; the community style lists the required properties in a comment instead. Index methods other than B-tree, sort orders, prefix lengths, operator classes and clustering are dropped with a warning, and constraint and index names are derived (`post_author_id_title_unique`), not taken from the source.',
+      },
+      {
+        id: 'neo4j-types',
+        title: 'Neo4j property types are approximations',
+        explanation:
+          'Integers are `INTEGER` (64-bit), decimals are `STRING` so no precision is lost, JSON, hstore and ranges are serialized `STRING` values, UUIDs and IP addresses are `STRING`, binary data is a byte array (which a type constraint cannot name), dates and times use the `DATE`, `LOCAL`/`ZONED DATETIME`, `LOCAL`/`ZONED TIME` and `DURATION` types, and an array becomes `LIST<T NOT NULL>` (nested arrays become a `STRING`). Enums are `STRING` with the allowed values in a comment, because Neo4j has no enum type.',
+      },
+      {
+        id: 'neo4j-no-defaults',
+        title: 'Defaults, auto-increment and lengths are dropped',
+        explanation:
+          'A schema cannot hold a default value, an auto-increment key, a maximum length, a generated column or an automatically refreshed timestamp, so each is dropped with a warning that names the model and field; set those values when you create the node.',
+      },
+    ],
     sql: [
       {
         id: 'sql-dialect-types',
@@ -1085,7 +1117,7 @@ function emitOnlySection(cells: EmitOnlyCell[]): string[] {
   const lines: string[] = [
     '## Write-only targets',
     '',
-    `Some formats can be written but not read (${targets.join(', ')}), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. JSON Schema: every model and enum has a \`$defs\` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.`,
+    `Some formats can be written but not read (${targets.join(', ')}), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. Neo4j: every model has a node section (or, for a join table, its relationship comment), every column and foreign key has a property line, every relation has its relationship comment and every primary key has a constraint. JSON Schema: every model and enum has a \`$defs\` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.`,
     '',
     '| Pair | Files | Emit warnings | Missing |',
     '| --- | --- | --- | --- |',

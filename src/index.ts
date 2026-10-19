@@ -140,6 +140,8 @@ export {
   JSON_SCHEMA_CONVENTION_KEYWORDS,
 } from './emitters/jsonSchema.js';
 export type { JsonSchemaOptions } from './emitters/jsonSchema.js';
+export { emitNeo4j, isNeo4jStyle, NEO4J_STYLES } from './emitters/neo4j.js';
+export type { Neo4jEmitOptions, Neo4jStyle } from './emitters/neo4j.js';
 export { emitZod } from './emitters/zod.js';
 export type {
   ZodBigIntMode,

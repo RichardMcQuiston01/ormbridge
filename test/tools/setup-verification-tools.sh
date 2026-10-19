@@ -5,7 +5,8 @@
 # Sequelize parser and emitter tests, the .NET 8 SDK with EF Core 8, its SQLite provider and the Npgsql provider
 # for the EF Core parser and emitter tests, and the Maven packages of Hibernate ORM 6 and 5 with H2 for the Hibernate / JPA
 # parser and writer tests) into a scratch directory
-# outside this repository, then prints the environment variables that switch the tests on.
+# outside this repository, then prints the environment variables that switch the tests on. The Neo4j tests need a
+# server instead of an install: the script only prints how to start one (NEO4J_DOCKER=1 or NEO4J_URL).
 #
 # Usage: test/tools/setup-verification-tools.sh [directory]
 #   eval "$(test/tools/setup-verification-tools.sh /tmp/ormbridge-tools | grep '^export ')"
@@ -155,6 +156,14 @@ mkdir -p "${target}/sql"
   # CockroachDB (see test/README.md; the CI job starts the servers itself).
   npm install --silent better-sqlite3
 )
+
+# Neo4j needs a server, which this script does not install. With Docker, NEO4J_DOCKER=1 starts and removes a
+# throwaway neo4j:5-community container; otherwise set NEO4J_URL, NEO4J_USER and NEO4J_PASSWORD (see test/README.md).
+if command -v docker > /dev/null 2>&1; then
+  echo "Neo4j: docker found. Run the Neo4j tests with NEO4J_DOCKER=1 (neo4j:5-community), or set NEO4J_URL." >&2
+else
+  echo "Neo4j: docker not found. Set NEO4J_URL (with NEO4J_USER and NEO4J_PASSWORD) to run the Neo4j tests; they skip themselves otherwise." >&2
+fi
 
 echo "export DJANGO_PYTHON=${target}/venv/bin/python"
 echo "export SQLALCHEMY_PYTHON=${target}/venv/bin/python"
