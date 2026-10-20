@@ -1,0 +1,11 @@
+{
+  "conversions": [
+    {
+      "name": "to-neomodel",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "neomodel",
+      "output": "generated/models.py"
+    }
+  ]
+}

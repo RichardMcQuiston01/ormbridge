@@ -18,6 +18,7 @@ import {
 } from './emitters/efcore.js';
 import { emitJpa, isJpaStyle, isValidJavaPackage } from './emitters/jpa.js';
 import { emitNeo4j, isNeo4jStyle } from './emitters/neo4j.js';
+import { emitNeomodel } from './emitters/neomodel.js';
 import { emitSequelize, isSequelizeStyle } from './emitters/sequelize.js';
 import { emitSqlAlchemy, isSqlAlchemyStyle } from './emitters/sqlalchemy.js';
 import { emitSqlDdl } from './emitters/sqlDdl.js';
@@ -566,6 +567,24 @@ const neo4jAdapter: FormatAdapter = {
   },
 };
 
+const neomodelAdapter: FormatAdapter = {
+  name: 'neomodel',
+  // Output only, and no extension is claimed: ".py" is too generic to infer, so pass --to neomodel.
+  extensions: [],
+  description:
+    'neomodel classes for Neo4j (Python: StructuredNode, RelationshipTo and RelationshipFrom)',
+  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitNeomodel(prepared, {
+        camelFields: options.naming === 'normalize',
+        header: options.header,
+      })
+    );
+  },
+};
+
 const sqlAdapter: FormatAdapter = {
   name: 'sql',
   extensions: ['.sql'],
@@ -799,6 +818,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(typescriptAdapter),
   registerFormat(zodAdapter),
   registerFormat(neo4jAdapter),
+  registerFormat(neomodelAdapter),
   registerFormat(jsonSchemaAdapter),
   registerFormat(sqlAdapter),
   registerFormat(sqlalchemyAdapter),

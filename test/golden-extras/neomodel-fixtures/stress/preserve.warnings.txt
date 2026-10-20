@@ -1,0 +1,4 @@
+Weird.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Other.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Weird.self: the foreign key to Weird became the relationship (:Weird)-[:SELF]->(:Weird); neomodel does not enforce the on delete action (setNull), and self_id was kept as a plain property that nothing ties to the relationship.
+Weird.other: the foreign key to Other became the relationship (:Weird)-[:OTHER]->(:Other); neomodel does not enforce the on delete action (cascade), and other_id was kept as a plain property that nothing ties to the relationship.

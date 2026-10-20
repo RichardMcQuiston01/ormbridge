@@ -159,7 +159,7 @@ function compositeKeyBlock(
 }
 
 /** True when `relation` is the same many-to-many pair as one already written from the other model. */
-function isMirror(
+export function isMirror(
   schema: IrSchema,
   model: IrModel,
   relation: IrRelation,

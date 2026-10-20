@@ -71,6 +71,15 @@ export interface Graph {
 
 export interface GraphOptions {
   camelFields: boolean;
+  /**
+   * Warnings the Cypher writer gives that another writer represents itself and words differently:
+   * `defaults` (a default value has no schema representation), `autoIncrement` and `maxLength`.
+   */
+  omitWarnings?: {
+    defaults?: boolean;
+    autoIncrement?: boolean;
+    maxLength?: boolean;
+  };
 }
 
 /** Everything the builder needs and reports. */
@@ -152,13 +161,15 @@ function fieldWarnings(
   if (mapping.warning !== undefined) {
     context.warnings.push(`${label}: ${mapping.warning}`);
   }
+  const omit: NonNullable<GraphOptions['omitWarnings']> =
+    context.options.omitWarnings ?? {};
   const defaultText: string | undefined = describeDefault(field);
-  if (defaultText !== undefined) {
+  if (defaultText !== undefined && omit.defaults !== true) {
     context.warnings.push(
       `${label}: ${defaultText} has no Neo4j schema representation and was dropped; set the value when you create the node.`
     );
   }
-  if (field.default?.kind === 'autoIncrement') {
+  if (field.default?.kind === 'autoIncrement' && omit.autoIncrement !== true) {
     context.warnings.push(
       `${label}: auto-increment has no Neo4j equivalent; supply the value yourself (or use randomUUID() and a STRING key).`
     );
@@ -296,7 +307,10 @@ function buildProperties(
   return { properties, keys, foreignKeys };
 }
 
-function maxLengthWarning(model: IrModel): string | undefined {
+function maxLengthWarning(model: IrModel, omit: boolean): string | undefined {
+  if (omit) {
+    return undefined;
+  }
   const names: string[] = model.fields
     .filter((field: IrField) => field.maxLength !== undefined)
     .map((field: IrField) => field.name);
@@ -451,7 +465,10 @@ export function buildGraph(
     };
     nodes.push(node);
     byModel.set(model.name, node);
-    const lengths: string | undefined = maxLengthWarning(model);
+    const lengths: string | undefined = maxLengthWarning(
+      model,
+      options.omitWarnings?.maxLength === true
+    );
     if (lengths !== undefined) {
       warnings.push(lengths);
     }
@@ -483,7 +500,10 @@ function buildJoin(context: BuildContext, candidate: JoinCandidate): GraphJoin {
       `${model.name}: the join table became a relationship, so its surrogate key ${surrogateKey.name} was dropped.`
     );
   }
-  const lengths: string | undefined = maxLengthWarning(model);
+  const lengths: string | undefined = maxLengthWarning(
+    model,
+    context.options.omitWarnings?.maxLength === true
+  );
   if (lengths !== undefined) {
     context.warnings.push(lengths);
   }

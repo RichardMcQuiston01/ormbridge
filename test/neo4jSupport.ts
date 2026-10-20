@@ -25,6 +25,8 @@ export const NEO4J_ENTERPRISE_IMAGE: string = 'neo4j:5-enterprise';
 export interface Neo4jServer {
   /** Base URL of the HTTP interface, without a trailing slash. */
   url: string;
+  /** Bolt URL of the same server (drivers and neomodel use it), for example `bolt://127.0.0.1:7687`. */
+  boltUrl: string;
   user: string;
   password: string;
   /** `community` or `enterprise`, as `dbms.components()` reports it. */
@@ -106,11 +108,26 @@ export async function cypherExecute(
   await cypherRows(server, statement, parameters);
 }
 
+/** The Bolt URL that goes with a server: NEO4J_BOLT_URL, a bolt URL given as NEO4J_URL, or port 7687 of the HTTP host. */
+export function boltUrlOf(given: string, httpUrl: string): string {
+  const explicit: string = process.env.NEO4J_BOLT_URL ?? '';
+  if (explicit !== '') {
+    return explicit.replace(/\/+$/, '');
+  }
+  const bolt: RegExpExecArray | null =
+    /^((?:bolt|neo4j)(?:\+s(?:sc)?)?):\/\/([^/:]+)(?::(\d+))?/.exec(given);
+  if (bolt !== null) {
+    return `${bolt[1]}://${bolt[2]}:${bolt[3] ?? '7687'}`;
+  }
+  return `bolt://${new URL(httpUrl).hostname}:7687`;
+}
+
 async function describeServer(
   url: string,
   user: string,
   password: string,
-  seconds: number
+  seconds: number,
+  boltUrl: string = boltUrlOf('', url)
 ): Promise<Omit<Neo4jServer, 'stop'> | string> {
   let lastError: string = 'no answer';
   for (let attempt = 0; attempt < seconds; attempt += 1) {
@@ -122,6 +139,7 @@ async function describeServer(
       const row: Record<string, unknown> | undefined = rows[0];
       return {
         url,
+        boltUrl,
         user,
         password,
         edition: String(row?.edition ?? 'community'),
@@ -154,6 +172,8 @@ async function startDocker(
     '--rm',
     '-p',
     '127.0.0.1::7474',
+    '-p',
+    '127.0.0.1::7687',
     '-e',
     `NEO4J_AUTH=neo4j/${password}`,
     ...extraEnvironment.flatMap((value: string) => ['-e', value]),
@@ -172,11 +192,16 @@ async function startDocker(
     stop();
     return `the ${image} container published no HTTP port`;
   }
+  const boltPort: SpawnSyncReturns<string> = docker(['port', id, '7687/tcp']);
+  const boltMatch: RegExpExecArray | null = /:(\d+)\s*$/m.exec(boltPort.stdout);
   const described = await describeServer(
     `http://127.0.0.1:${match[1]}`,
     'neo4j',
     password,
-    180
+    180,
+    boltMatch === null
+      ? 'bolt://127.0.0.1:7687'
+      : `bolt://127.0.0.1:${boltMatch[1]}`
   );
   if (typeof described === 'string') {
     stop();
@@ -202,7 +227,8 @@ export async function openNeo4jServers(): Promise<Neo4jAccess> {
       httpUrlOf(given),
       process.env.NEO4J_USER ?? 'neo4j',
       process.env.NEO4J_PASSWORD ?? 'neo4j',
-      60
+      60,
+      boltUrlOf(given, httpUrlOf(given))
     );
     if (typeof described === 'string') {
       return { probe: { available: false, reason: described } };

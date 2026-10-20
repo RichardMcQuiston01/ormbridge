@@ -1,0 +1,12 @@
+Student.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Course.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Teacher.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Club.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Enrollment.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Enrollment: the join table became a relationship, so its surrogate key id was dropped.
+Membership.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Course.teachers: the many-to-many relation to Teacher became the relationship (:Course)-[:TEACHERS]->(:Teacher); no join node is created.
+Enrollment: the join table became the relationship (:Student)-[:COURSES]->(:Course) instead of a node class.
+Enrollment index (seat, role): the join table became a relationship, so this index was dropped.
+Enrollment index (note): the join table became a relationship, so this index was dropped.
+Membership: the join table became the relationship (:Student)-[:CLUB]->(:Club) instead of a node class.
