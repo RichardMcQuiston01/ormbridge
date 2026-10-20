@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.13.0 - 2026-10-20
+
 Two new write-only formats for Neo4j, neomodel and Spring Data Neo4j. `--to neomodel` writes Python classes for the neomodel library and `--to sdn` writes Java entity classes for Spring Data Neo4j 7 (Spring Boot 3). **Output change:** none for existing formats.
 
 ### Added
