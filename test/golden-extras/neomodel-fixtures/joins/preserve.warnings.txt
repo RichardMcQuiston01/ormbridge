@@ -1,0 +1,10 @@
+Enrollment: the join table became a relationship, so its surrogate key id was dropped.
+Student.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Course.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Teacher.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Club.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Course.teachers: the many-to-many relation to Teacher became the relationship (:Course)-[:TEACHERS]->(:Teacher); no join node is created.
+Enrollment: the join table became the relationship (:Student)-[:COURSES]->(:Course) instead of a node class.
+Enrollment index (seat, role): the join table became a relationship, so this index was dropped.
+Enrollment index (note): the join table became a relationship, so this index was dropped.
+Membership: the join table became the relationship (:Student)-[:CLUB]->(:Club) instead of a node class.

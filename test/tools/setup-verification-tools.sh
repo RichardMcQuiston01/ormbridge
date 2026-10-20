@@ -15,6 +15,7 @@
 # With no component, everything is installed. Name one or more components to install only those (the CI jobs do this,
 # one ecosystem per job), and only their `export` lines are printed:
 #   python    Django, graphene-django, SQLAlchemy 2 and SQLModel in a venv (DJANGO_PYTHON, SQLALCHEMY_PYTHON)
+#   neomodel  neomodel 7.0.0 (NEOMODEL_VERSION overrides the pin) and the neo4j driver in a venv (NEOMODEL_PYTHON)
 #   typeorm   TypeORM with better-sqlite3 (TYPEORM_DIR)
 #   ajv       Ajv and ajv-formats (AJV_DIR)
 #   drizzle   Drizzle ORM and drizzle-kit (DRIZZLE_DIR)
@@ -30,7 +31,7 @@
 # pinned to a release that ships a prebuilt binary for Node 20 (BETTER_SQLITE3 overrides the package spec): the newest
 # releases have none, so npm compiled SQLite from source, about 80 s per copy and three copies in the CI node job.
 #
-# Needs python3 with venv + pip (python component), and node with npm (node components), and network access (or a
+# Needs python3 with venv + pip (python and neomodel components), and node with npm (node components), and network access (or a
 # package proxy). The EF Core part also
 # needs the .NET SDK (8 or later): an existing `dotnet` on the PATH (or named by DOTNET) is used, otherwise the official
 # dotnet-install.sh is tried, and when neither works that part is skipped with a message and the EF Core verification
@@ -44,12 +45,12 @@ mkdir -p "${target}"
 shift || true
 
 # The components to install: all of them when none is named.
-all_components=(python typeorm ajv drizzle sequelize zod sql prisma dotnet java)
+all_components=(python neomodel typeorm ajv drizzle sequelize zod sql prisma dotnet java)
 components=()
 for name in "$@"; do
   case "${name}" in
     node) components+=(typeorm ajv drizzle sequelize zod sql prisma) ;;
-    python | typeorm | ajv | drizzle | sequelize | zod | sql | prisma | dotnet | java) components+=("${name}") ;;
+    python | neomodel | typeorm | ajv | drizzle | sequelize | zod | sql | prisma | dotnet | java) components+=("${name}") ;;
     *)
       echo "Unknown component '${name}'; use one of: ${all_components[*]} node" >&2
       exit 2
@@ -191,6 +192,15 @@ if want python; then
   "${target}/venv/bin/pip" install --quiet "sqlalchemy>=2" sqlmodel
 fi
 
+if want neomodel; then
+  # neomodel and its Neo4j driver go into their own virtual environment, so the Django one stays small. The version is
+  # pinned because neomodel changes its API between major versions (install_labels moved onto `db` in 6). The tests also
+  # need a Neo4j server: NEO4J_URL or NEO4J_DOCKER=1 (see test/README.md).
+  echo "Installing neomodel ${NEOMODEL_VERSION:-7.0.0} into ${target}/neomodel" >&2
+  python3 -m venv "${target}/neomodel"
+  "${target}/neomodel/bin/pip" install --quiet "neomodel==${NEOMODEL_VERSION:-7.0.0}"
+fi
+
 if want dotnet; then
   echo "Preparing the .NET SDK and the EF Core 8 packages (SQLite and Npgsql providers) in ${target}/efcore" >&2
   dotnet_bin="${DOTNET:-$(command -v dotnet || true)}"
@@ -273,6 +283,7 @@ if want python; then
   echo "export DJANGO_PYTHON=${target}/venv/bin/python"
   echo "export SQLALCHEMY_PYTHON=${target}/venv/bin/python"
 fi
+if want neomodel; then echo "export NEOMODEL_PYTHON=${target}/neomodel/bin/python"; fi
 if want typeorm; then echo "export TYPEORM_DIR=${target}/typeorm"; fi
 if want drizzle; then echo "export DRIZZLE_DIR=${target}/drizzle"; fi
 if want sequelize; then echo "export SEQUELIZE_DIR=${target}/sequelize"; fi

@@ -21,5 +21,6 @@ One guide per format: what is read, what is written, the options that apply, and
 | [TypeScript](typescript.md)             |  no   |  yes   | Plain interfaces and enums                                |
 | [Zod](zod.md)                           |  no   |  yes   | Zod 4 schemas                                             |
 | [Neo4j](neo4j.md)                       |  no   |  yes   | Cypher constraints and indexes; `--style enterprise`      |
+| [neomodel](neomodel.md)                 |  no   |  yes   | Python `StructuredNode` classes for Neo4j                 |
 
 Only Django (`.py`), Prisma (`.prisma`) and SQL (`.sql`) claim a file extension, so pass `--from` or `--to` for every other format.
