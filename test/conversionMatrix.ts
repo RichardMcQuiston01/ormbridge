@@ -15,6 +15,7 @@ import { checkDrizzleOutput } from './drizzleCoverage.js';
 import { checkGormOutput } from './gormCoverage.js';
 import { checkJsonSchemaOutput } from './jsonSchemaCoverage.js';
 import { checkNeo4jOutput } from './neo4jCoverage.js';
+import { checkNeomodelOutput } from './neomodelCoverage.js';
 import { checkSqlAlchemyOutput } from './sqlalchemyCoverage.js';
 import { checkSqlDdlOutput } from './sqlDdlCoverage.js';
 import { checkZodOutput } from './zodCoverage.js';
@@ -305,6 +306,7 @@ const EMIT_ONLY_CHECKS: Readonly<
   'json-schema': checkJsonSchemaOutput,
   zod: checkZodOutput,
   neo4j: checkNeo4jOutput,
+  neomodel: checkNeomodelOutput,
   sql: checkSqlDdlOutput,
   sqlalchemy: checkSqlAlchemyOutput,
 };

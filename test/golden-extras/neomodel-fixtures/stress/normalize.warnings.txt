@@ -1,0 +1,4 @@
+Weird.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Other.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Weird.self: the foreign key to Weird became the relationship (:Weird)-[:SELF]->(:Weird); neomodel does not enforce the on delete action (setNull), and selfId was kept as a plain property that nothing ties to the relationship.
+Weird.other: the foreign key to Other became the relationship (:Weird)-[:OTHER]->(:Other); neomodel does not enforce the on delete action (cascade), and otherId was kept as a plain property that nothing ties to the relationship.

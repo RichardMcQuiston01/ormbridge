@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+A new write-only format, neomodel. `--to neomodel` writes Python classes for the neomodel library (Neo4j). **Output change:** none for existing formats.
+
+### Added
+
+- neomodel writer: `--to neomodel` (`src/emitters/neomodel.ts`, `neomodelProperties.ts`, `neomodelNames.ts`; the write-only `neomodel` format, which claims no extension; the output is one Python module). Each node label is a `StructuredNode` class; columns are neomodel properties (`StringProperty` with `max_length`, `IntegerProperty`, `FloatProperty`, `BooleanProperty`, `DateProperty`, `DateTimeProperty`, `JSONProperty`, `ArrayProperty`, `UniqueIdProperty` for a generated UUID key, `choices` for enums) with `required`, `unique_index`, `index`, `fulltext_index` and `default`. Attribute names are snake_case and `db_property` keeps the stored key, so `id` is `id_` and `createdAt` is `created_at`. Foreign keys, one-to-one keys, composite foreign keys, many-to-many relations and pure join tables are `RelationshipTo` / `RelationshipFrom` with the cardinality classes `One`, `ZeroOrOne` and `ZeroOrMore`, and the extra columns of a join table are a `StructuredRel` class. Labels and relationship types are the ones of the Cypher writer. Composite keys and indexes become an index on each property, with a warning; defaults, types and delete actions that neomodel cannot hold are dropped or approximated with a warning that names the model and field. `--naming preserve | normalize` and `--no-header` are honoured.
+- `src/emitters/neo4jEdges.ts`: the relationships of the Neo4j graph model as data (`collectEdges`: type, direction, cardinalities, join table properties), shared by the writers that declare relationships. The Cypher writer is unchanged. `buildGraph` takes an optional `omitWarnings` option for the warnings a writer words itself, and `isMirror` is exported.
+- `emitNeomodel` and the `NeomodelEmitOptions` type are exported from the package.
+- Tests: `neomodel-emitter.test.ts` (unit tests, a Python syntax check and goldens for every fixture in both naming modes: `test/golden/*-to-neomodel.*.txt`, `test/golden-extras/neomodel-fixtures`), a structural check in the conversion matrix (`test/neomodelCoverage.ts`, `docs/CONVERSION_MATRIX.md`), and `neomodel-verify.test.ts` with `test/tools/validate-neomodel.py`, which imports the module with the real neomodel (pinned to 7.0.0), runs `install_labels` against a real Neo4j 5 Community server, compares the declared classes, the server catalog and the IR, and saves nodes and relationships to check that unique, required, length, choice and cardinality rules hold. The Neo4j test helpers now know the Bolt URL (`NEO4J_BOLT_URL`; `NEO4J_DOCKER=1` publishes port 7687).
+- Docs and example: `docs/formats/neomodel.md`, `examples/neomodel`, and entries in the README, `docs/CLI.md`, `docs/FIELD_MAPPING.md`, `docs/LIMITATIONS.md`, `docs/API.md` and `docs/formats/neo4j.md`.
+
+### Changed
+
+- CI only, no package change: a new `real-tools-neo4j` job (Python 3.12 with neomodel, a Neo4j 5 Community service container) runs `neomodel-verify`; the `real-tools` job waits for it. `test/tools/setup-verification-tools.sh` has a `neomodel` component (`NEOMODEL_PYTHON`).
+
 ## 0.12.1 - 2026-10-20
 
 A CI and release-process release. The package contents are the same as 0.12.0: no new feature, no bug fix, and **Output change:** none. CI runs as parallel jobs per tool ecosystem, installs the SQLite binding faster, and the tag Publish workflow reuses the green CI run of the tagged commit when there is one.

@@ -340,6 +340,44 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
           'A schema cannot hold a default value, an auto-increment key, a maximum length, a generated column or an automatically refreshed timestamp, so each is dropped with a warning that names the model and field; set those values when you create the node.',
       },
     ],
+    neomodel: [
+      {
+        id: 'neomodel-check',
+        title: 'What the structural check looks for',
+        explanation:
+          'Every node label has a `StructuredNode` class, every column and foreign key a property line (by its attribute name or its `db_property`), every foreign key, one-to-one key, many-to-many relation and join table a `RelationshipTo` on the owning class and a `RelationshipFrom` on the target, the extra columns of a join table a `StructuredRel` class, every primary key a unique (or, for a composite key, an index) flag, and every enum value appears in the `choices`.',
+      },
+      {
+        id: 'neomodel-relationships',
+        title: 'Relationships are classes, foreign keys stay as properties',
+        explanation:
+          'Each foreign key becomes a `RelationshipTo` on the class that owns it and a `RelationshipFrom` on the target, with the cardinality `One` or `ZeroOrOne` (required or optional key) and `ZeroOrMore` on the other end (`ZeroOrOne` for a one-to-one key). The relationship types and labels are the ones the Cypher writer uses. The foreign key columns stay as plain properties, as in the Cypher output, and nothing ties them to the relationship; neomodel does not enforce `ON DELETE` actions either. A reverse side that the source did not name is called after the plural of the source (`posts`).',
+      },
+      {
+        id: 'neomodel-join-tables',
+        title: 'A pure join table becomes one relationship',
+        explanation:
+          'A join table is written as one relationship between the two classes, in the same cases as the Cypher writer. Its surrogate key is dropped and its other columns are the properties of a `StructuredRel` class. A unique column of the join table is a unique relationship property. The pair of keys cannot be made unique: `connect` merges on the relationship properties, so a pair with differing default values (timestamps) can be connected twice.',
+      },
+      {
+        id: 'neomodel-constraints',
+        title: 'Only single-property rules',
+        explanation:
+          'neomodel can make one property unique or indexed. A composite primary key, a composite unique index and a composite index are written as an index on each property, with a warning. Index methods other than B-tree, sort orders and operator classes are dropped with a warning. A full-text index on one string property uses `FulltextIndex`, which needs Neo4j 5.16 or later. A node key and `IS NOT NULL` constraints are not created, because neomodel checks `required` in Python only.',
+      },
+      {
+        id: 'neomodel-types',
+        title: 'Property classes decide how values are stored',
+        explanation:
+          'Strings, integers, floats and booleans map one to one. A date is stored as ISO text, a date and time as epoch seconds (`DateTimeProperty`), JSON as a JSON string (`JSONProperty`), and an array as `ArrayProperty`. Decimals, UUIDs, IP addresses, times, durations, binary data, hstore, ranges and unknown types are stored as strings (binary data as base64), each with a warning where information is approximated. Nested arrays become a string. An enum is a string property with `choices`. A single UUID key with a generated default is a `UniqueIdProperty`, which stores 32 hexadecimal digits without dashes.',
+      },
+      {
+        id: 'neomodel-defaults',
+        title: 'Which defaults survive',
+        explanation:
+          'Literal defaults of strings, numbers and booleans, enum defaults, `now` (for a date and time or a date), UUID defaults and the first value of an automatically refreshed timestamp are kept as `default=`; a property with a default is not also marked `required`, because neomodel refuses both. Auto-increment, database expressions, client generated values (`cuid()`), defaults of arrays and JSON, generated columns and the refresh on every save are dropped with a warning that names the model and field.',
+      },
+    ],
     sql: [
       {
         id: 'sql-dialect-types',

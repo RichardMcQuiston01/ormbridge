@@ -1,0 +1,38 @@
+enum Role: the database schema "public" (@@schema) was ignored.
+Order: the database schema "public" (@@schema) was ignored.
+OrderLine: the database schema "public" (@@schema) was ignored.
+Account: the database schema "public" (@@schema) was ignored.
+Tenant: the database schema "public" (@@schema) was ignored.
+Profile: the database schema "public" (@@schema) was ignored.
+Document: the database schema "audit" (@@schema) was ignored.
+Scratch: the database schema "audit" (@@schema) was ignored.
+DocumentSummary: this is a database view; it was written as a node class like any other model.
+DocumentSummary: the database schema "audit" (@@schema) was ignored.
+Order.total: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Order.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+OrderLine.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Account.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Tenant.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Profile.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Document.price: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Document.cost: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Document.meta: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+Document.updated: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Scratch.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+DocumentSummary.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Order: neomodel has no composite constraint, so the composite primary key (region, number) was written as an index on each property.
+OrderLine index (orderRegion, orderNumber): neomodel has no composite index, so each property got its own index.
+Profile: neomodel has no composite constraint, so the composite primary key (region, number) was written as an index on each property.
+Document index (title, created): clustering, sort order, prefix length and operator class options have no Neo4j equivalent and were dropped.
+Document index (title, created): neomodel has no composite index, so each property got its own index.
+Document index (meta): Neo4j has no Gin index method; the index was dropped.
+Document index (title, day): neomodel has no composite uniqueness constraint, so each property was written as an index.
+Document.id: the cuid() default has no neomodel equivalent and was dropped; set the value when you create the node.
+Document.ulid: the ulid() default has no neomodel equivalent and was dropped; set the value when you create the node.
+Document.short: the nanoid() default has no neomodel equivalent and was dropped; set the value when you create the node.
+Document.token: the database default gen_random_uuid() has no neomodel equivalent and was dropped; set the value when you create the node.
+Document.blob: neomodel has no binary property; the value is stored as base64 text in a StringProperty.
+Document.at: neomodel has no time property; the value is stored as an ISO 8601 text in a StringProperty.
+OrderLine.order: the foreign key to Order became the relationship (:OrderLine)-[:ORDER]->(:Order); neomodel does not enforce the on delete action (cascade), and orderRegion, orderNumber were kept as plain properties that nothing ties to the relationship.
+Account.tenant: the foreign key to Tenant became the relationship (:Account)-[:TENANT]->(:Tenant); neomodel does not enforce the on delete action (noAction), and tenantId was kept as a plain property that nothing ties to the relationship.
+Profile.account: the foreign key to Account became the relationship (:Profile)-[:ACCOUNT]->(:Account); neomodel does not enforce the on delete action (restrict), and accountId was kept as a plain property that nothing ties to the relationship.

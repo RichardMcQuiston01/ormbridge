@@ -32,6 +32,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django                                         |
 | Zod schemas                 |      |   ✔   | Zod 4 schemas and inferred types                                                                   |
 | Neo4j (Cypher)              |      |   ✔   | Node constraints and indexes; relationships as comments; `--style enterprise` for Enterprise       |
+| neomodel (Python, Neo4j)    |      |   ✔   | `StructuredNode` classes, relationships with cardinality, `StructuredRel` for join tables          |
 
 Each format has a [guide](./docs/formats/README.md) and a runnable [example project](./examples/README.md).
 
@@ -94,6 +95,12 @@ Prisma to a Neo4j Cypher schema (constraints and indexes; `--style enterprise` a
 
 ```bash
 ormbridge convert -i ./prisma/schema.prisma --to neo4j -o ./neo4j/schema.cypher
+```
+
+Prisma to neomodel classes (Python, for Neo4j):
+
+```bash
+ormbridge convert -i ./prisma/schema.prisma --to neomodel -o ./app/models.py
 ```
 
 Fail a build when generated files are out of date:

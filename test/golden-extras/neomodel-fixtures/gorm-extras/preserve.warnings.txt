@@ -1,0 +1,18 @@
+Customer.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Customer.balance: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Customer.settings: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+Order.total: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Product.price: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Customer.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Customer.avatar: neomodel has no binary property; the value is stored as base64 text in a StringProperty.
+Order index (customer, placedAt): clustering, sort order, prefix length and operator class options have no Neo4j equivalent and were dropped.
+Order index (customer, placedAt): neomodel has no composite index, so each property got its own index.
+OrderItem: neomodel has no composite constraint, so the composite primary key (order_id, line_no) was written as an index on each property.
+Product index (slug): Neo4j has no Hash index method; the index was dropped.
+Label.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Comment.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Order.customer: the foreign key to Customer became the relationship (:Order)-[:CUSTOMER]->(:Customer); neomodel does not enforce the on delete action (restrict), and customer_id was kept as a plain property that nothing ties to the relationship.
+Order.labels: the many-to-many relation to Label became the relationship (:Order)-[:LABELS]->(:Label); no join node is created.
+OrderItem.product: the foreign key to Product became the relationship (:OrderItem)-[:PRODUCT]->(:Product); neomodel does not enforce the on delete action (noAction), and product_sku was kept as a plain property that nothing ties to the relationship.
+OrderItem.order: the foreign key to Order became the relationship (:OrderItem)-[:ORDER]->(:Order); neomodel does not enforce the on delete action (noAction), and order_id was kept as a plain property that nothing ties to the relationship.
+Product.similar: the many-to-many relation to Product became the relationship (:Product)-[:SIMILAR]->(:Product); no join node is created.
