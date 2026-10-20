@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.12.1 - 2026-10-20
+
+A CI and release-process release. The package contents are the same as 0.12.0: no new feature, no bug fix, and **Output change:** none. CI runs as parallel jobs per tool ecosystem, installs the SQLite binding faster, and the tag Publish workflow reuses the green CI run of the tagged commit when there is one.
+
 ### Changed
 
 - CI only, no package change: the `real-tools-node` and `real-tools-databases` jobs no longer compile SQLite from source. The newest `better-sqlite3` has no prebuilt binary for Node 20, so each of its three installs in the node job and two in the databases job took about 80 seconds; the setup script now pins a release that has one (`BETTER_SQLITE3` overrides it) and installs the npm tools, including Prisma 6 and 7 (new `prisma` component), at the same time. The separate `real-tools-go` job is gone: `check` installs Go with `actions/setup-go` and runs `gorm-emitter` and `gorm-verify`, and `real-tools` waits for six jobs instead of seven.
