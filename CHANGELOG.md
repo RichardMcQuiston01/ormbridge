@@ -2,10 +2,6 @@
 
 ## Unreleased
 
-### Changed
-
-- CI only, no package change: the single `real-tools` job is split into parallel `real-tools-python`, `real-tools-node`, `real-tools-dotnet`, `real-tools-java`, `real-tools-php`, `real-tools-go` and `real-tools-databases` jobs, each installing only its own tools and running only the test files that use them (the test files that need no tool are left to `check`). A final `real-tools` job waits for all of them, so branch protection and the publish workflow keep working with the same name. `test/tools/setup-verification-tools.sh` accepts component names (`python`, `node`, `dotnet`, `java`, ...) and installs everything when none is given.
-
 ## 0.12.0 - 2026-10-19
 
 A new write-only format, Neo4j. `--to neo4j` writes Cypher constraints and indexes, with `--style community | enterprise` to choose whether Enterprise-only constraints are included. **Output change:** none for existing formats. The only visible difference is that the invalid `--style` message now also lists `community` and `enterprise`.
@@ -17,6 +13,10 @@ A new write-only format, Neo4j. `--to neo4j` writes Cypher constraints and index
 - `emitNeo4j`, `isNeo4jStyle`, `NEO4J_STYLES` and the `Neo4jEmitOptions` and `Neo4jStyle` types are exported from the package.
 - Tests: `neo4j-emitter.test.ts`, goldens for every readable format (`test/golden/*-to-neo4j.*.txt`, `test/golden-extras/*-to-neo4j.txt`), a structural check in the conversion matrix (`test/neo4jCoverage.ts`, `docs/CONVERSION_MATRIX.md`), and `neo4j-verify.test.ts`, which runs the output in a real Neo4j server over HTTP, applies it twice, compares the catalog with the schema and writes data to check that the constraints reject duplicates (`NEO4J_URL`, or `NEO4J_DOCKER=1`; the enterprise style also needs an Enterprise Edition server; skipped with a reason otherwise). The CI `real-tools` job starts a `neo4j:5-community` service.
 - Docs and example: `docs/formats/neo4j.md` and `examples/neo4j` (both styles).
+
+### Changed
+
+- CI only, no package change: the single `real-tools` job is split into parallel `real-tools-python`, `real-tools-node`, `real-tools-dotnet`, `real-tools-java`, `real-tools-php`, `real-tools-go` and `real-tools-databases` jobs, each installing only its own tools and running only the test files that use them (the test files that need no tool are left to `check`). A final `real-tools` job waits for all of them, so branch protection and the publish workflow keep working with the same name. `test/tools/setup-verification-tools.sh` accepts component names (`python`, `node`, `dotnet`, `java`, ...) and installs everything when none is given.
 
 ## 0.11.0 - 2026-10-19
 
