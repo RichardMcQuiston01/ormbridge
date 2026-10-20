@@ -17,6 +17,12 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      # The GORM tests (gorm-emitter, gorm-verify) run `go vet`, `gofmt` and `go build` and skip themselves without Go.
+      # The runner image happens to ship Go, but that is not promised, so install it here: they always run in this job.
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
       - run: npm ci
       - run: npm run lint
       - run: npm run format:check
@@ -32,8 +38,8 @@ jobs:
   # those tools, found by the environment variable or executable the file reads (see test/README.md for the table).
   # The test files that need no tool run in `check`, so they are not repeated here. A test file that needs tools from
   # two ecosystems has to run in a job that has both; when a test starts to use another tool, move it or add the tool.
-  # Each job has its own `timeout-minutes`, about twice what it took on a cold cache (node and databases ~7-8 minutes,
-  # the others 1-3), so a hung test step fails fast instead of holding a job for 30 minutes, and a re-run after a hang
+  # Each job has its own `timeout-minutes`, about twice what it took on a cold cache (databases ~4-5 minutes, node ~3-4,
+  # python ~3, the others 1-2), so a hung test step fails fast instead of holding a job for 30 minutes, and a re-run after a hang
   # repeats only the affected ecosystem job. Raise one when its tools or tests grow.
   # `real-tools` at the end waits for all of them and is the one name to require in branch protection.
 
@@ -71,7 +77,7 @@ jobs:
   # TypeORM, Drizzle, Sequelize, Ajv, Zod and Prisma.
   real-tools-node:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v6
       - name: Choose the tools directory (outside the repository)
@@ -88,15 +94,9 @@ jobs:
           key: real-tools-node-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
           restore-keys: real-tools-node-${{ runner.os }}-
       - run: npm ci
-      - name: Install TypeORM, Drizzle, Sequelize, Ajv, Zod and better-sqlite3
+      - name: Install TypeORM, Drizzle, Sequelize, Ajv, Zod, better-sqlite3 and Prisma 6 and 7
         run: |
           test/tools/setup-verification-tools.sh "$TOOLS" node | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
-      - name: Install Prisma 6 and 7
-        run: |
-          for major in 6 7; do
-            mkdir -p "$TOOLS/prisma$major"
-            (cd "$TOOLS/prisma$major" && npm init -y > /dev/null && npm install --silent "prisma@$major")
-          done
       - name: Tests with the real Node tools (Prisma 6)
         run: >-
           npx vitest run
@@ -110,12 +110,12 @@ jobs:
           test/zod-verify.test.ts
           test/prisma-extras.test.ts
         env:
-          PRISMA_BIN: ${{ env.TOOLS }}/prisma6/node_modules/.bin/prisma
+          PRISMA_BIN: ${{ env.PRISMA6_BIN }}
           PRISMA_MAJOR: '6'
       - name: Prisma 7 validation
         run: npx vitest run test/prisma-extras.test.ts
         env:
-          PRISMA_BIN: ${{ env.TOOLS }}/prisma7/node_modules/.bin/prisma
+          PRISMA_BIN: ${{ env.PRISMA7_BIN }}
           PRISMA_MAJOR: '7'
 
   # EF Core 8 (reader and writer) with the SQLite and Npgsql providers.
@@ -228,40 +228,11 @@ jobs:
           test/laravel-emitter.test.ts
           test/laravel-parser.test.ts
 
-  # GORM, with the Go toolchain. The tests `go get` their pinned modules.
-  real-tools-go:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: npm
-      - uses: actions/setup-go@v6
-        with:
-          go-version: stable
-          cache: false
-      - name: Cache package downloads
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.npm
-            ~/go/pkg/mod
-          key: real-tools-go-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
-          restore-keys: real-tools-go-${{ runner.os }}-
-      - run: npm ci
-      - name: Tests with the real GORM
-        run: >-
-          npx vitest run
-          test/gorm-emitter.test.ts
-          test/gorm-verify.test.ts
-
   # The SQL DDL, CockroachDB, ClickHouse and Neo4j tests, which execute their output in real servers (SQLite needs
   # none). Only this job starts the servers. The CockroachDB test also runs drizzle-kit, so Drizzle is installed too.
   real-tools-databases:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     # Real servers for the SQL DDL tests, which execute the emitted SQL (SQLite needs none).
     services:
       postgres:
@@ -375,7 +346,6 @@ jobs:
       - real-tools-dotnet
       - real-tools-java
       - real-tools-php
-      - real-tools-go
       - real-tools-databases
     runs-on: ubuntu-latest
     timeout-minutes: 5
