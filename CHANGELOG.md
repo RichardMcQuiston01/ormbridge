@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- CI only, no package change: the single `real-tools` job is split into parallel `real-tools-python`, `real-tools-node`, `real-tools-dotnet`, `real-tools-java`, `real-tools-php`, `real-tools-go` and `real-tools-databases` jobs, each installing only its own tools and running only the test files that use them (the test files that need no tool are left to `check`). A final `real-tools` job waits for all of them, so branch protection and the publish workflow keep working with the same name. `test/tools/setup-verification-tools.sh` accepts component names (`python`, `node`, `dotnet`, `java`, ...) and installs everything when none is given.
+
 ## 0.12.0 - 2026-10-19
 
 A new write-only format, Neo4j. `--to neo4j` writes Cypher constraints and indexes, with `--style community | enterprise` to choose whether Enterprise-only constraints are included. **Output change:** none for existing formats. The only visible difference is that the invalid `--style` message now also lists `community` and `enterprise`.
