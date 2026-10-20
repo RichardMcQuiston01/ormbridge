@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- CI only, no package change: the `real-tools-node` and `real-tools-databases` jobs no longer compile SQLite from source. The newest `better-sqlite3` has no prebuilt binary for Node 20, so each of its three installs in the node job and two in the databases job took about 80 seconds; the setup script now pins a release that has one (`BETTER_SQLITE3` overrides it) and installs the npm tools, including Prisma 6 and 7 (new `prisma` component), at the same time. The separate `real-tools-go` job is gone: `check` installs Go with `actions/setup-go` and runs `gorm-emitter` and `gorm-verify`, and `real-tools` waits for six jobs instead of seven.
+
 ## 0.12.0 - 2026-10-19
 
 A new write-only format, Neo4j. `--to neo4j` writes Cypher constraints and indexes, with `--style community | enterprise` to choose whether Enterprise-only constraints are included. **Output change:** none for existing formats. The only visible difference is that the invalid `--style` message now also lists `community` and `enterprise`.
