@@ -2,9 +2,14 @@
 
 ## Unreleased
 
+## 0.12.1 - 2026-10-20
+
+A CI and release-process release. The package contents are the same as 0.12.0: no new feature, no bug fix, and **Output change:** none. CI runs as parallel jobs per tool ecosystem, installs the SQLite binding faster, and the tag Publish workflow reuses the green CI run of the tagged commit when there is one.
+
 ### Changed
 
-- CI only, no package change: the single `real-tools` job is split into parallel `real-tools-python`, `real-tools-node`, `real-tools-dotnet`, `real-tools-java`, `real-tools-php`, `real-tools-go` and `real-tools-databases` jobs, each installing only its own tools and running only the test files that use them (the test files that need no tool are left to `check`). A final `real-tools` job waits for all of them, so branch protection and the publish workflow keep working with the same name. `test/tools/setup-verification-tools.sh` accepts component names (`python`, `node`, `dotnet`, `java`, ...) and installs everything when none is given.
+- CI only, no package change: the `real-tools-node` and `real-tools-databases` jobs no longer compile SQLite from source. The newest `better-sqlite3` has no prebuilt binary for Node 20, so each of its three installs in the node job and two in the databases job took about 80 seconds; the setup script now pins a release that has one (`BETTER_SQLITE3` overrides it) and installs the npm tools, including Prisma 6 and 7 (new `prisma` component), at the same time. The separate `real-tools-go` job is gone: `check` installs Go with `actions/setup-go` and runs `gorm-emitter` and `gorm-verify`, and `real-tools` waits for six jobs instead of seven.
+- CI only, no package change: the tag Publish workflow reuses the green `push` CI run of the tagged commit instead of running the whole suite again. A new `gate` job (`.github/scripts/find-green-ci.sh`, tested in `test/find-green-ci.test.ts` and `test/publish-workflow.test.ts`) looks up the `ci.yml` run on `push` for that commit; `reuse=true` skips the `ci` job, and a missing, failed, cancelled or unreadable run (or one that is still going after 25 minutes) makes `ci` run as before. `publish` runs only after a reused green run or a successful `ci` job.
 
 ## 0.12.0 - 2026-10-19
 
@@ -17,6 +22,10 @@ A new write-only format, Neo4j. `--to neo4j` writes Cypher constraints and index
 - `emitNeo4j`, `isNeo4jStyle`, `NEO4J_STYLES` and the `Neo4jEmitOptions` and `Neo4jStyle` types are exported from the package.
 - Tests: `neo4j-emitter.test.ts`, goldens for every readable format (`test/golden/*-to-neo4j.*.txt`, `test/golden-extras/*-to-neo4j.txt`), a structural check in the conversion matrix (`test/neo4jCoverage.ts`, `docs/CONVERSION_MATRIX.md`), and `neo4j-verify.test.ts`, which runs the output in a real Neo4j server over HTTP, applies it twice, compares the catalog with the schema and writes data to check that the constraints reject duplicates (`NEO4J_URL`, or `NEO4J_DOCKER=1`; the enterprise style also needs an Enterprise Edition server; skipped with a reason otherwise). The CI `real-tools` job starts a `neo4j:5-community` service.
 - Docs and example: `docs/formats/neo4j.md` and `examples/neo4j` (both styles).
+
+### Changed
+
+- CI only, no package change: the single `real-tools` job is split into parallel `real-tools-python`, `real-tools-node`, `real-tools-dotnet`, `real-tools-java`, `real-tools-php`, `real-tools-go` and `real-tools-databases` jobs, each installing only its own tools and running only the test files that use them (the test files that need no tool are left to `check`). A final `real-tools` job waits for all of them, so branch protection and the publish workflow keep working with the same name. `test/tools/setup-verification-tools.sh` accepts component names (`python`, `node`, `dotnet`, `java`, ...) and installs everything when none is given.
 
 ## 0.11.0 - 2026-10-19
 
