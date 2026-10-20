@@ -646,8 +646,12 @@ function importLines(imports: ModuleImports): string[] {
   const names: string[] = ['StructuredNode', ...imports.neomodel];
   const unique: string[] = [...new Set(names)].sort();
   const standard: string[] = [];
-  if (imports.usesDate) {
-    standard.push('from datetime import date');
+  const dates: string[] = [
+    ...(imports.usesDate ? ['date'] : []),
+    ...imports.datetime,
+  ].sort();
+  if (dates.length > 0) {
+    standard.push(`from datetime import ${[...new Set(dates)].join(', ')}`);
   }
   if (imports.usesUuid) {
     standard.push('from uuid import uuid4');

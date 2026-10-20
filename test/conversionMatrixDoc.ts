@@ -369,13 +369,13 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
         id: 'neomodel-types',
         title: 'Property classes decide how values are stored',
         explanation:
-          'Strings, integers, floats and booleans map one to one. A date is stored as ISO text, a date and time as epoch seconds (`DateTimeProperty`), JSON as a JSON string (`JSONProperty`), and an array as `ArrayProperty`. Decimals, UUIDs, IP addresses, times, durations, binary data, hstore, ranges and unknown types are stored as strings (binary data as base64), each with a warning where information is approximated. Nested arrays become a string. An enum is a string property with `choices`. A single UUID key with a generated default is a `UniqueIdProperty`, which stores 32 hexadecimal digits without dashes.',
+          'Strings, integers, floats and booleans map one to one. A date is stored as ISO text (neomodel 7.0.0 has no native date property), a date and time as a native Neo4j datetime (`DateTimeNeo4jFormatProperty`: zoned, or local for a `timestamp` native type), JSON as a JSON string (`JSONProperty`), and an array as `ArrayProperty`. Decimals, UUIDs, IP addresses, times, durations, binary data, hstore, ranges and unknown types are stored as strings (binary data as base64), each with a warning where information is approximated. Nested arrays become a string. An enum is a string property with `choices`. A single UUID key with a generated default is a `UniqueIdProperty`, which stores 32 hexadecimal digits without dashes.',
       },
       {
         id: 'neomodel-defaults',
         title: 'Which defaults survive',
         explanation:
-          'Literal defaults of strings, numbers and booleans, enum defaults, `now` (for a date and time or a date), UUID defaults and the first value of an automatically refreshed timestamp are kept as `default=`; a property with a default is not also marked `required`, because neomodel refuses both. Auto-increment, database expressions, client generated values (`cuid()`), defaults of arrays and JSON, generated columns and the refresh on every save are dropped with a warning that names the model and field.',
+          'Literal defaults of strings, numbers and booleans, enum defaults, `now` (a datetime lambda, or `date.today` for a date; `default_now=True` is not used because neomodel 7.0.0 fixes that time when the module is imported), UUID defaults and the first value of an automatically refreshed timestamp are kept as `default=`; a property with a default is not also marked `required`, because neomodel refuses both. Auto-increment, database expressions, client generated values (`cuid()`), defaults of arrays and JSON, generated columns and the refresh on every save are dropped with a warning that names the model and field.',
       },
     ],
     sql: [

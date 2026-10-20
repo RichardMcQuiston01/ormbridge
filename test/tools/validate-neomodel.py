@@ -207,6 +207,8 @@ def run_blog(m: Any) -> None:
     check("a JSON property round-trips", loaded.metadata == {"tags": ["a", "b"], "n": 1}, repr(loaded.metadata))
     check("a default is applied", loaded.view_count == 0 and loaded.is_featured is False and loaded.status == "draft")
     check("a datetime default is set", isinstance(loaded.created_at, datetime.datetime))
+    check("a datetime is stored as a native datetime", stored_type(m.Post, "created_at").startswith("ZONED DATETIME"), stored_type(m.Post, "created_at"))
+    check("a given aware datetime round-trips", m.Post.nodes.get(id_=1).updated_at == now, repr(m.Post.nodes.get(id_=1).updated_at))
     check("the outgoing relationship is read back", str(loaded.author.single().id_) == "1")
     check("the reverse accessor sees the relationship", ids(user.posts.all()) == ["1"])
     check("the many-to-many relationship works both ways", ids(loaded.tags.all()) == ["1"] and ids(tag.posts.all()) == ["1"])
@@ -291,6 +293,13 @@ def run_joins(m: Any) -> None:
         check("connecting the same pair twice keeps one relationship", len(student.club.all()) == 1)
 
 
+def stored_type(cls: Any, attribute: str) -> str:
+    """The type the server reports (valueType) for a property of the first node of a class."""
+    key = cls.defined_properties(aliases=False, rels=False)[attribute].get_db_property_name(attribute)
+    rows = db.cypher_query(f"MATCH (n:{cls.__label__}) WHERE n.`{key}` IS NOT NULL RETURN valueType(n.`{key}`) LIMIT 1")[0]
+    return str(rows[0][0]) if rows else "none"
+
+
 def run_types(m: Any) -> None:
     item = m.Item(
         title="A title",
@@ -303,6 +312,7 @@ def run_types(m: Any) -> None:
         labels_=["x", "y"],
         numbers=[1, 2, 3],
         opens="08:30:00",
+        local_at=datetime.datetime(2020, 1, 2, 3, 4, 5),
         kind="film; \"quoted\"\nsecond line",
     ).save()
     check("a UniqueIdProperty key is generated", isinstance(item.id_, str) and len(item.id_) >= 32, str(item.id_))
@@ -313,6 +323,13 @@ def run_types(m: Any) -> None:
     check("a date round-trips", loaded.born == datetime.date(2001, 2, 3), repr(loaded.born))
     check("a default boolean is applied", loaded.flag is True)
     check("a datetime default is applied", isinstance(loaded.seen_at, datetime.datetime))
+    check("a datetime is stored as a native zoned datetime", stored_type(m.Item, "seen_at").startswith("ZONED DATETIME"), stored_type(m.Item, "seen_at"))
+    check("a local datetime is stored as a native local datetime", stored_type(m.Item, "local_at").startswith("LOCAL DATETIME"), stored_type(m.Item, "local_at"))
+    check("a zoned datetime reads back aware", loaded.seen_at.tzinfo is not None, repr(loaded.seen_at))
+    check("a local datetime round-trips", loaded.local_at == datetime.datetime(2020, 1, 2, 3, 4, 5) and loaded.local_at.tzinfo is None, repr(loaded.local_at))
+    second = m.Item(title="Second", count=1, kind="book").save()
+    check("the datetime default is the time of each save, not of the import", second.seen_at > loaded.seen_at, f"{loaded.seen_at} {second.seen_at}")
+    check("a date is stored as ISO text, as neomodel 7 has no native date property", stored_type(m.Item, "born").startswith("STRING"), stored_type(m.Item, "born"))
     check("JSON round-trips", loaded.settings == {"a": [1, 2, {"b": None}]}, repr(loaded.settings))
     check("arrays round-trip", loaded.labels_ == ["x", "y"] and loaded.numbers == [1, 2, 3])
     check("an enum value with awkward characters round-trips", loaded.kind == "film; \"quoted\"\nsecond line")

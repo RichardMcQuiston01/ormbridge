@@ -5,11 +5,12 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from neomodel import (
     BooleanProperty,
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     IntegerProperty,
     JSONProperty,
     One,
@@ -35,8 +36,8 @@ class Category(StructuredNode):
     """Model Category (table blog_category)."""
 
     id_ = IntegerProperty(unique_index=True, required=True, db_property="id")
-    created_at = DateTimeProperty(default_now=True)
-    updated_at = DateTimeProperty(default_now=True)
+    created_at = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
+    updated_at = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
     name = StringProperty(max_length=100, unique_index=True, required=True)
     slug = StringProperty(max_length=50, required=True)
     parent_id = IntegerProperty()
@@ -49,8 +50,8 @@ class Post(StructuredNode):
     """Model Post (table blog_post)."""
 
     id_ = IntegerProperty(unique_index=True, required=True, db_property="id")
-    created_at = DateTimeProperty(default_now=True)
-    updated_at = DateTimeProperty(default_now=True)
+    created_at = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
+    updated_at = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
     public_id = StringProperty(unique_index=True, default=lambda: str(uuid4()))
     title = StringProperty(max_length=200, index=True, required=True)
     body = StringProperty(required=True)
@@ -62,7 +63,10 @@ class Post(StructuredNode):
     rating = StringProperty()
     view_count = IntegerProperty(default=0)
     is_featured = BooleanProperty(default=False)
-    published_at = DateTimeProperty(default_now=True, index=True)
+    published_at = DateTimeNeo4jFormatProperty(
+        index=True,
+        default=lambda: datetime.now(timezone.utc),
+    )
     metadata = JSONProperty(required=True)
     author_id = IntegerProperty(index=True, required=True)
     editor_id = IntegerProperty()

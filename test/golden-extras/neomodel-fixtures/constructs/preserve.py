@@ -11,7 +11,7 @@ from neomodel import (
     ArrayProperty,
     BooleanProperty,
     DateProperty,
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     FloatProperty,
     IntegerProperty,
     JSONProperty,
@@ -51,7 +51,7 @@ class Book(StructuredNode):
     settings = JSONProperty(required=True)
     published_on = DateProperty(index=True, default=date.today)
     opens_at = StringProperty()
-    released_at = DateTimeProperty()
+    released_at = DateTimeNeo4jFormatProperty()
     pages = IntegerProperty(default=100)
     ratio = FloatProperty(default=0.5)
     in_print = BooleanProperty(default=True)

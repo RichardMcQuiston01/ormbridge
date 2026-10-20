@@ -5,8 +5,10 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
+from datetime import datetime, timezone
+
 from neomodel import (
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     IntegerProperty,
     RelationshipFrom,
     RelationshipTo,
@@ -25,23 +27,41 @@ class EnrollmentRel(StructuredRel):
     role = StringProperty(default="student")
     note = StringProperty()
     seat = IntegerProperty()
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
 
 
 class MembershipRel(StructuredRel):
     """Properties of the Membership relationship."""
 
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
 
 
 class Student(StructuredNode):
     """Model Student (table student)."""
 
     id_ = UniqueIdProperty(db_property="id")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     courses = RelationshipTo(
         "Course",
         "COURSES",
@@ -55,8 +75,14 @@ class Course(StructuredNode):
     """Model Course (table course)."""
 
     id_ = UniqueIdProperty(db_property="id")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     teachers = RelationshipTo("Teacher", "TEACHERS", cardinality=ZeroOrMore)
     students = RelationshipFrom(
         "Student",
@@ -70,8 +96,14 @@ class Teacher(StructuredNode):
     """Model Teacher (table teacher)."""
 
     id_ = UniqueIdProperty(db_property="id")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     courses = RelationshipFrom("Course", "TEACHERS", cardinality=ZeroOrMore)
 
 
@@ -79,8 +111,14 @@ class Club(StructuredNode):
     """Model Club (table club)."""
 
     id_ = UniqueIdProperty(db_property="id")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     students = RelationshipFrom(
         "Student",
         "CLUB",

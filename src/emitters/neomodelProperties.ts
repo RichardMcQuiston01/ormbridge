@@ -12,6 +12,8 @@ export class ModuleImports {
   readonly neomodel: Set<string> = new Set<string>();
   /** `from datetime import date` (the default of a date column). */
   usesDate: boolean = false;
+  /** Names imported from `datetime` for the default of a date and time column. */
+  readonly datetime: Set<string> = new Set<string>();
   /** `from uuid import uuid4` (the default of a UUID column). */
   usesUuid: boolean = false;
 
@@ -72,7 +74,7 @@ function classFor(
       return imports.use('DateProperty');
     case 'ZONED DATETIME':
     case 'LOCAL DATETIME':
-      return imports.use('DateTimeProperty');
+      return imports.use('DateTimeNeo4jFormatProperty');
     case 'LOCAL TIME':
     case 'ZONED TIME':
       context.warnings.push(
@@ -160,7 +162,8 @@ function defaultArgs(
     field.default ??
     // A timestamp refreshed on every save starts as the time of the first save.
     (field.isAutoUpdated &&
-    (base.className === 'DateTimeProperty' || base.className === 'DateProperty')
+    (base.className === 'DateTimeNeo4jFormatProperty' ||
+      base.className === 'DateProperty')
       ? { kind: 'now' }
       : undefined);
   if (value === undefined || value.kind === 'autoIncrement') {
@@ -184,9 +187,14 @@ function defaultArgs(
     case 'literal':
       return literalArgs(value.value, base.className, drop);
     case 'now':
-      if (base.className === 'DateTimeProperty') {
-        base.args.unshift('default_now=True');
-        return [];
+      if (base.className === 'DateTimeNeo4jFormatProperty') {
+        // DateTimeNeo4jFormatProperty(default_now=True) would fix the time when the module is imported.
+        if (mapFieldType(field).type.name === 'LOCAL DATETIME') {
+          context.imports.datetime.add('datetime');
+          return ['default=datetime.now'];
+        }
+        context.imports.datetime.add('datetime').add('timezone');
+        return ['default=lambda: datetime.now(timezone.utc)'];
       }
       if (base.className === 'DateProperty') {
         context.imports.usesDate = true;
@@ -292,8 +300,7 @@ export function planProperty(
     field === undefined
       ? []
       : (defaultArgs(context, label, field, call, isArray) ?? []);
-  const hasDefault: boolean =
-    defaults.length > 0 || call.args.includes('default_now=True');
+  const hasDefault: boolean = defaults.length > 0;
   const required: string[] =
     property.required && !hasDefault ? ['required=True'] : [];
   return {

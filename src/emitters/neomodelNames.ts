@@ -83,6 +83,8 @@ export const RESERVED_TYPES: ReadonlySet<string> = new Set([
   'BooleanProperty',
   'DateProperty',
   'DateTimeNeo4jFormatProperty',
+  'datetime',
+  'timezone',
   'DateTimeProperty',
   'EmailProperty',
   'FloatProperty',

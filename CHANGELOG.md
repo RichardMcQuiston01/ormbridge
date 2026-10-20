@@ -21,6 +21,7 @@ Two new write-only formats for Neo4j, neomodel and Spring Data Neo4j. `--to neom
 
 - CI only, no package change: a new `real-tools-neo4j` job (Python 3.12 with neomodel, a Neo4j 5 Community service container) runs `neomodel-verify`; the `real-tools` job waits for it. `test/tools/setup-verification-tools.sh` has a `neomodel` component (`NEOMODEL_PYTHON`).
 - CI only, no package change: the `real-tools-neo4j` job also installs Java 17 and the Spring Data Neo4j Maven packages and runs `sdn-verify` after `neomodel-verify` (one after the other, because both empty the database). `test/tools/setup-verification-tools.sh` has an `sdn` component (`SDN_DIR`).
+- **Output change** for `--to neomodel`, which was added after 0.12.1 and is unreleased, so no released output changes: a date and time is now a `DateTimeNeo4jFormatProperty` (a native Neo4j `ZONED DATETIME` or `LOCAL DATETIME`) instead of a `DateTimeProperty` (epoch seconds), and the current-time default is `default=lambda: datetime.now(timezone.utc)` (`datetime.now` for a local datetime) instead of `default_now=True`, which neomodel 7.0.0 evaluates once at import. A date stays a `DateProperty` (ISO text) because neomodel 7.0.0 has no native date property. `neomodel-verify` now asks the server for the stored `valueType` and checks the round trip. Goldens, docs and `examples/neomodel` are updated.
 
 ## 0.12.1 - 2026-10-20
 

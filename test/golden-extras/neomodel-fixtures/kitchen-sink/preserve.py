@@ -5,12 +5,13 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from neomodel import (
     ArrayProperty,
     DateProperty,
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     FloatProperty,
     IntegerProperty,
     JSONProperty,
@@ -36,9 +37,9 @@ class Account(StructuredNode):
     """Model Account (table accounts)."""
 
     id_ = IntegerProperty(unique_index=True, required=True, db_property="id")
-    created_at = DateTimeProperty(default_now=True)
-    updated_at = DateTimeProperty(default_now=True)
-    deleted_at = DateTimeProperty(index=True)
+    created_at = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
+    updated_at = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
+    deleted_at = DateTimeNeo4jFormatProperty(index=True)
     email = StringProperty(max_length=255, unique_index=True, required=True)
     balance = StringProperty(required=True)
     score = FloatProperty()
@@ -72,8 +73,11 @@ class Session(StructuredNode):
 
     id_ = UniqueIdProperty(db_property="id")
     token = StringProperty(default=lambda: str(uuid4()))
-    deleted_at = DateTimeProperty()
-    opened_at = DateTimeProperty(default_now=True, index=True)
+    deleted_at = DateTimeNeo4jFormatProperty()
+    opened_at = DateTimeNeo4jFormatProperty(
+        index=True,
+        default=lambda: datetime.now(timezone.utc),
+    )
     account_id = IntegerProperty(index=True)
     account = RelationshipTo("Account", "ACCOUNT", cardinality=ZeroOrOne)
 

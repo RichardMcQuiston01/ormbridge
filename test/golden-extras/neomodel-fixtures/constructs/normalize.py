@@ -5,13 +5,13 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from neomodel import (
     ArrayProperty,
     BooleanProperty,
     DateProperty,
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     FloatProperty,
     IntegerProperty,
     JSONProperty,
@@ -32,8 +32,14 @@ class Author(StructuredNode):
     id_ = UniqueIdProperty(db_property="id")
     handle = StringProperty(max_length=30, unique_index=True, required=True)
     favourite_book_id = IntegerProperty(db_property="favouriteBookId")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     latest_book_id = StringProperty(db_property="latestBookId")
     latest_book = RelationshipTo("Book", "LATEST_BOOK", cardinality=ZeroOrOne)
     books = RelationshipFrom("Book", "AUTHOR", cardinality=ZeroOrMore)
@@ -57,7 +63,7 @@ class Book(StructuredNode):
         db_property="publishedOn",
     )
     opens_at = StringProperty(db_property="opensAt")
-    released_at = DateTimeProperty(db_property="releasedAt")
+    released_at = DateTimeNeo4jFormatProperty(db_property="releasedAt")
     pages = IntegerProperty(default=100)
     ratio = FloatProperty(default=0.5)
     in_print = BooleanProperty(default=True, db_property="inPrint")
@@ -66,8 +72,14 @@ class Book(StructuredNode):
     extra = StringProperty()
     read_time = StringProperty(db_property="readTime")
     cover = StringProperty()
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     author_id = StringProperty(index=True, required=True, db_property="authorId")
     editor_id = StringProperty(db_property="editorId")
     series_handle = StringProperty(db_property="seriesHandle")
@@ -84,8 +96,14 @@ class Series(StructuredNode):
 
     id_ = UniqueIdProperty(db_property="id")
     handle = StringProperty(max_length=20, unique_index=True, required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     parent_id = StringProperty(db_property="parentId")
     books = RelationshipFrom("Book", "SERIES", cardinality=ZeroOrMore)
     parent = RelationshipTo("Series", "PARENT", cardinality=ZeroOrOne)
@@ -97,8 +115,14 @@ class Audiobook(StructuredNode):
     """Model Audiobook (table audiobook)."""
 
     minutes = IntegerProperty(required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     book_ptr_id = StringProperty(
         unique_index=True,
         required=True,
@@ -113,8 +137,14 @@ class Index(StructuredNode):
     id_ = UniqueIdProperty(db_property="id")
     sql = StringProperty()
     class_ = StringProperty(db_property="class")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     table = StringProperty()
     table_2 = RelationshipTo("Series", "TABLE", cardinality=ZeroOrOne)
 
@@ -123,6 +153,12 @@ class Tagged(StructuredNode):
     """Model Tagged (table tagged)."""
 
     id_ = UniqueIdProperty(db_property="id")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     books = RelationshipTo("Book", "BOOKS", cardinality=ZeroOrMore)
