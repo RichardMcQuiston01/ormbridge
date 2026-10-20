@@ -10,12 +10,59 @@ permissions:
   id-token: write
 
 jobs:
-  # The full CI suite, including the `real-tools` job, must pass before anything is published.
+  # The tagged commit is the merge commit on `main`, and CI already ran on the `push` to `main` for exactly that
+  # commit. This job looks that run up (.github/scripts/find-green-ci.sh, tested in test/find-green-ci.test.ts):
+  #   - a green push run of ci.yml for this commit (its `check` and `real-tools` jobs succeeded) -> reuse=true
+  #   - a push run that is still going -> wait for it (up to 25 minutes), then decide again
+  #   - no push run, a red or cancelled one, or a GitHub API error -> reuse=false
+  # With reuse=false the whole CI runs again in the `ci` job below, as before. Only reuse=true skips it.
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      reuse: ${{ steps.find.outputs.reuse }}
+      reason: ${{ steps.find.outputs.reason }}
+      run_id: ${{ steps.find.outputs.run_id }}
+    steps:
+      # Only the script is needed, and it comes from the tagged commit that is about to be published.
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/scripts
+      - name: Look for a green CI run of this commit
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/find-green-ci.sh "$GITHUB_SHA"
+      - name: Summary
+        env:
+          REUSE: ${{ steps.find.outputs.reuse }}
+          REASON: ${{ steps.find.outputs.reason }}
+          RUN_ID: ${{ steps.find.outputs.run_id }}
+        run: |
+          if [ "$REUSE" = "true" ]; then
+            echo "Reusing the green CI run [$RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$RUN_ID) of $GITHUB_SHA; the CI is not run again." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No green CI run to reuse for $GITHUB_SHA ($REASON). The whole CI runs again before publishing." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # The full CI suite, including the `real-tools` job, must pass before anything is published. It is skipped only
+  # when the gate found a green push run of the same commit.
   ci:
+    needs: gate
+    if: ${{ needs.gate.outputs.reuse != 'true' }}
     uses: ./.github/workflows/ci.yml
 
+  # Publishes when the CI was reused (the `ci` job is then skipped) or the `ci` job above succeeded. A failed or
+  # cancelled `ci`, a failed gate, and a skipped `ci` without reuse never publish.
   publish:
-    needs: ci
+    needs: [gate, ci]
+    if: >-
+      ${{ always() && needs.gate.result == 'success' && (
+      (needs.gate.outputs.reuse == 'true' && needs.ci.result == 'skipped') ||
+      (needs.gate.outputs.reuse != 'true' && needs.ci.result == 'success')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

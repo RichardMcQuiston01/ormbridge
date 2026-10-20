@@ -5,6 +5,7 @@
 ### Changed
 
 - CI only, no package change: the `real-tools-node` and `real-tools-databases` jobs no longer compile SQLite from source. The newest `better-sqlite3` has no prebuilt binary for Node 20, so each of its three installs in the node job and two in the databases job took about 80 seconds; the setup script now pins a release that has one (`BETTER_SQLITE3` overrides it) and installs the npm tools, including Prisma 6 and 7 (new `prisma` component), at the same time. The separate `real-tools-go` job is gone: `check` installs Go with `actions/setup-go` and runs `gorm-emitter` and `gorm-verify`, and `real-tools` waits for six jobs instead of seven.
+- CI only, no package change: the tag Publish workflow reuses the green `push` CI run of the tagged commit instead of running the whole suite again. A new `gate` job (`.github/scripts/find-green-ci.sh`, tested in `test/find-green-ci.test.ts` and `test/publish-workflow.test.ts`) looks up the `ci.yml` run on `push` for that commit; `reuse=true` skips the `ci` job, and a missing, failed, cancelled or unreadable run (or one that is still going after 25 minutes) makes `ci` run as before. `publish` runs only after a reused green run or a successful `ci` job.
 
 ## 0.12.0 - 2026-10-19
 
