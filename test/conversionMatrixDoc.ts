@@ -340,6 +340,44 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
           'A schema cannot hold a default value, an auto-increment key, a maximum length, a generated column or an automatically refreshed timestamp, so each is dropped with a warning that names the model and field; set those values when you create the node.',
       },
     ],
+    neomodel: [
+      {
+        id: 'neomodel-check',
+        title: 'What the structural check looks for',
+        explanation:
+          'Every node label has a `StructuredNode` class, every column and foreign key a property line (by its attribute name or its `db_property`), every foreign key, one-to-one key, many-to-many relation and join table a `RelationshipTo` on the owning class and a `RelationshipFrom` on the target, the extra columns of a join table a `StructuredRel` class, every primary key a unique (or, for a composite key, an index) flag, and every enum value appears in the `choices`.',
+      },
+      {
+        id: 'neomodel-relationships',
+        title: 'Relationships are classes, foreign keys stay as properties',
+        explanation:
+          'Each foreign key becomes a `RelationshipTo` on the class that owns it and a `RelationshipFrom` on the target, with the cardinality `One` or `ZeroOrOne` (required or optional key) and `ZeroOrMore` on the other end (`ZeroOrOne` for a one-to-one key). The relationship types and labels are the ones the Cypher writer uses. The foreign key columns stay as plain properties, as in the Cypher output, and nothing ties them to the relationship; neomodel does not enforce `ON DELETE` actions either. A reverse side that the source did not name is called after the plural of the source (`posts`).',
+      },
+      {
+        id: 'neomodel-join-tables',
+        title: 'A pure join table becomes one relationship',
+        explanation:
+          'A join table is written as one relationship between the two classes, in the same cases as the Cypher writer. Its surrogate key is dropped and its other columns are the properties of a `StructuredRel` class. A unique column of the join table is a unique relationship property. The pair of keys cannot be made unique: `connect` merges on the relationship properties, so a pair with differing default values (timestamps) can be connected twice.',
+      },
+      {
+        id: 'neomodel-constraints',
+        title: 'Only single-property rules',
+        explanation:
+          'neomodel can make one property unique or indexed. A composite primary key, a composite unique index and a composite index are written as an index on each property, with a warning. Index methods other than B-tree, sort orders and operator classes are dropped with a warning. A full-text index on one string property uses `FulltextIndex`, which needs Neo4j 5.16 or later. A node key and `IS NOT NULL` constraints are not created, because neomodel checks `required` in Python only.',
+      },
+      {
+        id: 'neomodel-types',
+        title: 'Property classes decide how values are stored',
+        explanation:
+          'Strings, integers, floats and booleans map one to one. A date is stored as ISO text (neomodel 7.0.0 has no native date property), a date and time as a native Neo4j datetime (`DateTimeNeo4jFormatProperty`: zoned, or local for a `timestamp` native type), JSON as a JSON string (`JSONProperty`), and an array as `ArrayProperty`. Decimals, UUIDs, IP addresses, times, durations, binary data, hstore, ranges and unknown types are stored as strings (binary data as base64), each with a warning where information is approximated. Nested arrays become a string. An enum is a string property with `choices`. A single UUID key with a generated default is a `UniqueIdProperty`, which stores 32 hexadecimal digits without dashes.',
+      },
+      {
+        id: 'neomodel-defaults',
+        title: 'Which defaults survive',
+        explanation:
+          'Literal defaults of strings, numbers and booleans, enum defaults, `now` (a datetime lambda, or `date.today` for a date; `default_now=True` is not used because neomodel 7.0.0 fixes that time when the module is imported), UUID defaults and the first value of an automatically refreshed timestamp are kept as `default=`; a property with a default is not also marked `required`, because neomodel refuses both. Auto-increment, database expressions, client generated values (`cuid()`), defaults of arrays and JSON, generated columns and the refresh on every save are dropped with a warning that names the model and field.',
+      },
+    ],
     sql: [
       {
         id: 'sql-dialect-types',
@@ -414,6 +452,44 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
         title: 'Constructs without a SQLAlchemy equivalent',
         explanation:
           'Views are a commented placeholder with a warning (SQLAlchemy has no declarative view; reflect it with `Table(..., autoload_with=engine)`), database schemas (`@@schema`) are ignored, generated-column expressions are not SQL and the column is written as a regular one, index methods, operator classes, sort order and full-text kinds are dropped (an ordinary index is written), and relations to a view or a model that is not in the input stay plain columns.',
+      },
+    ],
+    sdn: [
+      {
+        id: 'sdn-check',
+        title: 'What the structural check looks for',
+        explanation:
+          'Every node label has a Java class with `@Node("Label")` and an `@Id`, every column and foreign key a field (by its name or its `@Property`), every foreign key, one-to-one key, many-to-many relation and join table an `@Relationship` with the same type on the owning class (`OUTGOING`) and on the target (`INCOMING`), the extra columns of a join table a `@RelationshipProperties` class, and every enum constant is written.',
+      },
+      {
+        id: 'sdn-ids',
+        title: 'The identifier follows the source key',
+        explanation:
+          "A generated integer key becomes Neo4j's internal node id (`@Id @GeneratedValue Long`): it is not stored as a property, and Spring Data Neo4j 7 logs a deprecation warning for it. A UUID key with a generated default is a `String` with `UUIDStringGenerator`. Any other single key column is an assigned `@Id`. A composite key, a key that is a relationship, or no key at all gives the node a generated internal id (`graphId`), and the key columns are plain properties. Each case has a warning.",
+      },
+      {
+        id: 'sdn-relationships',
+        title: 'Relationships are fields, foreign keys stay as properties',
+        explanation:
+          'Each foreign key is an `@Relationship(type, direction)` field on the owner (a single value) and a `List` on the target (a single value for a one-to-one key), with the relationship types and labels of the Cypher writer. Java types say nothing about required or optional, so that is lost. The foreign key columns stay as plain properties, as in the Cypher output, and Spring Data Neo4j enforces no delete action; each foreign key has a warning. A pure join table is one relationship with a list on both ends; its extra columns are a `@RelationshipProperties` class for each direction (with `@RelationshipId` and `@TargetNode`).',
+      },
+      {
+        id: 'sdn-schema',
+        title: 'No constraints, indexes or lengths',
+        explanation:
+          'Spring Data Neo4j creates no constraints or indexes and has no maximum length, so uniqueness, indexes and lengths are not written (one warning for each model lists them; create the constraints with `--to neo4j`). Required properties are listed in the class comment.',
+      },
+      {
+        id: 'sdn-types',
+        title: 'Java types',
+        explanation:
+          'Strings, `Integer`, `Long`, `Double`, `Boolean`, `LocalDate`, `ZonedDateTime` (or `LocalDateTime`), `LocalTime`, `OffsetTime`, `Duration`, `byte[]`, `UUID` and `BigDecimal` (stored as a string) are used, always as boxed types because a node can lack a property. An array is a `List`; nested arrays, JSON, hstore, ranges, IP addresses and unknown types are `String` values, with a warning where information is approximated. An enum is a Java enum stored by name, or through a `Neo4jPersistentPropertyConverter` when the stored values differ from the constant names (an array of such enums is a `List<String>`).',
+      },
+      {
+        id: 'sdn-defaults',
+        title: 'Defaults are field initializers',
+        explanation:
+          'Text, number, boolean and enum defaults are Java field initializers, which only apply to new objects. Auto-increment, `now`, UUID, database expressions, client generated values and defaults of arrays are dropped with a warning.',
       },
     ],
   };

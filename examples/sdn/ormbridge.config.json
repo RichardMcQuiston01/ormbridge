@@ -1,0 +1,11 @@
+{
+  "conversions": [
+    {
+      "name": "to-sdn",
+      "input": "../schema/schema.prisma",
+      "from": "prisma",
+      "to": "sdn",
+      "output": "generated"
+    }
+  ]
+}

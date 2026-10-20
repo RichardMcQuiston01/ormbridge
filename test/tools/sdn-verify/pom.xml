@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Compiles the Java classes of the sdn format against the real Spring Data Neo4j 7 (Spring Boot 3, jakarta era) and reads their
+  mapping with Neo4jMappingContext: Main compiles a directory with the JDK compiler (every lint warning is an error),
+  builds the mapping context for the @Node classes and prints the labels, identifiers, properties and relationships it
+  resolves. With a Neo4j server (SDN_BOLT_URL) it also saves and reads back a node graph through Neo4jTemplate.
+  Used by test/sdn-verify.test.ts; see test/tools/setup-verification-tools.sh.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>dev.ormbridge</groupId>
+  <artifactId>sdn-verify</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <sdn.version>7.5.4</sdn.version>
+  </properties>
+
+  <dependencies>
+    <!-- Spring Boot 3.5 uses Spring Data Neo4j 7.5 (Spring Framework 6.2, Neo4j Java driver 5). -->
+    <dependency>
+      <groupId>org.springframework.data</groupId>
+      <artifactId>spring-data-neo4j</artifactId>
+      <version>${sdn.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.18.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-nop</artifactId>
+      <version>2.0.16</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>17</release>
+          <proc>none</proc>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.6.1</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>

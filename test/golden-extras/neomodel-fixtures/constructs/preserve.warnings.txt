@@ -1,0 +1,25 @@
+Book.grid: Neo4j cannot store nested lists as a property; the value is stored as a serialized STRING.
+Book.price: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Book.settings: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+Book.window: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Book.extra: Neo4j has no key-value property type; the hstore value is stored as a serialized STRING.
+Book index (title, author): neomodel has no composite uniqueness constraint, so each property was written as an index.
+Book.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Book.tags: the default of an array has no neomodel equivalent and was dropped; set the value when you create the node.
+Book.settings: the default "{\"theme\": \"dark\", \"tabs\": [1, 2]}" has no neomodel equivalent and was dropped; set the value when you create the node.
+Book.opens_at: neomodel has no time property; the value is stored as an ISO 8601 text in a StringProperty.
+Book.released_at: the default "2020-01-02T03:04:05Z" has no neomodel equivalent and was dropped; set the value when you create the node.
+Book.read_time: neomodel has no duration property; the value is stored as an ISO 8601 text in a StringProperty.
+Book.cover: neomodel has no binary property; the value is stored as base64 text in a StringProperty.
+Series.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+index.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Tagged.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Author.latest_book: the foreign key to Book became the relationship (:Author)-[:LATEST_BOOK]->(:Book); neomodel does not enforce the on delete action (setNull), and latest_book_id was kept as a plain property that nothing ties to the relationship.
+Book.author: the foreign key to Author became the relationship (:Book)-[:AUTHOR]->(:Author); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+Book.editor: the foreign key to Author became the relationship (:Book)-[:EDITOR]->(:Author); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+Book.series: the foreign key to Series became the relationship (:Book)-[:SERIES]->(:Series); neomodel does not enforce the on delete action (setNull), and series_handle was kept as a plain property that nothing ties to the relationship.
+Series.parent: the foreign key to Series became the relationship (:Series)-[:PARENT]->(:Series); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+Audiobook.book: the foreign key to Book became the relationship (:Audiobook)-[:BOOK]->(:Book); neomodel does not enforce the on delete action (cascade), and book_ptr_id was kept as a plain property that nothing ties to the relationship.
+index.table: the foreign key to Series became the relationship (:Index)-[:TABLE]->(:Series); neomodel does not enforce the on delete action (noAction), and table was kept as a plain property that nothing ties to the relationship.
+index.table: "table" is taken, so the attribute was named "table_2" (stored as "TABLE").
+Tagged.books: the many-to-many relation to Book became the relationship (:Tagged)-[:BOOKS]->(:Book); no join node is created.

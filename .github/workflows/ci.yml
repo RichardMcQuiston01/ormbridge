@@ -38,7 +38,7 @@ jobs:
   # those tools, found by the environment variable or executable the file reads (see test/README.md for the table).
   # The test files that need no tool run in `check`, so they are not repeated here. A test file that needs tools from
   # two ecosystems has to run in a job that has both; when a test starts to use another tool, move it or add the tool.
-  # Each job has its own `timeout-minutes`, about twice what it took on a cold cache (databases ~4-5 minutes, node ~3-4,
+  # Each job has its own `timeout-minutes`, about twice what it took on a cold cache (databases ~4-5 minutes, node ~3-4, neo4j ~2,
   # python ~3, the others 1-2), so a hung test step fails fast instead of holding a job for 30 minutes, and a re-run after a hang
   # repeats only the affected ecosystem job. Raise one when its tools or tests grow.
   # `real-tools` at the end waits for all of them and is the one name to require in branch protection.
@@ -336,6 +336,64 @@ jobs:
           test/clickhouse-verify.test.ts
           test/neo4j-verify.test.ts
 
+  # neomodel (Python) and Spring Data Neo4j (Java) against a Neo4j 5 Community service container. A separate job keeps
+  # the Python and Maven installs and the extra container out of `real-tools-databases`, which is the longest job.
+  # `neomodel-verify` needs a Python with the pinned neomodel (NEOMODEL_PYTHON) and a server (NEO4J_URL);
+  # `sdn-verify` needs Java 17, Maven (SDN_DIR) and the same server. Both empty the database, so they run one
+  # after the other.
+  real-tools-neo4j:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    services:
+      # Community Edition only: no license has to be accepted.
+      neo4j:
+        image: neo4j:5-community
+        env:
+          NEO4J_AUTH: neo4j/ormbridge-ci-password
+        ports:
+          - 7474:7474
+          - 7687:7687
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p ormbridge-ci-password 'RETURN 1' || exit 1"
+          --health-interval 5s --health-timeout 10s --health-retries 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: Choose the tools directory (outside the repository)
+        run: echo "TOOLS=$RUNNER_TEMP/verification-tools" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: test/tools/setup-verification-tools.sh
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Cache package downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.npm
+            ${{ env.TOOLS }}/sdn/m2
+          key: real-tools-neo4j-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', 'test/tools/sdn-verify/pom.xml', '.github/workflows/ci.yml') }}
+          restore-keys: real-tools-neo4j-${{ runner.os }}-
+      - run: npm ci
+      - name: Install neomodel (pinned in the setup script) and the Spring Data Neo4j packages
+        run: |
+          test/tools/setup-verification-tools.sh "$TOOLS" neomodel sdn | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
+      - name: Point the tests at the Neo4j service
+        run: |
+          echo "NEO4J_URL=http://127.0.0.1:7474" >> "$GITHUB_ENV"
+          echo "NEO4J_BOLT_URL=bolt://127.0.0.1:7687" >> "$GITHUB_ENV"
+          echo "NEO4J_USER=neo4j" >> "$GITHUB_ENV"
+          echo "NEO4J_PASSWORD=ormbridge-ci-password" >> "$GITHUB_ENV"
+      - name: Tests with the real neomodel and Spring Data Neo4j
+        run: npx vitest run --no-file-parallelism test/neomodel-verify.test.ts test/sdn-verify.test.ts
+
   # The single name that stands for all of the real-tool jobs above. Branch protection and `needs: ci` in publish.yml
   # keep working with it, and it fails when any of them failed, was cancelled or did not run.
   real-tools:
@@ -347,6 +405,7 @@ jobs:
       - real-tools-java
       - real-tools-php
       - real-tools-databases
+      - real-tools-neo4j
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

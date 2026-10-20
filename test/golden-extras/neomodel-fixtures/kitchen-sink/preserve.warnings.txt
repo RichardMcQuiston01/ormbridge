@@ -1,0 +1,16 @@
+Account.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Account.balance: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Account.payload: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+Account index (email, status): neomodel has no composite index, so each property got its own index.
+Account.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Account.avatar: neomodel has no binary property; the value is stored as base64 text in a StringProperty.
+Account.ttl: neomodel has no duration property; the value is stored as an ISO 8601 text in a StringProperty.
+Account.alarm: neomodel has no time property; the value is stored as an ISO 8601 text in a StringProperty.
+Session index (account, opened_at): neomodel has no composite uniqueness constraint, so each property was written as an index.
+Group.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Session.account: the foreign key to Account became the relationship (:Session)-[:ACCOUNT]->(:Account); neomodel does not enforce the on delete action (setNull), and account_id was kept as a plain property that nothing ties to the relationship.
+Group.friends: the many-to-many relation to Group became the relationship (:Group)-[:FRIENDS]->(:Group); no join node is created.
+Profile.owner: the foreign key to Account became the relationship (:Profile)-[:OWNER]->(:Account); neomodel does not enforce the on delete action (cascade), and owner_account_id was kept as a plain property that nothing ties to the relationship.
+legacy_order.owner: the foreign key to Account became the relationship (:LegacyOrder)-[:OWNER]->(:Account); neomodel does not enforce the on delete action (noAction), and acct was kept as a plain property that nothing ties to the relationship.
+Membership: the join table became the relationship (:Account)-[:GROUP]->(:Group) instead of a node class.

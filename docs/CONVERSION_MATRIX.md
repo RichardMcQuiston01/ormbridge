@@ -2710,7 +2710,7 @@ Stable: converting efcore → jpa → efcore again changes nothing further.
 
 ## Write-only targets
 
-Some formats can be written but not read (zod, neo4j), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. Neo4j: every model has a node section (or, for a join table, its relationship comment), every column and foreign key has a property line, every relation has its relationship comment and every primary key has a constraint. JSON Schema: every model and enum has a `$defs` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
+Some formats can be written but not read (zod, neo4j, neomodel, sdn), so the matrix cannot re-read their output and compare IRs. For these it checks the written files against the IR instead: every model has a declaration for its table (a struct, a table builder call), every column has a field or builder, every many-to-many relation has its join table and every enum has its type or value list. Neo4j: every model has a node section (or, for a join table, its relationship comment), every column and foreign key has a property line, every relation has its relationship comment and every primary key has a constraint. JSON Schema: every model and enum has a `$defs` entry and every column and relation has a property. "Missing" lists what the check could not find; it is empty when the output covers the schema. What the format approximates or cannot express is listed below the table.
 
 | Pair | Files | Emit warnings | Missing |
 | --- | --- | --- | --- |
@@ -2740,6 +2740,32 @@ Some formats can be written but not read (zod, neo4j), so the matrix cannot re-r
 | sequelize → neo4j | 1 | 25 | none |
 | efcore → neo4j | 1 | 27 | none |
 | jpa → neo4j | 1 | 27 | none |
+| django → neomodel | 1 | 18 | none |
+| prisma → neomodel | 1 | 19 | none |
+| typeorm → neomodel | 1 | 18 | none |
+| doctrine → neomodel | 1 | 16 | none |
+| laravel → neomodel | 1 | 18 | none |
+| gorm → neomodel | 1 | 18 | none |
+| drizzle → neomodel | 1 | 18 | none |
+| json-schema → neomodel | 1 | 18 | none |
+| sql → neomodel | 1 | 16 | none |
+| sqlalchemy → neomodel | 1 | 18 | none |
+| sequelize → neomodel | 1 | 18 | none |
+| efcore → neomodel | 1 | 18 | none |
+| jpa → neomodel | 1 | 18 | none |
+| django → sdn | 7 | 26 | none |
+| prisma → sdn | 7 | 27 | none |
+| typeorm → sdn | 7 | 26 | none |
+| doctrine → sdn | 7 | 26 | none |
+| laravel → sdn | 7 | 26 | none |
+| gorm → sdn | 7 | 26 | none |
+| drizzle → sdn | 7 | 26 | none |
+| json-schema → sdn | 7 | 26 | none |
+| sql → sdn | 7 | 24 | none |
+| sqlalchemy → sdn | 7 | 26 | none |
+| sequelize → sdn | 7 | 24 | none |
+| efcore → sdn | 6 | 26 | none |
+| jpa → sdn | 6 | 26 | none |
 
 ### django → zod
 
@@ -3259,6 +3285,754 @@ Emit warnings:
 - Post.tags: the many-to-many relation to Tag is documented as the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
 - Profile.user: Neo4j keeps no relationship schema, so the foreign key to User (on delete cascade) is only documented in a comment; the user_id property was kept.
 
+### django → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (published_at, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### prisma → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- PostTags: the join table became a relationship, so its surrogate key id was dropped.
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (published_at, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+- PostTags: the join table became the relationship (:Post)-[:TAGS]->(:Tag) instead of a node class.
+
+### typeorm → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (publishedAt, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### doctrine → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (publishedAt, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### laravel → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (published_at, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### gorm → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (publishedAt, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### drizzle → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (publishedAt, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+- PostTag: the join table became the relationship (:Post)-[:TAGS]->(:Tag) instead of a node class.
+
+### json-schema → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (published_at, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### sql → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- BlogPost.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- BlogPost.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- BlogUser.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- BlogCategory.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- BlogTag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- BlogPost index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- BlogPost index (published_at, status): neomodel has no composite index, so each property got its own index.
+- BlogPost.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- BlogPost.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- BlogProfile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- BlogCategory.parent: the foreign key to BlogCategory became the relationship (:BlogCategory)-[:PARENT]->(:BlogCategory); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- BlogPost.author: the foreign key to BlogUser became the relationship (:BlogPost)-[:AUTHOR]->(:BlogUser); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- BlogPost.editor: the foreign key to BlogUser became the relationship (:BlogPost)-[:EDITOR]->(:BlogUser); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- BlogPost.category: the foreign key to BlogCategory became the relationship (:BlogPost)-[:CATEGORY]->(:BlogCategory); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- BlogPost.tags: the many-to-many relation to BlogTag became the relationship (:BlogPost)-[:TAGS]->(:BlogTag); no join node is created.
+- BlogProfile.user: the foreign key to BlogUser became the relationship (:BlogProfile)-[:USER]->(:BlogUser); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### sqlalchemy → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata_: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (published_at, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata_: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### sequelize → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (publishedAt, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### efcore → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (publishedAt, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### jpa → neomodel
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Category.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post index (author, title): neomodel has no composite uniqueness constraint, so each property was written as an index.
+- Post index (publishedAt, status): neomodel has no composite index, so each property got its own index.
+- Post.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Post.metadata: the default "{}" has no neomodel equivalent and was dropped; set the value when you create the node.
+- Tag.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Profile.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- User.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); neomodel does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); neomodel does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); neomodel does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); neomodel does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); neomodel does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### django → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title, status has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.public_id: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.published_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (title; published_at + status)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### prisma → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- PostTags: the join table became a relationship, so its surrogate key id was dropped.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.public_id: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.published_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (title; published_at + status)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+- PostTags: the join table became the relationship (:Post)-[:TAGS]->(:Tag) instead of a node class.
+
+### typeorm → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publicId: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (published_at + status; title)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### doctrine → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category.updatedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.updatedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publicId: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (title; published_at + status)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### laravel → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.public_id: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.published_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (title; published_at + status)) were not written; create them with --to neo4j.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### gorm → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publicId: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (title; published_at + status)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### drizzle → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publicId: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (published_at + status; title)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+- PostTag: the join table became the relationship (:Post)-[:TAGS]->(:Tag) instead of a node class.
+
+### json-schema → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.public_id: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.published_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (title; published_at + status)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### sql → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- BlogCategory: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- BlogTag: the maximum length of label has no Neo4j schema representation and was dropped.
+- BlogPost.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- BlogPost.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- BlogPost: the maximum length of title has no Neo4j schema representation and was dropped.
+- BlogProfile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- BlogUser.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- BlogCategory.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- BlogCategory.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- BlogCategory: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- BlogTag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- BlogPost.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- BlogPost.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- BlogPost.public_id: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- BlogPost.published_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- BlogPost: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (title; published_at + status)) were not written; create them with --to neo4j.
+- BlogProfile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- BlogProfile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- BlogCategory.parent: the foreign key to BlogCategory became the relationship (:BlogCategory)-[:PARENT]->(:BlogCategory); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- BlogPost.author: the foreign key to BlogUser became the relationship (:BlogPost)-[:AUTHOR]->(:BlogUser); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- BlogPost.editor: the foreign key to BlogUser became the relationship (:BlogPost)-[:EDITOR]->(:BlogUser); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- BlogPost.category: the foreign key to BlogCategory became the relationship (:BlogPost)-[:CATEGORY]->(:BlogCategory); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- BlogPost.tags: the many-to-many relation to BlogTag became the relationship (:BlogPost)-[:TAGS]->(:BlogTag); no join node is created.
+- BlogProfile.user: the foreign key to BlogUser became the relationship (:BlogProfile)-[:USER]->(:BlogUser); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### sqlalchemy → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata_: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.public_id: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.published_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (title; published_at + status)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### sequelize → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post: the maximum length of title has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.publicId: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (title; published_at + status)) were not written; create them with --to neo4j.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### efcore → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title, status has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named Id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (Name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named Id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publicId: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + Title) and indexed (Title; published_at + Status)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named Id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named Id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named Id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
+### jpa → sdn
+
+The output covers the canonical schema.
+
+Emit warnings:
+
+- Category.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Category: the maximum length of name, slug has no Neo4j schema representation and was dropped.
+- Post.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+- Post.rating: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+- Post.metadata: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+- Post: the maximum length of title, status has no Neo4j schema representation and was dropped.
+- Tag: the maximum length of label has no Neo4j schema representation and was dropped.
+- Profile: the maximum length of avatar has no Neo4j schema representation and was dropped.
+- Category.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Category: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+- Post.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Post.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publicId: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post.publishedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+- Post: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (public_id; author_id + title) and indexed (title; published_at + status)) were not written; create them with --to neo4j.
+- Tag.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (user_id)) were not written; create them with --to neo4j.
+- User.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+- Category.parent: the foreign key to Category became the relationship (:Category)-[:PARENT]->(:Category); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+- Post.author: the foreign key to User became the relationship (:Post)-[:AUTHOR]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and author_id was kept as a plain property that nothing ties to the relationship.
+- Post.editor: the foreign key to User became the relationship (:Post)-[:EDITOR]->(:User); Spring Data Neo4j does not enforce the on delete action (setNull), and editor_id was kept as a plain property that nothing ties to the relationship.
+- Post.category: the foreign key to Category became the relationship (:Post)-[:CATEGORY]->(:Category); Spring Data Neo4j does not enforce the on delete action (restrict), and category_id was kept as a plain property that nothing ties to the relationship.
+- Post.tags: the many-to-many relation to Tag became the relationship (:Post)-[:TAGS]->(:Tag); no join node is created.
+- Profile.user: the foreign key to User became the relationship (:Profile)-[:USER]->(:User); Spring Data Neo4j does not enforce the on delete action (cascade), and user_id was kept as a plain property that nothing ties to the relationship.
+
 ### What zod approximates
 
 1. **Types that JSON cannot carry.** Big integers and decimals are validated as strings of digits (a decimal with `max_digits` and `decimal_places` gets a pattern sized to them), UUIDs with `z.uuid()` (which only accepts RFC 9562 versions and variants), binary data as base64 text, durations and times as plain strings, and JSON columns as `z.unknown()`. Date columns use `z.coerce.date()`, which also accepts `null` and numbers, so a null in a required date column is not rejected; the `dates: "string"` option validates ISO text strictly instead.
@@ -3273,6 +4047,24 @@ Emit warnings:
 3. **Only what Community Edition accepts, unless asked.** The primary key, unique columns, one-to-one foreign keys and unique indexes become uniqueness constraints (a composite primary key a composite uniqueness constraint), other indexes range indexes and full-text indexes full-text indexes. `IS NOT NULL`, `IS NODE KEY` and property type constraints need Enterprise Edition, so they are written only with `--style enterprise`; the community style lists the required properties in a comment instead. Index methods other than B-tree, sort orders, prefix lengths, operator classes and clustering are dropped with a warning, and constraint and index names are derived (`post_author_id_title_unique`), not taken from the source.
 4. **Neo4j property types are approximations.** Integers are `INTEGER` (64-bit), decimals are `STRING` so no precision is lost, JSON, hstore and ranges are serialized `STRING` values, UUIDs and IP addresses are `STRING`, binary data is a byte array (which a type constraint cannot name), dates and times use the `DATE`, `LOCAL`/`ZONED DATETIME`, `LOCAL`/`ZONED TIME` and `DURATION` types, and an array becomes `LIST<T NOT NULL>` (nested arrays become a `STRING`). Enums are `STRING` with the allowed values in a comment, because Neo4j has no enum type.
 5. **Defaults, auto-increment and lengths are dropped.** A schema cannot hold a default value, an auto-increment key, a maximum length, a generated column or an automatically refreshed timestamp, so each is dropped with a warning that names the model and field; set those values when you create the node.
+
+### What neomodel approximates
+
+1. **What the structural check looks for.** Every node label has a `StructuredNode` class, every column and foreign key a property line (by its attribute name or its `db_property`), every foreign key, one-to-one key, many-to-many relation and join table a `RelationshipTo` on the owning class and a `RelationshipFrom` on the target, the extra columns of a join table a `StructuredRel` class, every primary key a unique (or, for a composite key, an index) flag, and every enum value appears in the `choices`.
+2. **Relationships are classes, foreign keys stay as properties.** Each foreign key becomes a `RelationshipTo` on the class that owns it and a `RelationshipFrom` on the target, with the cardinality `One` or `ZeroOrOne` (required or optional key) and `ZeroOrMore` on the other end (`ZeroOrOne` for a one-to-one key). The relationship types and labels are the ones the Cypher writer uses. The foreign key columns stay as plain properties, as in the Cypher output, and nothing ties them to the relationship; neomodel does not enforce `ON DELETE` actions either. A reverse side that the source did not name is called after the plural of the source (`posts`).
+3. **A pure join table becomes one relationship.** A join table is written as one relationship between the two classes, in the same cases as the Cypher writer. Its surrogate key is dropped and its other columns are the properties of a `StructuredRel` class. A unique column of the join table is a unique relationship property. The pair of keys cannot be made unique: `connect` merges on the relationship properties, so a pair with differing default values (timestamps) can be connected twice.
+4. **Only single-property rules.** neomodel can make one property unique or indexed. A composite primary key, a composite unique index and a composite index are written as an index on each property, with a warning. Index methods other than B-tree, sort orders and operator classes are dropped with a warning. A full-text index on one string property uses `FulltextIndex`, which needs Neo4j 5.16 or later. A node key and `IS NOT NULL` constraints are not created, because neomodel checks `required` in Python only.
+5. **Property classes decide how values are stored.** Strings, integers, floats and booleans map one to one. A date is stored as ISO text (neomodel 7.0.0 has no native date property), a date and time as a native Neo4j datetime (`DateTimeNeo4jFormatProperty`: zoned, or local for a `timestamp` native type), JSON as a JSON string (`JSONProperty`), and an array as `ArrayProperty`. Decimals, UUIDs, IP addresses, times, durations, binary data, hstore, ranges and unknown types are stored as strings (binary data as base64), each with a warning where information is approximated. Nested arrays become a string. An enum is a string property with `choices`. A single UUID key with a generated default is a `UniqueIdProperty`, which stores 32 hexadecimal digits without dashes.
+6. **Which defaults survive.** Literal defaults of strings, numbers and booleans, enum defaults, `now` (a datetime lambda, or `date.today` for a date; `default_now=True` is not used because neomodel 7.0.0 fixes that time when the module is imported), UUID defaults and the first value of an automatically refreshed timestamp are kept as `default=`; a property with a default is not also marked `required`, because neomodel refuses both. Auto-increment, database expressions, client generated values (`cuid()`), defaults of arrays and JSON, generated columns and the refresh on every save are dropped with a warning that names the model and field.
+
+### What sdn approximates
+
+1. **What the structural check looks for.** Every node label has a Java class with `@Node("Label")` and an `@Id`, every column and foreign key a field (by its name or its `@Property`), every foreign key, one-to-one key, many-to-many relation and join table an `@Relationship` with the same type on the owning class (`OUTGOING`) and on the target (`INCOMING`), the extra columns of a join table a `@RelationshipProperties` class, and every enum constant is written.
+2. **The identifier follows the source key.** A generated integer key becomes Neo4j's internal node id (`@Id @GeneratedValue Long`): it is not stored as a property, and Spring Data Neo4j 7 logs a deprecation warning for it. A UUID key with a generated default is a `String` with `UUIDStringGenerator`. Any other single key column is an assigned `@Id`. A composite key, a key that is a relationship, or no key at all gives the node a generated internal id (`graphId`), and the key columns are plain properties. Each case has a warning.
+3. **Relationships are fields, foreign keys stay as properties.** Each foreign key is an `@Relationship(type, direction)` field on the owner (a single value) and a `List` on the target (a single value for a one-to-one key), with the relationship types and labels of the Cypher writer. Java types say nothing about required or optional, so that is lost. The foreign key columns stay as plain properties, as in the Cypher output, and Spring Data Neo4j enforces no delete action; each foreign key has a warning. A pure join table is one relationship with a list on both ends; its extra columns are a `@RelationshipProperties` class for each direction (with `@RelationshipId` and `@TargetNode`).
+4. **No constraints, indexes or lengths.** Spring Data Neo4j creates no constraints or indexes and has no maximum length, so uniqueness, indexes and lengths are not written (one warning for each model lists them; create the constraints with `--to neo4j`). Required properties are listed in the class comment.
+5. **Java types.** Strings, `Integer`, `Long`, `Double`, `Boolean`, `LocalDate`, `ZonedDateTime` (or `LocalDateTime`), `LocalTime`, `OffsetTime`, `Duration`, `byte[]`, `UUID` and `BigDecimal` (stored as a string) are used, always as boxed types because a node can lack a property. An array is a `List`; nested arrays, JSON, hstore, ranges, IP addresses and unknown types are `String` values, with a warning where information is approximated. An enum is a Java enum stored by name, or through a `Neo4jPersistentPropertyConverter` when the stored values differ from the constant names (an array of such enums is a `List<String>`).
+6. **Defaults are field initializers.** Text, number, boolean and enum defaults are Java field initializers, which only apply to new objects. Auto-increment, `now`, UUID, database expressions, client generated values and defaults of arrays are dropped with a warning.
 
 ## What json-schema cannot express
 

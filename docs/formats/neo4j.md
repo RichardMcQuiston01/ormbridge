@@ -151,6 +151,14 @@ Everything that is dropped or approximated gets a warning that names the model a
 
 An index that a uniqueness constraint already covers is left out without a warning, because the constraint has its own index.
 
+## Python classes
+
+The [`neomodel`](neomodel.md) format writes the same graph as Python classes for the neomodel library. It uses the same labels, relationship types, directions and cardinalities as this format, so both describe the same graph. Create the constraints with one of them, not both: the names differ (neomodel names a constraint `constraint_unique_Post_id`).
+
+## Java classes
+
+The [`sdn`](sdn.md) format writes the same graph as Spring Data Neo4j entity classes (Java). It uses the same labels and relationship types. Spring Data Neo4j creates no constraints or indexes, so use this format for them.
+
 ## Applying the file
 
 ```sh
@@ -163,7 +171,6 @@ The test suite runs the output in a real Neo4j server (version 5, Community Edit
 
 ## Not supported yet
 
-- `neomodel` and Spring Data Neo4j class output.
 - Reading a Cypher file or a graph schema.
 - Indexes on relationship properties, except the constraints above.
 - Vector, point and text index kinds.

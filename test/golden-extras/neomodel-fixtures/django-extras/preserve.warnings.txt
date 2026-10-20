@@ -1,0 +1,22 @@
+Item.full_name: the generated column expression (Concat("first_name", Value(" "), "last_name")) is not computed by Neo4j; the property is a plain value.
+Item.total_cents: the generated column expression (F("quantity") * 100) is not computed by Neo4j; the property is a plain value.
+Item.grid: Neo4j cannot store nested lists as a property; the value is stored as a serialized STRING.
+Item.attributes: Neo4j has no key-value property type; the hstore value is stored as a serialized STRING.
+Item.stock_range: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.big_range: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.price_range: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.available: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.valid_during: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Item.tags: the default of an array has no neomodel equivalent and was dropped; set the value when you create the node.
+Item.kinds: the default of an array has no neomodel equivalent and was dropped; set the value when you create the node.
+Item.shelf_life: neomodel has no duration property; the value is stored as an ISO 8601 text in a StringProperty.
+Counter.small_id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Shipment.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Account.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+ContentType.id: auto-increment has no neomodel equivalent; supply the value yourself (a UUID key with UniqueIdProperty needs none).
+Shipment.item: the foreign key to Item became the relationship (:Shipment)-[:ITEM]->(:Item); neomodel does not enforce the on delete action (cascade), and item_id was kept as a plain property that nothing ties to the relationship.
+Shipment.other: the foreign key to Item became the relationship (:Shipment)-[:OTHER]->(:Item); neomodel does not enforce the on delete action (cascade), and other_id was kept as a plain property that nothing ties to the relationship.
+Shipment.content_type: the foreign key to ContentType became the relationship (:Shipment)-[:CONTENT_TYPE]->(:ContentType); neomodel does not enforce the on delete action (cascade), and content_type_id was kept as a plain property that nothing ties to the relationship.
+Shipment.created_by: the foreign key to Account became the relationship (:Shipment)-[:CREATED_BY]->(:Account); neomodel does not enforce the on delete action (cascade), and created_by_id was kept as a plain property that nothing ties to the relationship.
+Assignment: the join table became the relationship (:Item)-[:ACCOUNT]->(:Account) instead of a node class.

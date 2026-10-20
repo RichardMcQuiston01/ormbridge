@@ -21,6 +21,8 @@ One runnable project per format. Each folder converts the shared blog schema in 
 | [`typescript`](typescript)   | TypeScript interfaces   | write only (`generated/`)                           |
 | [`zod`](zod)                 | Zod schemas             | write only (`generated/`)                           |
 | [`neo4j`](neo4j)             | Neo4j (Cypher)          | write only (`generated/`)                           |
+| [`neomodel`](neomodel)       | neomodel (Python)       | write only (`generated/`)                           |
+| [`sdn`](sdn)                 | Spring Data Neo4j       | write only (`generated/`)                           |
 
 Folder layout:
 
