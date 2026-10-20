@@ -1,0 +1,38 @@
+enum Role: the database schema "public" (@@schema) was ignored.
+Order: the database schema "public" (@@schema) was ignored.
+OrderLine: the database schema "public" (@@schema) was ignored.
+Account: the database schema "public" (@@schema) was ignored.
+Tenant: the database schema "public" (@@schema) was ignored.
+Profile: the database schema "public" (@@schema) was ignored.
+Document: the database schema "audit" (@@schema) was ignored.
+Scratch: the database schema "audit" (@@schema) was ignored.
+DocumentSummary: this is a database view; it was written as a node class like any other model.
+DocumentSummary: the database schema "audit" (@@schema) was ignored.
+Order.total: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+OrderLine: the maximum length of sku has no Neo4j schema representation and was dropped.
+Document.price: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Document.cost: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Document.meta: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+Document.updated: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Order: Spring Data Neo4j has no composite identifier, so the composite primary key (region, number) was written as plain properties and the node has a generated internal id (graphId).
+Order: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (region + number)) were not written; create them with --to neo4j.
+OrderLine.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+OrderLine: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (indexed (orderRegion + orderNumber)) were not written; create them with --to neo4j.
+Account.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+Account: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (email)) were not written; create them with --to neo4j.
+Tenant.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+Profile: Spring Data Neo4j has no composite identifier, so the composite primary key (region, number) was written as plain properties and the node has a generated internal id (graphId).
+Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (region + number; accountId)) were not written; create them with --to neo4j.
+Document index (meta): Neo4j has no Gin index method; the index was dropped.
+Document.ulid: the ulid() default has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Document.short: the nanoid() default has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Document.uid: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Document.token: the database default gen_random_uuid() has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Document.created: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Document: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id; ulid; title + day) and indexed (title + created)) were not written; create them with --to neo4j.
+Scratch: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id)) were not written; create them with --to neo4j.
+DocumentSummary: the model has no usable primary key; the node has a generated internal id (graphId) and no identifier property of the source.
+DocumentSummary: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id)) were not written; create them with --to neo4j.
+OrderLine.order: the foreign key to Order became the relationship (:OrderLine)-[:ORDER]->(:Order); Spring Data Neo4j does not enforce the on delete action (cascade), and orderRegion, orderNumber were kept as plain properties that nothing ties to the relationship.
+Account.tenant: the foreign key to Tenant became the relationship (:Account)-[:TENANT]->(:Tenant); Spring Data Neo4j does not enforce the on delete action (noAction), and tenantId was kept as a plain property that nothing ties to the relationship.
+Profile.account: the foreign key to Account became the relationship (:Profile)-[:ACCOUNT]->(:Account); Spring Data Neo4j does not enforce the on delete action (restrict), and accountId was kept as a plain property that nothing ties to the relationship.

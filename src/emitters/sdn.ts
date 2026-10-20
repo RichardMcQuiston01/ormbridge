@@ -1,7 +1,7 @@
 import type { MultiFileEmitOutput } from '../formats.js';
 import type { IrField, IrModel, IrSchema } from '../ir.js';
 import { annotation, type AnnotationNode } from './jpaFormat.js';
-import { planEnums, renderConverterBody, renderEnumBody } from './jpaEnums.js';
+import { planEnums, renderEnumBody } from './jpaEnums.js';
 import {
   attributeNameOf,
   capitalize,
@@ -276,7 +276,7 @@ function planId(
     (field.type === 'int' || field.type === 'bigInt')
   ) {
     warnings.push(
-      `${where}.${field.name}: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named ${property.key}, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt.`
+      `${where}.${field.name}: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named ${property.key}, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.`
     );
     return { kind: 'internal', property };
   }
@@ -379,7 +379,8 @@ function columnField(
   model: IrModel,
   property: GraphProperty,
   name: string,
-  warnings: string[]
+  warnings: string[],
+  skipDefault: boolean = false
 ): FieldPlan {
   const field: IrField | undefined = fieldOf(model, property);
   const label: string = `${model.name}.${property.irName}`;
@@ -435,7 +436,7 @@ function columnField(
     }
   }
   const initializer: string | undefined =
-    field === undefined
+    field === undefined || skipDefault
       ? undefined
       : initializerOf(field, type, enumPlan, label, warnings);
   return {
@@ -567,7 +568,8 @@ function addProperties(
       model,
       property,
       name,
-      warnings
+      warnings,
+      id.property === property
     );
     const isId: boolean = id.property === property;
     if (isId) {

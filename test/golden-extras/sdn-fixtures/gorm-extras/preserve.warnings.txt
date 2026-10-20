@@ -1,0 +1,28 @@
+Customer.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Customer.balance: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Customer.settings: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+Customer: the maximum length of email, name, role, billingStreet, billingCity, billingPostal, shippingStreet, shippingCity, shippingPostal has no Neo4j schema representation and was dropped.
+Order.total: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Order: the maximum length of note has no Neo4j schema representation and was dropped.
+Product.price: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Product: the maximum length of sku, title, slug has no Neo4j schema representation and was dropped.
+Label: the maximum length of name has no Neo4j schema representation and was dropped.
+Comment: the maximum length of ownerType has no Neo4j schema representation and was dropped.
+Customer.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+Customer.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Customer.balance: the default 0 has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Customer: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (email) and indexed (deleted_at)) were not written; create them with --to neo4j.
+Order.placedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Order: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id) and indexed (customer_id + placed_at)) were not written; create them with --to neo4j.
+OrderItem: Spring Data Neo4j has no composite identifier, so the composite primary key (order_id, line_no) was written as plain properties and the node has a generated internal id (graphId).
+OrderItem: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (order_id + line_no)) were not written; create them with --to neo4j.
+Product index (slug): Neo4j has no Hash index method; the index was dropped.
+Product: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (sku) and indexed (title)) were not written; create them with --to neo4j.
+Label.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+Label: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (name)) were not written; create them with --to neo4j.
+Comment.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+Order.customer: the foreign key to Customer became the relationship (:Order)-[:CUSTOMER]->(:Customer); Spring Data Neo4j does not enforce the on delete action (restrict), and customer_id was kept as a plain property that nothing ties to the relationship.
+Order.labels: the many-to-many relation to Label became the relationship (:Order)-[:LABELS]->(:Label); no join node is created.
+OrderItem.product: the foreign key to Product became the relationship (:OrderItem)-[:PRODUCT]->(:Product); Spring Data Neo4j does not enforce the on delete action (noAction), and product_sku was kept as a plain property that nothing ties to the relationship.
+OrderItem.order: the foreign key to Order became the relationship (:OrderItem)-[:ORDER]->(:Order); Spring Data Neo4j does not enforce the on delete action (noAction), and order_id was kept as a plain property that nothing ties to the relationship.
+Product.similar: the many-to-many relation to Product became the relationship (:Product)-[:SIMILAR]->(:Product); no join node is created.

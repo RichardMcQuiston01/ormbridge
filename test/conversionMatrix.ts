@@ -18,6 +18,7 @@ import { checkNeo4jOutput } from './neo4jCoverage.js';
 import { checkNeomodelOutput } from './neomodelCoverage.js';
 import { checkSqlAlchemyOutput } from './sqlalchemyCoverage.js';
 import { checkSqlDdlOutput } from './sqlDdlCoverage.js';
+import { checkSdnOutput } from './sdnCoverage.js';
 import { checkZodOutput } from './zodCoverage.js';
 import { loadCanonicalSources } from './harness.js';
 import { DEFAULT_OPTIONS } from './helpers.js';
@@ -309,6 +310,7 @@ const EMIT_ONLY_CHECKS: Readonly<
   neomodel: checkNeomodelOutput,
   sql: checkSqlDdlOutput,
   sqlalchemy: checkSqlAlchemyOutput,
+  sdn: checkSdnOutput,
 };
 
 /** Write-only formats the matrix can check structurally, in registration order. */

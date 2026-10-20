@@ -22,12 +22,16 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
+import org.neo4j.cypherdsl.core.renderer.Configuration;
+import org.neo4j.cypherdsl.core.renderer.Dialect;
+import org.neo4j.cypherdsl.core.renderer.Renderer;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
 import org.springframework.data.mapping.PersistentProperty;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.data.neo4j.core.Neo4jTemplate;
+import org.springframework.data.neo4j.core.convert.Neo4jConversions;
 import org.springframework.data.neo4j.core.mapping.GraphPropertyDescription;
 import org.springframework.data.neo4j.core.mapping.IdDescription;
 import org.springframework.data.neo4j.core.mapping.Neo4jMappingContext;
@@ -36,6 +40,7 @@ import org.springframework.data.neo4j.core.mapping.RelationshipDescription;
 import org.springframework.data.neo4j.core.transaction.Neo4jTransactionManager;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.RelationshipProperties;
+import org.springframework.data.neo4j.core.schema.TargetNode;
 
 /**
  * Loads a directory of Java classes written by {@code --to sdn} with the real Spring Data Neo4j 7.
@@ -160,7 +165,16 @@ public final class Main {
           entities.add(type);
         }
       }
-      Neo4jMappingContext context = new Neo4jMappingContext();
+      boolean connected = live && System.getenv("SDN_BOLT_URL") != null;
+      Neo4jMappingContext context;
+      if (connected) {
+        // Against a server the context needs the driver's type system, as the Spring configuration gives it.
+        try (Driver driver = driver()) {
+          context = new Neo4jMappingContext(new Neo4jConversions(), driver.defaultTypeSystem());
+        }
+      } else {
+        context = new Neo4jMappingContext();
+      }
       context.setInitialEntitySet(entities);
       context.afterPropertiesSet();
 
@@ -177,7 +191,7 @@ public final class Main {
       result.put("nodes", nodes);
       result.put("relationshipProperties", properties);
       result.put("classes", all.stream().map(Class::getSimpleName).sorted().collect(Collectors.toList()));
-      if (live && System.getenv("SDN_BOLT_URL") != null) {
+      if (connected) {
         result.put("__live", Live.run(name, context, loader));
       }
       return result;
@@ -215,6 +229,10 @@ public final class Main {
     Map<String, Object> described = new LinkedHashMap<>();
     Map<String, Object> graphProperties = new LinkedHashMap<>();
     for (GraphPropertyDescription property : entity.getGraphProperties()) {
+      PersistentProperty<?> persistent = entity.getPersistentProperty(property.getFieldName());
+      if (persistent != null && persistent.isAnnotationPresent(TargetNode.class)) {
+        continue;
+      }
       graphProperties.put(property.getFieldName(), property.getPropertyName());
     }
     described.put("properties", graphProperties);
@@ -271,7 +289,12 @@ public final class Main {
   }
 
   static Neo4jTemplate template(Neo4jMappingContext context, Driver driver) {
-    return new Neo4jTemplate(Neo4jClient.create(driver), context, new Neo4jTransactionManager(driver));
+    Neo4jTemplate template =
+        new Neo4jTemplate(Neo4jClient.create(driver), context, new Neo4jTransactionManager(driver));
+    // Spring Boot sets the Cypher dialect from the server version; without it ids are compared as strings.
+    template.setCypherRenderer(
+        Renderer.getRenderer(Configuration.newConfig().withDialect(Dialect.NEO4J_5).build()));
+    return template;
   }
 
   static Driver driver() {

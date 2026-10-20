@@ -48,9 +48,9 @@ final class Live {
     try (Driver driver = Main.driver()) {
       one(driver, "MATCH (n) DETACH DELETE n");
       Neo4jTemplate template = Main.template(context, driver);
-      if (group.equals("blog")) {
+      if (group.startsWith("blog")) {
         blog(driver, template, context, loader);
-      } else if (group.equals("joins")) {
+      } else if (group.startsWith("joins")) {
         joins(driver, template, context, loader);
       }
     }
@@ -95,13 +95,6 @@ final class Live {
     Object postId = Main.get(post, "id");
     check("the saved node has an identifier", postId != null, postId);
 
-    System.err.println("DEBUG client=" + org.springframework.data.neo4j.core.Neo4jClient.create(driver).query("MATCH (t:Tag) RETURN count(t) AS c").fetch().one());
-    var cl = org.springframework.data.neo4j.core.Neo4jClient.create(driver);
-    System.err.println("DEBUG q1=" + cl.query("MATCH (tag:`Tag`) WITH collect(toString(id(tag))) AS __sn__ RETURN __sn__").fetch().all());
-    System.err.println("DEBUG q3=" + cl.query("MATCH (rootNodeIds:`Tag`) WHERE toString(id(rootNodeIds)) IN $rootNodeIds WITH collect(rootNodeIds) AS n OPTIONAL MATCH ()-[relationshipIds]-() WHERE toString(id(relationshipIds)) IN $relationshipIds WITH n, collect(DISTINCT relationshipIds) AS __sr__ OPTIONAL MATCH (relatedNodeIds) WHERE toString(id(relatedNodeIds)) IN $relatedNodeIds WITH n, __sr__ AS __sr__, collect(DISTINCT relatedNodeIds) AS __srn__ UNWIND n AS rootNodeIds WITH rootNodeIds AS tag, __sr__, __srn__ RETURN tag AS __sn__, __sr__, __srn__").bind(((java.util.Collection<?>) cl.query("MATCH (tag:`Tag`) WITH collect(toString(id(tag))) AS ids RETURN ids").fetch().one().get().get("ids")).stream().map(String::valueOf).toList()).to("rootNodeIds").bind(List.of()).to("relationshipIds").bind(List.of()).to("relatedNodeIds").fetch().all().size());
-    System.err.println("DEBUG viaQuery=" + template.findAll("MATCH (t:Tag) RETURN t", (Class<Object>) tagType).size());
-    System.err.println("DEBUG user=" + template.findAll((Class<Object>) userType).size() + " cat=" + template.findAll((Class<Object>) categoryType).size() + " tag=" + template.findAll((Class<Object>) tagType).size());
-    System.err.println("DEBUG id=" + postId + " type=" + (postId == null ? null : postId.getClass()) + " all=" + template.findAll((Class<Object>) postType).size());
     Object loaded = template.findById(postId, (Class<Object>) postType).orElseThrow();
     check("a string property is read back", "Hello".equals(Main.get(loaded, "title")), Main.get(loaded, "title"));
     check("a UUID property is read back", publicId.equals(Main.get(loaded, "publicId")), Main.get(loaded, "publicId"));
