@@ -38,8 +38,8 @@ jobs:
   # those tools, found by the environment variable or executable the file reads (see test/README.md for the table).
   # The test files that need no tool run in `check`, so they are not repeated here. A test file that needs tools from
   # two ecosystems has to run in a job that has both; when a test starts to use another tool, move it or add the tool.
-  # Each job has its own `timeout-minutes`, about twice what it took on a cold cache (node and databases ~7-8 minutes,
-  # the others 1-3), so a hung test step fails fast instead of holding a job for 30 minutes, and a re-run after a hang
+  # Each job has its own `timeout-minutes`, about twice what it took on a cold cache (databases ~4-5 minutes, node ~3-4,
+  # python ~3, the others 1-2), so a hung test step fails fast instead of holding a job for 30 minutes, and a re-run after a hang
   # repeats only the affected ecosystem job. Raise one when its tools or tests grow.
   # `real-tools` at the end waits for all of them and is the one name to require in branch protection.
 
@@ -77,7 +77,7 @@ jobs:
   # TypeORM, Drizzle, Sequelize, Ajv, Zod and Prisma.
   real-tools-node:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v6
       - name: Choose the tools directory (outside the repository)
@@ -232,7 +232,7 @@ jobs:
   # none). Only this job starts the servers. The CockroachDB test also runs drizzle-kit, so Drizzle is installed too.
   real-tools-databases:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     # Real servers for the SQL DDL tests, which execute the emitted SQL (SQLite needs none).
     services:
       postgres:
