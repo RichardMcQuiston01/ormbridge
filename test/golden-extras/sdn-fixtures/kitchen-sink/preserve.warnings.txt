@@ -1,0 +1,21 @@
+Account.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Account.balance: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Account.payload: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+Account: the maximum length of email, status has no Neo4j schema representation and was dropped.
+Group: the maximum length of name has no Neo4j schema representation and was dropped.
+Membership: the maximum length of role has no Neo4j schema representation and was dropped.
+Account.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+Account.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Account: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (email) and indexed (deleted_at; email + status)) were not written; create them with --to neo4j.
+Session.token: the default of a generated UUID has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Session.opened_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Session: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id; account_id + opened_at)) were not written; create them with --to neo4j.
+Group.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+Profile.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+Profile: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (owner_account_id)) were not written; create them with --to neo4j.
+legacy_order: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (OrderNo)) were not written; create them with --to neo4j.
+Session.account: the foreign key to Account became the relationship (:Session)-[:ACCOUNT]->(:Account); Spring Data Neo4j does not enforce the on delete action (setNull), and account_id was kept as a plain property that nothing ties to the relationship.
+Group.friends: the many-to-many relation to Group became the relationship (:Group)-[:FRIENDS]->(:Group); no join node is created.
+Profile.owner: the foreign key to Account became the relationship (:Profile)-[:OWNER]->(:Account); Spring Data Neo4j does not enforce the on delete action (cascade), and owner_account_id was kept as a plain property that nothing ties to the relationship.
+legacy_order.owner: the foreign key to Account became the relationship (:LegacyOrder)-[:OWNER]->(:Account); Spring Data Neo4j does not enforce the on delete action (noAction), and acct was kept as a plain property that nothing ties to the relationship.
+Membership: the join table became the relationship (:Account)-[:GROUP]->(:Group) instead of a node class.

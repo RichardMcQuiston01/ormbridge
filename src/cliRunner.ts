@@ -581,7 +581,7 @@ export async function runCli(
     )
     .option(
       '--namespace <name>',
-      'namespace of the generated classes: PHP for Doctrine (default: App\\Entity) and Laravel (default: App\\Models), C# for EF Core (default: App.Models), Java package for JPA (default: app.models)'
+      'namespace of the generated classes: PHP for Doctrine (default: App\\Entity) and Laravel (default: App\\Models), C# for EF Core (default: App.Models), Java package for JPA and Spring Data Neo4j (default: app.models)'
     )
     .option(
       '--go-package <name>',

@@ -125,6 +125,8 @@ export {
   JPA_STYLES,
 } from './emitters/jpa.js';
 export type { JpaEmitOptions, JpaStyle } from './emitters/jpa.js';
+export { emitSdn } from './emitters/sdn.js';
+export type { SdnEmitOptions } from './emitters/sdn.js';
 export { checkStyle, isOutputStyle, OUTPUT_STYLES } from './styles.js';
 export type { OutputStyle } from './styles.js';
 export { emitGraphene } from './emitters/graphene.js';

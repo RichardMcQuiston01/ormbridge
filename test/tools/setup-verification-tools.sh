@@ -26,6 +26,7 @@
 #   node      typeorm, ajv, drizzle, sequelize, zod, sql and prisma
 #   dotnet    the .NET SDK and the EF Core packages (EFCORE_DIR, DOTNET)
 #   java      the Hibernate 6 and 5 Maven packages (JPA_DIR, MVN, JAVA)
+#   sdn       the Spring Data Neo4j 7 Maven packages (SDN_DIR, MVN, JAVA)
 #
 # The npm components are installed at the same time (a failure of any of them fails the script), and better-sqlite3 is
 # pinned to a release that ships a prebuilt binary for Node 20 (BETTER_SQLITE3 overrides the package spec): the newest
@@ -45,12 +46,12 @@ mkdir -p "${target}"
 shift || true
 
 # The components to install: all of them when none is named.
-all_components=(python neomodel typeorm ajv drizzle sequelize zod sql prisma dotnet java)
+all_components=(python neomodel typeorm ajv drizzle sequelize zod sql prisma dotnet java sdn)
 components=()
 for name in "$@"; do
   case "${name}" in
     node) components+=(typeorm ajv drizzle sequelize zod sql prisma) ;;
-    python | neomodel | typeorm | ajv | drizzle | sequelize | zod | sql | prisma | dotnet | java) components+=("${name}") ;;
+    python | neomodel | typeorm | ajv | drizzle | sequelize | zod | sql | prisma | dotnet | java | sdn) components+=("${name}") ;;
     *)
       echo "Unknown component '${name}'; use one of: ${all_components[*]} node" >&2
       exit 2
@@ -73,6 +74,7 @@ want() {
 here="$(cd "$(dirname "$0")" && pwd)"
 efcore_ready=""
 jpa_ready=""
+sdn_ready=""
 
 # The npm components are independent, so they are installed at the same time in the background while the other
 # components run; wait_for_npm (below) fails the script when any of them failed. The output of the installs is
@@ -266,6 +268,31 @@ if want java; then
   fi
 fi
 
+if want sdn; then
+  echo "Preparing Maven and the Spring Data Neo4j 7 packages in ${target}/sdn" >&2
+  java_bin="${JAVA:-$(command -v java || true)}"
+  mvn_bin="${MVN:-$(command -v mvn || true)}"
+  if [ -n "${java_bin}" ] && [ -n "${mvn_bin}" ]; then
+    mkdir -p "${target}/sdn"
+    scratch="$(mktemp -d)"
+    cp -r "${here}/sdn-verify/pom.xml" "${here}/sdn-verify/src" "${scratch}/"
+    java_home="$(dirname "$(dirname "$(readlink -f "${java_bin}")")")"
+    # Building the tool fills the Maven repository that the test uses (-Dmaven.repo.local); the test then needs no network.
+    if (
+      cd "${scratch}"
+      JAVA_HOME="${java_home}" "${mvn_bin}" -B -q -Dmaven.repo.local="${target}/sdn/m2" \
+        package dependency:build-classpath -Dmdep.outputFile="${scratch}/cp.txt" >&2
+    ); then
+      sdn_ready="yes"
+    else
+      echo "Resolving the Spring Data Neo4j packages with Maven failed; the sdn verification tests will be skipped." >&2
+    fi
+    rm -rf "${scratch}"
+  else
+    echo "Java 17 and Maven were not found ('apt-get install openjdk-17-jdk maven' works on Ubuntu); the sdn verification tests will be skipped." >&2
+  fi
+fi
+
 wait_for_npm
 
 # Neo4j needs a server, which this script does not install. With Docker, NEO4J_DOCKER=1 starts and removes a
@@ -297,6 +324,11 @@ fi
 if [ -n "${efcore_ready}" ]; then
   echo "export EFCORE_DIR=${target}/efcore"
   echo "export DOTNET=${dotnet_bin}"
+fi
+if [ -n "${sdn_ready}" ]; then
+  echo "export SDN_DIR=${target}/sdn"
+  echo "export MVN=${mvn_bin}"
+  echo "export JAVA=${java_bin}"
 fi
 if [ -n "${jpa_ready}" ]; then
   echo "export JPA_DIR=${target}/jpa"

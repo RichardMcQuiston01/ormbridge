@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-A new write-only format, neomodel. `--to neomodel` writes Python classes for the neomodel library (Neo4j). **Output change:** none for existing formats.
+Two new write-only formats for Neo4j, neomodel and Spring Data Neo4j. `--to neomodel` writes Python classes for the neomodel library and `--to sdn` writes Java entity classes for Spring Data Neo4j 7 (Spring Boot 3). **Output change:** none for existing formats.
 
 ### Added
 
@@ -12,9 +12,15 @@ A new write-only format, neomodel. `--to neomodel` writes Python classes for the
 - Tests: `neomodel-emitter.test.ts` (unit tests, a Python syntax check and goldens for every fixture in both naming modes: `test/golden/*-to-neomodel.*.txt`, `test/golden-extras/neomodel-fixtures`), a structural check in the conversion matrix (`test/neomodelCoverage.ts`, `docs/CONVERSION_MATRIX.md`), and `neomodel-verify.test.ts` with `test/tools/validate-neomodel.py`, which imports the module with the real neomodel (pinned to 7.0.0), runs `install_labels` against a real Neo4j 5 Community server, compares the declared classes, the server catalog and the IR, and saves nodes and relationships to check that unique, required, length, choice and cardinality rules hold. The Neo4j test helpers now know the Bolt URL (`NEO4J_BOLT_URL`; `NEO4J_DOCKER=1` publishes port 7687).
 - Docs and example: `docs/formats/neomodel.md`, `examples/neomodel`, and entries in the README, `docs/CLI.md`, `docs/FIELD_MAPPING.md`, `docs/LIMITATIONS.md`, `docs/API.md` and `docs/formats/neo4j.md`.
 
+- Spring Data Neo4j writer: `--to sdn` (`src/emitters/sdn.ts`, `sdnTypes.ts`; the write-only `sdn` format, which claims no extension; the output is a folder of `.java` files below `-o`, in the package given by `--namespace`, default `app.models`). Each node label is an `@Node("Label")` class with an `@Id`, private fields and getters and setters (no Lombok, no `javax` imports); `@Property` names a graph key that differs from the Java name. The identifier follows the source key: a generated integer is Neo4j's internal id (`@GeneratedValue`, with a warning), a generated UUID uses `UUIDStringGenerator`, another single column is an assigned `@Id`, and a composite or missing key gives a generated `graphId`. Foreign keys, one-to-one keys, composite foreign keys, many-to-many relations and pure join tables are `@Relationship(type, direction)` fields (a single value or a `List`), and the extra columns of a join table are `@RelationshipProperties` classes with `@RelationshipId` and `@TargetNode` for each direction. Enums are Java enums, with a `Neo4jPersistentPropertyConverter` and `@ConvertWith` when the stored values differ from the constant names. Labels and relationship types are the ones of the Cypher writer. Constraints, indexes, maximum lengths and some defaults and types have no Spring Data Neo4j equivalent and are dropped or approximated with a warning that names the model and field. `--naming preserve | normalize`, `--namespace` and `--no-header` are honoured.
+- `emitSdn` and the `SdnEmitOptions` type are exported from the package.
+- Tests: `sdn-emitter.test.ts` (unit tests and goldens for every fixture in both naming modes: `test/golden/*-to-sdn.*/`, `test/golden-extras/sdn-fixtures`), a structural check in the conversion matrix (`test/sdnCoverage.ts`, `docs/CONVERSION_MATRIX.md`), and `sdn-verify.test.ts` with `test/tools/sdn-verify` (a Maven project): the classes are compiled against the real Spring Data Neo4j 7.5.4 with every lint warning as an error, `Neo4jMappingContext` resolves them and its labels, identifiers, properties, relationships and relationship properties are compared with the graph model, and with a Neo4j 5 Community server nodes and relationships are saved through `Neo4jTemplate`, read back and checked with Cypher.
+- Docs and example: `docs/formats/sdn.md`, `examples/sdn`, and entries in the README, `docs/CLI.md`, `docs/FIELD_MAPPING.md`, `docs/LIMITATIONS.md`, `docs/API.md` and `docs/formats/neo4j.md`.
+
 ### Changed
 
 - CI only, no package change: a new `real-tools-neo4j` job (Python 3.12 with neomodel, a Neo4j 5 Community service container) runs `neomodel-verify`; the `real-tools` job waits for it. `test/tools/setup-verification-tools.sh` has a `neomodel` component (`NEOMODEL_PYTHON`).
+- CI only, no package change: the `real-tools-neo4j` job also installs Java 17 and the Spring Data Neo4j Maven packages and runs `sdn-verify` after `neomodel-verify` (one after the other, because both empty the database). `test/tools/setup-verification-tools.sh` has an `sdn` component (`SDN_DIR`).
 
 ## 0.12.1 - 2026-10-20
 

@@ -1,0 +1,38 @@
+Item.full_name: the generated column expression (Concat("first_name", Value(" "), "last_name")) is not computed by Neo4j; the property is a plain value.
+Item.total_cents: the generated column expression (F("quantity") * 100) is not computed by Neo4j; the property is a plain value.
+Item.grid: Neo4j cannot store nested lists as a property; the value is stored as a serialized STRING.
+Item.attributes: Neo4j has no key-value property type; the hstore value is stored as a serialized STRING.
+Item.stock_range: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.big_range: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.price_range: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.available: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.valid_during: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Item: the maximum length of first_name, last_name, full_name, tags, kinds, source_path, manual, photo, note has no Neo4j schema representation and was dropped.
+Counter.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Counter: the maximum length of label has no Neo4j schema representation and was dropped.
+Shipment.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Account.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Account: the maximum length of email has no Neo4j schema representation and was dropped.
+ContentType.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Assignment.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Item.tags: the default of an array has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Item.kinds: Spring Data Neo4j converts a whole property, not the items of a list, so the array of enum ItemKind values is a List<String> of the stored values.
+Item.kinds: the default of an array has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Item.stocked_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Item.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Item: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id; legacyIp)) were not written; create them with --to neo4j.
+Counter.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Counter: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (smallId)) were not written; create them with --to neo4j.
+Shipment.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Shipment: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id)) were not written; create them with --to neo4j.
+Account.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Account: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id; email)) were not written; create them with --to neo4j.
+ContentType.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+ContentType: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id)) were not written; create them with --to neo4j.
+Shipment.item: the foreign key to Item became the relationship (:Shipment)-[:ITEM]->(:Item); Spring Data Neo4j does not enforce the on delete action (cascade), and itemId was kept as a plain property that nothing ties to the relationship.
+Shipment.other: the foreign key to Item became the relationship (:Shipment)-[:OTHER]->(:Item); Spring Data Neo4j does not enforce the on delete action (cascade), and otherId was kept as a plain property that nothing ties to the relationship.
+Shipment.content_type: the foreign key to ContentType became the relationship (:Shipment)-[:CONTENT_TYPE]->(:ContentType); Spring Data Neo4j does not enforce the on delete action (cascade), and contentTypeId was kept as a plain property that nothing ties to the relationship.
+Shipment.created_by: the foreign key to Account became the relationship (:Shipment)-[:CREATED_BY]->(:Account); Spring Data Neo4j does not enforce the on delete action (cascade), and createdById was kept as a plain property that nothing ties to the relationship.
+Assignment: the join table became the relationship (:Item)-[:ACCOUNT]->(:Account) instead of a node class.
+Assignment.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.

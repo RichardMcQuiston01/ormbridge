@@ -1,0 +1,19 @@
+Item.price: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Item.settings: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+Item.extra: Neo4j has no key-value property type; the hstore value is stored as a serialized STRING.
+Item.window: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Item.shape: the database type "circle" has no Neo4j equivalent; the property is a plain STRING.
+Item.grid: Neo4j cannot store nested lists as a property; the value is stored as a serialized STRING.
+Item.blobs: Neo4j cannot store a list of byte arrays as a property; the value is stored as a serialized STRING.
+Item.stamp: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Item.computed: the generated column expression (a || b) is not computed by Neo4j; the property is a plain value.
+Item: the maximum length of title has no Neo4j schema representation and was dropped.
+Ledger: Spring Data Neo4j has no composite identifier, so the composite primary key (year, number) was written as plain properties and the node has a generated internal id (graphId).
+Ledger index (memo): Neo4j has no Hash index method; the index was dropped.
+Ledger index (missing): it names a column that does not exist and was dropped.
+Ledger: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (year + number; code; memo + code) and indexed (memo; memo + code; code; year)) were not written; create them with --to neo4j.
+LineItem.id: the generated integer key became Neo4j's internal node id (@Id @GeneratedValue Long); it is not stored as a property named id, so data loaded with that property is not found by it, and the internal id can change when the database is rebuilt. Spring Data Neo4j 7 also logs a deprecation warning for internal Long ids; a UUID key (UUIDStringGenerator) avoids all of this.
+Item.seen_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Item: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id)) were not written; create them with --to neo4j.
+Ledger.parent: the foreign key to Ledger became the relationship (:Ledger)-[:PARENT]->(:Ledger); Spring Data Neo4j does not enforce the on delete action (setNull), and parent_id was kept as a plain property that nothing ties to the relationship.
+LineItem.ledger: the foreign key to Ledger became the relationship (:LineItem)-[:LEDGER]->(:Ledger); Spring Data Neo4j does not enforce the on delete action (cascade), and ledger_year, ledger_number were kept as plain properties that nothing ties to the relationship.

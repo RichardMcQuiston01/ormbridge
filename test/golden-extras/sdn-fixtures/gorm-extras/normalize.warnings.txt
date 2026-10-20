@@ -1,0 +1,36 @@
+Customer.updatedAt: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Customer.balance: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Customer.settings: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+Customer: the maximum length of email, name, role, billingStreet, billingCity, billingPostal, shippingStreet, shippingCity, shippingPostal has no Neo4j schema representation and was dropped.
+Order.total: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Order.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Order: the maximum length of note has no Neo4j schema representation and was dropped.
+OrderItem.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Product.price: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Product.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Product: the maximum length of sku, title, slug has no Neo4j schema representation and was dropped.
+Label.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Label: the maximum length of name has no Neo4j schema representation and was dropped.
+Comment.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Comment: the maximum length of ownerType has no Neo4j schema representation and was dropped.
+Customer.createdAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Customer.balance: the default 0 has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Customer: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id; email) and indexed (deletedAt)) were not written; create them with --to neo4j.
+Order.placedAt: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Order.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Order: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id) and indexed (customerId + placedAt)) were not written; create them with --to neo4j.
+OrderItem: Spring Data Neo4j has no composite identifier, so the composite primary key (orderId, lineNo) was written as plain properties and the node has a generated internal id (graphId).
+OrderItem.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+OrderItem: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (orderId + lineNo)) were not written; create them with --to neo4j.
+Product index (slug): Neo4j has no Hash index method; the index was dropped.
+Product.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Product: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (sku) and indexed (title)) were not written; create them with --to neo4j.
+Label.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Label: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id; name)) were not written; create them with --to neo4j.
+Comment.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Comment: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id)) were not written; create them with --to neo4j.
+Order.customer: the foreign key to Customer became the relationship (:Order)-[:CUSTOMER]->(:Customer); Spring Data Neo4j does not enforce the on delete action (restrict), and customerId was kept as a plain property that nothing ties to the relationship.
+Order.labels: the many-to-many relation to Label became the relationship (:Order)-[:LABELS]->(:Label); no join node is created.
+OrderItem.product: the foreign key to Product became the relationship (:OrderItem)-[:PRODUCT]->(:Product); Spring Data Neo4j does not enforce the on delete action (noAction), and productSku was kept as a plain property that nothing ties to the relationship.
+OrderItem.order: the foreign key to Order became the relationship (:OrderItem)-[:ORDER]->(:Order); Spring Data Neo4j does not enforce the on delete action (noAction), and orderId was kept as a plain property that nothing ties to the relationship.
+Product.similar: the many-to-many relation to Product became the relationship (:Product)-[:SIMILAR]->(:Product); no join node is created.

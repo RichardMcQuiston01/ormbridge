@@ -18,6 +18,10 @@ import {
 } from './emitters/efcore.js';
 import { emitJpa, isJpaStyle, isValidJavaPackage } from './emitters/jpa.js';
 import { emitNeo4j, isNeo4jStyle } from './emitters/neo4j.js';
+import {
+  emitSdn,
+  isValidJavaPackage as isValidSdnPackage,
+} from './emitters/sdn.js';
 import { emitNeomodel } from './emitters/neomodel.js';
 import { emitSequelize, isSequelizeStyle } from './emitters/sequelize.js';
 import { emitSqlAlchemy, isSqlAlchemyStyle } from './emitters/sqlalchemy.js';
@@ -805,6 +809,38 @@ const jpaAdapter: FormatAdapter = {
   },
 };
 
+const sdnAdapter: FormatAdapter = {
+  name: 'sdn',
+  // Output only, and no extension is claimed: ".java" is too generic to infer, so pass --to sdn.
+  extensions: [],
+  description:
+    'Spring Data Neo4j entities (Java: @Node, @Relationship and @RelationshipProperties, SDN 7 for Spring Boot 3)',
+  emit: (
+    schema: IrSchema,
+    options: FormatOptions
+  ): Result<FormatEmitOutput> => {
+    const packageName: string | undefined = options.namespace?.replace(
+      /^\.+|\.+$/g,
+      ''
+    );
+    if (packageName !== undefined && !isValidSdnPackage(packageName)) {
+      return err(
+        'INVALID_OPTION',
+        `Invalid namespace "${options.namespace ?? ''}" for the sdn format. Expected a Java package name such as app.models (letters, digits and underscores in dot-separated parts, none of them a Java keyword).`
+      );
+    }
+    const prepared: IrSchema =
+      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
+    return ok(
+      emitSdn(prepared, {
+        camelFields: options.naming === 'normalize',
+        header: options.header,
+        ...(packageName === undefined ? {} : { packageName }),
+      })
+    );
+  },
+};
+
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -825,6 +861,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(sequelizeAdapter),
   registerFormat(efcoreAdapter),
   registerFormat(jpaAdapter),
+  registerFormat(sdnAdapter),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

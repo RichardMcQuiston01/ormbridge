@@ -1,0 +1,42 @@
+Author.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Author: the maximum length of handle has no Neo4j schema representation and was dropped.
+Book.grid: Neo4j cannot store nested lists as a property; the value is stored as a serialized STRING.
+Book.price: Neo4j has no decimal type; the value is stored as a STRING so no precision is lost (use FLOAT, or an integer count of cents, if you need arithmetic).
+Book.settings: Neo4j properties cannot hold JSON objects; store the value as a serialized JSON STRING.
+Book.window: Neo4j has no range type; the value is stored as a STRING such as "[1,10)".
+Book.extra: Neo4j has no key-value property type; the hstore value is stored as a serialized STRING.
+Book.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Book: the maximum length of title has no Neo4j schema representation and was dropped.
+Series.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Series: the maximum length of handle has no Neo4j schema representation and was dropped.
+Audiobook.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+index.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+Tagged.updated_at: the value is refreshed on every save in the source; Neo4j has no such feature, so set it in your queries.
+index: "Index" is a name the generated code uses or another type has, so the class was named "IndexEntity"; @Node keeps the label Index.
+Author.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Author: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id; handle)) were not written; create them with --to neo4j.
+Book.tags: the default of an array has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Book.colors: Spring Data Neo4j converts a whole property, not the items of a list, so the array of enum Color values is a List<String> of the stored values.
+Book.price: the default 9.99 has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Book.published_on: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Book.released_at: the default "2020-01-02T03:04:05Z" has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Book.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Book: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id; title + authorId) and indexed (publishedOn)) were not written; create them with --to neo4j.
+Series.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Series: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id; handle)) were not written; create them with --to neo4j.
+Audiobook: the primary key is a relationship, which Spring Data Neo4j cannot use as an identifier; the node has a generated internal id (graphId).
+Audiobook.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Audiobook: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (bookPtrId)) were not written; create them with --to neo4j.
+index.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+index: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id)) were not written; create them with --to neo4j.
+Tagged.created_at: the default of the current time has no Spring Data Neo4j equivalent and was dropped; set the value when you create the node.
+Tagged: Spring Data Neo4j creates no constraints or indexes, so the constraints and indexes of the source (unique (id)) were not written; create them with --to neo4j.
+Author.latest_book: the foreign key to Book became the relationship (:Author)-[:LATEST_BOOK]->(:Book); Spring Data Neo4j does not enforce the on delete action (setNull), and latestBookId was kept as a plain property that nothing ties to the relationship.
+Book.author: the foreign key to Author became the relationship (:Book)-[:AUTHOR]->(:Author); Spring Data Neo4j does not enforce the on delete action (cascade), and authorId was kept as a plain property that nothing ties to the relationship.
+Book.editor: the foreign key to Author became the relationship (:Book)-[:EDITOR]->(:Author); Spring Data Neo4j does not enforce the on delete action (setNull), and editorId was kept as a plain property that nothing ties to the relationship.
+Book.series: the foreign key to Series became the relationship (:Book)-[:SERIES]->(:Series); Spring Data Neo4j does not enforce the on delete action (setNull), and seriesHandle was kept as a plain property that nothing ties to the relationship.
+Series.parent: the foreign key to Series became the relationship (:Series)-[:PARENT]->(:Series); Spring Data Neo4j does not enforce the on delete action (setNull), and parentId was kept as a plain property that nothing ties to the relationship.
+Audiobook.book: the foreign key to Book became the relationship (:Audiobook)-[:BOOK]->(:Book); Spring Data Neo4j does not enforce the on delete action (cascade), and bookPtrId was kept as a plain property that nothing ties to the relationship.
+index.table: the foreign key to Series became the relationship (:Index)-[:TABLE]->(:Series); Spring Data Neo4j does not enforce the on delete action (noAction), and table was kept as a plain property that nothing ties to the relationship.
+index.table: "table" is taken in IndexEntity, so the field was named "table2".
+Tagged.books: the many-to-many relation to Book became the relationship (:Tagged)-[:BOOKS]->(:Book); no join node is created.
