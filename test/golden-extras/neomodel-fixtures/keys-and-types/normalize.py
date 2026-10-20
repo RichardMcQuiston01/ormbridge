@@ -5,11 +5,13 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
+from datetime import datetime, timezone
+
 from neomodel import (
     ArrayProperty,
     BooleanProperty,
     DateProperty,
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     FloatProperty,
     FulltextIndex,
     IntegerProperty,
@@ -33,8 +35,14 @@ class Ledger(StructuredNode):
     memo = StringProperty(index=True, fulltext_index=FulltextIndex())
     code = StringProperty(unique_index=True, required=True)
     owner_id = IntegerProperty(db_property="ownerId")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     parent_id = IntegerProperty(db_property="parentId")
     parent = RelationshipTo("Ledger", "PARENT", cardinality=ZeroOrOne)
     children = RelationshipFrom("Ledger", "PARENT", cardinality=ZeroOrMore)
@@ -47,8 +55,14 @@ class LineItem(StructuredNode):
     id_ = UniqueIdProperty(db_property="id")
     ledger_year = IntegerProperty(required=True, db_property="ledgerYear")
     ledger_number = IntegerProperty(required=True, db_property="ledgerNumber")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     ledger = RelationshipTo("Ledger", "LEDGER", cardinality=One)
 
 
@@ -64,8 +78,11 @@ class Item(StructuredNode):
     price = StringProperty()
     flag = BooleanProperty(default=True)
     born = DateProperty()
-    seen_at = DateTimeProperty(default_now=True, db_property="seenAt")
-    local_at = DateTimeProperty(db_property="localAt")
+    seen_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="seenAt",
+    )
+    local_at = DateTimeNeo4jFormatProperty(db_property="localAt")
     opens = StringProperty()
     opens_tz = StringProperty(db_property="opensTz")
     span = StringProperty()
@@ -86,6 +103,9 @@ class Item(StructuredNode):
     order_by = StringProperty(db_property="orderBy")
     back_tick = StringProperty(db_property="backTick")
     _2fast = StringProperty(db_property="2fast")
-    stamp = DateTimeProperty(default_now=True)
+    stamp = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
     computed = StringProperty()
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )

@@ -5,11 +5,12 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from neomodel import (
     DateProperty,
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     FloatProperty,
     IntegerProperty,
     JSONProperty,
@@ -30,8 +31,14 @@ class Order(StructuredNode):
     region = StringProperty(index=True, required=True)
     number = IntegerProperty(index=True, required=True)
     total = StringProperty(required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     order_lines = RelationshipFrom("OrderLine", "ORDER", cardinality=ZeroOrMore)
 
 
@@ -42,8 +49,14 @@ class OrderLine(StructuredNode):
     order_region = StringProperty(index=True, required=True, db_property="orderRegion")
     order_number = IntegerProperty(index=True, required=True, db_property="orderNumber")
     sku = StringProperty(max_length=32, required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     order = RelationshipTo("Order", "ORDER", cardinality=One)
 
 
@@ -52,8 +65,14 @@ class Account(StructuredNode):
 
     id_ = UniqueIdProperty(db_property="id")
     email = StringProperty(unique_index=True, required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     tenant_id = StringProperty(required=True, db_property="tenantId")
     tenant = RelationshipTo("Tenant", "TENANT", cardinality=One)
     profile = RelationshipFrom("Profile", "ACCOUNT", cardinality=ZeroOrOne)
@@ -63,8 +82,14 @@ class Tenant(StructuredNode):
     """Model Tenant (table tenant)."""
 
     id_ = UniqueIdProperty(db_property="id")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     accounts = RelationshipFrom("Account", "TENANT", cardinality=ZeroOrMore)
 
 
@@ -73,8 +98,14 @@ class Profile(StructuredNode):
 
     region = StringProperty(index=True, required=True)
     number = IntegerProperty(index=True, required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     account_id = StringProperty(
         unique_index=True,
         required=True,
@@ -101,8 +132,11 @@ class Document(StructuredNode):
     views = IntegerProperty(required=True)
     blob = StringProperty(required=True)
     meta = JSONProperty(required=True)
-    created = DateTimeProperty(default_now=True, index=True)
-    updated = DateTimeProperty(default_now=True)
+    created = DateTimeNeo4jFormatProperty(
+        index=True,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated = DateTimeNeo4jFormatProperty(default=datetime.now)
     day = DateProperty(index=True, required=True)
     at = StringProperty(required=True)
     ip = StringProperty(required=True)
@@ -114,8 +148,14 @@ class Scratch(StructuredNode):
     """Model Scratch (table scratch)."""
 
     id_ = IntegerProperty(unique_index=True, required=True, db_property="id")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
 
 
 class DocumentSummary(StructuredNode):
@@ -123,5 +163,11 @@ class DocumentSummary(StructuredNode):
 
     id_ = StringProperty(unique_index=True, required=True, db_property="id")
     title = StringProperty(required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )

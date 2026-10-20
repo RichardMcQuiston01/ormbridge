@@ -5,8 +5,10 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
+from datetime import datetime, timezone
+
 from neomodel import (
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     FulltextIndex,
     IntegerProperty,
     JSONProperty,
@@ -24,9 +26,9 @@ class Customer(StructuredNode):
     """Model Customer (table customers)."""
 
     id_ = IntegerProperty(unique_index=True, required=True, db_property="id")
-    created_at = DateTimeProperty(default_now=True)
-    updated_at = DateTimeProperty(default_now=True)
-    deleted_at = DateTimeProperty(index=True)
+    created_at = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
+    updated_at = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
+    deleted_at = DateTimeNeo4jFormatProperty(index=True)
     email = StringProperty(max_length=255, unique_index=True, required=True)
     name = StringProperty(max_length=100)
     role = StringProperty(
@@ -50,7 +52,10 @@ class Order(StructuredNode):
     """Model Order (table shop_orders)."""
 
     id_ = UniqueIdProperty(db_property="id")
-    placed_at = DateTimeProperty(default_now=True, index=True)
+    placed_at = DateTimeNeo4jFormatProperty(
+        index=True,
+        default=lambda: datetime.now(timezone.utc),
+    )
     modified_at = IntegerProperty(required=True)
     total = StringProperty(required=True)
     note = StringProperty(max_length=500, required=True)
@@ -83,7 +88,7 @@ class Product(StructuredNode):
     slug = StringProperty(max_length=100, required=True)
     price = StringProperty(required=True)
     in_stock = IntegerProperty(default=0)
-    deleted_at = DateTimeProperty()
+    deleted_at = DateTimeNeo4jFormatProperty()
     order_items = RelationshipFrom("OrderItem", "PRODUCT", cardinality=ZeroOrMore)
     similar = RelationshipTo("Product", "SIMILAR", cardinality=ZeroOrMore)
     products = RelationshipFrom("Product", "SIMILAR", cardinality=ZeroOrMore)

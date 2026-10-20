@@ -5,12 +5,13 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from neomodel import (
     ArrayProperty,
     DateProperty,
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     FloatProperty,
     IntegerProperty,
     JSONProperty,
@@ -30,17 +31,29 @@ class MembershipRel(StructuredRel):
     """Properties of the Membership relationship."""
 
     role = StringProperty(choices={"owner": "owner", "member": "member"}, required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
 
 
 class Account(StructuredNode):
     """Model Account (table account)."""
 
     id_ = UniqueIdProperty(db_property="id")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
-    deleted_at = DateTimeProperty(index=True, db_property="deletedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
+    deleted_at = DateTimeNeo4jFormatProperty(index=True, db_property="deletedAt")
     email = StringProperty(max_length=255, unique_index=True, required=True)
     balance = StringProperty(required=True)
     score = FloatProperty()
@@ -74,10 +87,20 @@ class Session(StructuredNode):
 
     id_ = UniqueIdProperty(db_property="id")
     token = StringProperty(default=lambda: str(uuid4()))
-    deleted_at = DateTimeProperty(db_property="deletedAt")
-    opened_at = DateTimeProperty(default_now=True, index=True, db_property="openedAt")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    deleted_at = DateTimeNeo4jFormatProperty(db_property="deletedAt")
+    opened_at = DateTimeNeo4jFormatProperty(
+        index=True,
+        default=lambda: datetime.now(timezone.utc),
+        db_property="openedAt",
+    )
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     account_id = StringProperty(index=True, db_property="accountId")
     account = RelationshipTo("Account", "ACCOUNT", cardinality=ZeroOrOne)
 
@@ -87,8 +110,14 @@ class Group(StructuredNode):
 
     id_ = UniqueIdProperty(db_property="id")
     name = StringProperty(max_length=40, required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     friends = RelationshipTo("Group", "FRIENDS", cardinality=ZeroOrMore)
     friend_of = RelationshipFrom("Group", "FRIENDS", cardinality=ZeroOrMore)
     accounts = RelationshipFrom(
@@ -104,8 +133,14 @@ class Profile(StructuredNode):
 
     id_ = UniqueIdProperty(db_property="id")
     bio = StringProperty()
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     owner_account_id = StringProperty(
         unique_index=True,
         required=True,
@@ -121,7 +156,13 @@ class LegacyOrder(StructuredNode):
     kind = StringProperty(required=True)
     http_code = IntegerProperty(required=True, db_property="httpCode")
     first_name = StringProperty(db_property="firstName")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     acct = StringProperty()
     owner = RelationshipTo("Account", "OWNER", cardinality=ZeroOrOne)

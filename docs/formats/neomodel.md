@@ -97,7 +97,7 @@ Attribute names do not change between the modes.
 | Float                                | `FloatProperty`                                              |
 | Boolean                              | `BooleanProperty`                                            |
 | Date                                 | `DateProperty` (stored as ISO text)                          |
-| Date and time                        | `DateTimeProperty` (stored as epoch seconds)                 |
+| Date and time                        | `DateTimeNeo4jFormatProperty` (a native Neo4j datetime)      |
 | JSON                                 | `JSONProperty` (stored as a JSON string), with a warning     |
 | Array                                | `ArrayProperty(base)`                                        |
 | Enum                                 | `StringProperty(choices=...)`                                |
@@ -107,24 +107,24 @@ Attribute names do not change between the modes.
 | Binary                               | `StringProperty` with base64 text, with a warning            |
 | Array of arrays, array of binary     | `StringProperty`, with a warning                             |
 
-neomodel decides how a value is stored. A date is text and a date and time is a number, so a Cypher `datetime()` query will not see them as dates. If you need native Neo4j dates, use `DateTimeNeo4jFormatProperty` instead. An enum is checked in Python only.
+A date and time is stored as a native Neo4j datetime (`ZONED DATETIME`, or `LOCAL DATETIME` for a `timestamp` or `datetime` native type), so Cypher functions such as `datetime()` and `duration.between` work on it. A timezone-aware Python value is stored zoned and a naive one local. neomodel 7.0.0 has no native date property: `DateProperty` stores ISO text, so a date is a `STRING` in the database. An enum is checked in Python only.
 
 A decimal is a string so that no digit is lost. Convert it with `Decimal(value)` when you need to add values.
 
 ## Defaults
 
-neomodel does not allow `required=True` and a default together. When a column has a default, the property gets the default and no `required`.
+neomodel does not allow `required=True` and a default together. The writer does not use `default_now=True` on a datetime: in neomodel 7.0.0 it fixes the time when the module is imported, so every node would get the same value. It writes a function that reads the clock on each save instead. When a column has a default, the property gets the default and no `required`.
 
-| Source default                                | neomodel                                              |
-| --------------------------------------------- | ----------------------------------------------------- |
-| Text, number or boolean                       | `default=...`                                         |
-| Enum value                                    | `default="stored value"`                              |
-| Current time                                  | `default_now=True`; for a date, `default=date.today`  |
-| Generated UUID (key)                          | `UniqueIdProperty`                                    |
-| Generated UUID (other column)                 | `default=lambda: str(uuid4())`                        |
-| Timestamp refreshed on every save             | `default_now=True` for the first save, with a warning |
-| Auto-increment, database expression, `cuid()` | Dropped, with a warning                               |
-| Default of an array or JSON column            | Dropped, with a warning                               |
+| Source default                                | neomodel                                                                       |
+| --------------------------------------------- | ------------------------------------------------------------------------------ |
+| Text, number or boolean                       | `default=...`                                                                  |
+| Enum value                                    | `default="stored value"`                                                       |
+| Current time                                  | `default=lambda: datetime.now(timezone.utc)`; for a date, `default=date.today` |
+| Generated UUID (key)                          | `UniqueIdProperty`                                                             |
+| Generated UUID (other column)                 | `default=lambda: str(uuid4())`                                                 |
+| Timestamp refreshed on every save             | The same default for the first save, with a warning                            |
+| Auto-increment, database expression, `cuid()` | Dropped, with a warning                                                        |
+| Default of an array or JSON column            | Dropped, with a warning                                                        |
 
 ## Relationships
 
@@ -193,5 +193,5 @@ The test suite installs neomodel 7.0.0 into a virtual environment and imports th
 
 - Reading a neomodel module or a graph schema.
 - Async classes (`AsyncStructuredNode`). The module uses the synchronous classes.
-- Native Neo4j date and time properties, vector and point indexes.
+- A native Neo4j date property (neomodel 7.0.0 has none), vector and point indexes.
 - Aliases, `Meta` options and class methods. The classes hold the schema only.

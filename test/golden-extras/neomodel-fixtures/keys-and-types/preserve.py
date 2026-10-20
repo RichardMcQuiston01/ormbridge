@@ -5,11 +5,13 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
+from datetime import datetime, timezone
+
 from neomodel import (
     ArrayProperty,
     BooleanProperty,
     DateProperty,
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     FloatProperty,
     FulltextIndex,
     IntegerProperty,
@@ -60,8 +62,8 @@ class Item(StructuredNode):
     price = StringProperty()
     flag = BooleanProperty(default=True)
     born = DateProperty()
-    seen_at = DateTimeProperty(default_now=True)
-    local_at = DateTimeProperty()
+    seen_at = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
+    local_at = DateTimeNeo4jFormatProperty()
     opens = StringProperty()
     opens_tz = StringProperty()
     span = StringProperty()
@@ -82,5 +84,5 @@ class Item(StructuredNode):
     order_by = StringProperty(db_property="order by")
     back_tick = StringProperty(db_property="back`tick")
     _2fast = StringProperty(db_property="2fast")
-    stamp = DateTimeProperty(default_now=True)
+    stamp = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
     computed = StringProperty()

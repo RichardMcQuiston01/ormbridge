@@ -5,10 +5,12 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
+from datetime import datetime, timezone
+
 from neomodel import (
     ArrayProperty,
     BooleanProperty,
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     IntegerProperty,
     One,
     RelationshipFrom,
@@ -49,7 +51,7 @@ class Item(StructuredNode):
     small_count = IntegerProperty(default=0)
     tiny_count = IntegerProperty(default=0)
     is_active = BooleanProperty(default=True)
-    stocked_at = DateTimeProperty(default_now=True)
+    stocked_at = DateTimeNeo4jFormatProperty(default=lambda: datetime.now(timezone.utc))
     priority = IntegerProperty(default=5)
     note = StringProperty(max_length=20, default="none")
     shipments = RelationshipFrom("Shipment", "ITEM", cardinality=ZeroOrMore)

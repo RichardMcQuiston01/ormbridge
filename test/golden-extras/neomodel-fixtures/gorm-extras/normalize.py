@@ -5,8 +5,10 @@
 # neomodel_install_labels <this file> --db bolt://user:password@host:7687
 # (or db.install_labels(Class) in your code). Foreign key columns stay as plain properties.
 
+from datetime import datetime, timezone
+
 from neomodel import (
-    DateTimeProperty,
+    DateTimeNeo4jFormatProperty,
     FulltextIndex,
     IntegerProperty,
     JSONProperty,
@@ -24,9 +26,15 @@ class Customer(StructuredNode):
     """Model Customer (table customer)."""
 
     id_ = UniqueIdProperty(db_property="id")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
-    deleted_at = DateTimeProperty(index=True, db_property="deletedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
+    deleted_at = DateTimeNeo4jFormatProperty(index=True, db_property="deletedAt")
     email = StringProperty(max_length=255, unique_index=True, required=True)
     name = StringProperty(max_length=100)
     role = StringProperty(
@@ -66,12 +74,22 @@ class Order(StructuredNode):
     """Model Order (table order)."""
 
     id_ = UniqueIdProperty(db_property="id")
-    placed_at = DateTimeProperty(default_now=True, index=True, db_property="placedAt")
+    placed_at = DateTimeNeo4jFormatProperty(
+        index=True,
+        default=lambda: datetime.now(timezone.utc),
+        db_property="placedAt",
+    )
     modified_at = IntegerProperty(required=True, db_property="modifiedAt")
     total = StringProperty(required=True)
     note = StringProperty(max_length=500, required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     customer_id = StringProperty(index=True, required=True, db_property="customerId")
     customer = RelationshipTo("Customer", "CUSTOMER", cardinality=One)
     labels_ = RelationshipTo("Label", "LABELS", cardinality=ZeroOrMore)
@@ -83,8 +101,14 @@ class OrderItem(StructuredNode):
 
     line_no = IntegerProperty(index=True, required=True, db_property="lineNo")
     quantity = IntegerProperty(default=1)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     product_sku = StringProperty(required=True, db_property="productSku")
     order_id = StringProperty(index=True, required=True, db_property="orderId")
     product = RelationshipTo("Product", "PRODUCT", cardinality=One)
@@ -103,9 +127,15 @@ class Product(StructuredNode):
     slug = StringProperty(max_length=100, required=True)
     price = StringProperty(required=True)
     in_stock = IntegerProperty(default=0, db_property="inStock")
-    deleted_at = DateTimeProperty(db_property="deletedAt")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    deleted_at = DateTimeNeo4jFormatProperty(db_property="deletedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     order_items = RelationshipFrom("OrderItem", "PRODUCT", cardinality=ZeroOrMore)
     similar = RelationshipTo("Product", "SIMILAR", cardinality=ZeroOrMore)
     products = RelationshipFrom("Product", "SIMILAR", cardinality=ZeroOrMore)
@@ -116,8 +146,14 @@ class Label(StructuredNode):
 
     id_ = UniqueIdProperty(db_property="id")
     name = StringProperty(max_length=40, unique_index=True, required=True)
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
     orders = RelationshipFrom("Order", "LABELS", cardinality=ZeroOrMore)
 
 
@@ -128,5 +164,11 @@ class Comment(StructuredNode):
     body = StringProperty(required=True)
     owner_id = IntegerProperty(required=True, db_property="ownerId")
     owner_type = StringProperty(max_length=30, required=True, db_property="ownerType")
-    created_at = DateTimeProperty(default_now=True, db_property="createdAt")
-    updated_at = DateTimeProperty(default_now=True, db_property="updatedAt")
+    created_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="createdAt",
+    )
+    updated_at = DateTimeNeo4jFormatProperty(
+        default=lambda: datetime.now(timezone.utc),
+        db_property="updatedAt",
+    )
