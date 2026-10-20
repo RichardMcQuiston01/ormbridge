@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Changed
+
+- CI only, no package change: the single `real-tools` job is split into parallel `real-tools-python`, `real-tools-node`, `real-tools-dotnet`, `real-tools-java`, `real-tools-php`, `real-tools-go` and `real-tools-databases` jobs, each installing only its own tools and running only the test files that use them (the test files that need no tool are left to `check`). A final `real-tools` job waits for all of them, so branch protection and the publish workflow keep working with the same name. `test/tools/setup-verification-tools.sh` accepts component names (`python`, `node`, `dotnet`, `java`, ...) and installs everything when none is given.
+
+## 0.12.0 - 2026-10-19
+
+A new write-only format, Neo4j. `--to neo4j` writes Cypher constraints and indexes, with `--style community | enterprise` to choose whether Enterprise-only constraints are included. **Output change:** none for existing formats. The only visible difference is that the invalid `--style` message now also lists `community` and `enterprise`.
+
+### Added
+
+- Neo4j writer: `--to neo4j` (`src/emitters/neo4j.ts` and its helpers, the write-only `neo4j` format; it claims no extension, and the output is a `.cypher` file). Each model becomes a node label (PascalCase, singular) and its columns become properties. The primary key, unique columns, one-to-one foreign keys and unique indexes become `CREATE CONSTRAINT ... IF NOT EXISTS ... IS UNIQUE` statements, other indexes `CREATE INDEX`, and full-text indexes `CREATE FULLTEXT INDEX`. Cypher has no relationship schema, so foreign keys, relations and pure join tables are written as comment blocks with the cardinality, the delete action and a `MATCH ... MERGE` query, and the foreign key columns stay as plain properties; a join table with unique columns also gets relationship property uniqueness constraints. A property type comment block lists the Neo4j type of every property. Defaults, auto-increment, generated columns, lengths, unsupported index methods and options, decimals, JSON and the other approximated types each produce a warning that names the model and field.
+- `--style community | enterprise` for the Neo4j writer (default `community`). `enterprise` adds `IS NOT NULL` constraints, `IS NODE KEY` for composite primary keys and `IS :: TYPE` property type constraints, which need Neo4j Enterprise Edition 5.9 or later; `community` writes only what Community Edition accepts. The style is validated in `src/styles.ts` like the other targets, so `--style` and the config `style` key accept the two new values and the invalid-value message lists them.
+- `emitNeo4j`, `isNeo4jStyle`, `NEO4J_STYLES` and the `Neo4jEmitOptions` and `Neo4jStyle` types are exported from the package.
+- Tests: `neo4j-emitter.test.ts`, goldens for every readable format (`test/golden/*-to-neo4j.*.txt`, `test/golden-extras/*-to-neo4j.txt`), a structural check in the conversion matrix (`test/neo4jCoverage.ts`, `docs/CONVERSION_MATRIX.md`), and `neo4j-verify.test.ts`, which runs the output in a real Neo4j server over HTTP, applies it twice, compares the catalog with the schema and writes data to check that the constraints reject duplicates (`NEO4J_URL`, or `NEO4J_DOCKER=1`; the enterprise style also needs an Enterprise Edition server; skipped with a reason otherwise). The CI `real-tools` job starts a `neo4j:5-community` service.
+- Docs and example: `docs/formats/neo4j.md` and `examples/neo4j` (both styles).
+
 ## 0.11.0 - 2026-10-19
 
 Two new database providers. `--provider clickhouse` writes ClickHouse DDL from `--to sql`, and `--provider cockroachdb` is now handled by every writer that reads the provider, with the SQL reader also reading CockroachDB `SHOW CREATE` output. **Output change:** `--provider cockroachdb` output differs from 0.10.0 for several writers (types, header comments and warnings). Output for every other provider is unchanged.
