@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- CI only, no package change: the tag Publish workflow reuses the green `push` CI run of the tagged commit instead of running the whole suite again. A new `gate` job (`.github/scripts/find-green-ci.sh`, tested in `test/find-green-ci.test.ts` and `test/publish-workflow.test.ts`) looks up the `ci.yml` run on `push` for that commit; `reuse=true` skips the `ci` job, and a missing, failed, cancelled or unreadable run (or one that is still going after 25 minutes) makes `ci` run as before. `publish` runs only after a reused green run or a successful `ci` job.
+
 ## 0.12.0 - 2026-10-19
 
 A new write-only format, Neo4j. `--to neo4j` writes Cypher constraints and indexes, with `--style community | enterprise` to choose whether Enterprise-only constraints are included. **Output change:** none for existing formats. The only visible difference is that the invalid `--style` message now also lists `community` and `enterprise`.
