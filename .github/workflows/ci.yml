@@ -38,7 +38,7 @@ jobs:
   # those tools, found by the environment variable or executable the file reads (see test/README.md for the table).
   # The test files that need no tool run in `check`, so they are not repeated here. A test file that needs tools from
   # two ecosystems has to run in a job that has both; when a test starts to use another tool, move it or add the tool.
-  # Each job has its own `timeout-minutes`, about twice what it took on a cold cache (databases ~4-5 minutes, node ~3-4,
+  # Each job has its own `timeout-minutes`, about twice what it took on a cold cache (databases ~4-5 minutes, node ~3-4, neo4j ~2,
   # python ~3, the others 1-2), so a hung test step fails fast instead of holding a job for 30 minutes, and a re-run after a hang
   # repeats only the affected ecosystem job. Raise one when its tools or tests grow.
   # `real-tools` at the end waits for all of them and is the one name to require in branch protection.
@@ -341,7 +341,7 @@ jobs:
   # both a Python with the pinned neomodel (NEOMODEL_PYTHON) and a server (NEO4J_URL).
   real-tools-neo4j:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     services:
       # Community Edition only: no license has to be accepted.
       neo4j:
