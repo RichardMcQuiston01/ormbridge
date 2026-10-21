@@ -500,25 +500,27 @@ async function discoverInputFiles(
           ? 'TypeScript (.ts) entity files'
           : format === 'drizzle'
             ? 'TypeScript (.ts) Drizzle schema files'
-            : format === 'doctrine'
-              ? 'PHP (.php) entity files'
-              : format === 'laravel'
-                ? 'PHP (.php) migration and model files (database/migrations and app/)'
-                : format === 'gorm'
-                  ? 'Go (.go) model files'
-                  : format === 'json-schema'
-                    ? 'JSON (.json) schema or OpenAPI files'
-                    : format === 'sql'
-                      ? 'SQL (.sql) files'
-                      : format === 'sqlalchemy'
-                        ? 'Python (.py) files with SQLAlchemy or SQLModel models'
-                        : format === 'sequelize'
-                          ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files'
-                          : format === 'efcore'
-                            ? 'C# (.cs) files with Entity Framework Core models'
-                            : format === 'jpa'
-                              ? 'Java (.java) files with Hibernate / JPA entities'
-                              : '.prisma files';
+            : format === 'zod'
+              ? 'TypeScript or JavaScript (.ts, .mts, .js, .mjs) files with Zod schemas'
+              : format === 'doctrine'
+                ? 'PHP (.php) entity files'
+                : format === 'laravel'
+                  ? 'PHP (.php) migration and model files (database/migrations and app/)'
+                  : format === 'gorm'
+                    ? 'Go (.go) model files'
+                    : format === 'json-schema'
+                      ? 'JSON (.json) schema or OpenAPI files'
+                      : format === 'sql'
+                        ? 'SQL (.sql) files'
+                        : format === 'sqlalchemy'
+                          ? 'Python (.py) files with SQLAlchemy or SQLModel models'
+                          : format === 'sequelize'
+                            ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files'
+                            : format === 'efcore'
+                              ? 'C# (.cs) files with Entity Framework Core models'
+                              : format === 'jpa'
+                                ? 'Java (.java) files with Hibernate / JPA entities'
+                                : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -535,6 +537,12 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
     return (
       extname(filePath) === '.ts' &&
       !/\.(d|test|spec)\.ts$/.test(basename(filePath))
+    );
+  }
+  if (format === 'zod') {
+    return (
+      /^\.(ts|mts|js|mjs)$/.test(extname(filePath)) &&
+      !/\.(d|test|spec)\.(ts|mts|js|mjs)$/.test(basename(filePath))
     );
   }
   if (format === 'sequelize') {

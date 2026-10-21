@@ -1,0 +1,14 @@
++ created_at   DateTime   @db.Timestamptz(6)
++ created_at DateTime @db.Timestamptz(6)
++ is_featured  Boolean
++ metadata     Json
++ published_at DateTime   @db.Timestamptz(6)
++ status       PostStatus
++ view_count   Int
+- created_at   DateTime   @default(now()) @db.Timestamptz(6)
+- created_at DateTime @default(now()) @db.Timestamptz(6)
+- is_featured  Boolean    @default(false)
+- metadata     Json       @default("{}")
+- published_at DateTime   @default(now()) @db.Timestamptz(6)
+- status       PostStatus @default(DRAFT)
+- view_count   Int        @default(0)

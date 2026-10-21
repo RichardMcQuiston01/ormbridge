@@ -1,0 +1,5 @@
+enum mode: the member "default" was written as "default_".
+enum mode: the member "new" was written as "new_".
+Table: "Table" is a name the generated code uses or another type has, so the class was named "TableEntity".
+Note: the table has no primary key, but a JPA entity needs an identifier; the column "at" was written as the @Id (Hibernate would create a primary key on it).
+Table.userId: "userId" is taken in TableEntity, so the attribute was named "userId2".

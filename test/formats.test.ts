@@ -163,7 +163,7 @@ describe('formats command output', () => {
       /typescript\s+extensions: \(none\) {2}write {2}Plain TypeScript interfaces and enums\n/
     );
     expect(text).toMatch(
-      /zod\s+extensions: \(none\) {2}write {2}Zod schemas \(TypeScript, Zod 4\)\n/
+      /zod\s+extensions: \(none\) {2}read \+ write {2}Zod schemas \(TypeScript, Zod 3 and 4\)\n/
     );
     expect(text).toMatch(
       /neo4j\s+extensions: \(none\) {2}write {2}Neo4j Cypher schema: node constraints and indexes, relationships as comments \(--style enterprise adds Enterprise Edition constraints\)\n/

@@ -74,7 +74,7 @@ jobs:
           test/sqlalchemy-parser-verify.test.ts
           test/sqlalchemy-emitter.test.ts
 
-  # TypeORM, Drizzle, Sequelize, Ajv, Zod and Prisma.
+  # TypeORM, Drizzle, Sequelize, Ajv, Zod (4 and 3) and Prisma.
   real-tools-node:
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -94,7 +94,7 @@ jobs:
           key: real-tools-node-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
           restore-keys: real-tools-node-${{ runner.os }}-
       - run: npm ci
-      - name: Install TypeORM, Drizzle, Sequelize, Ajv, Zod, better-sqlite3 and Prisma 6 and 7
+      - name: Install TypeORM, Drizzle, Sequelize, Ajv, Zod 4 and 3, better-sqlite3 and Prisma 6 and 7
         run: |
           test/tools/setup-verification-tools.sh "$TOOLS" node | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
       - name: Tests with the real Node tools (Prisma 6)
@@ -108,6 +108,7 @@ jobs:
           test/json-schema-ajv.test.ts
           test/json-schema-verify.test.ts
           test/zod-verify.test.ts
+          test/zod-parser-verify.test.ts
           test/prisma-extras.test.ts
         env:
           PRISMA_BIN: ${{ env.PRISMA6_BIN }}

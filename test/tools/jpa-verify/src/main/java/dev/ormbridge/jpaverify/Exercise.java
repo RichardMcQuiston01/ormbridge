@@ -212,6 +212,7 @@ final class Exercise {
           continue;
         }
         if (find(field, "Embedded") != null || find(field, "EmbeddedId") != null) {
+          // An @EmbeddedId is built below, once the relationships it takes values from are set.
           continue;
         }
         boolean assigned = find(field, "Id") != null && find(field, "GeneratedValue") == null;
@@ -224,13 +225,16 @@ final class Exercise {
         }
       }
       copyJoinColumns(type, instance);
+      buildEmbeddedId(type, instance);
       try (Session session = factory.openSession()) {
         Transaction transaction = session.beginTransaction();
         try {
           // A relationship that is part of the key rejects a detached entity; a reference by id is accepted.
           var util = factory.getPersistenceUnitUtil();
           for (Field field : fields(type)) {
-            if (persistent(field) && isRelation(field) && find(field, "Id") != null) {
+            if (persistent(field)
+                && isRelation(field)
+                && (find(field, "Id") != null || find(field, "MapsId") != null)) {
               field.setAccessible(true);
               Object target = field.get(instance);
               if (target != null) {
@@ -246,12 +250,87 @@ final class Exercise {
         }
       }
       saved.put(type, instance);
+      readBack(type, instance);
     } catch (Throwable thrown) {
       Throwable root = thrown;
       while (root.getCause() != null && root.getCause() != root) {
         root = root.getCause();
       }
       errors.add(type.getSimpleName() + ": " + thrown + (root == thrown ? "" : " <- " + root));
+    }
+  }
+
+  /** The attribute of the entity whose {@code @MapsId} names a part of the embedded id, or null. */
+  private static Field mapsIdRelation(Class<?> type, String part) {
+    for (Field field : fields(type)) {
+      Annotation maps = find(field, "MapsId");
+      if (maps != null && isRelation(field) && part.equals(value(maps, "value"))) {
+        return field;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Builds the value of an {@code @EmbeddedId}: a part that an {@code @MapsId} relationship supplies takes the key of
+   * the saved target, every other part a sample value.
+   */
+  private void buildEmbeddedId(Class<?> type, Object instance) throws Exception {
+    for (Field field : fields(type)) {
+      if (!persistent(field) || find(field, "EmbeddedId") == null) {
+        continue;
+      }
+      field.setAccessible(true);
+      Object key = field.getType().getDeclaredConstructor().newInstance();
+      for (Field part : fields(field.getType())) {
+        if (!persistent(part)) {
+          continue;
+        }
+        part.setAccessible(true);
+        Object value;
+        Field owner = mapsIdRelation(type, part.getName());
+        if (owner != null) {
+          owner.setAccessible(true);
+          Object target = owner.get(instance);
+          value = target == null ? null : factory.getPersistenceUnitUtil().getIdentifier(target);
+        } else {
+          value = sample(part.getType(), part);
+        }
+        if (value != null) {
+          part.set(key, value);
+        }
+      }
+      field.set(instance, key);
+    }
+  }
+
+  /**
+   * Loads a row with an embedded id by its key in a new session and checks that the key Hibernate reports equals the
+   * one that was saved (so {@code equals} and {@code hashCode} of the key class, including Lombok's, work).
+   */
+  private void readBack(Class<?> type, Object instance) throws Exception {
+    for (Field field : fields(type)) {
+      if (!persistent(field) || find(field, "EmbeddedId") == null) {
+        continue;
+      }
+      field.setAccessible(true);
+      Object key = field.get(instance);
+      // Hibernate 5 stores a UUID as binary(255) on H2, which pads the value, so a lookup by it finds nothing; that is
+      // a property of the database, as with the update below.
+      if (hasUuidPart(key) && find(type, "Entity").annotationType().getName().startsWith("javax.")) {
+        continue;
+      }
+      try (Session session = factory.openSession()) {
+        Object found = session.find(type, key);
+        if (found == null) {
+          errors.add(type.getSimpleName() + ": the row saved with the embedded id " + key.getClass().getSimpleName() + " was not found by it");
+          continue;
+        }
+        Object reported = factory.getPersistenceUnitUtil().getIdentifier(found);
+        if (!key.equals(reported) || key.hashCode() != reported.hashCode()) {
+          errors.add(type.getSimpleName() + ": the embedded id read back differs from the one saved");
+        }
+      }
     }
   }
 
@@ -265,6 +344,14 @@ final class Exercise {
         continue;
       }
       field.setAccessible(true);
+      if (find(field, "EmbeddedId") != null) {
+        // The columns of an embedded id are the attributes of its key class.
+        Object inKey = columnValue(field.get(instance), column, depth + 1);
+        if (inKey != null) {
+          return inKey;
+        }
+        continue;
+      }
       if (isRelation(field)) {
         Annotation join = find(field, "JoinColumn");
         if (join != null && column.equals(value(join, "name"))) {
@@ -528,7 +615,16 @@ final class Exercise {
 
   private static boolean hasIdRelation(Class<?> type) {
     for (Field field : fields(type)) {
-      if (find(field, "Id") != null && isRelation(field)) {
+      if ((find(field, "Id") != null || find(field, "MapsId") != null) && isRelation(field)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean hasUuidPart(Object key) {
+    for (Field part : fields(key.getClass())) {
+      if (persistent(part) && part.getType() == UUID.class) {
         return true;
       }
     }

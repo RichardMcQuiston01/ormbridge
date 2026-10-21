@@ -1,0 +1,58 @@
+@@ app/models/Category.java
++ @Column(name = "createdAt", nullable = false)
++ @Column(name = "parentId")
++ @Column(name = "updatedAt", nullable = false)
+- @Column(name = "created_at", nullable = false)
+- @Column(name = "parent_id")
+- @Column(name = "updated_at", nullable = false)
+- @ColumnDefault("CURRENT_TIMESTAMP")
+- @CreationTimestamp
+- import org.hibernate.annotations.ColumnDefault;
+- import org.hibernate.annotations.CreationTimestamp;
+@@ app/models/Post.java
++ @Column(name = "authorId", nullable = false)
++ @Column(name = "categoryId", nullable = false)
++ @Column(name = "createdAt", nullable = false)
++ @Column(name = "editorId")
++ @Column(name = "isFeatured", nullable = false)
++ @Column(name = "publicId", nullable = false)
++ @Column(name = "publishedAt", nullable = false)
++ @Column(name = "updatedAt", nullable = false)
++ @Column(name = "viewCount", nullable = false)
++ private LocalDateTime publishedAt;
++ private Map<String, Object> metadata;
++ private PostStatus status;
++ private boolean isFeatured;
++ private int viewCount;
+- @Column(name = "author_id", nullable = false)
+- @Column(name = "category_id", nullable = false)
+- @Column(name = "created_at", nullable = false)
+- @Column(name = "editor_id")
+- @Column(name = "is_featured", nullable = false)
+- @Column(name = "public_id", nullable = false)
+- @Column(name = "published_at", nullable = false)
+- @Column(name = "updated_at", nullable = false)
+- @Column(name = "view_count", nullable = false)
+- @ColumnDefault("'draft'")
+- @ColumnDefault("'{}'")
+- @ColumnDefault("0")
+- @ColumnDefault("CURRENT_TIMESTAMP")
+- @ColumnDefault("CURRENT_TIMESTAMP")
+- @ColumnDefault("false")
+- @CreationTimestamp
+- import java.util.HashMap;
+- import org.hibernate.annotations.ColumnDefault;
+- import org.hibernate.annotations.CreationTimestamp;
+- private LocalDateTime publishedAt = LocalDateTime.now();
+- private Map<String, Object> metadata = new HashMap<>();
+- private PostStatus status = PostStatus.DRAFT;
+- private boolean isFeatured = false;
+- private int viewCount = 0;
+@@ app/models/PostTags.java
++ @Column(name = "postId", nullable = false)
++ @Column(name = "tagId", nullable = false)
+- @Column(name = "post_id", nullable = false)
+- @Column(name = "tag_id", nullable = false)
+@@ app/models/Profile.java
++ @Column(name = "userId", nullable = false)
+- @Column(name = "user_id", nullable = false)

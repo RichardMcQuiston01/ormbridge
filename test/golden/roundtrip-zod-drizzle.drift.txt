@@ -1,0 +1,47 @@
+@@ schema.ts
++ authorId: integer('authorId').notNull(),
++ categoryId: integer('categoryId').notNull(),
++ createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
++ createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
++ editorId: integer('editorId'),
++ export const postTag = pgTable('PostTag', {
++ export type NewPostTag = typeof postTag.$inferInsert;
++ export type PostTag = typeof postTag.$inferSelect;
++ isFeatured: boolean('isFeatured').notNull(),
++ metadata: jsonb('metadata').notNull(),
++ parentId: integer('parentId'),
++ postId: integer('postId').notNull(),
++ publicId: uuid('publicId').notNull(),
++ publishedAt: timestamp('publishedAt', { withTimezone: true }).notNull(),
++ status: postStatusEnum('status').notNull(),
++ tagId: integer('tagId').notNull(),
++ updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
++ updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
++ userId: integer('userId').notNull(),
++ viewCount: integer('viewCount').notNull(),
+- .defaultNow(),
+- .defaultNow(),
+- .defaultNow(),
+- .notNull()
+- .notNull()
+- .notNull()
+- authorId: integer('author_id').notNull(),
+- categoryId: integer('category_id').notNull(),
+- createdAt: timestamp('created_at', { withTimezone: true })
+- createdAt: timestamp('created_at', { withTimezone: true })
+- editorId: integer('editor_id'),
+- export const postTags = pgTable('PostTags', {
+- export type NewPostTags = typeof postTags.$inferInsert;
+- export type PostTags = typeof postTags.$inferSelect;
+- isFeatured: boolean('is_featured').notNull().default(false),
+- metadata: jsonb('metadata').notNull().default({}),
+- parentId: integer('parent_id'),
+- postId: integer('post_id').notNull(),
+- publicId: uuid('public_id').notNull(),
+- publishedAt: timestamp('published_at', { withTimezone: true })
+- status: postStatusEnum('status').notNull().default('draft'),
+- tagId: integer('tag_id').notNull(),
+- updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+- updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+- userId: integer('user_id').notNull(),
+- viewCount: integer('view_count').notNull().default(0),

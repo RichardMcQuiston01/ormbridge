@@ -1,0 +1,69 @@
++ authorId: z.number().int(),
++ categoryId: z.number().int(),
++ editorId: z.number().int().nullable(),
++ export const CategoryCreateSchema = CategorySchema.partial({ parentId: true });
++ export const PostCreateSchema = PostSchema.partial({ rating: true, editorId: true });
++ export const ProfileCreateSchema = ProfileSchema.partial({ bio: true, avatar: true });
++ export const TagCreateSchema = TagSchema;
++ export const UserCreateSchema = UserSchema;
++ parentId: z.number().int().nullable(),
++ userId: z.number().int(),
+- 
+- 
+- 
+- 
+- 
+- author: z.lazy(() => UserWithRelationsSchema).optional(),
+- author?: UserWithRelations;
+- author_id: z.number().int(),
+- category: z.lazy(() => CategoryWithRelationsSchema).optional(),
+- category?: CategoryWithRelations;
+- category_id: z.number().int(),
+- children: z.array(z.lazy(() => CategoryWithRelationsSchema)).optional(),
+- children?: CategoryWithRelations[];
+- editedPosts: z.array(z.lazy(() => PostWithRelationsSchema)).optional(),
+- editedPosts?: PostWithRelations[];
+- editor: z.lazy(() => UserWithRelationsSchema).nullable().optional(),
+- editor?: UserWithRelations | null;
+- editor_id: z.number().int().nullable(),
+- export const CategoryCreateSchema = CategorySchema.omit({ updatedAt: true, id: true }).partial({ createdAt: true, parent_id: true });
+- export const CategoryWithRelationsSchema: z.ZodType<CategoryWithRelations> = CategorySchema.extend({
+- export const PostCreateSchema = PostSchema.omit({ updatedAt: true, id: true }).partial({ createdAt: true, publicId: true, status: true, rating: true, viewCount: true, isFeatured: true, publishedAt: true, metadata: true, editor_id: true });
+- export const PostWithRelationsSchema: z.ZodType<PostWithRelations> = PostSchema.extend({
+- export const ProfileCreateSchema = ProfileSchema.omit({ id: true }).partial({ bio: true, avatar: true });
+- export const ProfileWithRelationsSchema: z.ZodType<ProfileWithRelations> = ProfileSchema.extend({
+- export const TagCreateSchema = TagSchema.omit({ id: true });
+- export const TagWithRelationsSchema: z.ZodType<TagWithRelations> = TagSchema.extend({
+- export const UserCreateSchema = UserSchema.omit({ id: true });
+- export const UserWithRelationsSchema: z.ZodType<UserWithRelations> = UserSchema.extend({
+- export type CategoryWithRelations = Category & {
+- export type PostWithRelations = Post & {
+- export type ProfileWithRelations = Profile & {
+- export type TagWithRelations = Tag & {
+- export type UserWithRelations = User & {
+- parent: z.lazy(() => CategoryWithRelationsSchema).nullable().optional(),
+- parent?: CategoryWithRelations | null;
+- parent_id: z.number().int().nullable(),
+- post_set: z.array(z.lazy(() => PostWithRelationsSchema)).optional(),
+- post_set?: PostWithRelations[];
+- posts: z.array(z.lazy(() => PostWithRelationsSchema)).optional(),
+- posts: z.array(z.lazy(() => PostWithRelationsSchema)).optional(),
+- posts?: PostWithRelations[];
+- posts?: PostWithRelations[];
+- profile: z.lazy(() => ProfileWithRelationsSchema).nullable().optional(),
+- profile?: ProfileWithRelations | null;
+- tags: z.array(z.lazy(() => TagWithRelationsSchema)).optional(),
+- tags?: TagWithRelations[];
+- user: z.lazy(() => UserWithRelationsSchema).optional(),
+- user?: UserWithRelations;
+- user_id: z.number().int(),
+- });
+- });
+- });
+- });
+- });
+- };
+- };
+- };
+- };
+- };

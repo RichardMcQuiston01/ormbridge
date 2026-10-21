@@ -36,6 +36,8 @@ export type {
   DrizzleSourceFile,
   DrizzleParseOptions,
 } from './parsers/drizzle.js';
+export { parseZod } from './parsers/zod.js';
+export type { ZodSourceFile, ZodParseOptions } from './parsers/zod.js';
 export { parseEfcore, isSkippedEfcorePath } from './parsers/efcore.js';
 export type { EfcoreParseOptions, EfcoreSourceFile } from './parsers/efcore.js';
 export { parseJpa, isSkippedJpaPath } from './parsers/jpa.js';
@@ -121,11 +123,13 @@ export type { EfcoreEmitOptions, EfcoreStyle } from './emitters/efcore.js';
 export {
   DEFAULT_JPA_PACKAGE,
   emitJpa,
+  isJpaKeyMode,
   isJpaStyle,
   isValidJavaPackage,
+  JPA_KEY_MODES,
   JPA_STYLES,
 } from './emitters/jpa.js';
-export type { JpaEmitOptions, JpaStyle } from './emitters/jpa.js';
+export type { JpaEmitOptions, JpaKeyMode, JpaStyle } from './emitters/jpa.js';
 export { emitSdn } from './emitters/sdn.js';
 export type { SdnEmitOptions } from './emitters/sdn.js';
 export { checkStyle, isOutputStyle, OUTPUT_STYLES } from './styles.js';

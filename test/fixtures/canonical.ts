@@ -126,6 +126,22 @@ export const CANONICAL_FIXTURES: readonly CanonicalFixture[] = [
     paths: [fixturePath('./json-schema/blog.schema.json')],
   },
   {
+    // Zod 4 schemas, one file per schema. Zod has no relations, keys, indexes or table names, so the foreign keys are
+    // plain integer properties (as the Zod writer leaves them) and the join table is an ordinary schema. The Zod 3
+    // style, nested schemas, extend/pick/omit and the other variants live in zod-extras.
+    format: 'zod',
+    paths: [
+      './zod/time-stamped.ts',
+      './zod/post-status.enum.ts',
+      './zod/user.schema.ts',
+      './zod/category.schema.ts',
+      './zod/post.schema.ts',
+      './zod/tag.schema.ts',
+      './zod/post-tags.schema.ts',
+      './zod/profile.schema.ts',
+    ].map(fixturePath),
+  },
+  {
     // The same schema in the other dialects lives next to it (mysql, sqlite, sqlserver) and is checked in sql-ddl-parser.test.ts.
     format: 'sql',
     paths: [fixturePath('./sql/postgresql/blog.sql')],

@@ -1354,6 +1354,124 @@ describe('jpa input', () => {
     expect(post).not.toContain('jakarta');
   });
 
+  it('writes @EmbeddedId key classes with --jpa-key embedded and Lombok accessors with --lombok', async () => {
+    const schemaPath: string = join(workDirectory, 'schema.prisma');
+    await writeFile(
+      schemaPath,
+      `model Order {
+  id Int @id
+}
+
+model Line {
+  order Order @relation(fields: [orderId], references: [id])
+  orderId Int
+  no Int
+
+  @@id([orderId, no])
+}
+`
+    );
+    const out: string = join(workDirectory, 'jpa-embedded');
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      schemaPath,
+      '--to',
+      'jpa',
+      '--jpa-key',
+      'embedded',
+      '--lombok',
+      '-o',
+      out,
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    const line: string = await readFile(
+      join(out, 'app', 'models', 'Line.java'),
+      'utf8'
+    );
+    expect(line).toContain('@EmbeddedId');
+    expect(line).toContain('@Getter');
+    expect(line).not.toContain('getNo');
+    const key: string = await readFile(
+      join(out, 'app', 'models', 'LineId.java'),
+      'utf8'
+    );
+    expect(key).toContain('@Embeddable');
+    expect(key).toContain('@EqualsAndHashCode');
+    // Without the options the output is the default one.
+    const plain: string = join(workDirectory, 'jpa-plain');
+    expect(
+      (await cli(['convert', '-i', schemaPath, '--to', 'jpa', '-o', plain]))
+        .code
+    ).toBe(EXIT_OK);
+    const plainLine: string = await readFile(
+      join(plain, 'app', 'models', 'Line.java'),
+      'utf8'
+    );
+    expect(plainLine).toContain('@IdClass(LineId.class)');
+    expect(plainLine).not.toContain('lombok');
+  });
+
+  it('applies the jpaKey and lombok config keys and lets the flags override them', async () => {
+    const schemaPath: string = join(workDirectory, 'schema.prisma');
+    await writeFile(
+      schemaPath,
+      `model Line {
+  a Int
+  b Int
+
+  @@id([a, b])
+}
+`
+    );
+    const out: string = join(workDirectory, 'jpa-config');
+    await writeConfig({
+      input: schemaPath,
+      to: 'jpa',
+      output: out,
+      jpaKey: 'embedded',
+      lombok: true,
+    });
+    expect((await cli(['convert'])).code).toBe(EXIT_OK);
+    const line = join(out, 'app', 'models', 'Line.java');
+    expect(await readFile(line, 'utf8')).toContain('@EmbeddedId');
+    expect(await readFile(line, 'utf8')).toContain('@Getter');
+    expect((await cli(['convert', '--jpa-key', 'idclass'])).code).toBe(EXIT_OK);
+    expect(await readFile(line, 'utf8')).toContain('@IdClass(LineId.class)');
+  });
+
+  it('rejects an unknown --jpa-key value and lists the options in the help', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'jpa',
+      '--jpa-key',
+      'composite',
+    ]);
+    expect(run.code).toBe(EXIT_USAGE_ERROR);
+    expect(run.stderr).toContain(
+      'Invalid --jpa-key value "composite". Expected one of: idclass, embedded.'
+    );
+    const help: CliRun = await cli(['convert', '--help']);
+    expect(help.stdout).toContain('--jpa-key <mode>');
+    expect(help.stdout).toContain('--lombok');
+  });
+
+  it('ignores --jpa-key and --lombok for other targets', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--jpa-key',
+      'embedded',
+      '--lombok',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(run.stdout).toContain('model Post {');
+  });
+
   it('rejects the styles of other formats and a package that is not a Java package', async () => {
     const out: string = join(workDirectory, 'jpa-invalid');
     const style: CliRun = await cli([

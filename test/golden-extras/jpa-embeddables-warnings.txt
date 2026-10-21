@@ -1,0 +1,3 @@
+Company.headquarters: the embedded Address was flattened into the columns headquarters.street, headquarters.city, headquarters.geo.lat, headquarters.geo.lon; the shared model has no embedded type, so other formats get plain columns and the value object itself is lost.
+Company.branch: the embedded Address was flattened into the columns branch.street, branch.city, branch.geo.lat, branch.geo.lon; the shared model has no embedded type, so other formats get plain columns and the value object itself is lost.
+Company.contact: the embedded Contact was flattened into the columns contact.phone, contact.email; the shared model has no embedded type, so other formats get plain columns and the value object itself is lost.

@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PostStatus {
+  DRAFT @map("draft")
+  PUBLISHED @map("published")
+}
+
+model User {
+  id Int @id
+}
+
+model Category {
+  id         Int      @id
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @db.Timestamptz(6)
+  name       String   @db.VarChar(100)
+  slug       String   @db.VarChar(50)
+  parent_id  Int?
+}
+
+model Post {
+  id           Int        @id
+  created_at   DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime   @db.Timestamptz(6)
+  public_id    String     @db.Uuid
+  title        String     @db.VarChar(200)
+  body         String     @db.Text
+  status       PostStatus @default(DRAFT)
+  rating       Decimal?   @db.Decimal(4, 2)
+  view_count   Int        @default(0)
+  is_featured  Boolean    @default(false)
+  published_at DateTime   @default(now()) @db.Timestamptz(6)
+  metadata     Json       @default("{}")
+  author_id    Int
+  editor_id    Int?
+  category_id  Int
+}
+
+model Tag {
+  id    Int    @id
+  label String @db.VarChar(50)
+}
+
+model PostTags {
+  id      Int @id
+  post_id Int
+  tag_id  Int
+}
+
+model Profile {
+  id      Int     @id
+  bio     String? @db.Text
+  avatar  String? @db.VarChar(100)
+  user_id Int
+}

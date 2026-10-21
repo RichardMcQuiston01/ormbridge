@@ -1,0 +1,7 @@
+fieldType Account.labels: string -> text
+fieldType Account.homepage_url: string -> text
+relationOnDelete Session.account: setNull -> noAction
+relationOnDelete Membership.group: restrict -> noAction
+modelRemoved legacy_order: model legacy_order -> (absent)
+modelAdded LegacyOrder: (absent) -> model LegacyOrder
+enumValueLabel Status.draft: Draft -> (none)
