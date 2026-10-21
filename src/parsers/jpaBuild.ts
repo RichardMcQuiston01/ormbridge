@@ -170,7 +170,8 @@ export function buildSchema(
   return {
     models: all,
     enums: [...enums.values()],
-    warnings: project.warnings,
+    // A mapped superclass or a single-table hierarchy reads an attribute once per entity that includes it.
+    warnings: [...new Set(project.warnings)],
   };
 }
 

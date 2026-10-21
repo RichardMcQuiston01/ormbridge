@@ -5,6 +5,7 @@ import type {
   JavaField,
   JavaType,
 } from './javaSyntax.js';
+import { irFieldName } from './jpaColumns.js';
 import {
   accessOf,
   classNotes,
@@ -163,6 +164,20 @@ function isPersistentClass(project: Project, cls: JavaClass): boolean {
   return isEntityClass(project, cls) || isMappedSuperclass(project, cls);
 }
 
+/** An attribute of an `@EmbeddedId` that would get the name of another attribute keeps the `@EmbeddedId` name as a prefix. */
+function keepKeyPrefixOnClash(members: readonly Member[]): void {
+  const counts: Map<string, number> = new Map();
+  for (const member of members) {
+    const name: string = irFieldName(member);
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  for (const member of members) {
+    if (member.inEmbeddedId && (counts.get(irFieldName(member)) ?? 0) > 1) {
+      member.prefixedKeyName = true;
+    }
+  }
+}
+
 /** The persistence annotations that only make sense on a mapped class. */
 const MAPPING_ANNOTATIONS: ReadonlySet<string> = new Set([
   'Id',
@@ -242,5 +257,6 @@ export function entityMembers(
     };
     visit(info);
   }
+  keepKeyPrefixOnClash(members);
   return members;
 }

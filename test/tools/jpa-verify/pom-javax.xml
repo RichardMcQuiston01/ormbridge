@@ -2,7 +2,7 @@
 <!--
   The same tool against Hibernate ORM 5 and javax.persistence, for the entities that the JPA writer produces with the javax style
   (Spring Boot 2). Main and Exercise are shared with pom.xml; only the Hibernate and H2 versions
-  differ, and none of the libraries the reader fixtures import (Lombok, Spring Data) are needed. Used by
+  differ, and none of the libraries the reader fixtures import (Spring Data) are needed; Lombok is here for the writer's Lombok option. Used by
   test/jpa-emitter-verify.test.ts; see test/tools/setup-verification-tools.sh.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -36,6 +36,12 @@
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>2.16.2</version>
+    </dependency>
+    <!-- The writer's Lombok output is compiled with Lombok as an annotation processor (the same version as pom.xml). -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>1.18.32</version>
     </dependency>
   </dependencies>
 

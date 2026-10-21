@@ -54,6 +54,12 @@ export interface Member {
   isId: boolean;
   /** True for the attributes of an `@EmbeddedId`. */
   inEmbeddedId: boolean;
+  /**
+   * True when an attribute of an `@EmbeddedId` keeps the name of the `@EmbeddedId` attribute as a prefix in the IR
+   * (`idSku`); by default it is named like the same attribute of an `@IdClass` (`sku`), which only a clash with
+   * another attribute of the entity prevents.
+   */
+  prefixedKeyName?: boolean;
   /** The entity class the member belongs to (the subclass in a hierarchy). */
   declaredIn: string;
 }

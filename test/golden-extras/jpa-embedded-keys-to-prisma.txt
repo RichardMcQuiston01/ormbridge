@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Reading {
+  sensor  String   @map("sensor_code") @db.VarChar(12)
+  takenOn DateTime @map("taken_on") @db.Date
+  value   Decimal? @map("reading_value") @db.Decimal(8, 2)
+
+  @@id([sensor, takenOn])
+  @@map("readings")
+}
+
+model Stock {
+  sku          String    @db.VarChar(20)
+  quantity     Int
+  warehouse_id BigInt
+  warehouse    Warehouse @relation(fields: [warehouse_id], references: [id], onDelete: NoAction)
+
+  @@id([sku, warehouse_id])
+}
+
+model Warehouse {
+  id        BigInt  @id
+  city      String  @db.VarChar(60)
+  stock_set Stock[]
+}

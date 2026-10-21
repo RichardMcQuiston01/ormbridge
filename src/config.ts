@@ -2,6 +2,11 @@ import { readFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { PRISMA_PROVIDERS } from './emitters/prisma.js';
 import { describeThrown, err, ok, type Result } from './result.js';
+import {
+  isJpaKeyMode,
+  JPA_KEY_MODES,
+  type JpaKeyMode,
+} from './emitters/jpa.js';
 import { isOutputStyle, OUTPUT_STYLES, type OutputStyle } from './styles.js';
 
 /** File names searched for in each directory, in priority order. */
@@ -37,6 +42,10 @@ export interface ConversionConfig {
    * Which one applies depends on `to`, which is checked when the conversion runs.
    */
   style?: OutputStyle;
+  /** How the JPA output writes a composite primary key: `idclass` (default) or `embedded` (`@EmbeddedId`). */
+  jpaKey?: JpaKeyMode;
+  /** Write Lombok annotations instead of hand-written accessors in the JPA output (default false). */
+  lombok?: boolean;
   /** Write the `x-` convention keywords into JSON Schema output (default true). */
   conventions?: boolean;
 }
@@ -66,6 +75,8 @@ const CONVERSION_KEYS: readonly string[] = [
   'goPackage',
   'prismaVersion',
   'style',
+  'jpaKey',
+  'lombok',
   'conventions',
 ];
 
@@ -327,6 +338,28 @@ function parseConversion(
       );
     }
     config.style = style;
+  }
+
+  const jpaKey: unknown = raw['jpaKey'];
+  if (jpaKey !== undefined) {
+    if (typeof jpaKey !== 'string' || !isJpaKeyMode(jpaKey)) {
+      return fail(
+        'jpaKey',
+        `must be one of ${JPA_KEY_MODES.join(', ')} (got ${describeValue(jpaKey)}).`
+      );
+    }
+    config.jpaKey = jpaKey;
+  }
+
+  const lombok: unknown = raw['lombok'];
+  if (lombok !== undefined) {
+    if (typeof lombok !== 'boolean') {
+      return fail(
+        'lombok',
+        `must be true or false (got ${describeValue(lombok)}).`
+      );
+    }
+    config.lombok = lombok;
   }
 
   const conventions: unknown = raw['conventions'];
