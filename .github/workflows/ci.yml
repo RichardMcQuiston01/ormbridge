@@ -297,8 +297,9 @@ jobs:
           test/tools/setup-verification-tools.sh "$TOOLS" sql drizzle | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
       - name: Point the SQL DDL tests at the PostgreSQL and MySQL services
         run: |
-          # The psql and mysql clients ship with the runner image; install them if that ever changes.
+          # The psql, pg_dump and mysql clients ship with the runner image; install them if that ever changes.
           command -v psql > /dev/null || sudo apt-get install -y --no-install-recommends postgresql-client
+          command -v pg_dump > /dev/null || sudo apt-get install -y --no-install-recommends postgresql-client
           command -v mysql > /dev/null || sudo apt-get install -y --no-install-recommends mysql-client
           echo "SQL_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres" >> "$GITHUB_ENV"
           echo "SQL_MYSQL_URL=mysql://root:root@127.0.0.1:3306" >> "$GITHUB_ENV"
@@ -333,6 +334,7 @@ jobs:
           npx vitest run
           test/sql-ddl-verify.test.ts
           test/sql-ddl-parser-verify.test.ts
+          test/sql-migration-verify.test.ts
           test/cockroachdb-verify.test.ts
           test/clickhouse-verify.test.ts
           test/neo4j-verify.test.ts

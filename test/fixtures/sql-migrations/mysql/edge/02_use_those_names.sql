@@ -1,0 +1,11 @@
+ALTER TABLE member DROP FOREIGN KEY member_ibfk_2;
+ALTER TABLE member DROP INDEX alt_org_id;
+ALTER TABLE member DROP INDEX email;
+ALTER TABLE member DROP KEY nick;
+ALTER TABLE org RENAME COLUMN slug TO handle;
+ALTER TABLE org DROP INDEX slug;
+ALTER TABLE org ADD UNIQUE KEY org_handle_key (handle);
+ALTER TABLE member MODIFY org_id int NOT NULL;
+ALTER TABLE member DROP COLUMN score;
+ALTER TABLE member ADD INDEX member_email_idx (email, org_id);
+ALTER TABLE member ADD COLUMN reviewer_id int NULL AFTER email, ADD CONSTRAINT member_reviewer_fk FOREIGN KEY (reviewer_id) REFERENCES member (id);

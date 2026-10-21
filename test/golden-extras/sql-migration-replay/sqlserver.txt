@@ -1,0 +1,34 @@
+## sp_rename renames a table, a column, an index and a constraint
+table Client (pk PK_Customer)
+  column Id int, not null, pk, default autoIncrement
+  column FullName string(100), not null
+table Order (pk PK_Order)
+  column Id int, not null, pk
+  foreignKey Customer (CustomerId) -> Client, on delete noAction, constraint FK_Order_Client
+  index IX_Order_Client (Customer)
+warning: migration.sql:16: sp_rename 'dbo.Missing', 'Other': no table or constraint of that name exists at this point; the statement was skipped.
+warning: migration.sql:18: sp_rename 'dbo.Order.Nope', 'Other': the column does not exist at this point; the statement was skipped.
+
+## ALTER COLUMN restates the type and the nullability
+table T
+  column Id int, not null, pk
+  column A string(200), null
+  column B bigInt, not null
+  column C text, null
+warning: migration.sql:10: ALTER TABLE "T" ALTER COLUMN "Missing": the column does not exist at this point; the statement was skipped.
+
+## ADD and DROP COLUMN take a list, DROP CONSTRAINT drops defaults, keys and checks
+table P
+  column Id int, not null, pk
+table T (pk PK_T)
+  column Id int, not null, pk
+  column Q int, not null
+  column Flag boolean, not null
+warning: migration.sql:16: ALTER TABLE "T" DROP CONSTRAINT "DF_T_Missing": no constraint of that name exists at this point; the statement was skipped.
+
+## DROP INDEX in both SQL Server forms, DROP TABLE
+table T
+  column Id int, not null, pk
+  column A int, null
+  column B int, null
+warning: migration.sql:18: DROP TABLE "U": the table does not exist at this point; the statement was skipped.

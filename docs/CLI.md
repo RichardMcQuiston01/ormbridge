@@ -58,9 +58,14 @@ ormbridge convert -i ./models --from sequelize -o ./prisma/schema.prisma
 ormbridge convert -i ./schemas --from json-schema -o ./blog/models.py
 ormbridge convert -i ./openapi.json --from json-schema --to prisma -o ./prisma/schema.prisma
 
-# SQL DDL (a pg_dump / mysqldump / sqlite .dump / SSMS script, or a folder of migrations) -> Prisma (every .sql file is read in name order; node_modules/, vendor/ and rollback scripts such as *.down.sql are skipped)
+# SQL DDL (a pg_dump / mysqldump / sqlite .dump / SSMS script, or a folder of migrations) -> Prisma (every .sql file is read in migration order; node_modules/, vendor/ and rollback scripts such as *.down.sql and Flyway U2__x.sql are skipped)
 ormbridge convert -i ./schema.sql -o ./prisma/schema.prisma
 ormbridge convert -i ./db/migrations --from sql --to django -o ./blog/models.py
+
+# A folder of migrations is one schema: Flyway files run by version (V2 before V10, R__ files last), drizzle-kit files by meta/_journal.json, others in natural name order.
+# ALTER TABLE, RENAME, DROP and CREATE INDEX are replayed (PostgreSQL, CockroachDB, MySQL, SQLite, SQL Server), and INSERT/UPDATE/DELETE give one warning.
+ormbridge convert -i ./src/main/resources/db/migration --from sql --to prisma -o ./prisma/schema.prisma
+ormbridge convert -i ./drizzle --from sql --to prisma -o ./prisma/schema.prisma
 
 # SQLAlchemy 2.0 or SQLModel models -> Prisma (.py belongs to Django, so pass --from sqlalchemy; every .py file is read; venvs, site-packages, migrations/, alembic/, __pycache__/ and test files are skipped)
 ormbridge convert -i ./app/models --from sqlalchemy -o ./prisma/schema.prisma

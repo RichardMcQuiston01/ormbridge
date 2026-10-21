@@ -1,0 +1,141 @@
+## rename a table: keys, indexes and uniques that point at it follow
+table article (pk post_pkey)
+  column id int, not null, pk, default autoIncrement
+  foreignKey author (author_id) -> Writer, on delete cascade, constraint post_author_id_fkey
+  index post_author_idx (author)
+table writer (pk author_pkey)
+  column id int, not null, pk, default autoIncrement
+  column email text, null, unique author_email_key
+  foreignKey parent (parent_id) -> Writer, on delete noAction, constraint author_parent_id_fkey
+
+## rename a table onto a name that is taken is reported
+table a
+  column id int, not null, pk
+table b
+  column id int, not null, pk
+warning: migration.sql:4: RENAME of the table "a" to "b": a table named "b" exists already; the statement was skipped.
+warning: migration.sql:5: ALTER TABLE on the unknown table "nope" was skipped.
+
+## rename a column: key, unique, index, check, foreign keys on both sides
+table child (pk child_pkey)
+  column child_id int, not null, pk
+  column status string, not null, enum ChildStatus
+  column rank int, null
+  foreignKey parent (parent_slug) -> Parent, on delete noAction, constraint child_parent_code_fkey
+  index child_rank_uq (parent, rank) unique
+  index child_state_idx (status, rank)
+table parent (pk parent_pkey)
+  column slug text, not null, pk
+  column label text, null
+enum ChildStatus: new, old
+warning: migration.sql:16: ALTER TABLE "child" RENAME COLUMN "nope": the column does not exist at this point; the statement was skipped.
+warning: migration.sql:17: ALTER TABLE "child" RENAME COLUMN "rank": a column named "child_id" exists already; the statement was skipped.
+
+## drop a column: its keys, indexes, checks and the foreign keys of other tables go with it
+table base
+  column a int, null
+table other
+  column id int, not null, pk
+  column base_a int, null
+warning: migration.sql:12: ALTER TABLE "base" DROP COLUMN "missing_again": the column does not exist at this point; the statement was skipped.
+warning: table "base": the table has no primary key; most ORMs need one.
+
+## change the type of a column
+table t
+  column id bigInt, not null, pk, default autoIncrement
+  column n bigInt, not null, default 0
+  column s text, null
+  column p decimal(12,4), null
+  column kind string, null, enum Color
+  column list int[], null
+enum Color: red, green
+warning: migration.sql:17: ALTER TABLE "t" ALTER COLUMN "missing": the column does not exist at this point; the statement was skipped.
+
+## null and default changes, including serial and identity columns
+table t
+  column id int, not null, pk, default autoIncrement
+  column ident int, not null
+  column a int, not null, default autoIncrement
+  column b int, null, default 7
+  column c int, null
+  column d int, not null
+
+## drop constraints by name, by the name the database gives, and with IF EXISTS
+table p
+  column id int, not null, pk
+table t
+  column id int, not null
+  column a int, null
+  column b int, null
+  column c int, null
+  column d int, null
+  column e int, null
+warning: migration.sql:18: ALTER TABLE "t" DROP CONSTRAINT "t_missing_too": no constraint of that name exists at this point; the statement was skipped.
+warning: table "t": the table has no primary key; most ORMs need one.
+
+## rename constraints and indexes
+table p
+  column id int, not null, pk
+table t (pk t_primary)
+  column id int, not null, pk
+  column a int, null, unique t_a_unique
+  foreignKey b (b) -> P, on delete noAction, constraint t_b_ref
+  index t_b_lookup (b)
+warning: migration.sql:10: ALTER INDEX "gone_too" RENAME TO "other_too": no index of that name exists at this point; the statement was skipped.
+warning: migration.sql:11: ALTER TABLE "t" RENAME CONSTRAINT "nope": no constraint of that name exists at this point; the statement was skipped.
+
+## create and drop indexes
+table t
+  column id int, not null, pk
+  column a int, null
+  column b int, null
+  column c int, null
+  index t_keep_idx (b, c) [b {"sort":"desc"}]
+warning: migration.sql:12: DROP INDEX "t_gone": no index of that name exists at this point; the statement was skipped.
+
+## drop tables
+table b
+  column id int, not null, pk
+  column a_id int, null
+table c
+  column id int, not null, pk
+  column a_id int, null
+table d
+  column id int, not null, pk
+  column label text, null
+warning: migration.sql:9: DROP TABLE "missing": the table does not exist at this point; the statement was skipped.
+
+## drop a referenced table without CASCADE leaves the foreign key dangling, and says so
+table b
+  column id int, not null, pk
+  column a_id int, null
+warning: table "b": the foreign key on (a_id) points at the unknown table "a"; the column stays an ordinary field.
+
+## add columns: IF NOT EXISTS, several in one statement, constraints
+table t
+  column id int, not null, pk
+  column a int, null
+  column b text, not null, default "x"
+  column c int, null, unique t_c_key
+  column d int, null, generated a * 2
+
+## enum changes: add, rename and rename a value
+table t
+  column id int, not null, pk
+  column m string, not null, default enum FINE, enum Feeling
+enum Feeling: sad, fine, happy
+warning: migration.sql:6: ALTER TYPE "mood" RENAME VALUE: the value does not exist at this point; the statement was skipped.
+
+## data statements become one warning; TRUNCATE and session statements are silent
+table t
+  column id int, not null, pk
+  column a int, null
+warning: Skipped 3 data statements (first at migration.sql:3): row data is not part of the schema.
+
+## changes that cannot be replayed are named in a warning
+table t
+  column id int, not null, pk
+  column a int, null
+warning: Skipped 1 ALTER TABLE ... SET SCHEMA statement (first at migration.sql:3, table "t"): the change is not replayed, so the result may differ from the final database.
+warning: Skipped 1 ALTER TABLE ... ALTER COLUMN (type or option change) statement (first at migration.sql:5, table "t"): the change is not replayed, so the result may differ from the final database.
+warning: Skipped 1 ALTER TABLE ... FROBNICATE statement (first at migration.sql:9, table "t"): the change is not replayed, so the result may differ from the final database.

@@ -546,13 +546,13 @@ function mysqlClient(): string | undefined {
   return undefined;
 }
 
-interface MysqlConnection {
+export interface MysqlConnection {
   client: string;
   args: string[];
   environment: NodeJS.ProcessEnv;
 }
 
-function mysqlConnection(): MysqlConnection | undefined {
+export function mysqlConnection(): MysqlConnection | undefined {
   const url: string | undefined = process.env.SQL_MYSQL_URL;
   const client: string | undefined = mysqlClient();
   if (url === undefined || url === '' || client === undefined) {
