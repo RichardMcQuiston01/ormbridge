@@ -40,7 +40,7 @@ export function completeOwnedCollections(
     owners.set(child.cls.name, (owners.get(child.cls.name) ?? 0) + 1);
   }
   for (const child of children) {
-    const ownedBy = child.ownedBy;
+    const ownedBy: EntityInfo['ownedBy'] = child.ownedBy;
     const owner: EntityInfo | undefined =
       ownedBy === undefined ? undefined : resolve(ownedBy.owner);
     if (ownedBy === undefined || owner === undefined) {

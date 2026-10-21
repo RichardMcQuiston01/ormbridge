@@ -17,7 +17,11 @@ import {
   type CsValue,
   type SyntaxNode,
 } from './csharpSyntax.js';
-import { identityOf, indexAnnotations } from './efcoreMigrationReplay.js';
+import {
+  identityOf,
+  indexAnnotations,
+  type IndexAnnotations,
+} from './efcoreMigrationReplay.js';
 import {
   conventionalName,
   tableKey,
@@ -84,7 +88,7 @@ interface SnapOwned {
   entity: SnapEntity;
 }
 
-interface SnapEntity {
+export interface SnapEntity {
   name: string;
   properties: Map<string, SnapProperty>;
   key?: string[];
@@ -334,7 +338,7 @@ function readIndex(chain: CsChain, first: CsCall): SnapIndex {
         break;
     }
   }
-  const extra = indexAnnotations(annotations);
+  const extra: IndexAnnotations = indexAnnotations(annotations);
   if (index.method === undefined && extra.method !== undefined) {
     index.method = extra.method;
   }
@@ -569,12 +573,18 @@ function readBlock(
   }
 }
 
+/** The entities of a snapshot, by entity name, and its default schema. */
+export interface SnapshotRead {
+  entities: Map<string, SnapEntity>;
+  defaultSchema?: string;
+}
+
 /** Finds the snapshot class and reads its `BuildModel` method into entities. */
 export function readSnapshotClass(
   cls: CsClass,
   path: string,
   warn: (message: string) => void
-): { entities: Map<string, SnapEntity>; defaultSchema?: string } | undefined {
+): SnapshotRead | undefined {
   const method: CsMethod | undefined = cls.methods.find(
     (item: CsMethod) => item.name === 'BuildModel'
   );

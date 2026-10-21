@@ -1,14 +1,18 @@
 import {
+  cpSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { convertText, type ConvertResult } from '../src/convert.js';
 import type {
   IrCompositeForeignKey,
@@ -17,6 +21,7 @@ import type {
   IrRelation,
   IrSchema,
 } from '../src/ir.js';
+import { runConversion } from '../src/io.js';
 import { parseEfcore, type EfcoreSourceFile } from '../src/parsers/efcore.js';
 import type { Result } from '../src/result.js';
 import { compareWithModel } from './efcoreMigrationsSupport.js';
@@ -691,6 +696,29 @@ public partial class Later : Migration {
     ]);
   });
 
+  it('moves a renamed table to the default schema unless the call names the schema it stays in', async () => {
+    const schema: IrSchema = await parse([
+      migration(
+        '20240101000000_Initial',
+        `
+            migrationBuilder.CreateTable(
+                name: "A",
+                schema: "s",
+                columns: table => new { Id = table.Column<int>(type: "int", nullable: false) },
+                constraints: table => { table.PrimaryKey("PK_A", x => x.Id); });
+            migrationBuilder.CreateTable(
+                name: "B",
+                schema: "s",
+                columns: table => new { Id = table.Column<int>(type: "int", nullable: false) },
+                constraints: table => { table.PrimaryKey("PK_B", x => x.Id); });
+            migrationBuilder.RenameTable(name: "A", schema: "s", newName: "A2");
+            migrationBuilder.RenameTable(name: "B", schema: "s", newName: "B2", newSchema: "s");`
+      ),
+    ]);
+    expect(model(schema, 'A2').schema).toBeUndefined();
+    expect(model(schema, 'B2').schema).toBe('s');
+  });
+
   it('keeps an explicit default and drops the backfill default of AddColumn and AlterColumn', async () => {
     const schema: IrSchema = await parse([
       migration(
@@ -895,5 +923,76 @@ public class C : DbContext { public DbSet<Thing> Things => Set<Thing>(); }`,
     if (!result.ok) {
       expect(result.error.message).toContain('leave no tables behind');
     }
+  });
+});
+
+describe('directory input', () => {
+  const directories: string[] = [];
+
+  afterEach(() => {
+    for (const directory of directories.splice(0)) {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  /** A project folder with the blog migrations below Data/Migrations, and the given extra files. */
+  function project(extra: Record<string, string> = {}): string {
+    const directory: string = mkdtempSync(join(tmpdir(), 'ormbridge-efmig-'));
+    directories.push(directory);
+    cpSync(
+      join(FIXTURES, 'blog', 'Migrations'),
+      join(directory, 'Data', 'Migrations'),
+      { recursive: true }
+    );
+    for (const [path, text] of Object.entries(extra)) {
+      mkdirSync(dirname(join(directory, path)), { recursive: true });
+      writeFileSync(join(directory, path), text);
+    }
+    return directory;
+  }
+
+  async function convert(
+    directory: string
+  ): Promise<{ output: string; warnings: string[] }> {
+    const output: string = join(directory, 'out.prisma');
+    const result = await runConversion({
+      inputs: [directory],
+      output,
+      from: 'efcore',
+      to: 'prisma',
+      naming: 'preserve',
+      provider: 'postgresql',
+      header: false,
+      appLabel: 'app',
+      autoField: 'int',
+    });
+    if (!result.ok) {
+      throw new Error(`${result.error.code}: ${result.error.message}`);
+    }
+    return {
+      output: readFileSync(output, 'utf8'),
+      warnings: result.value.warnings,
+    };
+  }
+
+  it('replays the Migrations folder of a project that has no entity classes, without reading the Designer files', async () => {
+    const { output, warnings } = await convert(project());
+    expect(output).toContain('model Blog');
+    expect(output).toContain('model Author');
+    expect(output).not.toContain('model Tag');
+    expect(warnings).toEqual([]);
+  });
+
+  it('reads the entity classes of a project and skips its migrations with one warning', async () => {
+    const { output, warnings } = await convert(
+      project({
+        'Models/Thing.cs':
+          'public class Thing { public int Id { get; set; } }\npublic class C : DbContext { public DbSet<Thing> Things => Set<Thing>(); }',
+      })
+    );
+    expect(output).toContain('model Thing');
+    expect(output).not.toContain('model Blog');
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/and 3 more migration files: skipped/);
   });
 });

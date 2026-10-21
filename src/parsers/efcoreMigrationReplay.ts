@@ -11,6 +11,7 @@ import {
 import {
   evaluate,
   type ConstLookup,
+  type CsAttribute,
   type CsClass,
   type CsMethod,
   type CsType,
@@ -316,10 +317,14 @@ export function identityOf(annotations: ReadonlyMap<string, CsValue>): boolean {
 }
 
 /** The index settings the provider annotations carry: the access method and the covering columns. */
-export function indexAnnotations(annotations: ReadonlyMap<string, CsValue>): {
+export interface IndexAnnotations {
   method?: string;
   includes: string[];
-} {
+}
+
+export function indexAnnotations(
+  annotations: ReadonlyMap<string, CsValue>
+): IndexAnnotations {
   let method: string | undefined;
   let includes: string[] = [];
   for (const [key, value] of annotations) {
@@ -731,7 +736,8 @@ function applyCall(
       renameTable(
         ctx.schema,
         table,
-        args.has('newSchema') ? textArgument(args, 'newSchema') : table.schema,
+        // A table stays in its schema only when the call says so: EF Core moves it to the default schema otherwise.
+        textArgument(args, 'newSchema'),
         newName ?? table.name
       );
       return;
@@ -845,7 +851,7 @@ function applyCall(
         return;
       }
       const filter: string | undefined = textArgument(args, 'filter');
-      const extra = indexAnnotations(annotationsOf(chain));
+      const extra: IndexAnnotations = indexAnnotations(annotationsOf(chain));
       const index: MigrationIndex = {
         name,
         columns,
@@ -1132,7 +1138,9 @@ export function findMigrations(
     if (up?.body === undefined) {
       continue;
     }
-    const attribute = cls.attributes.find((item) => item.name === 'Migration');
+    const attribute: CsAttribute | undefined = cls.attributes.find(
+      (item: CsAttribute) => item.name === 'Migration'
+    );
     const declared: CsValue | undefined =
       attribute?.args[0] === undefined
         ? undefined

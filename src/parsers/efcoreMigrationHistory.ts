@@ -20,7 +20,11 @@ import {
   describeDifferences,
 } from './efcoreMigrationSchema.js';
 import type { MigrationSchema } from './efcoreMigrationState.js';
-import { readSnapshotClass, snapshotSchema } from './efcoreSnapshot.js';
+import {
+  readSnapshotClass,
+  snapshotSchema,
+  type SnapshotRead,
+} from './efcoreSnapshot.js';
 
 export interface MigrationSourceFile {
   path: string;
@@ -117,7 +121,7 @@ export function readMigrationHistory(
 
   let snapshot: MigrationSchema | undefined;
   for (const { cls, path } of snapshots) {
-    const read = readSnapshotClass(cls, path, warn);
+    const read: SnapshotRead | undefined = readSnapshotClass(cls, path, warn);
     if (read === undefined) {
       warn(
         `${path}: the snapshot class ${cls.name} has no BuildModel method, so it was not read.`
