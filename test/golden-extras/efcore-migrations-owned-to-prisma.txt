@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id         Int     @id @default(autoincrement()) @map("Id")
+  name       String  @map("Name") @db.Text
+  homeStreet String  @map("Home_Street") @db.VarChar(120)
+  homeCity   String? @map("Home_City") @db.Text
+  homeGeoLat Float   @map("Home_Geo_Lat")
+  homeGeoLng Float   @map("Home_Geo_Lng")
+  workStreet String? @map("Work_Street") @db.Text
+  workCity   String? @map("Work_City") @db.Text
+  workGeoLat Float?  @map("Work_Geo_Lat")
+  workGeoLng Float?  @map("Work_Geo_Lng")
+  homeZip    String? @map("Home_Zip") @db.Text
+  workZip    String? @map("Work_Zip") @db.Text
+  order_set  Order[]
+
+  @@map("Customers")
+}
+
+model Order {
+  id         Int      @map("Id")
+  number     String   @map("Number") @db.Text
+  total      Decimal  @map("Total")
+  notes      String?  @map("Notes") @db.Text
+  CustomerId Int
+  customer   Customer @relation(fields: [CustomerId], references: [id], onDelete: Cascade)
+
+  @@id([CustomerId, id])
+}
+
+model OrderLine {
+  orderCustomerId Int     @map("OrderCustomerId")
+  orderId         Int     @map("OrderId")
+  id              Int     @map("Id")
+  sku             String  @map("Sku") @db.Text
+  quantity        Int     @map("Quantity")
+  unitPrice       Decimal @map("UnitPrice")
+
+  @@id([orderCustomerId, orderId, id])
+}

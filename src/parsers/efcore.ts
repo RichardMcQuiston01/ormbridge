@@ -7,6 +7,7 @@ import {
   type CsClass,
   type CsEnum,
   type CsFile,
+  type CsProperty,
   type CsType,
   type CsValue,
 } from './csharpSyntax.js';
@@ -16,11 +17,13 @@ import {
   isOwnedByAttribute,
 } from './efcoreAnnotations.js';
 import { buildSchema, mergeHierarchies } from './efcoreBuild.js';
+import { readMigrationHistory } from './efcoreMigrationHistory.js';
 import { buildEntities, classChain, expandEntities } from './efcoreEntities.js';
 import { ConfigStore } from './efcoreFluent.js';
-import type { EntityInfo, Project } from './efcoreModel.js';
+import type { EntityInfo, Project, Scope } from './efcoreModel.js';
+import { completeOwnedCollections } from './efcoreOwned.js';
 import { keyOf, resolveRelationships } from './efcoreRelations.js';
-import { isKnownScalar, isValueType } from './efcoreTypes.js';
+import { elementType, isKnownScalar, isValueType } from './efcoreTypes.js';
 
 export interface EfcoreSourceFile {
   path: string;
@@ -41,6 +44,13 @@ export function isSkippedEfcorePath(path: string): boolean {
   return SKIPPED_PATH.test(path);
 }
 
+/** The migrations and the model snapshot: history that is replayed when the input has no entity classes. */
+const HISTORY_PATH: RegExp = /(?:^|[\\/])Migrations[\\/]|ModelSnapshot\.cs$/i;
+
+function isHistoryPath(path: string): boolean {
+  return HISTORY_PATH.test(path) && !/\.Designer\.cs$/i.test(path);
+}
+
 const CONTEXT_BASE: RegExp = /DbContext$/;
 
 /**
@@ -57,7 +67,17 @@ export async function parseEfcore(
   }
   const trees: Parser.Tree[] = [];
   try {
-    return readEfcore(parserResult.value, sources, options, trees);
+    const models: Result<IrSchema> = readEfcore(
+      parserResult.value,
+      sources,
+      options,
+      trees
+    );
+    // Without entities there may still be a folder of migrations (and a model snapshot) to replay.
+    if (!models.ok && models.error.code === 'NO_MODELS_FOUND') {
+      return readMigrationHistory(parserResult.value, sources, options, trees);
+    }
+    return models;
   } catch (thrown) {
     return err(
       'PARSE_FAILED',
@@ -101,11 +121,16 @@ function readEfcore(
     return undefined;
   };
 
+  const history: string[] = [];
   for (const source of sources) {
     if (isSkippedEfcorePath(source.path)) {
-      warnings.push(
-        `${source.path}: skipped (EF Core migrations, snapshots and build output describe history, not the model).`
-      );
+      if (isHistoryPath(source.path)) {
+        history.push(source.path);
+      } else {
+        warnings.push(
+          `${source.path}: skipped (EF Core migrations, snapshots and build output describe history, not the model).`
+        );
+      }
       continue;
     }
     const tree: Parser.Tree = parser.parse(source.text);
@@ -146,6 +171,12 @@ function readEfcore(
     }
   }
 
+  const [firstHistory, ...otherHistory] = history;
+  if (firstHistory !== undefined) {
+    warnings.push(
+      `${firstHistory}${otherHistory.length === 0 ? '' : ` and ${otherHistory.length} more migration file${otherHistory.length === 1 ? '' : 's'}`}: skipped (the entity classes describe the model; EF Core migrations and snapshots describe its history). Pass the Migrations folder without the entity classes to replay it.`
+    );
+  }
   const project: Project = {
     classes,
     enums,
@@ -240,12 +271,20 @@ function readEfcore(
       byName.set(derived, info);
     }
   }
+  // The tables of owned collections (OwnsMany) get their key and the foreign key to the owner.
+  const ownedLinks = completeOwnedCollections(
+    roots,
+    (name: string): EntityInfo | undefined => byName.get(name),
+    store,
+    (message: string) => warnings.push(message)
+  );
   const relationships = resolveRelationships(
     roots,
     store,
     (name: string): EntityInfo | undefined => byName.get(name),
     (message: string) => warnings.push(message)
   );
+  relationships.links.push(...ownedLinks);
   // The join entity of UsingEntity<T> gets the two foreign keys as its composite key unless it names one.
   for (const info of roots) {
     if (info.config.joinEntity === true && keyOf(info).length === 0) {
@@ -335,6 +374,7 @@ function addAnnotatedEntities(store: ConfigStore, project: Project): void {
       isBase.add(ancestor.name);
     }
   }
+  const owned: Set<string> = fluentOwnedTypes(store, project);
   const contextNames: Set<string> = new Set(
     project.contexts.map((cls: CsClass) => cls.name)
   );
@@ -350,6 +390,7 @@ function addAnnotatedEntities(store: ConfigStore, project: Project): void {
       configNames.has(cls.name) ||
       isOwnedByAttribute(cls) ||
       store.ownedTypes.has(cls.name) ||
+      owned.has(cls.name) ||
       cls.attributes.some((item) => item.name === 'NotMapped') ||
       store.ignoredEntities.has(cls.name) ||
       (isBase.has(cls.name) && !store.has(cls.name))
@@ -360,4 +401,35 @@ function addAnnotatedEntities(store: ConfigStore, project: Project): void {
       store.addEntity(cls.name);
     }
   }
+}
+
+/** The types the fluent API makes owned (`OwnsOne` / `OwnsMany` on a navigation), including owned types inside them. */
+function fluentOwnedTypes(store: ConfigStore, project: Project): Set<string> {
+  const names: Set<string> = new Set();
+  const visit = (chain: readonly CsClass[], scope: Scope): void => {
+    for (const [navigation, ownedScope] of scope.owned) {
+      const property: CsProperty | undefined = chain
+        .flatMap((cls: CsClass) => cls.properties)
+        .find((item: CsProperty) => item.name === navigation);
+      if (property === undefined) {
+        continue;
+      }
+      const inner: CsType = elementType(property.type) ?? property.type;
+      if (names.has(inner.name)) {
+        continue;
+      }
+      names.add(inner.name);
+      const nested: CsClass | undefined = project.classes.get(inner.name);
+      if (nested !== undefined) {
+        visit(classChain(nested, project), ownedScope);
+      }
+    }
+  };
+  for (const config of store.entities.values()) {
+    const cls: CsClass | undefined = project.classes.get(config.name);
+    if (cls !== undefined) {
+      visit(classChain(cls, project), config);
+    }
+  }
+  return names;
 }
