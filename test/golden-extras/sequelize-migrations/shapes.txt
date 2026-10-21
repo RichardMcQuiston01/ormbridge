@@ -1,0 +1,27 @@
+table accounts
+  column id bigInt, not null, pk, default autoIncrement
+  column handle string(40), not null, unique
+  column balance decimal(12,2), not null, default 0
+  column ratio float, null
+  column active boolean, not null, default true
+  column settings json, null
+  column avatar bytes, null
+  column born date, null
+  column opened_at dateTime, not null, default now
+  column note text, null
+table devices
+  column id int, not null, pk, default autoIncrement
+  column serial string(32), not null
+  column account_id bigInt, not null
+  column label string(60), null
+  column kind string(20), not null
+  index devices_label_kind (label, kind)
+  index devices_serial_unique (serial) unique
+  index devices_account_kind_unique (account_id, kind) unique
+table transfers
+  column id int, not null, pk, default autoIncrement
+  column amount decimal(12,2), not null
+  foreignKey from_account (from_account) -> Account, on delete restrict
+  foreignKey to_account (to_account) -> Account, on delete setNull
+  index (unnamed) (from_account)
+  index transfers_target (to_account)

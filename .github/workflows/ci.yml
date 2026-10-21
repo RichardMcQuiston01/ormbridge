@@ -94,7 +94,7 @@ jobs:
           key: real-tools-node-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', '.github/workflows/ci.yml') }}
           restore-keys: real-tools-node-${{ runner.os }}-
       - run: npm ci
-      - name: Install TypeORM, Drizzle, Sequelize, Ajv, Zod 4 and 3, better-sqlite3 and Prisma 6 and 7
+      - name: Install TypeORM, Drizzle, Sequelize 6 and 7, Ajv, Zod 4 and 3, better-sqlite3 and Prisma 6 and 7
         run: |
           test/tools/setup-verification-tools.sh "$TOOLS" node | grep '^export ' | sed 's/^export //' >> "$GITHUB_ENV"
       - name: Tests with the real Node tools (Prisma 6)
@@ -105,6 +105,9 @@ jobs:
           test/drizzle-parser-verify.test.ts
           test/sequelize-verify.test.ts
           test/sequelize-parser-verify.test.ts
+          test/sequelize-migration-verify.test.ts
+          test/sequelize7-verify.test.ts
+          test/sequelize7-parser-verify.test.ts
           test/json-schema-ajv.test.ts
           test/json-schema-verify.test.ts
           test/zod-verify.test.ts

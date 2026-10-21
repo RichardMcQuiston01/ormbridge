@@ -1,0 +1,1 @@
+AuditLog: the model has no primary key; Sequelize would add an "id" column, so noPrimaryKey: true was written. Most Sequelize features need a key.

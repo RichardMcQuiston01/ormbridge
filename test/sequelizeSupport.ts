@@ -1,4 +1,7 @@
 import type {
+  IrDefault,
+  IrEnum,
+  IrEnumValue,
   IrField,
   IrIndex,
   IrModel,
@@ -6,6 +9,8 @@ import type {
   IrRelation,
   IrSchema,
 } from '../src/ir.js';
+import { toCamelCase, toPascalCase } from '../src/naming.js';
+import { normalizeSchema, type NamingMode } from '../src/transforms.js';
 
 /**
  * What the Sequelize verification tests share: the shape of what `test/tools/validate-sequelize.mjs` and
@@ -16,6 +21,10 @@ import type {
 export interface DbColumn {
   name: string;
   allowNull: boolean;
+  /** The column type the database reports (`VARCHAR(255)`), when the script printed it. */
+  type?: string;
+  /** The default the database reports, as Sequelize's `describeTable` returns it. */
+  defaultValue?: unknown;
 }
 
 export interface DbIndex {
@@ -299,4 +308,167 @@ export function compareWithDatabase(
     problems.push(`table ${name} exists in the database but not in the IR`);
   }
   return problems;
+}
+
+/** The type SQLite reports (`describeTable`) for a column that Sequelize creates from a field of the IR. */
+function expectedSqliteType(field: IrField): RegExp | undefined {
+  switch (field.type) {
+    case 'string':
+      return field.enumName !== undefined
+        ? /^TEXT$/
+        : new RegExp(`^VARCHAR\\(${field.maxLength ?? 255}\\)$`);
+    case 'text':
+      return /^TEXT$/;
+    case 'int':
+      return /^(?:TINYINT|SMALLINT|MEDIUMINT|INTEGER|INT)(?:\(\d+\))?$/;
+    case 'bigInt':
+      // SQLite only lets an INTEGER key count, so Sequelize writes a big auto-increment key as one.
+      return field.isPrimaryKey ? /^(?:BIGINT|INTEGER)/ : /^BIGINT/;
+    case 'float':
+      return /^(?:FLOAT|DOUBLE|REAL)/;
+    case 'decimal':
+      return field.maxDigits === undefined
+        ? /^DECIMAL/
+        : new RegExp(
+            `^DECIMAL\\(${field.maxDigits},${field.decimalPlaces ?? 0}\\)$`
+          );
+    case 'boolean':
+      return /^TINYINT\(1\)$/;
+    case 'dateTime':
+      return /^DATETIME/;
+    case 'date':
+      return /^DATE$/;
+    case 'time':
+      return /^TIME$/;
+    case 'uuid':
+      return /^UUID$/;
+    case 'json':
+      return /^JSON/;
+    case 'bytes':
+      return /^BLOB/;
+    default:
+      return undefined;
+  }
+}
+
+/** The text SQLite reports for a literal or enum default; undefined for defaults it spells in its own way. */
+function defaultText(ir: IrSchema, field: IrField): string | undefined {
+  const value: IrDefault | undefined = field.default;
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value.kind === 'literal') {
+    return String(value.value);
+  }
+  if (value.kind === 'enumValue') {
+    return ir.enums
+      .find((candidate: IrEnum) => candidate.name === field.enumName)
+      ?.values.find((member: IrEnumValue) => member.name === value.value)
+      ?.dbValue;
+  }
+  return undefined;
+}
+
+/**
+ * Lists the columns whose type or default the database reports differently from the IR. Only the fields are
+ * checked: a foreign key column takes its type from the key it points at, which the IR does not repeat.
+ */
+export function compareColumnTypes(ir: IrSchema, db: DbSchema): string[] {
+  const problems: string[] = [];
+  for (const model of ir.models) {
+    const table: DbTable | undefined = db.tables[model.tableName];
+    if (table === undefined) {
+      continue;
+    }
+    for (const field of model.fields) {
+      const column: DbColumn | undefined = table.columns.find(
+        (candidate: DbColumn) => candidate.name === field.columnName
+      );
+      if (column === undefined || column.type === undefined) {
+        continue;
+      }
+      const label: string = `${model.tableName}.${field.columnName}`;
+      const expected: RegExp | undefined = expectedSqliteType(field);
+      const actual: string = column.type.toUpperCase().replace(/\s+/g, '');
+      if (expected !== undefined && !expected.test(actual)) {
+        problems.push(
+          `${label}: type ${column.type} in the database, ${field.type}${field.maxLength === undefined ? '' : `(${field.maxLength})`} in the IR`
+        );
+      }
+      const wanted: string | undefined = defaultText(ir, field);
+      const given: unknown = column.defaultValue;
+      if (field.default?.kind === 'autoIncrement') {
+        continue;
+      }
+      if (wanted !== undefined && String(given) !== wanted) {
+        problems.push(
+          `${label}: default ${String(given)} in the database, ${wanted} in the IR`
+        );
+      } else if (
+        field.default === undefined &&
+        given !== null &&
+        given !== undefined
+      ) {
+        problems.push(
+          `${label}: default ${String(given)} in the database, none in the IR`
+        );
+      }
+    }
+  }
+  return problems;
+}
+
+/** The aliases a model's associations have in the output: `Model.alias`. */
+export function expectedAssociations(
+  schema: IrSchema,
+  naming: NamingMode
+): string[] {
+  const className = (model: IrModel): string =>
+    /^[A-Z][A-Za-z0-9]*$/.test(model.name)
+      ? model.name
+      : toPascalCase(model.name);
+  const alias = (name: string): string =>
+    naming === 'normalize' ? toCamelCase(name) : name;
+  const names: string[] = [];
+  for (const model of schema.models) {
+    for (const relation of model.relations) {
+      const target: IrModel | undefined = schema.models.find(
+        (candidate: IrModel) => candidate.name === relation.targetModel
+      );
+      if (target === undefined) {
+        continue;
+      }
+      names.push(`${className(model)}.${alias(relation.name)}`);
+      if (relation.relatedName !== undefined) {
+        names.push(`${className(target)}.${alias(relation.relatedName)}`);
+      }
+    }
+  }
+  return names.sort();
+}
+
+/**
+ * SQLite cannot evaluate the database functions of a PostgreSQL schema (`gen_random_uuid()` from Prisma's
+ * `dbgenerated`), so a row could not be inserted: those defaults are left out of the schema that is written.
+ */
+export function forSqlite(schema: IrSchema): IrSchema {
+  return {
+    ...schema,
+    models: schema.models.map((model: IrModel): IrModel => ({
+      ...model,
+      fields: model.fields.map((field: IrField): IrField => {
+        if (field.default?.kind !== 'dbExpression') {
+          return field;
+        }
+        const withoutDefault: IrField = { ...field };
+        delete withoutDefault.default;
+        return withoutDefault;
+      }),
+    })),
+  };
+}
+
+/** What the database should contain for a schema: the IR a naming mode would write. */
+export function expectedSchema(schema: IrSchema, naming: NamingMode): IrSchema {
+  return naming === 'normalize' ? normalizeSchema(schema) : schema;
 }

@@ -28,6 +28,7 @@ import {
   readModelOptions,
 } from './sequelizeCollect.js';
 import { pluralize, singularize, underscore } from './sequelizeInflection.js';
+import { isMigrationFile, replayMigrations } from './sequelizeMigrations.js';
 import type {
   AttributeLink,
   FileInfo,
@@ -57,7 +58,8 @@ export interface SequelizeParseOptions {
 // ---------------------------------------------------------------------------
 
 /** A file that mentions neither Sequelize nor its data types nor @Table cannot define a model. */
-const SEQUELIZE_HINT: RegExp = /sequelize|DataTypes?\b|@Table\b/i;
+const SEQUELIZE_HINT: RegExp =
+  /sequelize|DataTypes?\b|@Table\b|queryInterface|createTable/i;
 
 const ON_ACTION_MAP: Readonly<Record<string, IrOnDelete>> = {
   CASCADE: 'cascade',
@@ -141,8 +143,24 @@ export async function parseSequelize(
         project.sharedConsts.set(name, shared);
       }
     }
+    // A migration (`up(queryInterface, Sequelize)`) defines no model; the migrations of a folder are
+    // replayed into one schema when the input has no models.
+    const migrations: FileInfo[] = project.files.filter((file: FileInfo) =>
+      isMigrationFile(file, { file, project })
+    );
     for (const file of project.files) {
-      collectFile(file, project);
+      if (!migrations.includes(file)) {
+        collectFile(file, project);
+      }
+    }
+    if (migrations.length > 0) {
+      if (project.models.length === 0) {
+        project.models.push(...replayMigrations(migrations, project));
+      } else {
+        project.warnings.push(
+          `${migrations.length === 1 ? '1 migration file was' : `${migrations.length} migration files were`} ignored because the input also defines models: ${migrations.map((file: FileInfo) => file.label).join(', ')}. Pass the migrations alone to rebuild the schema from them.`
+        );
+      }
     }
     if (project.models.length === 0) {
       const checkedPaths: string = sources
@@ -151,7 +169,8 @@ export async function parseSequelize(
       return err(
         'NO_MODELS_FOUND',
         `No Sequelize models were found in: ${checkedPaths}. A model is \`sequelize.define('Name', { ... })\`, ` +
-          `\`class Name extends Model\` with \`Name.init({ ... }, { sequelize })\`, or a sequelize-typescript class with @Table.`
+          `\`class Name extends Model\` with \`Name.init({ ... }, { sequelize })\`, or a sequelize-typescript or Sequelize 7 class with @Table. ` +
+          `A folder of sequelize-cli migrations (\`up(queryInterface, Sequelize)\`) is replayed into a schema when it creates a table.`
       );
     }
     return ok(buildSchema(project, options));
@@ -221,7 +240,10 @@ const INTEGER_TYPE: TsValue = { kind: 'name', value: 'DataTypes.INTEGER' };
 /** Adds the `id` and timestamp columns that `Model.init` adds when the model does not declare them. */
 function addDefaultAttributes(model: RawModel, options: ModelOptions): void {
   const attributes: RawAttribute[] = model.attributes;
-  if (!attributes.some((attribute: RawAttribute) => attribute.primaryKey)) {
+  if (
+    !attributes.some((attribute: RawAttribute) => attribute.primaryKey) &&
+    options.noPrimaryKey !== true
+  ) {
     if (attributes.some((attribute: RawAttribute) => attribute.name === 'id')) {
       model.unsupported.push(
         'an "id" column that is not a primary key (Sequelize refuses such a model)'
@@ -303,9 +325,13 @@ function prepareModels(project: Project): Prepared[] {
     }
     modelNames.add(model.modelName);
     irNames.add(irName);
-    const options: ModelOptions = readModelOptions(model, project);
-    model.indexes = mergeNamedIndexes(readIndexes(model, project));
-    addDefaultAttributes(model, options);
+    // A table replayed from migrations has its options and indexes already, and every column it owns.
+    const options: ModelOptions =
+      model.presetOptions ?? readModelOptions(model, project);
+    if (model.presetOptions === undefined) {
+      model.indexes = mergeNamedIndexes(readIndexes(model, project));
+      addDefaultAttributes(model, options);
+    }
     prepared.push({
       raw: model,
       options,
@@ -602,18 +628,29 @@ function convertDefault(
       if (/(^|\.)NOW$/.test(callee)) {
         return { kind: 'now' };
       }
-      const version: RegExpExecArray | null = /(^|\.)UUIDV([14])$/.exec(callee);
+      // `DataTypes.UUIDV4`, or `sql.uuidV4` (with `.asJavaScript`) in Sequelize 7.
+      const version: RegExpExecArray | null =
+        /(?:^|\.)uuidv([14])(?:\.asJavaScript)?$/i.exec(callee);
       if (version !== null) {
         // Version 4 is what an unversioned IR default means.
-        return version[2] === '4'
+        return version[1] === '4'
           ? { kind: 'uuid' }
-          : { kind: 'uuid', version: Number(version[2]) };
+          : { kind: 'uuid', version: Number(version[1]) };
       }
       if (value.kind === 'call' && /(^|\.)literal$/.test(callee)) {
         const sql: TsValue | undefined = value.args[0];
         if (sql !== undefined && sql.kind === 'string') {
           return convertSqlDefault(sql.value, field, enumeration);
         }
+      }
+      if (
+        value.kind === 'call' &&
+        callee === 'sql' &&
+        value.args.length === 1 &&
+        value.args[0]?.kind === 'other'
+      ) {
+        // Sequelize 7: sql`CURRENT_TIMESTAMP` (the fragment of a template without substitutions)
+        return convertSqlDefault(value.args[0].text, field, enumeration);
       }
       if (value.kind === 'call' && /(^|\.)fn$/.test(callee)) {
         const text: string | undefined = callText(callee, value.args);

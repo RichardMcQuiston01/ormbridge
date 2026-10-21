@@ -1,0 +1,49 @@
+table audit_log
+  column message text, null
+table authors
+  column id int, not null, pk, default autoIncrement
+  column email string(80), not null, unique
+  column bio text, null
+  column state string, not null, default enum ACTIVE, enum AuthorState
+  column publicId uuid, not null, unique, default uuid
+  column createdAt dateTime, not null
+  column updatedAt dateTime, not null
+  column deletedAt dateTime, null
+table categories
+  column id int, not null, pk, default autoIncrement
+  column name string(60), not null
+  foreignKey parent (parentId) -> Category, on delete setNull
+table ledger
+  column id int, not null, pk, default autoIncrement
+  column hits bigInt, null
+  column balance decimal(12,2), not null, default 0
+  column ratio float, null
+  column opened_on date, null
+  column receipt bytes, null
+  column settings json, null
+table post_tags
+  primary key (post, tag)
+  foreignKey post (postId) -> Post, on delete cascade
+  foreignKey tag (tagId) -> Tag, on delete cascade
+table posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column slug string(120), not null
+  column status string(20), null, default "draft"
+  column publishedAt dateTime, null
+  column createdAt dateTime, not null
+  column updatedAt dateTime, not null
+  column version int, not null, default 0
+  foreignKey author (authorId) -> Author, on delete cascade
+  foreignKey category (categoryId) -> Category, on delete setNull
+  index (unnamed) (title)
+  index posts_author_slug (slug, author) unique
+  index posts_status_idx (status, publishedAt)
+table profiles
+  column id int, not null, pk, default autoIncrement
+  oneToOne author (authorId) -> Author, on delete cascade
+table tags
+  column id int, not null, pk, default autoIncrement
+  column label string(40), not null
+enum AuthorState: active, banned
+warning: variants.ts: model "AuditLog": the model has no primary key; most ORMs need one, so add primaryKey: true to a column.

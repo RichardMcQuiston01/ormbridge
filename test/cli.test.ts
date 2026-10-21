@@ -926,7 +926,7 @@ describe('gorm output', () => {
     const run: CliRun = await cli(['convert']);
     expect(run.code).toBe(EXIT_USAGE_ERROR);
     expect(run.stderr).toContain(
-      '"style" must be one of sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax, community, enterprise (got "peewee")'
+      '"style" must be one of sqlalchemy, sqlmodel, init, define, v6, v7, annotations, fluent, jakarta, javax, community, enterprise (got "peewee")'
     );
   });
 
@@ -950,7 +950,7 @@ describe('gorm output', () => {
     ]);
     expect(unknown.code).toBe(EXIT_USAGE_ERROR);
     expect(unknown.stderr).toContain(
-      'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax, community, enterprise (sqlalchemy, sqlmodel for sqlalchemy; init, define for sequelize; annotations, fluent for efcore; jakarta, javax for jpa; community, enterprise for neo4j).'
+      'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define, v6, v7, annotations, fluent, jakarta, javax, community, enterprise (sqlalchemy, sqlmodel for sqlalchemy; init, define, v6, v7 for sequelize; annotations, fluent for efcore; jakarta, javax for jpa; community, enterprise for neo4j).'
     );
     const run: CliRun = await cli([
       'convert',
@@ -1081,8 +1081,64 @@ describe('sequelize input', () => {
     ]);
     expect(wrong.code).toBe(EXIT_USAGE_ERROR);
     expect(wrong.stderr).toContain(
-      'Invalid --style value "sqlmodel" for the sequelize format. Expected one of: init, define.'
+      'Invalid --style value "sqlmodel" for the sequelize format. Expected one of: init, define, v6, v7.'
     );
+  });
+
+  it('writes Sequelize 7 decorators with --style v7 and the default layout with --style v6', async () => {
+    const v7: string = join(workDirectory, 'v7-models');
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'sequelize',
+      '--style',
+      'v7',
+      '-o',
+      v7,
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    const post: string = await readFile(join(v7, 'post.ts'), 'utf8');
+    expect(post).toContain("from '@sequelize/core/decorators-legacy';");
+    expect(post).toContain('@Table({');
+    expect(await readFile(join(v7, 'index.ts'), 'utf8')).toContain(
+      'export const models = ['
+    );
+    const v6: string = join(workDirectory, 'v6-models');
+    const explicit: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'sequelize',
+      '--style',
+      'v6',
+      '-o',
+      v6,
+    ]);
+    expect(explicit.code).toBe(EXIT_OK);
+    expect(await readFile(join(v6, 'post.ts'), 'utf8')).toContain(
+      'static initModel(sequelize: Sequelize)'
+    );
+  });
+
+  it('reads a folder of sequelize-cli migrations with --from sequelize', async () => {
+    const migrations: string = fileURLToPath(
+      new URL('./fixtures/sequelize-migrations/keys', import.meta.url)
+    );
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      migrations,
+      '--from',
+      'sequelize',
+      '--to',
+      'prisma',
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    expect(run.stdout).toContain('model Person {');
+    expect(run.stdout).toContain('@@id([person_id, project_code_id])');
   });
 
   it('applies the style config key to a sequelize conversion', async () => {
@@ -1104,7 +1160,7 @@ describe('sequelize input', () => {
     const invalid: CliRun = await cli(['convert']);
     expect(invalid.code).toBe(EXIT_USAGE_ERROR);
     expect(invalid.stderr).toContain(
-      'Invalid --style value "sqlalchemy" for the sequelize format. Expected one of: init, define.'
+      'Invalid --style value "sqlalchemy" for the sequelize format. Expected one of: init, define, v6, v7.'
     );
   });
 });

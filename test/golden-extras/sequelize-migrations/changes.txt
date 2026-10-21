@@ -1,0 +1,10 @@
+table gadgets
+  column id int, not null, pk, default autoIncrement
+  column title text, not null
+  column price decimal(10,2), not null, default 0
+  column colour string(20), null
+  column sku string(16), not null
+  column weight float, null
+table things
+  column id int, not null, pk, default autoIncrement
+  column v string(255), null

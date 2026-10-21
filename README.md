@@ -13,27 +13,27 @@ ormbridge converts data models from one Object-Relational Mapper (ORM) to anothe
 
 It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you do not need Python, PHP, Go, or a database. The default `preserve` mode keeps your table and column names, so a new tool can sit on top of the database you already have. When something cannot be converted, ormbridge prints a warning that names the model and field.
 
-| Format                      | Read | Write | Notes                                                                                              |
-| --------------------------- | :--: | :---: | -------------------------------------------------------------------------------------------------- |
-| Django models               |  ✔   |   ✔   | `models.py` files or `models/` packages                                                            |
-| Prisma schema               |  ✔   |   ✔   | All six providers; Prisma 7 header with `--prisma-version 7`                                       |
-| TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                                                                     |
-| Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; one file per entity                                                              |
-| Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both                                                 |
-| GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; one file per model                                                       |
-| Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable`, `mysqlTable`, `sqliteTable` plus `relations()`                                          |
-| Zod schemas (TypeScript)    |  ✔   |   ✔   | Reads Zod 3 and Zod 4 `z.object` schemas; writes Zod 4 schemas and inferred types                  |
-| JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON)                              |
-| SQL DDL                     |  ✔   |   ✔   | Tables and migrations: PostgreSQL, CockroachDB, MySQL, SQLite, SQL Server, ClickHouse (write only) |
-| SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 (declarative, `Column()`, `Table()`) and SQLModel                                   |
-| Sequelize (JavaScript/TS)   |  ✔   |   ✔   | Sequelize 6; writes TypeScript or `sequelize-cli` (`--style define`)                               |
-| Entity Framework Core (C#)  |  ✔   |   ✔   | EF Core 8: annotations or `--style fluent`, a `DbContext`; replays migrations; `OwnsMany`          |
-| Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` or 5 `--style javax`; `@EmbeddedId` keys; Lombok option                      |
-| TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                                                          |
-| Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django                                         |
-| Neo4j (Cypher)              |      |   ✔   | Node constraints and indexes; relationships as comments; `--style enterprise` for Enterprise       |
-| Spring Data Neo4j (Java)    |      |   ✔   | SDN 7 for Spring Boot 3: `@Node`, `@Relationship`, `@RelationshipProperties` classes               |
-| neomodel (Python, Neo4j)    |      |   ✔   | `StructuredNode` classes, relationships with cardinality, `StructuredRel` for join tables          |
+| Format                      | Read | Write | Notes                                                                                                                                |
+| --------------------------- | :--: | :---: | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Django models               |  ✔   |   ✔   | `models.py` files or `models/` packages                                                                                              |
+| Prisma schema               |  ✔   |   ✔   | All six providers; Prisma 7 header with `--prisma-version 7`                                                                         |
+| TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                                                                                                       |
+| Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; one file per entity                                                                                                |
+| Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both                                                                                   |
+| GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; one file per model                                                                                         |
+| Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable`, `mysqlTable`, `sqliteTable` plus `relations()`                                                                            |
+| Zod schemas (TypeScript)    |  ✔   |   ✔   | Reads Zod 3 and Zod 4 `z.object` schemas; writes Zod 4 schemas and inferred types                                                    |
+| JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON)                                                                |
+| SQL DDL                     |  ✔   |   ✔   | Tables and migrations: PostgreSQL, CockroachDB, MySQL, SQLite, SQL Server, ClickHouse (write only)                                   |
+| SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 (declarative, `Column()`, `Table()`) and SQLModel                                                                     |
+| Sequelize (JavaScript/TS)   |  ✔   |   ✔   | Sequelize 6 and 7, `sequelize-cli` migrations; writes TypeScript, `sequelize-cli` (`--style define`) or v7 decorators (`--style v7`) |
+| Entity Framework Core (C#)  |  ✔   |   ✔   | EF Core 8: annotations or `--style fluent`, a `DbContext`; replays migrations; `OwnsMany`                                            |
+| Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` or 5 `--style javax`; `@EmbeddedId` keys; Lombok option                                                        |
+| TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                                                                                            |
+| Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django                                                                           |
+| Neo4j (Cypher)              |      |   ✔   | Node constraints and indexes; relationships as comments; `--style enterprise` for Enterprise                                         |
+| Spring Data Neo4j (Java)    |      |   ✔   | SDN 7 for Spring Boot 3: `@Node`, `@Relationship`, `@RelationshipProperties` classes                                                 |
+| neomodel (Python, Neo4j)    |      |   ✔   | `StructuredNode` classes, relationships with cardinality, `StructuredRel` for join tables                                            |
 
 Each format has a [guide](./docs/formats/README.md) and a runnable [example project](./examples/README.md).
 

@@ -105,11 +105,16 @@ export type {
 } from './emitters/sqlalchemy.js';
 export {
   emitSequelize,
+  isSequelizeOutputStyle,
   isSequelizeStyle,
+  SEQUELIZE_GENERATIONS,
+  SEQUELIZE_OUTPUT_STYLES,
   SEQUELIZE_STYLES,
 } from './emitters/sequelize.js';
 export type {
   SequelizeEmitOptions,
+  SequelizeGeneration,
+  SequelizeOutputStyle,
   SequelizeStyle,
 } from './emitters/sequelize.js';
 export {

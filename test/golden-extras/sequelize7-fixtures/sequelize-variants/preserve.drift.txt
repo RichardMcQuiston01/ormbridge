@@ -1,0 +1,1 @@
+relationRelatedName Person.friends: personset -> friendsinverse
