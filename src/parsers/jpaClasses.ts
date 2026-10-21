@@ -326,16 +326,24 @@ export function membersOf(
           nested.set(name.slice(attribute.name.length + 1), column);
         }
       }
-      members.push(
-        ...membersOf(
-          ctx,
-          target,
-          embeddableAccess(ctx.project, target, access),
-          [...path, attribute.name],
-          nested,
-          insideId || idRole
-        )
+      const inner: Member[] = membersOf(
+        ctx,
+        target,
+        embeddableAccess(ctx.project, target, access),
+        [...path, attribute.name],
+        nested,
+        insideId || idRole
       );
+      members.push(...inner);
+      if (!insideId && !idRole && path.length === 0 && inner.length > 0) {
+        ctx.warn(
+          `${place}: the embedded ${attribute.type.name} was flattened into the columns ${inner
+            .map((member: Member) => member.path.join('.'))
+            .join(
+              ', '
+            )}; the shared model has no embedded type, so other formats get plain columns and the value object itself is lost.`
+        );
+      }
       continue;
     }
     if (attribute.type.name === 'Optional') {

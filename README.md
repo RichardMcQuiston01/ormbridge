@@ -27,7 +27,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 (declarative, `Column()`, `Table()`) and SQLModel                                   |
 | Sequelize (JavaScript/TS)   |  ✔   |   ✔   | Sequelize 6; writes TypeScript or `sequelize-cli` (`--style define`)                               |
 | Entity Framework Core (C#)  |  ✔   |   ✔   | EF Core 8: annotations or `--style fluent`, and a `DbContext`                                      |
-| Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` (default) or Hibernate 5 `--style javax`                                     |
+| Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` or 5 `--style javax`; `@EmbeddedId` keys; Lombok option                      |
 | TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                                                          |
 | Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django                                         |
 | Zod schemas                 |      |   ✔   | Zod 4 schemas and inferred types                                                                   |

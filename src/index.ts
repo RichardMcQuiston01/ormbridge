@@ -120,11 +120,13 @@ export type { EfcoreEmitOptions, EfcoreStyle } from './emitters/efcore.js';
 export {
   DEFAULT_JPA_PACKAGE,
   emitJpa,
+  isJpaKeyMode,
   isJpaStyle,
   isValidJavaPackage,
+  JPA_KEY_MODES,
   JPA_STYLES,
 } from './emitters/jpa.js';
-export type { JpaEmitOptions, JpaStyle } from './emitters/jpa.js';
+export type { JpaEmitOptions, JpaKeyMode, JpaStyle } from './emitters/jpa.js';
 export { emitSdn } from './emitters/sdn.js';
 export type { SdnEmitOptions } from './emitters/sdn.js';
 export { checkStyle, isOutputStyle, OUTPUT_STYLES } from './styles.js';

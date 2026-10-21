@@ -1,7 +1,5 @@
 import type { IrField, IrModel, IrRelation } from '../ir.js';
-import { Imports, type IdPart, type JpaStyle } from './jpaTypes.js';
-
-/** Finds the primary key of a model and writes the `@IdClass` class of a composite one. */
+/** Finds the primary key of a model. The key class of a composite one is written by `jpaKeyClass.ts`. */
 
 export type KeyPart =
   | { kind: 'field'; field: IrField }
@@ -97,51 +95,4 @@ export function keyOf(
     `${model.name}: ${model.isView === true ? 'a database view' : 'the table'} has no primary key, but a JPA entity needs an identifier; the column "${chosen.columnName}" was written as the @Id (Hibernate would create a primary key on it).`
   );
   return { parts: [{ kind: 'field', field: chosen }], synthesized: true };
-}
-
-/** The text of an `@IdClass` file body: fields, constructors, `equals` and `hashCode`. */
-export function renderIdClass(
-  name: string,
-  parts: readonly IdPart[],
-  style: JpaStyle
-): { imports: Imports; lines: string[] } {
-  const imports: Imports = new Imports(style);
-  imports.use('java.io.Serializable');
-  imports.use('java.util.Objects');
-  for (const part of parts) {
-    imports.merge(part.imports);
-  }
-  const lines: string[] = [
-    `public class ${name} implements Serializable {`,
-    '  private static final long serialVersionUID = 1L;',
-    '',
-    ...parts.map((part: IdPart) => `  private ${part.type} ${part.name};`),
-    '',
-    `  public ${name}() {}`,
-    '',
-    `  public ${name}(${parts.map((part: IdPart) => `${part.type} ${part.name}`).join(', ')}) {`,
-    ...parts.map((part: IdPart) => `    this.${part.name} = ${part.name};`),
-    '  }',
-    '',
-    '  @Override',
-    '  public boolean equals(Object other) {',
-    '    if (this == other) {',
-    '      return true;',
-    '    }',
-    `    if (!(other instanceof ${name})) {`,
-    '      return false;',
-    '    }',
-    `    ${name} that = (${name}) other;`,
-    `    return ${parts
-      .map((part: IdPart) => `Objects.equals(${part.name}, that.${part.name})`)
-      .join(' && ')};`,
-    '  }',
-    '',
-    '  @Override',
-    '  public int hashCode() {',
-    `    return Objects.hash(${parts.map((part: IdPart) => part.name).join(', ')});`,
-    '  }',
-    '}',
-  ];
-  return { imports, lines };
 }
