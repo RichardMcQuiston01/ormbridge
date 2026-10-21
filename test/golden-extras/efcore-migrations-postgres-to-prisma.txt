@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["sales", "billing"]
+}
+
+model Account {
+  id          Int       @id @default(autoincrement()) @map("Id")
+  publicId    String    @default(uuid()) @map("PublicId") @db.Uuid
+  email       String    @unique @map("Email") @db.VarChar(200)
+  createdAt   DateTime  @default(now()) @map("CreatedAt") @db.Timestamptz(6)
+  scores      Int[]     @map("Scores")
+  settings    Json      @map("Settings")
+  lastAddress String?   @map("LastAddress") @db.Inet
+  balance     BigInt    @map("Balance")
+  invoice_set Invoice[]
+
+  @@index([settings], type: Gin)
+  @@map("Accounts")
+  @@schema("sales")
+}
+
+model Invoice {
+  id        Int     @id @default(autoincrement()) @map("Id")
+  amount    Decimal @map("Amount") @db.Decimal(12, 2)
+  AccountId Int
+  account   Account @relation(fields: [AccountId], references: [id], onDelete: Cascade)
+
+  @@map("Invoices")
+  @@schema("billing")
+}

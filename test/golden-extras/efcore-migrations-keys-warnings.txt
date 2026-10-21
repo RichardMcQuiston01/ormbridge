@@ -1,0 +1,2 @@
+Order.window: Prisma has no interval type; the duration was written as BigInt (microseconds).
+OrderItem.doubled: the generated column expression "Quantity" * 2 has no Prisma equivalent; it was written as a regular column, so Prisma will try to write to it.

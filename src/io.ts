@@ -134,11 +134,10 @@ const SEQUELIZE_NON_MODEL_FILE: RegExp =
   /(?:\.d\.ts|\.(?:test|spec)\.[cm]?[jt]s)$/;
 
 /**
- * Directories skipped when reading Entity Framework Core projects: migrations (their snapshot restates the
- * model as history), build output and installed packages.
+ * Directories skipped when reading Entity Framework Core projects: build output and installed packages. The
+ * Migrations folder is read: it is replayed when the input has no entity classes and skipped otherwise.
  */
 const EFCORE_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
-  'migrations',
   'bin',
   'obj',
   'packages',
@@ -147,9 +146,8 @@ const EFCORE_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   '.git',
 ]);
 
-/** Generated C# files: migration designers, the model snapshot and compiler output. */
-const EFCORE_NON_MODEL_FILE: RegExp =
-  /(?:\.(?:Designer|g|generated)\.cs|ModelSnapshot\.cs)$/i;
+/** Generated C# files: migration designers and compiler output. */
+const EFCORE_NON_MODEL_FILE: RegExp = /\.(?:Designer|g|generated)\.cs$/i;
 
 /** Directories skipped when reading Hibernate / JPA projects: build output, tool folders and installed packages. */
 const JPA_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([

@@ -1187,18 +1187,201 @@ public class T { public int Id { get; set; } public Prefs Prefs { get; set; } = 
     });
   });
 
-  it('warns about OwnsMany and skips the property', async () => {
+  it('reads OwnsMany as a child table with a foreign key to the owner and a key made of it and Id', async () => {
     const schema: IrSchema = await parse(
       context(
         `modelBuilder.Entity<T>().OwnsMany(t => t.Lines);`,
+        `public class Line { public string Text { get; set; } = null!; public int? Qty { get; set; } }
+public class T { public int Id { get; set; } public List<Line> Lines { get; set; } = new(); }`
+      )
+    );
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual([
+      'T',
+      'Line',
+    ]);
+    expect(names(schema, 'T')).toEqual(['id']);
+    const line: IrModel = model(schema, 'Line');
+    expect(line.tableName).toBe('Line');
+    expect(names(schema, 'Line')).toEqual(['id', 'text', 'qty']);
+    expect(line.compositePrimaryKey).toEqual(['t', 'id']);
+    expect(field(schema, 'Line', 'id')).toMatchObject({
+      type: 'int',
+      isPrimaryKey: false,
+      default: { kind: 'autoIncrement' },
+    });
+    expect(relation(schema, 'Line', 't')).toEqual({
+      name: 't',
+      kind: 'foreignKey',
+      targetModel: 'T',
+      columnName: 'TId',
+      isNullable: false,
+      onDelete: 'cascade',
+      relatedName: 'lines',
+    });
+    expect(schema.warnings).toEqual([]);
+  });
+
+  it('keeps a declared Id property of the owned type as the second key column', async () => {
+    const schema: IrSchema = await parse(
+      context(
+        `modelBuilder.Entity<T>().OwnsMany(t => t.Lines);`,
+        `public class Line { public long Id { get; set; } public string Text { get; set; } = null!; }
+public class T { public Guid Id { get; set; } public List<Line> Lines { get; set; } = new(); }`
+      )
+    );
+    expect(names(schema, 'Line')).toEqual(['id', 'text']);
+    expect(model(schema, 'Line').compositePrimaryKey).toEqual(['t', 'id']);
+    expect(field(schema, 'Line', 'id')).toMatchObject({
+      type: 'bigInt',
+      default: { kind: 'autoIncrement' },
+    });
+    expect(relation(schema, 'Line', 't').columnName).toBe('TId');
+  });
+
+  it('reads owned collections inside owned collections, with composite foreign keys', async () => {
+    const schema: IrSchema = await parse(
+      context(
+        `modelBuilder.Entity<Customer>().OwnsMany(c => c.Orders, o => o.OwnsMany(x => x.Lines));`,
+        `public class Line { public string Sku { get; set; } = null!; }
+public class Order { public string Number { get; set; } = null!; public List<Line> Lines { get; set; } = new(); }
+public class Customer { public int Id { get; set; } public List<Order> Orders { get; set; } = new(); }`
+      )
+    );
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual([
+      'Customer',
+      'Order',
+      'Line',
+    ]);
+    expect(model(schema, 'Order').compositePrimaryKey).toEqual([
+      'customer',
+      'id',
+    ]);
+    expect(names(schema, 'Line')).toEqual([
+      'orderCustomerId',
+      'orderId',
+      'id',
+      'sku',
+    ]);
+    expect(model(schema, 'Line').compositePrimaryKey).toEqual([
+      'orderCustomerId',
+      'orderId',
+      'id',
+    ]);
+    expect(model(schema, 'Line').compositeForeignKeys).toEqual([
+      {
+        name: 'order',
+        targetModel: 'Order',
+        fields: ['orderCustomerId', 'orderId'],
+        references: ['customer', 'id'],
+        kind: 'foreignKey',
+        isNullable: false,
+        onDelete: 'cascade',
+        relatedName: 'lines',
+      },
+    ]);
+  });
+
+  it('applies ToTable, column settings, indexes and owned types inside OwnsMany to the child table', async () => {
+    const schema: IrSchema = await parse(
+      context(
+        `modelBuilder.Entity<T>().OwnsMany(t => t.Lines, l => {
+          l.ToTable("t_lines", "shop");
+          l.Property(x => x.Sku).HasColumnName("sku_code").HasMaxLength(30);
+          l.HasIndex(x => x.Sku).IsUnique();
+          l.OwnsOne(x => x.Where);
+        });`,
+        `public class Geo { public double Lat { get; set; } }
+public class Line { public string Sku { get; set; } = null!; public Geo Where { get; set; } = null!; }
+public class T { public int Id { get; set; } public List<Line> Lines { get; set; } = new(); }`
+      )
+    );
+    const line: IrModel = model(schema, 'Line');
+    expect(line.tableName).toBe('t_lines');
+    expect(line.schema).toBe('shop');
+    expect(field(schema, 'Line', 'sku')).toMatchObject({
+      columnName: 'sku_code',
+      type: 'string',
+      maxLength: 30,
+      isUnique: true,
+    });
+    expect(field(schema, 'Line', 'whereLat').columnName).toBe('Where_Lat');
+    // The index belongs to the child table, not to the owner.
+    expect(model(schema, 'T').indexes).toEqual([]);
+    expect(model(schema, 'T').fields.map((item) => item.name)).toEqual(['id']);
+  });
+
+  it('reads an [Owned] type used in a collection and does not make an entity of an owned type with annotations', async () => {
+    const schema: IrSchema = await parse(
+      `[Owned] public class Tag { public string Label { get; set; } = null!; }
+public class Note { [Column("body_text")] public string Text { get; set; } = null!; }
+public class T { public int Id { get; set; } public List<Tag> Tags { get; set; } = new(); public List<Note> Notes { get; set; } = new(); }
+public class C : DbContext {
+  public DbSet<T> Ts => Set<T>();
+  protected override void OnModelCreating(ModelBuilder modelBuilder) { modelBuilder.Entity<T>().OwnsMany(t => t.Notes); }
+}`
+    );
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual([
+      'T',
+      'Tag',
+      'Note',
+    ]);
+    expect(field(schema, 'Note', 'text').columnName).toBe('body_text');
+    expect(schema.warnings).toEqual([]);
+  });
+
+  it('names the tables of a type that two owners own after the owner and the collection', async () => {
+    const schema: IrSchema = await parse(
+      context(
+        `modelBuilder.Entity<A>().OwnsMany(a => a.Notes);
+         modelBuilder.Entity<B>().OwnsMany(b => b.Notes);`,
+        `public class Note { public string Text { get; set; } = null!; }
+public class A { public int Id { get; set; } public List<Note> Notes { get; set; } = new(); }
+public class B { public Guid Id { get; set; } public List<Note> Notes { get; set; } = new(); }`
+      )
+    );
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual([
+      'A',
+      'Note',
+      'B',
+      'BNote',
+    ]);
+    expect(model(schema, 'Note').tableName).toBe('A_Notes');
+    expect(model(schema, 'BNote').tableName).toBe('B_Notes');
+    expect(relation(schema, 'BNote', 'b').columnName).toBe('BId');
+  });
+
+  it('warns when the owner of an owned collection has no key, and reads an owned collection stored as JSON as a column', async () => {
+    const schema: IrSchema = await parse(
+      context(
+        `modelBuilder.Entity<T>().HasNoKey().OwnsMany(t => t.Lines);
+         modelBuilder.Entity<U>().OwnsMany(u => u.Lines, l => l.ToJson());`,
+        `public class Line { public string Text { get; set; } = null!; }
+public class T { public string Name { get; set; } = null!; public List<Line> Lines { get; set; } = new(); }
+public class U { public int Id { get; set; } public List<Line> Lines { get; set; } = new(); }`
+      )
+    );
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual(['T', 'U']);
+    expect(
+      warningsMatching(schema, /T\.Lines: the owned collection of Line needs T/)
+    ).toHaveLength(1);
+    expect(field(schema, 'U', 'lines')).toMatchObject({
+      type: 'json',
+      isNullable: false,
+    });
+  });
+
+  it('warns that HasKey inside OwnsMany is not interpreted', async () => {
+    const schema: IrSchema = await parse(
+      context(
+        `modelBuilder.Entity<T>().OwnsMany(t => t.Lines, l => l.HasKey(x => x.Text));`,
         `public class Line { public string Text { get; set; } = null!; }
 public class T { public int Id { get; set; } public List<Line> Lines { get; set; } = new(); }`
       )
     );
-    expect(names(schema, 'T')).toEqual(['id']);
-    expect(warningsMatching(schema, /owned collection of Line/)).toHaveLength(
-      1
-    );
+    expect(
+      warningsMatching(schema, /HasKey\(\.\.\.\) inside the owned collection/)
+    ).toHaveLength(1);
+    expect(model(schema, 'Line').compositePrimaryKey).toEqual(['t', 'id']);
   });
 
   it('reads views and warns about ToSqlQuery', async () => {
@@ -2110,7 +2293,7 @@ describe('extras fixture', () => {
     ]);
   });
 
-  it.each(['shop', 'inheritance', 'library'])(
+  it.each(['shop', 'inheritance', 'library', 'orders'])(
     'matches the Prisma golden for %s',
     async (group: string) => {
       const result: ConvertResult = await convertExtras(group);
@@ -2118,7 +2301,7 @@ describe('extras fixture', () => {
     }
   );
 
-  it.each(['shop', 'inheritance', 'library'])(
+  it.each(['shop', 'inheritance', 'library', 'orders'])(
     'matches the warnings golden for %s',
     async (group: string) => {
       const result: ConvertResult = await convertExtras(group);

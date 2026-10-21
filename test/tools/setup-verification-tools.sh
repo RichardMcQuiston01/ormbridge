@@ -235,13 +235,21 @@ if want dotnet; then
   if [ -n "${dotnet_bin}" ]; then
     mkdir -p "${target}/efcore"
     scratch="$(mktemp -d)"
-    cp "${here}/efcore-verify/EfcoreVerify.csproj" "${here}/efcore-verify/Program.cs" "${scratch}/"
-    # Restoring fills the NuGet cache that the test uses (NUGET_PACKAGES); the test then needs no network.
-    if (
-      cd "${scratch}"
-      NUGET_PACKAGES="${target}/efcore/nuget" DOTNET_CLI_HOME="${target}/efcore/home" \
-        DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 "${dotnet_bin}" restore --verbosity quiet >&2
-    ); then
+    # Restoring fills the NuGet cache that the tests use (NUGET_PACKAGES); the tests then need no network. The second
+    # project (migrations) adds the design-time package that writes migration code.
+    restored="yes"
+    for project in efcore-verify efcore-migrations-verify; do
+      rm -rf "${scratch:?}"/*
+      cp "${here}/${project}"/*.csproj "${here}/${project}/Program.cs" "${scratch}/"
+      if ! (
+        cd "${scratch}"
+        NUGET_PACKAGES="${target}/efcore/nuget" DOTNET_CLI_HOME="${target}/efcore/home" \
+          DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 "${dotnet_bin}" restore --verbosity quiet >&2
+      ); then
+        restored=""
+      fi
+    done
+    if [ -n "${restored}" ]; then
       efcore_ready="yes"
     else
       echo "Restoring the EF Core packages failed; the EF Core verification tests will be skipped." >&2
