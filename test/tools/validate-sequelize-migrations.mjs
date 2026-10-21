@@ -41,6 +41,8 @@ try {
     join(sequelizeDir, 'node_modules', '.bin', 'sequelize-cli'),
     [
       'db:migrate',
+      '--env',
+      'development',
       '--config',
       config,
       '--migrations-path',
