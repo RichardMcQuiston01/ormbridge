@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.15.0 - 2026-10-21
+
+Two more migration readers and a new Sequelize generation: EF Core migrations are replayed (with `OwnsMany`), and `sequelize-cli` migrations are replayed while Sequelize 7 is read and written. **Output change:** the EF Core reader (`OwnsMany` properties are now models; a directory input also reads `Migrations/`) and the Sequelize reader (a project root with migrations but no models is converted; `uuidv4`/`uuidV1` defaults are read as UUID defaults; the `--style` error text and the `formats` line list the new styles); every other conversion is unchanged.
+
 EF Core migrations can be read and `OwnsMany` is supported. `--from efcore` on a folder of migrations without entity classes replays the `Up` methods in migration order into one schema (a `*ModelSnapshot.cs` that agrees supplies the entity and property names), and an owned collection (`OwnsMany`) is a child model with a foreign key to its owner. **Output change:** `OwnsMany` properties used to be skipped with a warning and are now models; `--from efcore` on a directory now also passes the `Migrations` folder and the snapshot to the reader, which skips them with one warning when the input has entity classes and replays them when it has none (such input used to fail with `NO_MODELS_FOUND`).
 
 The Sequelize gaps are closed: `sequelize-cli` migrations are replayed, and Sequelize 7 (`@sequelize/core`) is read and written. **Output change:** none for existing conversions, except for the `--style` error message and the `ormbridge formats` line of `sequelize` (they list the new styles), the reading of a few defaults in Sequelize files (below), and the Sequelize reader now reading a project root that has migrations but no model files, which used to fail with `NO_INPUT_FILES`. Every existing golden file passes untouched.
