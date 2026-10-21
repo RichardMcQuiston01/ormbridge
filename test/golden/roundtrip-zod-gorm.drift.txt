@@ -1,0 +1,38 @@
+@@ models/category.go
++ CreatedAt time.Time `gorm:"column:createdAt;not null"`
++ ParentID  *int32    `gorm:"column:parentId"`
++ UpdatedAt time.Time `gorm:"column:updatedAt;not null"`
+- CreatedAt time.Time `gorm:"not null;autoCreateTime"`
+- ParentID  *int32
+- UpdatedAt time.Time `gorm:"not null"`
+@@ models/post.go
++ AuthorID    int32            `gorm:"column:authorId;not null"`
++ CategoryID  int32            `gorm:"column:categoryId;not null"`
++ CreatedAt   time.Time        `gorm:"column:createdAt;not null"`
++ EditorID    *int32           `gorm:"column:editorId"`
++ IsFeatured  bool             `gorm:"column:isFeatured;not null"`
++ Metadata    datatypes.JSON   `gorm:"not null"`
++ PublicID    uuid.UUID        `gorm:"column:publicId;type:uuid;not null"`
++ PublishedAt time.Time        `gorm:"column:publishedAt;not null"`
++ Status      PostStatus       `gorm:"not null"`
++ UpdatedAt   time.Time        `gorm:"column:updatedAt;not null"`
++ ViewCount   int32            `gorm:"column:viewCount;not null"`
+- AuthorID    int32            `gorm:"not null"`
+- CategoryID  int32 `gorm:"not null"`
+- CreatedAt   time.Time        `gorm:"not null;autoCreateTime"`
+- EditorID    *int32
+- IsFeatured  bool             `gorm:"not null;default:false"`
+- Metadata    datatypes.JSON   `gorm:"not null;default:'{}'"`
+- PublicID    uuid.UUID        `gorm:"type:uuid;not null"`
+- PublishedAt time.Time        `gorm:"not null;autoCreateTime"`
+- Status      PostStatus       `gorm:"not null;default:draft"`
+- UpdatedAt   time.Time        `gorm:"not null"`
+- ViewCount   int32            `gorm:"not null;default:0"`
+@@ models/post_tags.go
++ PostID int32 `gorm:"column:postId;not null"`
++ TagID  int32 `gorm:"column:tagId;not null"`
+- PostID int32 `gorm:"not null"`
+- TagID  int32 `gorm:"not null"`
+@@ models/profile.go
++ UserID int32   `gorm:"column:userId;not null"`
+- UserID int32   `gorm:"not null"`

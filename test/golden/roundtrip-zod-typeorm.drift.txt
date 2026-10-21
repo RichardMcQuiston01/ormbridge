@@ -1,0 +1,16 @@
++ @Column({ type: 'boolean' })
++ @Column({ type: 'enum', enum: PostStatus })
++ @Column({ type: 'int' })
++ @Column({ type: 'jsonb' })
++ @Column({ type: 'timestamptz' })
++ @Column({ type: 'timestamptz' })
++ @Column({ type: 'timestamptz' })
++ import { Column, Entity, PrimaryColumn } from 'typeorm';
+- @Column({ type: 'boolean', default: false })
+- @Column({ type: 'enum', enum: PostStatus, default: PostStatus.DRAFT })
+- @Column({ type: 'int', default: 0 })
+- @Column({ type: 'jsonb', default: () => "'{}'" })
+- @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+- @CreateDateColumn({ type: 'timestamptz' })
+- @CreateDateColumn({ type: 'timestamptz' })
+- import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';

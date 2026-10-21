@@ -20,7 +20,7 @@
 #   ajv       Ajv and ajv-formats (AJV_DIR)
 #   drizzle   Drizzle ORM and drizzle-kit (DRIZZLE_DIR)
 #   sequelize Sequelize 6 (SEQUELIZE_DIR)
-#   zod       Zod 4 (ZOD_DIR)
+#   zod       Zod 4 and, as the alias zod3, Zod 3 (ZOD_DIR)
 #   sql       better-sqlite3 for the SQL DDL tests (SQL_DIR)
 #   prisma    the Prisma CLI, major versions 6 and 7 (PRISMA6_BIN, PRISMA7_BIN)
 #   node      typeorm, ajv, drizzle, sequelize, zod, sql and prisma
@@ -145,11 +145,13 @@ install_sequelize() {
 }
 
 install_zod() {
-  echo "Installing Zod 4, TypeScript and tsx into ${target}/zod" >&2
+  echo "Installing Zod 4, Zod 3 (as zod3), TypeScript and tsx into ${target}/zod" >&2
   mkdir -p "${target}/zod"
   cd "${target}/zod"
   [ -f package.json ] || npm init -y > /dev/null
-  npm install --silent zod@4 typescript tsx @types/node
+  # Both Zod releases are pinned, so a new release cannot break the job. The Zod reader tests (zod-parser-verify) run
+  # the fixtures with each, Zod 3 under the package alias "zod3"; the Zod writer tests (zod-verify) use Zod 4.
+  npm install --silent zod@4.6.4 zod3@npm:zod@3.25.76 typescript tsx @types/node
 }
 
 install_sql() {

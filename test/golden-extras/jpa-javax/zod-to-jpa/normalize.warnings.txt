@@ -1,0 +1,1 @@
+Post.metadata: Hibernate 5 has no JSON type; the column was written as a String with the column definition jsonb, and the JSON text is yours to read and write (the hibernate-types library adds a mapping).

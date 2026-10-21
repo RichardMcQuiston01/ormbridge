@@ -36,6 +36,8 @@ export type {
   DrizzleSourceFile,
   DrizzleParseOptions,
 } from './parsers/drizzle.js';
+export { parseZod } from './parsers/zod.js';
+export type { ZodSourceFile, ZodParseOptions } from './parsers/zod.js';
 export { parseEfcore, isSkippedEfcorePath } from './parsers/efcore.js';
 export type { EfcoreParseOptions, EfcoreSourceFile } from './parsers/efcore.js';
 export { parseJpa, isSkippedJpaPath } from './parsers/jpa.js';

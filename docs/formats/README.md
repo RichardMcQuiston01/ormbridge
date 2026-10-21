@@ -11,6 +11,7 @@ One guide per format: what is read, what is written, the options that apply, and
 | [Laravel](laravel.md)                   |  yes  |  yes   | Migrations are replayed; Eloquent models name relations   |
 | [GORM](gorm.md)                         |  yes  |  yes   | Go structs with `gorm` tags                               |
 | [Drizzle](drizzle.md)                   |  yes  |  yes   | `pgTable`, `mysqlTable`, `sqliteTable`                    |
+| [Zod](zod.md)                           |  yes  |  yes   | Reads Zod 3 and 4, writes Zod 4 schemas                   |
 | [JSON Schema / OpenAPI](json-schema.md) |  yes  |  yes   | Draft 2020-12 and `components.schemas`                    |
 | [SQL DDL](sql.md)                       |  yes  |  yes   | PostgreSQL, MySQL, SQLite, SQL Server                     |
 | [SQLAlchemy / SQLModel](sqlalchemy.md)  |  yes  |  yes   | Declarative, `Column()` and `Table()` styles              |
@@ -19,7 +20,6 @@ One guide per format: what is read, what is written, the options that apply, and
 | [Hibernate / JPA](jpa.md)               |  yes  |  yes   | Java entities, `--style jakarta` (default) or `javax`     |
 | [Graphene](graphene.md)                 |  no   |  yes   | graphene-django GraphQL schema                            |
 | [TypeScript](typescript.md)             |  no   |  yes   | Plain interfaces and enums                                |
-| [Zod](zod.md)                           |  no   |  yes   | Zod 4 schemas                                             |
 | [Neo4j](neo4j.md)                       |  no   |  yes   | Cypher constraints and indexes; `--style enterprise`      |
 | [neomodel](neomodel.md)                 |  no   |  yes   | Python `StructuredNode` classes for Neo4j                 |
 | [Spring Data Neo4j](sdn.md)             |  no   |  yes   | Java `@Node` classes (SDN 7, Spring Boot 3); `--to sdn`   |
