@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Writer {
+  id    Int    @id @default(autoincrement()) @map("Id")
+  name  String @map("Name") @db.Text
+  books Book[]
+
+  @@map("People")
+}
+
+model Book {
+  id       Int    @id @default(autoincrement()) @map("Id")
+  title    String @map("Headline") @db.Text
+  WriterId Int
+  writer   Writer @relation(fields: [WriterId], references: [id], onDelete: Cascade)
+
+  @@index([title], map: "IX_Books_ByTitle")
+  @@map("Books")
+}

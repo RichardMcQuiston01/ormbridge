@@ -152,6 +152,7 @@ jobs:
           test/efcore-emitter.test.ts
           test/efcore-emitter-verify.test.ts
           test/efcore-parser-verify.test.ts
+          test/efcore-migrations-verify.test.ts
 
   # Hibernate ORM 6 and 5 (reader and writer), with Maven.
   real-tools-java:

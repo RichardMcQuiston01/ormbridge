@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id     Int     @id @default(autoincrement()) @map("Id")
+  name   String  @map("Name") @db.VarChar(60)
+  orders Order[]
+  notes  Note[]
+  tags   Tag[]
+
+  @@map("Customers")
+}
+
+model Order {
+  id             Int      @default(autoincrement()) @map("Id")
+  number         String   @unique @map("Number") @db.Text
+  total          Decimal  @map("Total") @db.Decimal(12, 2)
+  shippingStreet String?  @map("Shipping_Street") @db.Text
+  shippingCity   String?  @map("Shipping_City") @db.Text
+  CustomerId     Int
+  customer       Customer @relation(fields: [CustomerId], references: [id], onDelete: Cascade)
+
+  @@id([CustomerId, id])
+}
+
+model OrderLine {
+  orderCustomerId Int    @map("OrderCustomerId")
+  orderId         Int    @map("OrderId")
+  id              Int    @default(autoincrement()) @map("Id")
+  sku             String @map("Sku") @db.Text
+  quantity        Int    @map("Quantity")
+
+  @@id([orderCustomerId, orderId, id])
+}
+
+model Note {
+  id         Int      @default(autoincrement()) @map("Id")
+  text       String   @map("Text") @db.Text
+  CustomerId Int
+  customer   Customer @relation(fields: [CustomerId], references: [id], onDelete: Cascade)
+
+  @@id([CustomerId, id])
+  @@map("Customers_Notes")
+}
+
+model Tag {
+  id         Int      @default(autoincrement()) @map("Id")
+  label      String   @map("Label") @db.Text
+  CustomerId Int
+  customer   Customer @relation(fields: [CustomerId], references: [id], onDelete: Cascade)
+
+  @@id([CustomerId, id])
+}
+
+model Supplier {
+  id       String         @id @default(uuid()) @map("Id") @db.Uuid
+  name     String         @map("Name") @db.Text
+  notes    SupplierNote[]
+  contacts Contact[]
+
+  @@map("Suppliers")
+}
+
+model SupplierNote {
+  id         Int      @default(autoincrement()) @map("Id")
+  text       String   @map("Text") @db.Text
+  SupplierId String   @db.Uuid
+  supplier   Supplier @relation(fields: [SupplierId], references: [id], onDelete: Cascade)
+
+  @@id([SupplierId, id])
+  @@map("Suppliers_Notes")
+}
+
+model Contact {
+  id         Int      @default(autoincrement()) @map("Id")
+  email      String   @map("email_address") @db.Text
+  phone      String?  @map("Phone") @db.Text
+  SupplierId String   @db.Uuid
+  supplier   Supplier @relation(fields: [SupplierId], references: [id], onDelete: Cascade)
+
+  @@id([SupplierId, id])
+  @@map("supplier_contacts")
+}

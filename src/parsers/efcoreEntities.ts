@@ -8,6 +8,7 @@ import {
 import {
   annotateProperty,
   isOwnedByAttribute,
+  newEntityConfig,
   newOwnedConfig,
 } from './efcoreAnnotations.js';
 import type { ConfigStore } from './efcoreFluent.js';
@@ -17,6 +18,7 @@ import type {
   Member,
   NavMember,
   OwnedConfig,
+  OwnedManyMember,
   PropConfig,
   Project,
   Scope,
@@ -189,6 +191,12 @@ interface ClassifyContext {
   nullableRefs: boolean;
   warn: (message: string) => void;
   place: string;
+  /** The entity whose members are being read. */
+  entity: string;
+  /** Receives the child entity of every owned collection found. */
+  children: EntityInfo[];
+  /** Entity names in use, so that the child of an owned collection gets a name of its own. */
+  usedNames: Set<string>;
 }
 
 function isOwnedProperty(
@@ -216,6 +224,102 @@ function isNavigation(type: CsType, ctx: ClassifyContext): boolean {
     !ctx.enumNames.has(inner.name) &&
     type.arrayDepth === 0
   );
+}
+
+/**
+ * Reads the members of an owned type: annotations on its properties apply unless the fluent API said otherwise, and
+ * the columns are prefixed with the navigation path (`Address_Street`) unless the type has a table of its own.
+ */
+function readOwnedMembers(
+  nested: CsClass,
+  ownedScope: OwnedConfig,
+  prefix: string,
+  forceNullable: boolean,
+  depth: number,
+  ctx: ClassifyContext
+): Member[] {
+  const ownedChain: CsClass[] = classChain(nested, ctx.project);
+  const ownedProperties: CsProperty[] = ownedChain.flatMap(
+    (item: CsClass) => item.properties
+  );
+  for (const ownedProperty of ownedProperties) {
+    const fluent: PropConfig | undefined = ownedScope.props.get(
+      ownedProperty.name
+    );
+    const annotated: PropConfig = {};
+    annotateProperty(ownedProperty, annotated, ctx.store.consts);
+    ownedScope.props.set(ownedProperty.name, { ...annotated, ...fluent });
+    if (annotated.ignored === true) {
+      ownedScope.ignored.add(ownedProperty.name);
+    }
+  }
+  const ownedMembers: Member[] = [];
+  const ownedSubst: Map<CsClass, Map<string, CsType>> = substitutions(
+    ownedChain
+  );
+  for (const ownedClass of ownedChain) {
+    classifyProperties(
+      ownedClass.properties,
+      ownedClass,
+      ownedScope,
+      prefix,
+      forceNullable,
+      depth + 1,
+      { ...ctx, subst: ownedSubst, declaredIn: ownedClass.name },
+      ownedMembers
+    );
+  }
+  return ownedMembers;
+}
+
+/**
+ * An owned collection is a table of its own with a foreign key to the owner, so it becomes a child entity. Its key
+ * and foreign key are added once the owner's key is known (see `completeOwnedCollections`).
+ */
+function readOwnedCollection(
+  property: CsProperty,
+  nested: CsClass,
+  ownedScope: OwnedConfig,
+  depth: number,
+  ctx: ClassifyContext
+): OwnedManyMember {
+  let name: string = nested.name;
+  if (ctx.usedNames.has(name)) {
+    name = `${ctx.entity}${nested.name}`;
+  }
+  for (let suffix: number = 2; ctx.usedNames.has(name); suffix += 1) {
+    name = `${ctx.entity}${nested.name}${suffix}`;
+  }
+  ctx.usedNames.add(name);
+  const config: EntityConfig = {
+    ...newEntityConfig(name),
+    props: ownedScope.props,
+    ignored: ownedScope.ignored,
+    owned: ownedScope.owned,
+    indexes: ownedScope.indexes,
+    ...(ownedScope.table === undefined ? {} : { table: ownedScope.table }),
+    ...(ownedScope.schema === undefined ? {} : { schema: ownedScope.schema }),
+  };
+  const members: Member[] = readOwnedMembers(
+    nested,
+    ownedScope,
+    '',
+    false,
+    depth,
+    { ...ctx, entity: name }
+  );
+  ctx.children.push({
+    name,
+    cls: nested,
+    config,
+    root: name,
+    derived: [],
+    members,
+    nullableRefs: ctx.nullableRefs,
+    order: ctx.project.classOrder.get(nested.name) ?? 0,
+    ownedBy: { owner: ctx.entity, navigation: property.name },
+  });
+  return { kind: 'ownedMany', name: property.name, child: name };
 }
 
 /** Classifies the properties of one class (and its owned types) into scalar columns and navigations. */
@@ -254,9 +358,15 @@ function classifyProperties(
       const ownedScope: OwnedConfig =
         scope.owned.get(property.name) ??
         newOwnedConfig(property.name, isCollectionType(type));
-      if (ownedScope.many || isCollectionType(type)) {
-        ctx.warn(
-          `${place}: the owned collection of ${inner.name} is stored in a separate table, which is not represented; the property was skipped.`
+      if ((ownedScope.many || isCollectionType(type)) && !ownedScope.toJson) {
+        if (prefix !== '' || nested === undefined || depth >= MAX_OWNED_DEPTH) {
+          ctx.warn(
+            `${place}: the owned collection of ${inner.name} is not in the input, nested too deeply or inside an owned type, so it is not represented; the property was skipped.`
+          );
+          continue;
+        }
+        members.push(
+          readOwnedCollection(property, nested, ownedScope, depth, ctx)
         );
         continue;
       }
@@ -285,39 +395,16 @@ function classifyProperties(
         );
         continue;
       }
-      const ownedChain: CsClass[] = classChain(nested, ctx.project);
-      const ownedProperties: CsProperty[] = ownedChain.flatMap(
-        (item: CsClass) => item.properties
-      );
-      // Annotations on the owned type's properties apply unless the fluent API said otherwise.
-      for (const ownedProperty of ownedProperties) {
-        const fluent: PropConfig | undefined = ownedScope.props.get(
-          ownedProperty.name
-        );
-        const annotated: PropConfig = {};
-        annotateProperty(ownedProperty, annotated, ctx.store.consts);
-        ownedScope.props.set(ownedProperty.name, { ...annotated, ...fluent });
-        if (annotated.ignored === true) {
-          ownedScope.ignored.add(ownedProperty.name);
-        }
-      }
-      const ownedMembers: Member[] = [];
-      const ownedSubst: Map<CsClass, Map<string, CsType>> = substitutions(
-        ownedChain
-      );
-      for (const ownedClass of ownedChain) {
-        classifyProperties(
-          ownedClass.properties,
-          ownedClass,
+      members.push(
+        ...readOwnedMembers(
+          nested,
           ownedScope,
           `${prefix}${property.name}.`,
           forceNullable || type.nullable,
-          depth + 1,
-          { ...ctx, subst: ownedSubst, declaredIn: ownedClass.name },
-          ownedMembers
-        );
-      }
-      members.push(...ownedMembers);
+          depth,
+          ctx
+        )
+      );
       continue;
     }
     if (isKnownScalar(type, ctx.enumNames) || isKnownUnsupported(type)) {
@@ -421,6 +508,9 @@ export function expandEntities(
       nullableRefs: false,
       warn: () => undefined,
       place: cls.name,
+      entity: cls.name,
+      children: [],
+      usedNames: new Set(),
     };
     for (const item of chain) {
       for (const property of item.properties) {
@@ -476,6 +566,8 @@ export function buildEntities(
 ): EntityInfo[] {
   const entityNames: ReadonlySet<string> = new Set(store.entityOrder);
   const infos: Map<string, EntityInfo> = new Map();
+  const children: EntityInfo[] = [];
+  const usedNames: Set<string> = new Set(store.entityOrder);
 
   // First the hierarchy: which entity is the base of which.
   const baseOf: Map<string, string> = new Map();
@@ -561,6 +653,9 @@ export function buildEntities(
           nullableRefs,
           warn: (message: string) => project.warnings.push(message),
           place: item.name,
+          entity: name,
+          children,
+          usedNames,
         },
         members
       );
@@ -636,9 +731,23 @@ export function buildEntities(
       infos.get(info.root)?.derived.push(info.name);
     }
   }
-  return [...infos.values()].sort(
+  const sorted: EntityInfo[] = [...infos.values()].sort(
     (first: EntityInfo, second: EntityInfo) => first.order - second.order
   );
+  // The child entity of an owned collection follows its owner.
+  const ordered: EntityInfo[] = [];
+  const add = (info: EntityInfo): void => {
+    ordered.push(info);
+    for (const child of children) {
+      if (child.ownedBy?.owner === info.name) {
+        add(child);
+      }
+    }
+  };
+  for (const info of sorted) {
+    add(info);
+  }
+  return ordered;
 }
 
 /** Names the mapped scalar members of an entity. */

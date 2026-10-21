@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Employee {
+  id        Int              @id @default(autoincrement()) @map("Id")
+  name      String           @map("Name") @db.Text
+  ManagerId Int?
+  manager   Employee?        @relation("Employee_manager", fields: [ManagerId], references: [id], onDelete: Cascade)
+  reports   Employee[]       @relation("Employee_manager")
+  profile   EmployeeProfile?
+
+  @@map("Employees")
+}
+
+model Order {
+  id        String      @id @map("Id") @db.Uuid
+  status    String      @map("Status") @db.VarChar(20)
+  review    Int         @map("Review")
+  placedOn  DateTime    @map("PlacedOn") @db.Date
+  placedAt  DateTime    @map("PlacedAt") @db.Time(6)
+  window    BigInt      @map("Window")
+  signature Bytes?      @map("Signature")
+  paid      Boolean     @default(false) @map("Paid")
+  weight    Float       @map("Weight")
+  priority  Int         @map("Priority")
+  items     OrderItem[]
+
+  @@map("Orders")
+}
+
+model Product {
+  id      Int     @id @default(autoincrement()) @map("Id")
+  sku     String  @unique @map("Sku") @db.Text
+  price   Decimal @map("Price") @db.Decimal(10, 4)
+  barcode String? @unique @map("Barcode") @db.Text
+  stocks  Stock[]
+
+  @@map("Products")
+}
+
+model EmployeeProfile {
+  bio        String?  @map("Bio") @db.Text
+  EmployeeId Int      @id
+  employee   Employee @relation(fields: [EmployeeId], references: [id], onDelete: Cascade)
+
+  @@map("Profiles")
+}
+
+model OrderItem {
+  lineNo   Int    @map("LineNo")
+  quantity Int    @map("Quantity")
+  doubled  Int    @map("Doubled")
+  OrderId  String @db.Uuid
+  order    Order  @relation(fields: [OrderId], references: [id], onDelete: Cascade)
+
+  @@id([OrderId, lineNo])
+  @@map("OrderItems")
+}
+
+model Stock {
+  id         Int     @id @default(autoincrement()) @map("Id")
+  quantity   BigInt  @map("Quantity")
+  ProductSku Int
+  product    Product @relation(fields: [ProductSku], references: [id], onDelete: Cascade)
+
+  @@map("Stocks")
+}
