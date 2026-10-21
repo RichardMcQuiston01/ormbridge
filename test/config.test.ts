@@ -265,11 +265,11 @@ describe('parseConfig validation', () => {
     [{ goPackage: '' }, '"goPackage" must be a non-empty string'],
     [
       { style: 'peewee' },
-      '"style" must be one of sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax, community, enterprise (got "peewee")',
+      '"style" must be one of sqlalchemy, sqlmodel, init, define, v6, v7, annotations, fluent, jakarta, javax, community, enterprise (got "peewee")',
     ],
     [
       { style: 3 },
-      '"style" must be one of sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax, community, enterprise (got 3)',
+      '"style" must be one of sqlalchemy, sqlmodel, init, define, v6, v7, annotations, fluent, jakarta, javax, community, enterprise (got 3)',
     ],
     [
       { jpaKey: 'composite' },

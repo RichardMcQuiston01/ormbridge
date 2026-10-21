@@ -2,7 +2,7 @@
 // in-memory SQLite database back through Sequelize's query interface and the SQLite PRAGMAs.
 //
 // Output: { tables: { [table]: { columns, primaryKey, indexes, foreignKeys } } }
-//   columns:     [{ name, allowNull, primaryKey }]  (queryInterface.describeTable)
+//   columns:     [{ name, allowNull, primaryKey, type, defaultValue }]  (queryInterface.describeTable)
 //   primaryKey:  column names in key order          (PRAGMA table_info)
 //   indexes:     [{ name, unique, origin, columns }] (PRAGMA index_list and index_info)
 //   foreignKeys: [{ column, table, to, onDelete, onUpdate }] (PRAGMA foreign_key_list)
@@ -37,6 +37,8 @@ export async function introspect(sequelize, QueryTypes) {
       name: column,
       allowNull: info.allowNull,
       primaryKey: info.primaryKey,
+      type: info.type,
+      defaultValue: info.defaultValue === undefined ? null : info.defaultValue,
     }));
     const info = await pragma(`PRAGMA table_info('${name}')`);
     const primaryKey = info

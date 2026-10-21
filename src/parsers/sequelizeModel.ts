@@ -8,6 +8,8 @@ export interface FileInfo {
   root: SyntaxNode;
   /** Every `const name = <value>` in the file, so `sequelize.define('X', attributes)` can be followed. */
   consts: Map<string, SyntaxNode>;
+  /** 7 when the file imports from the `@sequelize` scope (`@sequelize/core`), else 6. */
+  generation: 6 | 7;
 }
 
 /** A node together with the file it was read from, for lookups that may leave the file. */
@@ -109,8 +111,13 @@ export interface AssociationOptions {
   targetKey?: string;
   onDelete?: string;
   onUpdate?: string;
-  /** `constraints: false` */
+  /** `constraints: false` (`foreignKeyConstraints: false` in Sequelize 7) */
   constraints?: boolean;
+  /**
+   * Sequelize 7 `inverse`: the association the other side gets. On a `belongsTo` it names the reverse
+   * (`hasMany` unless `type` says `hasOne`); on the others it names the `belongsTo`.
+   */
+  inverse?: { as?: string; type?: 'hasMany' | 'hasOne' };
   /** `through` for `belongsToMany`: a join table name or a reference to a model. */
   through?: { table?: string; model?: string; unique?: boolean };
   /** `scope`, `inverse` and other options this reader does not model. */
@@ -149,6 +156,8 @@ export interface ModelOptions {
   deletedAt: string | false;
   /** `version: true` / `version: 'name'` adds an integer column. */
   version?: string;
+  /** Sequelize 7 `noPrimaryKey: true`: the model gets no `id` column when it declares no key. */
+  noPrimaryKey?: boolean;
   /** `name: { singular, plural }`, which replaces the inflected model name. */
   nameSingular?: string;
   namePlural?: string;
@@ -169,7 +178,7 @@ export type ModelOptionDefaults = Partial<
   >
 >;
 
-export type ModelStyle = 'define' | 'init' | 'decorators';
+export type ModelStyle = 'define' | 'init' | 'decorators' | 'migration';
 
 export interface RawModel {
   file: FileInfo;
@@ -192,6 +201,11 @@ export interface RawModel {
   unsupported: string[];
   /** Text identifying the model in warnings, for example `user.js: model "User"`. */
   location: string;
+  /**
+   * The options of a table rebuilt from migrations. Such a model lists every column the table has, so
+   * Sequelize's own `id` and timestamp columns are not added and `optionEntries` stays empty.
+   */
+  presetOptions?: ModelOptions;
 }
 
 export interface Project {

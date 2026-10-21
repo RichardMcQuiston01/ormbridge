@@ -1,0 +1,301 @@
+## createTable: column forms, defaults, keys and references
+table accounts
+  column id uuid, not null, pk, default uuid
+  column handle string(255), null
+  column code string(8), not null
+  column score decimal(10,2), not null, default 0
+  column kind string, null, default enum FREE, enum AccountKind
+  column active boolean, null, default true
+  column seen_at dateTime, null, default now
+  column made_at dateTime, null, default now
+  column born date, null
+  column raw bytes, null
+  column extra json, null, default "{}"
+  column tags text[], not null
+  column slug string(40), null, unique
+  column note text, null
+  foreignKey owner (owner_id) -> Account, on delete noAction
+enum AccountKind: free, paid
+
+## createTable: a composite primary key, a table in a schema and a reference through an object
+table a
+  column id int, not null, pk
+table links
+  column b_id int, not null
+  primary key (a, b_id)
+  foreignKey a (a_id) -> A, on delete noAction
+
+## createTable: an existing table, uniqueKeys, a name unique and an unreadable reference
+table computed
+table t
+  column id int, not null, pk
+  column a string(255), null
+  column b string(255), null
+  column c string(255), null
+  column d int, null
+  index t_a_b (a, b) unique
+warning: 001.js:9: table "t", column "c": unique: 'c_unique' does nothing in a migration (queryInterface only reads unique: true), so the column is not unique.
+warning: 001.js:10: table "t", column "d": the table in references could not be read statically, so no foreign key was created.
+warning: 001.js:5: createTable "t": the unique key "t_bad" lists columns that cannot be read or do not exist; it was skipped.
+warning: 001.js:12: createTable "t": a table named "t" exists already; the statement was skipped.
+warning: 001.js:13: createTable "computed": the columns cannot be read statically; the table has none.
+warning: table "computed": the model has no primary key; most ORMs need one, so add primaryKey: true to a column.
+
+## addColumn: types, options, a reference, an unknown table and a duplicate
+table authors
+  column id int, not null, pk, default autoIncrement
+  column email string(120), not null
+  column nickname string(30), null
+  column bio text, null
+  column age int, not null, default 0
+table posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  foreignKey author (author_id) -> Author, on delete cascade
+  foreignKey editor (editor_id) -> Author, on delete setNull
+  index (unnamed) (title, status)
+warning: 002-change.js:12: addColumn "nope", column "x": the table does not exist at this point; the statement was skipped.
+warning: 002-change.js:13: addColumn "authors", column "email": a column named "email" exists already; the statement was skipped.
+
+## removeColumn: indexes, constraints and keys that use the column go with it
+table authors
+  column id int, not null, pk, default autoIncrement
+  column email string(120), not null
+  column nickname string(30), null
+table posts
+  column id int, not null, pk, default autoIncrement
+  column body text, null
+  column status string(20), null, default "draft"
+warning: 002-change.js:8: removeColumn "posts", column "missing": the column "missing" does not exist at this point; the statement was skipped.
+warning: 002-change.js:9: removeColumn "nope", column "x": the table does not exist at this point; the statement was skipped.
+
+## renameColumn: indexes, constraints and the foreign keys of other tables follow
+table authors
+  column author_id int, not null, pk, default autoIncrement
+  column email string(120), not null
+  column nickname string(30), null
+table posts
+  column id int, not null, pk, default autoIncrement
+  column headline string(200), not null
+  column content text, null
+  column status string(20), null, default "draft"
+  foreignKey author (author_id) -> Author, on delete cascade
+  index (unnamed) (headline, status)
+  index posts_body_uq (content) unique
+warning: 002-change.js:9: renameColumn "posts", column "status": a column named "headline" exists already; the statement was skipped.
+warning: 002-change.js:10: renameColumn "posts", column "missing": the column "missing" does not exist at this point; the statement was skipped.
+warning: 002-change.js:11: renameColumn "nope", column "a": the table does not exist at this point; the statement was skipped.
+
+## renameTable: foreign keys that point at the table follow
+table posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  foreignKey author (author_id) -> Writer, on delete cascade
+  index (unnamed) (title, status)
+table writers
+  column id int, not null, pk, default autoIncrement
+  column email string(120), not null
+  column nickname string(30), null
+warning: 002-change.js:6: renameTable "posts": a table named "writers" exists already; the statement was skipped.
+warning: 002-change.js:7: renameTable "nope": the table "nope" does not exist at this point; the statement was skipped.
+
+## changeColumn: the options the call names replace the old ones
+table authors
+  column id int, not null, pk, default autoIncrement
+  column email text, not null
+  column nickname string(60), not null
+table posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column body text, null
+  column status string, not null, default enum LIVE, enum PostStatus
+  foreignKey author (author_id) -> Author, on delete cascade
+  index (unnamed) (title, status)
+enum PostStatus: draft, live
+warning: 002-change.js:5: changeColumn "authors", column "email": the call does not name allowNull; the column keeps it (SQLite does that, PostgreSQL and MySQL reset what the call leaves out), so the result may differ from the real database.
+warning: 002-change.js:9: changeColumn "posts", column "missing": the column "missing" does not exist at this point; the statement was skipped.
+warning: 002-change.js:10: changeColumn "nope", column "x": the table does not exist at this point; the statement was skipped.
+
+## addIndex: argument forms, options, default names and columns that do not exist
+table authors
+  column id int, not null, pk, default autoIncrement
+  column email string(120), not null, unique
+  column nickname string(30), null
+  index authors_nick (nickname) using BTree
+table posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  foreignKey author (author_id) -> Author, on delete cascade
+  index (unnamed) (title, status)
+  index posts_sorted (title, author) [title {"sort":"desc","length":20}]
+  index posts_draft_body (body)
+  index posts_status_ft (status) fulltext
+warning: 002-change.js:11: addIndex "posts" (missing): the column "missing" does not exist at this point; the statement was skipped.
+warning: 002-change.js:12: addIndex "posts": an index named "posts_title_status" exists already; the statement was skipped.
+warning: 002-change.js:13: addIndex "nope": the table does not exist at this point; the statement was skipped.
+warning: table "posts": the where condition of the index on (body) cannot be represented and was dropped.
+warning: table "posts": an index on an expression (Sequelize.literal) cannot be represented and was skipped.
+
+## removeIndex: by name, by columns and by the name Sequelize gave it
+table authors
+  column id int, not null, pk, default autoIncrement
+  column email string(120), not null
+  column nickname string(30), null
+table posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  foreignKey author (author_id) -> Author, on delete cascade
+warning: 002-change.js:10: removeIndex "posts": no index named "gone" exists at this point; the statement was skipped.
+warning: 002-change.js:11: removeIndex "nope": the table does not exist at this point; the statement was skipped.
+
+## addConstraint: unique, primary key, foreign key, check and default
+table authors
+  column id int, not null, pk, default autoIncrement
+  column email string(120), not null
+  column nickname string(30), null
+  index authors_email_uk (email) unique
+  index authors_pair_uq (email, nickname) unique
+table posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  foreignKey author (author_id) -> Author, on delete cascade
+  index (unnamed) (title, status)
+table tags
+  column b int, not null
+  column label string(255), null, default "tag"
+  primary key (a, b)
+  foreignKey a (a) -> Author, on delete cascade
+warning: 002-change.js:10: addConstraint "tags" (a, b): a foreign key over several columns is not part of the shared model; the statement was skipped.
+warning: 002-change.js:11: addConstraint "tags" (label): a check constraint is not part of the shared model; the condition was ignored.
+warning: 002-change.js:13: addConstraint "tags" (missing): the column "missing" does not exist at this point; the statement was skipped.
+warning: 002-change.js:14: addConstraint "tags": the constraint type "banana" is not unique, primary key, foreign key, check or default; the statement was skipped.
+warning: 002-change.js:15: addConstraint "nope" (x): the table does not exist at this point; the statement was skipped.
+
+## removeConstraint: by the name given, by the name a database gives, and unknown names
+table authors
+  column id int, null
+  column email string(120), not null
+  column nickname string(30), null
+  index authors_nick_uq (nickname) unique
+table posts
+  column id int, not null, pk, default autoIncrement
+  column author_id int, not null
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  index (unnamed) (title, status)
+warning: 002-change.js:12: removeConstraint "authors" "gone": no constraint named "gone" exists at this point; the statement was skipped.
+warning: 002-change.js:13: removeConstraint "nope" "gone": the table does not exist at this point; the statement was skipped.
+warning: table "authors": the model has no primary key; most ORMs need one, so add primaryKey: true to a column.
+
+## dropTable: the foreign keys that pointed at the table become plain columns
+table posts
+  column id int, not null, pk, default autoIncrement
+  column author_id int, not null
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  index (unnamed) (title, status)
+warning: 002-change.js:5: dropTable "authors": the foreign keys on posts.author_id pointed at the table; the columns stay as plain columns.
+warning: 002-change.js:6: dropTable "nope": the table does not exist at this point; the statement was skipped.
+
+## dropTable with cascade drops the dependent foreign keys without a warning
+table posts
+  column id int, not null, pk, default autoIncrement
+  column author_id int, not null
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  index (unnamed) (title, status)
+
+## data and raw SQL give one warning each, whatever else a migration reads
+table authors
+  column id int, not null, pk, default autoIncrement
+  column email string(120), not null
+  column nickname string(30), null
+table posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  foreignKey author (author_id) -> Author, on delete cascade
+  index (unnamed) (title, status)
+warning: Skipped 2 raw SQL queries (first at 002-change.js:8, tables: posts, authors): raw SQL is not replayed, so the schema may differ from the real database.
+warning: Skipped 3 data statements (first at 002-change.js:5): row data is not part of the schema.
+warning: Skipped 2 createFunction calls (first at 002-change.js:13): the change is not replayed, so the schema may differ from the real database.
+warning: Skipped 1 dropTrigger call (first at 002-change.js:15): the change is not replayed, so the schema may differ from the real database.
+
+## control flow is applied as if it always ran, with a warning; try blocks run their body
+table authors
+  column id int, not null, pk, default autoIncrement
+  column email string(120), not null
+  column nickname string(30), null
+  column extra text, null
+  column other text, null
+table posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  column slug string(255), null
+  foreignKey author (author_id) -> Author, on delete cascade
+  index (unnamed) (title, status)
+warning: 002-change.js:5: a conditional contains schema changes; it was applied as if it always ran (tables: authors), so the result may differ from the real database.
+warning: 002-change.js:11: addColumn: the table or column name cannot be read statically; the statement was skipped.
+warning: 002-change.js:10: a loop contains schema changes; it was applied as if it always ran, so the result may differ from the real database.
+
+## a transaction callback, Promise.all, then chains and local helpers are followed
+table authors
+  column id int, not null, pk, default autoIncrement
+  column email string(120), not null
+  column nickname string(30), null
+  column a text, null
+  column b text, null
+  column audit text, null
+table posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column body text, null
+  column status string(20), null, default "draft"
+  foreignKey author (author_id) -> Author, on delete cascade
+  index (unnamed) (title, status)
+table t1
+  column id int, null
+  column v text, null
+warning: Skipped 1 call made from a list computed at run time (first at 002.js:18): the change is not replayed, so the schema may differ from the real database.
+warning: table "t1": the model has no primary key; most ORMs need one, so add primaryKey: true to a column.
+
+## migration shapes: exports.up, ES modules, default export, shorthand and a context parameter
+table five
+  column id int, not null, pk
+table four
+  column id int, not null, pk
+table one
+  column id int, not null, pk
+table six
+  column id int, not null, pk
+table three
+  column id int, not null, pk
+table two
+  column id int, not null, pk
+
+## migrations run in file-name order, whatever order the files are given in
+table t
+  column id int, not null, pk
+  column renamed text, null
+  column later text, null
+
+## a file that is not a migration is left alone, and a table that is not found by name is reported
+table Users
+  column id int, not null, pk
+warning: 001.js:5: addIndex "users": the table does not exist at this point; the statement was skipped.

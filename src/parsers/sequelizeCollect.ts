@@ -34,9 +34,15 @@ const ASSOCIATION_METHODS: ReadonlySet<string> = new Set([
   'belongsToMany',
 ]);
 
-/** Decorators of sequelize-typescript that make a property a column. */
+/**
+ * Decorators that make a property a column: sequelize-typescript's, and Sequelize 7's (`@Attribute` is the
+ * v7 name of `@Column`, `@ColumnName` names the column, `@Version` the version attribute).
+ */
 const COLUMN_DECORATORS: ReadonlySet<string> = new Set([
   'Column',
+  'Attribute',
+  'ColumnName',
+  'Version',
   'PrimaryKey',
   'AutoIncrement',
   'AllowNull',
@@ -51,10 +57,12 @@ const COLUMN_DECORATORS: ReadonlySet<string> = new Set([
   'Index',
 ]);
 
+/** Decorators that only name an attribute Sequelize adds itself; with `@Attribute` or `@Column` it is declared. */
 const TIMESTAMP_DECORATORS: ReadonlySet<string> = new Set([
   'CreatedAt',
   'UpdatedAt',
   'DeletedAt',
+  'Version',
 ]);
 
 /** Generic wrappers that do not change the column type (`CreationOptional<number>`). */
@@ -161,7 +169,9 @@ export function describeFile(path: string, root: SyntaxNode): FileInfo {
     }
     stack.push(...node.namedChildren);
   }
-  return { path, label: basename(path), root, consts };
+  // Sequelize 7 lives in the @sequelize scope; its associations and defaults differ from version 6.
+  const generation: 6 | 7 = /['"]@sequelize\//.test(root.text) ? 7 : 6;
+  return { path, label: basename(path), root, consts, generation };
 }
 
 /** Follows `const x = ...` references (also across files) until a node that is not a plain name. */
@@ -263,11 +273,14 @@ export function argsOf(call: SyntaxNode): SyntaxNode[] {
       );
 }
 
-function valueOf(node: SyntaxNode, ctx: Ctx): TsValue {
+export function valueOf(node: SyntaxNode, ctx: Ctx): TsValue {
   return evaluateNode(resolveNode(node, ctx));
 }
 
-function stringOf(node: SyntaxNode | undefined, ctx: Ctx): string | undefined {
+export function stringOf(
+  node: SyntaxNode | undefined,
+  ctx: Ctx
+): string | undefined {
   if (node === undefined) {
     return undefined;
   }
@@ -275,7 +288,10 @@ function stringOf(node: SyntaxNode | undefined, ctx: Ctx): string | undefined {
   return value.kind === 'string' ? value.value : undefined;
 }
 
-function boolOf(node: SyntaxNode | undefined, ctx: Ctx): boolean | undefined {
+export function boolOf(
+  node: SyntaxNode | undefined,
+  ctx: Ctx
+): boolean | undefined {
   if (node === undefined) {
     return undefined;
   }
@@ -283,7 +299,10 @@ function boolOf(node: SyntaxNode | undefined, ctx: Ctx): boolean | undefined {
   return value.kind === 'bool' ? value.value : undefined;
 }
 
-function numberOf(node: SyntaxNode | undefined, ctx: Ctx): number | undefined {
+export function numberOf(
+  node: SyntaxNode | undefined,
+  ctx: Ctx
+): number | undefined {
   if (node === undefined) {
     return undefined;
   }
@@ -446,6 +465,7 @@ export function applyAttributeEntries(
         attribute.onUpdate = stringOf(node, ctx) ?? attribute.onUpdate;
         break;
       case 'field':
+      case 'columnName':
         attribute.field = stringOf(node, ctx) ?? attribute.field;
         break;
       case 'comment':
@@ -557,8 +577,31 @@ export function readAssociationOptions(
         options.onUpdate = stringOf(value, ctx);
         break;
       case 'constraints':
+      case 'foreignKeyConstraints':
         options.constraints = boolOf(value, ctx);
         break;
+      case 'inverse': {
+        // Sequelize 7: `inverse: 'author'`, or `{ as: 'author' }`, or `{ type: 'hasMany', as: 'posts' }` on a belongsTo.
+        const text: string | undefined = stringOf(value, ctx);
+        if (text !== undefined) {
+          options.inverse = { as: text };
+        } else {
+          const object: SyntaxNode = resolveNode(value, ctx);
+          if (object.type === 'object') {
+            const inverse: Map<string, SyntaxNode> = objectEntries(
+              object,
+              ctx
+            ).entries;
+            const type: string | undefined = stringOf(inverse.get('type'), ctx);
+            const as: string | undefined = stringOf(inverse.get('as'), ctx);
+            options.inverse = {
+              ...(as === undefined ? {} : { as }),
+              ...(type === 'hasMany' || type === 'hasOne' ? { type } : {}),
+            };
+          }
+        }
+        break;
+      }
       case 'through': {
         const through: AssociationOptions['through'] = describeThrough(
           value,
@@ -880,7 +923,12 @@ export function readModelOptions(
       ? { version: 'version' }
       : versionValue !== undefined && versionValue.kind === 'string'
         ? { version: versionValue.value }
-        : {}),
+        : decorated.version === undefined
+          ? {}
+          : { version: decorated.version }),
+    ...(boolOf(entries.get('noPrimaryKey'), ctx) === true
+      ? { noPrimaryKey: true }
+      : {}),
     ...(singular !== undefined && singular.kind === 'string'
       ? { nameSingular: singular.value }
       : {}),
@@ -890,7 +938,7 @@ export function readModelOptions(
   };
 }
 
-function indexFieldOf(
+export function indexFieldOf(
   node: SyntaxNode,
   ctx: Ctx
 ): RawIndexField | 'expression' {
@@ -1112,7 +1160,8 @@ function applyDecorators(
   for (const decorator of decorators) {
     const first: SyntaxNode | undefined = decorator.args[0];
     switch (decorator.name) {
-      case 'Column': {
+      case 'Column':
+      case 'Attribute': {
         if (first === undefined) {
           break;
         }
@@ -1128,6 +1177,12 @@ function applyDecorators(
         }
         break;
       }
+      case 'ColumnName':
+        attribute.field = stringOf(first, ctx) ?? attribute.field;
+        break;
+      case 'Version':
+        model.decoratorOptions.version = attribute.name;
+        break;
       case 'PrimaryKey':
         attribute.primaryKey = true;
         break;
@@ -1454,6 +1509,81 @@ function collectDecoratedAssociation(
     propertyName,
     owner: model,
     label: `${className}.${propertyName} (@${decorator.name})`,
+  });
+  addInverseAssociation(kind, className, target, options, ctx);
+}
+
+/**
+ * Sequelize 7 `inverse`: `@BelongsTo(() => User, { foreignKey: 'authorId', inverse: { type: 'hasMany', as: 'posts' } })`
+ * also defines `User.posts`, and the other kinds define the `belongsTo` on the target. The inverse is read as
+ * the association call it stands for, made on the target model with the same foreign key.
+ */
+function addInverseAssociation(
+  kind: AssociationKind,
+  className: string,
+  target: string,
+  options: AssociationOptions,
+  ctx: Ctx
+): void {
+  const inverse: AssociationOptions['inverse'] = options.inverse;
+  if (inverse === undefined) {
+    return;
+  }
+  if (kind === 'belongsToMany') {
+    // The other half of a many-to-many: the same join table with the two keys swapped.
+    ctx.project.associations.push({
+      kind,
+      file: ctx.file,
+      source: target,
+      enclosing: undefined,
+      target: className,
+      options: {
+        unsupported: [],
+        ...(inverse.as === undefined ? {} : { as: inverse.as }),
+        ...(options.through === undefined ? {} : { through: options.through }),
+        ...(options.otherKey === undefined
+          ? {}
+          : { foreignKey: options.otherKey }),
+        ...(options.foreignKey === undefined
+          ? {}
+          : { otherKey: options.foreignKey }),
+        ...(options.sourceKey === undefined
+          ? {}
+          : { targetKey: options.sourceKey }),
+        ...(options.targetKey === undefined
+          ? {}
+          : { sourceKey: options.targetKey }),
+      },
+      label: `${className} (inverse of ${className}.${options.as ?? ''})`,
+    });
+    return;
+  }
+  const inverseKind: AssociationKind =
+    kind === 'belongsTo' ? (inverse.type ?? 'hasMany') : 'belongsTo';
+  const inverseOptions: AssociationOptions = {
+    unsupported: [],
+    ...(inverse.as === undefined ? {} : { as: inverse.as }),
+    ...(options.foreignKey === undefined
+      ? {}
+      : { foreignKey: options.foreignKey }),
+    ...(options.constraints === undefined
+      ? {}
+      : { constraints: options.constraints }),
+    ...(kind === 'belongsTo' && options.targetKey !== undefined
+      ? { sourceKey: options.targetKey }
+      : {}),
+    ...(kind !== 'belongsTo' && options.sourceKey !== undefined
+      ? { targetKey: options.sourceKey }
+      : {}),
+  };
+  ctx.project.associations.push({
+    kind: inverseKind,
+    file: ctx.file,
+    source: target,
+    enclosing: undefined,
+    target: className,
+    options: inverseOptions,
+    label: `${className} (inverse of ${className}.${options.as ?? ''})`,
   });
 }
 

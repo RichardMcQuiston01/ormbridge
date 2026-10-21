@@ -1,0 +1,21 @@
+fieldMaxLength Order.region: (none) -> 255
+fieldMaxLength OrderLine.orderRegion: (none) -> 255
+fieldMaxLength Account.email: (none) -> 255
+fieldMaxLength Profile.region: (none) -> 255
+fieldDefault Document.id: clientGenerated -> (none)
+fieldMaxLength Document.id: (none) -> 255
+fieldDefault Document.ulid: clientGenerated -> (none)
+fieldMaxLength Document.ulid: (none) -> 255
+fieldType Document.short: string -> text
+fieldDefault Document.short: clientGenerated -> (none)
+fieldDefault Document.token: dbExpression -> uuid
+fieldMaxLength Document.title: (none) -> 255
+fieldEnum Document.role: Role -> DocumentRole
+fieldDefault Document.created: now -> (none)
+fieldType Document.legacy_name: string -> text
+fieldPrimaryKey DocumentSummary.id: false -> true
+fieldUnique DocumentSummary.id: true -> false
+fieldMaxLength DocumentSummary.id: (none) -> 255
+fieldType DocumentSummary.title: string -> text
+enumRemoved Role: enum Role -> (absent)
+enumAdded DocumentRole: (absent) -> enum DocumentRole

@@ -208,6 +208,8 @@ describe('sequelize emitter: layout', () => {
       'sqlmodel',
       'init',
       'define',
+      'v6',
+      'v7',
       'annotations',
       'fluent',
       'jakarta',
@@ -224,7 +226,7 @@ describe('sequelize emitter: layout', () => {
     expect(wrong.ok).toBe(false);
     if (!wrong.ok) {
       expect(wrong.error.message).toBe(
-        'Invalid --style value "sqlmodel" for the sequelize format. Expected one of: init, define.'
+        'Invalid --style value "sqlmodel" for the sequelize format. Expected one of: init, define, v6, v7.'
       );
     }
     // A format without styles ignores the option, but not a value nobody knows.
@@ -233,7 +235,7 @@ describe('sequelize emitter: layout', () => {
     expect(unknown.ok).toBe(false);
     if (!unknown.ok) {
       expect(unknown.error.message).toBe(
-        'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax, community, enterprise (sqlalchemy, sqlmodel for sqlalchemy; init, define for sequelize; annotations, fluent for efcore; jakarta, javax for jpa; community, enterprise for neo4j).'
+        'Invalid --style value "peewee". Expected one of: sqlalchemy, sqlmodel, init, define, v6, v7, annotations, fluent, jakarta, javax, community, enterprise (sqlalchemy, sqlmodel for sqlalchemy; init, define, v6, v7 for sequelize; annotations, fluent for efcore; jakarta, javax for jpa; community, enterprise for neo4j).'
       );
     }
   });
@@ -249,7 +251,7 @@ describe('sequelize emitter: layout', () => {
       if (result !== undefined && !result.ok) {
         expect(result.error.code).toBe('INVALID_OPTION');
         expect(result.error.message).toBe(
-          `Invalid style "${style}" for the sequelize format. Expected one of: init, define.`
+          `Invalid style "${style}" for the sequelize format. Expected one of: init, define, v6, v7.`
         );
       }
     }

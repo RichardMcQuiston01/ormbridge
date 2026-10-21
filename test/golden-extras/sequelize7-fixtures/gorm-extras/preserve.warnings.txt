@@ -1,0 +1,2 @@
+Product.similar: Sequelize 7 needs a name for the other side of a self-referencing many-to-many relation; "similarInverse" was added.
+Product index (title): full-text indexes are a MySQL feature in Sequelize; it was written as an ordinary index.

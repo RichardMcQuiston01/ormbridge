@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Installs the real tools that the optional verification tests use (Django, graphene-django,
 # TypeORM with SQLite, Drizzle ORM with drizzle-kit, Ajv for JSON Schema, Zod, better-sqlite3 for the SQL DDL
-# tests, SQLAlchemy 2 with SQLModel for the SQLAlchemy parser and emitter tests, Sequelize 6 with SQLite for the
-# Sequelize parser and emitter tests, the .NET 8 SDK with EF Core 8, its SQLite provider and the Npgsql provider
+# tests, SQLAlchemy 2 with SQLModel for the SQLAlchemy parser and emitter tests, Sequelize 6 with SQLite and
+# sequelize-cli for the Sequelize parser, emitter and migration tests, Sequelize 7 with SQLite for the Sequelize 7
+# parser and emitter tests, the .NET 8 SDK with EF Core 8, its SQLite provider and the Npgsql provider
 # for the EF Core parser and emitter tests, and the Maven packages of Hibernate ORM 6 and 5 with H2 for the Hibernate / JPA
 # parser and writer tests) into a scratch directory
 # outside this repository, then prints the environment variables that switch the tests on. The Neo4j tests need a
@@ -19,11 +20,12 @@
 #   typeorm   TypeORM with better-sqlite3 (TYPEORM_DIR)
 #   ajv       Ajv and ajv-formats (AJV_DIR)
 #   drizzle   Drizzle ORM and drizzle-kit (DRIZZLE_DIR)
-#   sequelize Sequelize 6 (SEQUELIZE_DIR)
+#   sequelize Sequelize 6 and sequelize-cli (SEQUELIZE_DIR)
+#   sequelize7 Sequelize 7, @sequelize/core with the SQLite dialect (SEQUELIZE7_DIR)
 #   zod       Zod 4 and, as the alias zod3, Zod 3 (ZOD_DIR)
 #   sql       better-sqlite3 for the SQL DDL tests (SQL_DIR)
 #   prisma    the Prisma CLI, major versions 6 and 7 (PRISMA6_BIN, PRISMA7_BIN)
-#   node      typeorm, ajv, drizzle, sequelize, zod, sql and prisma
+#   node      typeorm, ajv, drizzle, sequelize, sequelize7, zod, sql and prisma
 #   dotnet    the .NET SDK and the EF Core packages (EFCORE_DIR, DOTNET)
 #   java      the Hibernate 6 and 5 Maven packages (JPA_DIR, MVN, JAVA)
 #   sdn       the Spring Data Neo4j 7 Maven packages (SDN_DIR, MVN, JAVA)
@@ -46,12 +48,12 @@ mkdir -p "${target}"
 shift || true
 
 # The components to install: all of them when none is named.
-all_components=(python neomodel typeorm ajv drizzle sequelize zod sql prisma dotnet java sdn)
+all_components=(python neomodel typeorm ajv drizzle sequelize sequelize7 zod sql prisma dotnet java sdn)
 components=()
 for name in "$@"; do
   case "${name}" in
-    node) components+=(typeorm ajv drizzle sequelize zod sql prisma) ;;
-    python | neomodel | typeorm | ajv | drizzle | sequelize | zod | sql | prisma | dotnet | java | sdn) components+=("${name}") ;;
+    node) components+=(typeorm ajv drizzle sequelize sequelize7 zod sql prisma) ;;
+    python | neomodel | typeorm | ajv | drizzle | sequelize | sequelize7 | zod | sql | prisma | dotnet | java | sdn) components+=("${name}") ;;
     *)
       echo "Unknown component '${name}'; use one of: ${all_components[*]} node" >&2
       exit 2
@@ -133,15 +135,27 @@ install_drizzle() {
 }
 
 install_sequelize() {
-  echo "Installing Sequelize 6, sqlite3, sequelize-typescript and the PostgreSQL, MySQL and SQL Server drivers into ${target}/sequelize" >&2
+  echo "Installing Sequelize 6, sqlite3, sequelize-cli, sequelize-typescript and the PostgreSQL, MySQL and SQL Server drivers into ${target}/sequelize" >&2
   mkdir -p "${target}/sequelize"
   cd "${target}/sequelize"
   [ -f package.json ] || npm init -y > /dev/null
   # Sequelize does not support better-sqlite3: its SQLite dialect needs sqlite3. sequelize-typescript,
   # reflect-metadata and typescript load the decorator fixtures (compiled with tsc, no database server needed).
   # pg, pg-hstore, mysql2 and tedious let Sequelize build the CREATE TABLE statements of the other dialects (no server needed).
+  # sequelize-cli runs the migration fixtures (sequelize-migration-verify) the way a project does.
   npm install --silent sequelize@6 sqlite3 sequelize-typescript reflect-metadata typescript @types/node \
-    pg pg-hstore mysql2 tedious
+    sequelize-cli pg pg-hstore mysql2 tedious
+}
+
+install_sequelize7() {
+  echo "Installing Sequelize 7 (@sequelize/core, the SQLite dialect) and TypeScript into ${target}/sequelize7" >&2
+  mkdir -p "${target}/sequelize7"
+  cd "${target}/sequelize7"
+  [ -f package.json ] || npm init -y > /dev/null
+  # Sequelize 7 is still an alpha release: both packages are pinned (SEQUELIZE7_VERSION overrides the version), so a new
+  # alpha cannot break the job. The decorator models are compiled with tsc, and @sequelize/sqlite3 brings sqlite3.
+  local version="${SEQUELIZE7_VERSION:-7.0.0-alpha.48}"
+  npm install --silent "@sequelize/core@${version}" "@sequelize/sqlite3@${version}" typescript @types/node
 }
 
 install_zod() {
@@ -178,6 +192,7 @@ if want typeorm; then in_background typeorm install_typeorm; fi
 if want ajv; then in_background ajv install_ajv; fi
 if want drizzle; then in_background drizzle install_drizzle; fi
 if want sequelize; then in_background sequelize install_sequelize; fi
+if want sequelize7; then in_background sequelize7 install_sequelize7; fi
 if want zod; then in_background zod install_zod; fi
 if want sql; then in_background sql install_sql; fi
 if want prisma; then
@@ -316,6 +331,7 @@ if want neomodel; then echo "export NEOMODEL_PYTHON=${target}/neomodel/bin/pytho
 if want typeorm; then echo "export TYPEORM_DIR=${target}/typeorm"; fi
 if want drizzle; then echo "export DRIZZLE_DIR=${target}/drizzle"; fi
 if want sequelize; then echo "export SEQUELIZE_DIR=${target}/sequelize"; fi
+if want sequelize7; then echo "export SEQUELIZE7_DIR=${target}/sequelize7"; fi
 if want ajv; then echo "export AJV_DIR=${target}/ajv"; fi
 if want zod; then echo "export ZOD_DIR=${target}/zod"; fi
 if want sql; then echo "export SQL_DIR=${target}/sql"; fi

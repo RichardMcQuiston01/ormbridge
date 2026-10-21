@@ -197,7 +197,7 @@ function buildRunOptions(
 
   let style: OutputStyle | undefined;
   if (settings.style !== undefined) {
-    // The styles depend on the target: SQLAlchemy has sqlalchemy and sqlmodel, Sequelize init and define.
+    // The styles depend on the target: SQLAlchemy has sqlalchemy and sqlmodel, Sequelize init, define, v6 and v7.
     const checked: Result<OutputStyle> = checkStyle(toValue, settings.style);
     if (!checked.ok) {
       return failure('INVALID_OPTION', checked.error.message);
@@ -621,7 +621,7 @@ export async function runCli(
     )
     .option(
       '--style <name>',
-      `layout of the SQLAlchemy, Sequelize, EF Core, JPA and Neo4j output (${OUTPUT_STYLES.join(' | ')}): sqlalchemy | sqlmodel for --to sqlalchemy (default: sqlalchemy), init | define for --to sequelize (default: init), annotations | fluent for --to efcore (default: annotations), jakarta | javax for --to jpa (default: jakarta), community | enterprise for --to neo4j (default: community; enterprise adds the statements that need Neo4j Enterprise Edition)`
+      `layout of the SQLAlchemy, Sequelize, EF Core, JPA and Neo4j output (${OUTPUT_STYLES.join(' | ')}): sqlalchemy | sqlmodel for --to sqlalchemy (default: sqlalchemy), init | define | v6 | v7 for --to sequelize (default: init; v6 is the same as init, v7 writes Sequelize 7 decorators), annotations | fluent for --to efcore (default: annotations), jakarta | javax for --to jpa (default: jakarta), community | enterprise for --to neo4j (default: community; enterprise adds the statements that need Neo4j Enterprise Edition)`
     )
     .option(
       '--jpa-key <mode>',

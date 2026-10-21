@@ -1,0 +1,6 @@
+Provider "cockroachdb": Sequelize 7 has no CockroachDB dialect or patch package, so the models use the PostgreSQL dialect (@sequelize/postgres) and may meet differences it does not handle; hstore, range types and multi-dimensional arrays (which CockroachDB lacks) are written as JSONB or TEXT.
+Book.grid: CockroachDB has no multi-dimensional arrays; the array was written as JSONB.
+Book.window: CockroachDB has no range types (int4range, tstzrange, ...); the field was written as TEXT.
+Book.extra: CockroachDB has no hstore type; the field was written as JSONB.
+Book.read_time: Sequelize has no interval type; the duration was written as BIGINT (microseconds).
+Provider "cockroachdb": Book.id, Series.id, index.id, Tagged.id are auto-increment keys: autoIncrement creates a SERIAL column, which CockroachDB fills with unique_rowid() (64-bit values above 2^53 that a JavaScript number cannot hold exactly; sequelize-cockroachdb returns them as strings, so those keys and the foreign keys that point at them are typed string); sequential keys send every insert to the same range (a hot spot); CockroachDB recommends UUID keys with gen_random_uuid().

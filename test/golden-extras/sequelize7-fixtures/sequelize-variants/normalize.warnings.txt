@@ -1,0 +1,1 @@
+Person.friends: Sequelize 7 needs a name for the other side of a self-referencing many-to-many relation; "friendsInverse" was added.
