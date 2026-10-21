@@ -25,8 +25,7 @@ import type {
   IrOnDelete,
   IrSchema,
 } from '../src/ir.js';
-import { toCamelCase, toPascalCase } from '../src/naming.js';
-import { normalizeSchema, type NamingMode } from '../src/transforms.js';
+import type { NamingMode } from '../src/transforms.js';
 import { kitchenSinkSchema, stressSchema } from './gormFixtures.js';
 import {
   SOURCES_WITHOUT_VIEWS,
