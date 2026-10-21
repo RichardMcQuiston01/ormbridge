@@ -30,7 +30,7 @@ import {
   isValidJavaPackage as isValidSdnPackage,
 } from './emitters/sdn.js';
 import { emitNeomodel } from './emitters/neomodel.js';
-import { emitSequelize, isSequelizeStyle } from './emitters/sequelize.js';
+import { emitSequelize, isSequelizeOutputStyle } from './emitters/sequelize.js';
 import { emitSqlAlchemy, isSqlAlchemyStyle } from './emitters/sqlalchemy.js';
 import { emitSqlDdl } from './emitters/sqlDdl.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
@@ -101,8 +101,8 @@ export interface FormatOptions {
   /**
    * Layout of the output of the formats that have styles. SQLAlchemy: `sqlalchemy` (default; `DeclarativeBase`,
    * `Mapped[...]` and `mapped_column`) or `sqlmodel` (`SQLModel, table=True` classes with `Field` and
-   * `Relationship`). Sequelize: `init` (default; TypeScript classes with `Model.init`) or `define`
-   * (the CommonJS files `sequelize-cli` generates). EF Core: `annotations` (default; data annotations on the entity
+   * `Relationship`). Sequelize: `init` (default; TypeScript classes with `Model.init`), `define`
+   * (the CommonJS files `sequelize-cli` generates), `v6` (the same as `init`) or `v7` (Sequelize 7 decorators). EF Core: `annotations` (default; data annotations on the entity
    * classes, the fluent API only where annotations cannot say it) or `fluent` (plain classes plus one
    * `IEntityTypeConfiguration<T>` per entity). Only the `sqlalchemy`, `sequelize` and `efcore` formats read it.
    */
@@ -690,7 +690,7 @@ const sequelizeAdapter: FormatAdapter = {
   // No extension is claimed: ".js" and ".ts" are too generic to infer, so pass --from/--to sequelize.
   extensions: [],
   description:
-    'Sequelize 6 models (JavaScript or TypeScript; define, Model.init and sequelize-typescript; --style define writes sequelize-cli files)',
+    'Sequelize 6 and 7 models (JavaScript or TypeScript; define, Model.init, sequelize-typescript and @sequelize/core decorators) and sequelize-cli migrations; --style define writes sequelize-cli files, --style v7 Sequelize 7 decorators',
   parse: (
     sources: SourceText[],
     options: FormatOptions
@@ -720,7 +720,8 @@ const sequelizeAdapter: FormatAdapter = {
       emitSequelize(schema, {
         provider: options.provider,
         naming: options.naming,
-        ...(options.style === undefined || !isSequelizeStyle(options.style)
+        ...(options.style === undefined ||
+        !isSequelizeOutputStyle(options.style)
           ? {}
           : { style: options.style }),
       })

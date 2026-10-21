@@ -134,11 +134,10 @@ const SEQUELIZE_NON_MODEL_FILE: RegExp =
   /(?:\.d\.ts|\.(?:test|spec)\.[cm]?[jt]s)$/;
 
 /**
- * Directories skipped when reading Entity Framework Core projects: migrations (their snapshot restates the
- * model as history), build output and installed packages.
+ * Directories skipped when reading Entity Framework Core projects: build output and installed packages. The
+ * Migrations folder is read: it is replayed when the input has no entity classes and skipped otherwise.
  */
 const EFCORE_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
-  'migrations',
   'bin',
   'obj',
   'packages',
@@ -147,9 +146,8 @@ const EFCORE_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   '.git',
 ]);
 
-/** Generated C# files: migration designers, the model snapshot and compiler output. */
-const EFCORE_NON_MODEL_FILE: RegExp =
-  /(?:\.(?:Designer|g|generated)\.cs|ModelSnapshot\.cs)$/i;
+/** Generated C# files: migration designers and compiler output. */
+const EFCORE_NON_MODEL_FILE: RegExp = /\.(?:Designer|g|generated)\.cs$/i;
 
 /** Directories skipped when reading Hibernate / JPA projects: build output, tool folders and installed packages. */
 const JPA_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
@@ -484,6 +482,14 @@ async function discoverInputFiles(
         format === 'laravel' ? await laravelRoots(input) : [input];
       for (const root of roots) {
         const found: string[] = await walkDirectory(root, format);
+        if (format === 'sequelize' && found.length === 0) {
+          // A project without model files: read its migrations (the folder is skipped in a walk of models).
+          const migrations: string | undefined =
+            await sequelizeMigrationFolder(root);
+          if (migrations !== undefined) {
+            found.push(...(await walkDirectory(migrations, format)));
+          }
+        }
         files.push(
           ...(format === 'sql' ? await orderMigrations(found) : found)
         );
@@ -515,7 +521,7 @@ async function discoverInputFiles(
                         : format === 'sqlalchemy'
                           ? 'Python (.py) files with SQLAlchemy or SQLModel models'
                           : format === 'sequelize'
-                            ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files'
+                            ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files (or sequelize-cli migrations)'
                             : format === 'efcore'
                               ? 'C# (.cs) files with Entity Framework Core models'
                               : format === 'jpa'
@@ -664,6 +670,51 @@ async function laravelRoots(directory: string): Promise<string[]> {
     }
   }
   return roots.length > 0 ? roots : [directory];
+}
+
+/** Where `sequelize-cli` looks for migrations when `.sequelizerc` does not say otherwise. */
+const SEQUELIZE_MIGRATION_FOLDERS: readonly string[] = [
+  'migrations',
+  join('db', 'migrations'),
+  join('database', 'migrations'),
+  join('src', 'migrations'),
+  join('src', 'db', 'migrations'),
+];
+
+/**
+ * The folder of `sequelize-cli` migrations of a project root: the `migrations-path` that `.sequelizerc`
+ * sets with `path.resolve('db', 'migrate')`, or the first conventional folder that exists.
+ */
+async function sequelizeMigrationFolder(
+  root: string
+): Promise<string | undefined> {
+  const candidates: string[] = [];
+  const configured: string | undefined = await readIfExists(
+    join(root, '.sequelizerc')
+  );
+  const setting: RegExpExecArray | null =
+    configured === undefined
+      ? null
+      : /['"]migrations-path['"]\s*:\s*path\.(?:resolve|join)\(([^)]*)\)/.exec(
+          configured
+        );
+  if (setting?.[1] !== undefined) {
+    const parts: string[] = [...setting[1].matchAll(/['"]([^'"]+)['"]/g)].map(
+      (match: RegExpMatchArray) => match[1] ?? ''
+    );
+    if (parts.length > 0) {
+      candidates.push(join(root, ...parts));
+    }
+  }
+  candidates.push(
+    ...SEQUELIZE_MIGRATION_FOLDERS.map((folder: string) => join(root, folder))
+  );
+  for (const candidate of candidates) {
+    if ((await classifyPath(candidate)) === 'directory') {
+      return candidate;
+    }
+  }
+  return undefined;
 }
 
 /**

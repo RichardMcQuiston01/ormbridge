@@ -42,7 +42,7 @@ export interface BuildOptions {
   appLabel: string;
 }
 
-const INDEX_METHODS: Readonly<Record<string, string>> = {
+export const INDEX_METHODS: Readonly<Record<string, string>> = {
   btree: 'BTree',
   hash: 'Hash',
   gin: 'Gin',
@@ -142,6 +142,8 @@ export function buildSchema(
   };
   const usedEnums: Map<string, IrEnum> = new Map();
   const models: IrModel[] = [];
+  /** The IR names of the key properties of each built entity, by entity name and property path. */
+  const keyIrNames: Map<string, Map<string, string>> = new Map();
 
   for (const info of infos) {
     const config: EntityConfig = info.config;
@@ -328,10 +330,15 @@ export function buildSchema(
           fields: members.map(
             (member) => irNames.get(member?.path ?? '') ?? ''
           ),
-          references: principalKeyMembers.map((member, index) =>
-            member === undefined
-              ? toCamelCase(link.principalKey[index] ?? '')
-              : irFieldName(member)
+          references: principalKeyMembers.map(
+            (member, index) =>
+              // A key column that is a foreign key in the principal is named by its relation there.
+              keyIrNames
+                .get(principal.name)
+                ?.get(link.principalKey[index] ?? '') ??
+              (member === undefined
+                ? toCamelCase(link.principalKey[index] ?? '')
+                : irFieldName(member))
           ),
           kind,
           isNullable: !required,
@@ -483,6 +490,16 @@ export function buildSchema(
         }
       }
     }
+
+    keyIrNames.set(
+      info.name,
+      new Map(
+        keyNames.map((name: string): [string, string] => [
+          name,
+          irNameFor(name) ?? toCamelCase(name),
+        ])
+      )
+    );
 
     // Indexes ---------------------------------------------------------------------------------
     const irIndexes: IrIndex[] = [];

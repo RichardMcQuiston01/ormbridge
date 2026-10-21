@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Blog {
+  id    Int     @id @default(autoincrement()) @map("Id")
+  slug  String? @unique @map("Slug") @db.Text
+  name  String  @map("Name") @db.VarChar(100)
+  posts Post[]
+
+  @@map("Blogs")
+}
+
+model Post {
+  id          Int      @id @default(autoincrement()) @map("Id")
+  title       String   @map("Title") @db.Text
+  body        String?  @map("Body") @db.Text
+  publishedAt DateTime @map("PublishedAt") @db.Timestamptz(6)
+  views       Int      @map("Views")
+  rating      Decimal  @default(3) @map("Rating") @db.Decimal(5, 2)
+  BlogId      Int
+  blog        Blog     @relation(fields: [BlogId], references: [id], onDelete: Cascade)
+  AuthorId    Int?
+  author      Author?  @relation(fields: [AuthorId], references: [id], onDelete: SetNull)
+
+  @@map("Posts")
+}
+
+model Author {
+  id    Int    @id @default(autoincrement()) @map("Id")
+  email String @unique @map("Email") @db.Text
+  posts Post[]
+
+  @@map("Authors")
+}

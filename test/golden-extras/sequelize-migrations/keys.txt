@@ -1,0 +1,16 @@
+table memberships
+  column since date, null
+  primary key (person, project_code)
+  foreignKey person (person_id) -> Person, on delete cascade
+  foreignKey project_code (project_code) -> Project, on delete cascade
+table people
+  column id int, not null, pk, default autoIncrement
+  column email string(100), not null
+  column nickname string(30), null
+  index people_nickname (nickname)
+  index people_email_unique (email) unique
+table projects
+  column code string(12), not null, pk
+  column title string(100), not null
+  column reviewer_id int, null
+  foreignKey owner (owner_id) -> Person, on delete cascade

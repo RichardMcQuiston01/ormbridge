@@ -23,9 +23,25 @@ import {
   isCockroach,
 } from './cockroach.js';
 import type { PrismaProvider } from './prisma.js';
+import {
+  writeV7Index,
+  writeV7ModelFile,
+  type V7Association,
+  type V7Attribute,
+  type V7Dialect,
+  type V7Model,
+} from './sequelize7.js';
+import {
+  compact,
+  IDENTIFIER_PATTERN,
+  INDENT,
+  MAX_LINE_WIDTH,
+  objectLines,
+  quote,
+} from './sequelizeText.js';
 
 /**
- * Writes Sequelize 6 models. Both styles write one file per model plus an `index` file:
+ * Writes Sequelize models, one file per model plus an `index` file. Sequelize 6 has two styles:
  *
  * - `init` (the default) is TypeScript: `class User extends Model<InferAttributes<User>, ...>` with `declare`
  *   fields and a static `initModel(sequelize)` that calls `User.init({ ... }, { sequelize, modelName, tableName })`.
@@ -36,15 +52,46 @@ import type { PrismaProvider } from './prisma.js';
  *
  * Every table, column and association is written explicitly (`tableName`, `field`, `as`, `foreignKey`,
  * `onDelete`), so the models create the schema of the IR and the Sequelize reader reads the output back.
+ *
+ * Sequelize 7 (`@sequelize/core`) has one: `v7` writes TypeScript classes with decorators (`@Table`, `@Attribute`,
+ * `@PrimaryKey`, `@BelongsTo`, ...) and an `index` file that lists the models for `new Sequelize({ dialect, models })`
+ * (see `sequelize7.ts`). `v6` is the explicit name of the default generation, the same as `init`.
  */
 
+/** The Sequelize 6 layouts. */
 export type SequelizeStyle = 'init' | 'define';
 
 export const SEQUELIZE_STYLES: readonly SequelizeStyle[] = ['init', 'define'];
 
+/** The Sequelize generations `--style` can name: `v6` is the default output (the `init` layout), `v7` the decorators. */
+export type SequelizeGeneration = 'v6' | 'v7';
+
+export const SEQUELIZE_GENERATIONS: readonly SequelizeGeneration[] = [
+  'v6',
+  'v7',
+];
+
+/** Every value `--style` takes when the target is Sequelize. */
+export type SequelizeOutputStyle = SequelizeStyle | SequelizeGeneration;
+
+export const SEQUELIZE_OUTPUT_STYLES: readonly SequelizeOutputStyle[] = [
+  ...SEQUELIZE_STYLES,
+  ...SEQUELIZE_GENERATIONS,
+];
+
+/** The layouts the writer produces; `v6` is `init`. */
+type Layout = SequelizeStyle | 'v7';
+
 /** True when a value is one of the Sequelize `--style` values. */
 export function isSequelizeStyle(value: string): value is SequelizeStyle {
   return (SEQUELIZE_STYLES as readonly string[]).includes(value);
+}
+
+/** True when a value is a Sequelize 6 layout or a generation (`v6`, `v7`). */
+export function isSequelizeOutputStyle(
+  value: string
+): value is SequelizeOutputStyle {
+  return (SEQUELIZE_OUTPUT_STYLES as readonly string[]).includes(value);
 }
 
 export interface SequelizeEmitOptions {
@@ -57,8 +104,8 @@ export interface SequelizeEmitOptions {
    * snake_case columns (`underscored: true`).
    */
   naming: NamingMode;
-  /** Output layout; defaults to `init`. */
-  style?: SequelizeStyle;
+  /** Output layout or generation; defaults to `init` (Sequelize 6, the same as `v6`). */
+  style?: SequelizeOutputStyle;
 }
 
 type Dialect = 'postgres' | 'mysql' | 'sqlite' | 'mssql';
@@ -84,6 +131,8 @@ interface AttributeSpec {
    * attributes; the `init` style lists it, because the TypeScript types want every declared property there.
    */
   implicit: boolean;
+  /** Set on an implicit createdAt / updatedAt column, which the Sequelize 7 style writes as `@CreatedAt` / `@UpdatedAt`. */
+  timestamp?: 'created' | 'updated';
 }
 
 /** One association call, written in `initModels` (init) or in `associate` (define). */
@@ -102,6 +151,8 @@ interface AssociationSpec {
 interface AssociationLog {
   byOwner: Map<string, AssociationSpec[]>;
   ordered: AssociationSpec[];
+  /** The Sequelize 7 style: the association properties of each class, decorated or only typed. */
+  v7: Map<string, V7Association[]>;
 }
 
 interface TimestampPlan {
@@ -131,7 +182,7 @@ interface ModelPlan {
 interface EmitContext {
   schema: IrSchema;
   options: SequelizeEmitOptions;
-  style: SequelizeStyle;
+  style: Layout;
   dialect: Dialect;
   /** True for `--provider cockroachdb`: the `postgres` dialect through sequelize-cockroachdb. */
   cockroach: boolean;
@@ -145,9 +196,6 @@ interface EmitContext {
   usesLiteral: boolean;
 }
 
-const INDENT: string = '  ';
-const MAX_LINE_WIDTH: number = 80;
-const IDENTIFIER_PATTERN: RegExp = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 const CREATED_FIELD_PATTERN: RegExp =
   /^(created_?at|created|date_?created|createdon)$/i;
 
@@ -169,6 +217,25 @@ const RESERVED_CLASS_NAMES: ReadonlySet<string> = new Set([
   'Number',
   'Boolean',
   'Models',
+]);
+
+/** Names the Sequelize 7 model files import as well, which a class cannot take there. */
+const V7_RESERVED_CLASS_NAMES: ReadonlySet<string> = new Set([
+  'Attribute',
+  'AutoIncrement',
+  'BelongsTo',
+  'BelongsToMany',
+  'ColumnName',
+  'CreatedAt',
+  'Default',
+  'HasMany',
+  'HasOne',
+  'NotNull',
+  'PrimaryKey',
+  'Table',
+  'Unique',
+  'UpdatedAt',
+  'sql',
 ]);
 
 /** Words an attribute cannot be called on a Sequelize instance without shadowing a member of `Model`. */
@@ -232,7 +299,10 @@ export function emitSequelize(
 ): MultiFileEmitOutput {
   const prepared: IrSchema =
     options.naming === 'normalize' ? normalizeSchema(schema) : schema;
-  const style: SequelizeStyle = options.style ?? 'init';
+  const style: Layout =
+    options.style === undefined || options.style === 'v6'
+      ? 'init'
+      : options.style;
   const context: EmitContext = {
     schema: prepared,
     options,
@@ -251,7 +321,11 @@ export function emitSequelize(
     );
   }
 
-  if (context.cockroach) {
+  if (context.cockroach && style === 'v7') {
+    context.warnings.push(
+      `${COCKROACH_PREFIX} Sequelize 7 has no CockroachDB dialect or patch package, so the models use the PostgreSQL dialect (@sequelize/postgres) and may meet differences it does not handle; hstore, range types and multi-dimensional arrays (which CockroachDB lacks) are written as JSONB or TEXT.`
+    );
+  } else if (context.cockroach) {
     context.warnings.push(
       `${COCKROACH_PREFIX} the models use the "postgres" dialect through the sequelize-cockroachdb package (Sequelize 6): DataTypes.INTEGER creates a 64-bit INT8 column there, and hstore, range types and multi-dimensional arrays (which CockroachDB lacks) are written as JSONB or TEXT.`
     );
@@ -268,8 +342,9 @@ export function emitSequelize(
   const associations: AssociationLog = {
     byOwner: new Map<string, AssociationSpec[]>(),
     ordered: [],
+    v7: new Map<string, V7Association[]>(),
   };
-  const extension: string = style === 'init' ? 'ts' : 'js';
+  const extension: string = style === 'define' ? 'js' : 'ts';
   const rendered: Map<string, RenderedModel> = new Map<string, RenderedModel>();
   for (const model of prepared.models) {
     context.usesLiteral = false;
@@ -287,12 +362,26 @@ export function emitSequelize(
     files[`${plan.fileBase}.${extension}`] =
       style === 'init'
         ? writeInitFile(context, plan, result, associations)
-        : writeDefineFile(plan, result, associations);
+        : style === 'v7'
+          ? writeV7ModelFile(
+              v7ModelOf(plan, result, associations),
+              (className: string) => fileOf(context, className)
+            )
+          : writeDefineFile(plan, result, associations);
   }
   files[`index.${extension}`] =
     style === 'init'
       ? writeInitIndex(context, associations)
-      : writeDefineIndex(context);
+      : style === 'v7'
+        ? writeV7Index(
+            context.schema.models.map((model: IrModel) => {
+              const plan: ModelPlan = planOf(context, model);
+              return { className: plan.className, fileBase: plan.fileBase };
+            }),
+            v7DialectOf(context),
+            v7Notes(context)
+          )
+        : writeDefineIndex(context);
   if (context.sequentialKeys.length > 0) {
     context.warnings.push(
       cockroachSequentialWarning(
@@ -346,17 +435,6 @@ function dialectOf(provider: PrismaProvider): Dialect {
 // Small helpers
 // ---------------------------------------------------------------------------
 
-function quote(value: string): string {
-  const escaped: string = value
-    .replace(/\\/g, '\\\\')
-    .replace(/\n/g, '\\n')
-    .replace(/\r/g, '\\r');
-  if (value.includes("'") && !value.includes('"')) {
-    return `"${escaped}"`;
-  }
-  return `'${escaped.replace(/'/g, "\\'")}'`;
-}
-
 function uniqueName(baseName: string, used: Set<string>): string {
   let candidate: string = baseName;
   let suffix: number = 2;
@@ -379,31 +457,6 @@ function identifier(context: EmitContext, owner: string, raw: string): string {
     `${owner}: "${raw}" is not a valid JavaScript identifier; it was written as "${result}".`
   );
   return result;
-}
-
-function compact(entries: (string | undefined)[]): string[] {
-  return entries.filter((entry): entry is string => entry !== undefined);
-}
-
-/** `{ a, b }` on one line when it fits after `prefix`, otherwise one entry per line. */
-function objectLines(
-  prefix: string,
-  entries: string[],
-  indent: string,
-  suffix: string
-): string[] {
-  const inline: string = `${indent}${prefix}{ ${entries.join(', ')} }${suffix}`;
-  if (entries.length === 0) {
-    return [`${indent}${prefix}{}${suffix}`];
-  }
-  if (inline.length <= MAX_LINE_WIDTH) {
-    return [inline];
-  }
-  return [
-    `${indent}${prefix}{`,
-    ...entries.map((entry: string) => `${indent}${INDENT}${entry},`),
-    `${indent}}${suffix}`,
-  ];
 }
 
 function isIntegerKey(field: IrField): boolean {
@@ -503,7 +556,11 @@ function chooseUnderscored(
 
 function planModels(context: EmitContext): void {
   const fileBases: Set<string> = new Set<string>(['index']);
-  const classNames: Set<string> = new Set<string>(RESERVED_CLASS_NAMES);
+  const reserved: ReadonlySet<string> =
+    context.style === 'v7'
+      ? new Set<string>([...RESERVED_CLASS_NAMES, ...V7_RESERVED_CLASS_NAMES])
+      : RESERVED_CLASS_NAMES;
+  const classNames: Set<string> = new Set<string>(reserved);
   for (const model of context.schema.models) {
     // Sequelize model names are PascalCase; `legacy_order` is written as `LegacyOrder`.
     const pascal: string = /^[A-Z][A-Za-z0-9]*$/.test(model.name)
@@ -515,10 +572,10 @@ function planModels(context: EmitContext): void {
       pascal === '' ? model.name : pascal
     );
     const className: string = uniqueName(
-      RESERVED_CLASS_NAMES.has(rawClass) ? `${rawClass}Model` : rawClass,
+      reserved.has(rawClass) ? `${rawClass}Model` : rawClass,
       classNames
     );
-    if (RESERVED_CLASS_NAMES.has(rawClass)) {
+    if (reserved.has(rawClass)) {
       context.warnings.push(
         `${model.name}: "${rawClass}" is a name the generated files use, so the class and the model were named "${className}".`
       );
@@ -693,6 +750,11 @@ function typeSpecOf(
   return { expression: jsonType, ts };
 }
 
+/** True for SQLite under Sequelize 7, whose dialect has no BIGINT, DECIMAL or CHAR type. */
+function v7Sqlite(context: EmitContext): boolean {
+  return context.style === 'v7' && context.dialect === 'sqlite';
+}
+
 function dialectName(dialect: Dialect): string {
   switch (dialect) {
     case 'mysql':
@@ -781,10 +843,18 @@ function scalarTypeSpec(
             : 'number',
       };
     case 'bigInt':
-      return { expression: 'DataTypes.BIGINT', ts: 'string' };
+      return v7Sqlite(context)
+        ? { expression: 'DataTypes.INTEGER', ts: 'number' }
+        : { expression: 'DataTypes.BIGINT', ts: 'string' };
     case 'float':
       return { expression: 'DataTypes.DOUBLE', ts: 'number' };
     case 'decimal': {
+      if (v7Sqlite(context)) {
+        context.warnings.push(
+          `${label}: the Sequelize 7 SQLite dialect has no DECIMAL type; the column was written as DOUBLE, which is not exact.`
+        );
+        return { expression: 'DataTypes.DOUBLE', ts: 'number' };
+      }
       const precision: number | undefined = field.maxDigits;
       const scale: number | undefined = field.decimalPlaces;
       const args: string =
@@ -814,7 +884,9 @@ function scalarTypeSpec(
       context.warnings.push(
         `${label}: Sequelize has no interval type; the duration was written as BIGINT (microseconds).`
       );
-      return { expression: 'DataTypes.BIGINT', ts: 'string' };
+      return v7Sqlite(context)
+        ? { expression: 'DataTypes.INTEGER', ts: 'number' }
+        : { expression: 'DataTypes.BIGINT', ts: 'string' };
     case 'ipAddress':
       return dialect === 'postgres'
         ? { expression: 'DataTypes.INET', ts: 'string' }
@@ -935,7 +1007,7 @@ function defaultOf(
     }
     case 'dbExpression':
       context.usesLiteral = true;
-      return `Sequelize.literal(${quote(defaultExpression(context, value.expression))})`;
+      return `${context.style === 'v7' ? 'sql' : 'Sequelize'}.literal(${quote(defaultExpression(context, value.expression))})`;
     case 'clientGenerated':
       context.warnings.push(
         `${label}: the ${value.generator}() default is generated by Prisma Client; Sequelize has no equivalent and the default was dropped.`
@@ -1117,9 +1189,13 @@ function fieldAttribute(
 }
 
 /** The columns Sequelize adds for `timestamps`: required date-times that it fills in itself. */
-function implicitTimestamp(name: string): AttributeSpec {
+function implicitTimestamp(
+  name: string,
+  timestamp: 'created' | 'updated'
+): AttributeSpec {
   return {
     name,
+    timestamp,
     type: 'DataTypes.DATE',
     entries: ['allowNull: false'],
     ts: 'Date',
@@ -1397,7 +1473,7 @@ function renderModel(
     const kind: 'created' | 'updated' | undefined = timestampKinds.get(field);
     if (kind !== undefined && isImplicitTimestamp(plan, field, kind)) {
       attributes.push(
-        implicitTimestamp(plan.attrs.get(field.name) ?? field.name)
+        implicitTimestamp(plan.attrs.get(field.name) ?? field.name, kind)
       );
       continue;
     }
@@ -1427,7 +1503,7 @@ function renderModel(
     if (idAttribute === undefined) {
       removeId = true;
       context.warnings.push(
-        `${model.name}: the model has no primary key; Sequelize would add an "id" column, so removeAttribute('id') was written. Most Sequelize features need a key.`
+        `${model.name}: the model has no primary key; Sequelize would add an "id" column, so ${context.style === 'v7' ? 'noPrimaryKey: true' : "removeAttribute('id')"} was written. Most Sequelize features need a key.`
       );
     } else {
       idAttribute.entries = [
@@ -1575,6 +1651,15 @@ function renderRelation(
   const keyOption: string = `foreignKey: ${quote(attribute.name)}`;
   const toKey: string | undefined =
     relation.toField === undefined ? undefined : key.attr;
+  if (context.style === 'v7') {
+    addRelationV7(associations, plan, targetPlan, relation, {
+      alias,
+      inverse,
+      key: attribute.name,
+      targetKey: toKey,
+    });
+    return;
+  }
   addAssociation(associations, {
     owner: plan.className,
     method: 'belongsTo',
@@ -1631,6 +1716,43 @@ function renderManyToMany(
   const targetColumn: string = `${isSelf ? 'to_' : ''}${toSnakeCase(target.name)}_id`;
   // The join table the other emitters derive; Sequelize creates it itself.
   const table: string = quote(`${model.tableName}_${relation.name}`);
+  if (context.style === 'v7') {
+    let otherSide: string | undefined = inverse;
+    if (otherSide === undefined && isSelf) {
+      // Sequelize 7 refuses a self-referencing many-to-many whose two sides do not have different names.
+      otherSide = uniqueName(`${alias}Inverse`, plan.used);
+      context.warnings.push(
+        `${label}: Sequelize 7 needs a name for the other side of a self-referencing many-to-many relation; "${otherSide}" was added.`
+      );
+    }
+    // The two halves of a self-referencing relation would give the join model's associations the same names.
+    const throughNames: string | undefined =
+      isSelf && otherSide !== undefined
+        ? `throughAssociations: { fromSource: ${quote(uniqueName(`${alias}Links`, plan.used))}, toSource: ${quote(`${alias}Source`)}, fromTarget: ${quote(uniqueName(`${otherSide}Links`, plan.used))}, toTarget: ${quote(`${alias}Target`)} }`
+        : undefined;
+    addAssociationV7(associations, plan.className, {
+      decorator: 'BelongsToMany',
+      alias,
+      target: targetPlan.className,
+      many: true,
+      options: compact([
+        `through: { model: ${table}, timestamps: false }`,
+        `foreignKey: ${quote(ownerColumn)}`,
+        `otherKey: ${quote(targetColumn)}`,
+        otherSide === undefined ? undefined : `inverse: ${quote(otherSide)}`,
+        throughNames,
+      ]),
+    });
+    if (otherSide !== undefined) {
+      addAssociationV7(associations, targetPlan.className, {
+        alias: otherSide,
+        target: plan.className,
+        many: true,
+        options: [],
+      });
+    }
+    return;
+  }
   addAssociation(associations, {
     owner: plan.className,
     method: 'belongsToMany',
@@ -2001,4 +2123,194 @@ function writeDefineIndex(context: EmitContext): string {
     ''
   );
   return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Output: Sequelize 7 style (decorators)
+// ---------------------------------------------------------------------------
+
+function addAssociationV7(
+  associations: AssociationLog,
+  owner: string,
+  association: V7Association
+): void {
+  const list: V7Association[] = associations.v7.get(owner) ?? [];
+  list.push(association);
+  associations.v7.set(owner, list);
+}
+
+interface RelationNamesV7 {
+  /** The alias of the relation on the model that holds the key. */
+  alias: string;
+  /** The alias of the other side, when the IR names one. */
+  inverse: string | undefined;
+  /** The attribute that holds the key. */
+  key: string;
+  /** The attribute of the target the key points at, when it is not the primary key. */
+  targetKey: string | undefined;
+}
+
+/**
+ * Declares a relation once. The model that holds the key gets `@BelongsTo`, whose `inverse` option defines the
+ * other side as well; that side is only a typed property. A self reference is declared from the `@HasMany` /
+ * `@HasOne` side, because Sequelize 7 cannot build the inverse of a self-referencing `@BelongsTo`.
+ */
+function addRelationV7(
+  associations: AssociationLog,
+  plan: ModelPlan,
+  targetPlan: ModelPlan,
+  relation: IrRelation,
+  names: RelationNamesV7
+): void {
+  const entries: string[] = compact([
+    `onDelete: ${quote(ON_ACTIONS[relation.onDelete])}`,
+    // ON UPDATE CASCADE is what Sequelize adds to every key; only another action is written.
+    relation.onUpdate !== undefined && relation.onUpdate !== 'cascade'
+      ? `onUpdate: ${quote(ON_ACTIONS[relation.onUpdate])}`
+      : undefined,
+  ]);
+  const foreignKey: string = `foreignKey: { name: ${quote(names.key)}, ${entries.join(', ')} }`;
+  const isOne: boolean = relation.kind === 'oneToOne';
+  const { alias, inverse, targetKey } = names;
+  if (inverse === undefined) {
+    addAssociationV7(associations, plan.className, {
+      decorator: 'BelongsTo',
+      alias,
+      target: targetPlan.className,
+      many: false,
+      options: compact([
+        foreignKey,
+        targetKey === undefined ? undefined : `targetKey: ${quote(targetKey)}`,
+      ]),
+    });
+  } else if (plan.className !== targetPlan.className) {
+    addAssociationV7(associations, plan.className, {
+      decorator: 'BelongsTo',
+      alias,
+      target: targetPlan.className,
+      many: false,
+      options: compact([
+        foreignKey,
+        targetKey === undefined ? undefined : `targetKey: ${quote(targetKey)}`,
+        `inverse: { type: ${quote(isOne ? 'hasOne' : 'hasMany')}, as: ${quote(inverse)} }`,
+      ]),
+    });
+    addAssociationV7(associations, targetPlan.className, {
+      alias: inverse,
+      target: plan.className,
+      many: !isOne,
+      options: [],
+    });
+  } else {
+    addAssociationV7(associations, plan.className, {
+      decorator: isOne ? 'HasOne' : 'HasMany',
+      alias: inverse,
+      target: plan.className,
+      many: !isOne,
+      options: compact([
+        foreignKey,
+        targetKey === undefined ? undefined : `sourceKey: ${quote(targetKey)}`,
+        `inverse: ${quote(alias)}`,
+      ]),
+    });
+    addAssociationV7(associations, plan.className, {
+      alias,
+      target: plan.className,
+      many: false,
+      options: [],
+    });
+  }
+}
+
+/** What the Sequelize 7 text writer needs to know about one model. */
+function v7ModelOf(
+  plan: ModelPlan,
+  rendered: RenderedModel,
+  associations: AssociationLog
+): V7Model {
+  const nullable: Set<string> = new Set<string>();
+  for (const field of plan.model.fields) {
+    if (field.isNullable) {
+      nullable.add(plan.attrs.get(field.name) ?? field.name);
+    }
+  }
+  for (const relation of plan.model.relations) {
+    const key: string | undefined = plan.keys.get(relation.name);
+    if (relation.isNullable && key !== undefined) {
+      nullable.add(key);
+    }
+  }
+  const attributes: V7Attribute[] = rendered.attributes.map(
+    (attribute: AttributeSpec): V7Attribute => ({
+      name: attribute.name,
+      type: attribute.type,
+      entries: attribute.entries,
+      ts: attribute.ts,
+      nullable: nullable.has(attribute.name),
+      optional: attribute.optional,
+      isReadonly: attribute.isReadonly,
+      ...(attribute.timestamp === undefined
+        ? {}
+        : { timestamp: attribute.timestamp }),
+    })
+  );
+  // `@CreatedAt` / `@UpdatedAt` name the columns that Sequelize adds, so the options that rename them are redundant.
+  const created: boolean = attributes.some(
+    (attribute: V7Attribute) => attribute.timestamp === 'created'
+  );
+  const updated: boolean = attributes.some(
+    (attribute: V7Attribute) => attribute.timestamp === 'updated'
+  );
+  return {
+    className: plan.className,
+    attributes,
+    tableOptions: rendered.options.filter(
+      (entry: string) =>
+        !(created && entry.startsWith("createdAt: '")) &&
+        !(updated && entry.startsWith("updatedAt: '"))
+    ),
+    indexLines: rendered.indexLines,
+    associations: associations.v7.get(plan.className) ?? [],
+    noPrimaryKey: rendered.removeId,
+    usesSql: rendered.usesLiteral,
+  };
+}
+
+/** The Sequelize 7 dialect package and class for the provider, with the connection options of the example. */
+function v7DialectOf(context: EmitContext): V7Dialect {
+  switch (context.dialect) {
+    case 'mysql':
+      return {
+        package: '@sequelize/mysql',
+        dialect: 'MySqlDialect',
+        connection: ['url: process.env.DATABASE_URL'],
+      };
+    case 'sqlite':
+      return {
+        package: '@sequelize/sqlite3',
+        dialect: 'SqliteDialect',
+        connection: ["storage: 'database.sqlite'"],
+      };
+    case 'mssql':
+      return {
+        package: '@sequelize/mssql',
+        dialect: 'MsSqlDialect',
+        connection: ["server: 'localhost'", "database: 'app'"],
+      };
+    default:
+      return {
+        package: '@sequelize/postgres',
+        dialect: 'PostgresDialect',
+        connection: ['url: process.env.DATABASE_URL'],
+      };
+  }
+}
+
+/** Remarks for the comment of the `index` file. */
+function v7Notes(context: EmitContext): string[] {
+  return context.cockroach
+    ? [
+        'CockroachDB: Sequelize 7 has no CockroachDB dialect; the PostgreSQL dialect above talks to it.',
+      ]
+    : [];
 }

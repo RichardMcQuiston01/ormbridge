@@ -172,7 +172,7 @@ describe('formats command output', () => {
       /sqlalchemy\s+extensions: \(none\) {2}read \+ write {2}SQLAlchemy 2\.0 and SQLModel models \(Python; declarative, Column\(\) and Table\(\) styles; --style sqlmodel writes SQLModel classes\)\n/
     );
     expect(text).toMatch(
-      /sequelize\s+extensions: \(none\) {2}read \+ write {2}Sequelize 6 models \(JavaScript or TypeScript; define, Model\.init and sequelize-typescript; --style define writes sequelize-cli files\)\n/
+      /sequelize\s+extensions: \(none\) {2}read \+ write {2}Sequelize 6 and 7 models \(JavaScript or TypeScript; define, Model\.init, sequelize-typescript and @sequelize\/core decorators\) and sequelize-cli migrations; --style define writes sequelize-cli files, --style v7 Sequelize 7 decorators\n/
     );
     expect(text).toMatch(
       /efcore\s+extensions: \(none\) {2}read \+ write {2}Entity Framework Core 8 models \(C#; DbContext, data annotations and the fluent API; --style fluent writes plain classes and configuration classes\)\n/

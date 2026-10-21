@@ -39,7 +39,7 @@ export function newScope(): Scope {
 }
 
 export function newOwnedConfig(nav: string, many: boolean): OwnedConfig {
-  return { ...newScope(), nav, many, toJson: false };
+  return { ...newScope(), nav, many, toJson: false, indexes: [] };
 }
 
 export function newEntityConfig(name: string): EntityConfig {

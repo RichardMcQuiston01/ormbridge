@@ -1,0 +1,15 @@
+table articles
+  column id uuid, not null, pk
+  column headline string(160), not null
+  column body text, not null, default ""
+  column status string, not null, default enum DRAFT, enum ArticleStatus
+  column views bigInt, not null, default 0
+  column published_on date, null
+  index articles_status_day (status, published_on)
+table comments
+  column id int, not null, pk, default autoIncrement
+  column author string(60), null
+  column text text, not null
+  foreignKey article (article_id) -> Article, on delete cascade
+  index (unnamed) (article)
+enum ArticleStatus: draft, published

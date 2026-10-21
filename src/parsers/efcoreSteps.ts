@@ -294,6 +294,11 @@ export abstract class FluentSteps {
           config.key = this.members(call);
           return { kind: 'key', config };
         }
+        if (target.owned?.many === true) {
+          this.warn(
+            `${place}: HasKey(...) inside the owned collection ${target.owned.nav} is not interpreted; its key is the foreign key to the owner plus Id.`
+          );
+        }
         return target;
       case 'HasNoKey':
         config.keyless = true;
@@ -307,7 +312,12 @@ export abstract class FluentSteps {
           descending: [],
           isAlternateKey: true,
         };
-        config.indexes.push(this.prefixed(index, target.prefix));
+        if (target.owned?.many === true) {
+          // An owned collection has its own table, so its indexes are not the owner's.
+          target.owned.indexes.push(index);
+        } else {
+          config.indexes.push(this.prefixed(index, target.prefix));
+        }
         return { kind: 'index', index };
       }
       case 'HasIndex': {
@@ -329,7 +339,12 @@ export abstract class FluentSteps {
           hasInclude: false,
           descending: [],
         };
-        config.indexes.push(this.prefixed(index, target.prefix));
+        if (target.owned?.many === true) {
+          // An owned collection has its own table, so its indexes are not the owner's.
+          target.owned.indexes.push(index);
+        } else {
+          config.indexes.push(this.prefixed(index, target.prefix));
+        }
         return { kind: 'index', index };
       }
       case 'Ignore': {
@@ -342,6 +357,15 @@ export abstract class FluentSteps {
         const lambda: CsLambda | undefined = this.lambdaArg(call);
         const name: string | undefined = this.stringAt(call, 0);
         const schema: string | undefined = this.stringAt(call, 1);
+        if (target.owned?.many === true) {
+          if (name !== undefined) {
+            target.owned.table = name;
+          }
+          if (schema !== undefined) {
+            target.owned.schema = schema;
+          }
+          return target;
+        }
         if (target.owned !== undefined) {
           target.owned.table = name ?? target.owned.nav;
           this.warn(
@@ -426,7 +450,8 @@ export abstract class FluentSteps {
           entity: target.entity,
           config,
           scope: ownedConfig,
-          prefix: `${target.prefix}${nav}.`,
+          // An owned collection is a table of its own: its columns are not prefixed with the navigation.
+          prefix: ownedConfig.many ? '' : `${target.prefix}${nav}.`,
           owned: ownedConfig,
         };
         // The first argument selects the navigation; a second lambda configures the owned type.

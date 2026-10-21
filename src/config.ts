@@ -37,7 +37,7 @@ export interface ConversionConfig {
   /** Prisma major version of the generated header (6 or 7). */
   prismaVersion?: 6 | 7;
   /**
-   * Layout of the SQLAlchemy output (`sqlalchemy` or `sqlmodel`), the Sequelize output (`init` or `define`) or the
+   * Layout of the SQLAlchemy output (`sqlalchemy` or `sqlmodel`), the Sequelize output (`init`, `define`, `v6` or `v7`) or the
    * EF Core output (`annotations` or `fluent`) or the JPA output (`jakarta` or `javax`).
    * Which one applies depends on `to`, which is checked when the conversion runs.
    */

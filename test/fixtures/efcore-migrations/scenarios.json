@@ -1,0 +1,56 @@
+[
+  {
+    "name": "blog",
+    "provider": "sqlite",
+    "contexts": [
+      "Blog.V1.BlogContext",
+      "Blog.V2.BlogContext",
+      "Blog.V3.BlogContext"
+    ],
+    "names": ["Initial", "RenameAndAlter", "AddAuthors"]
+  },
+  {
+    "name": "owned",
+    "provider": "sqlite",
+    "contexts": ["Owned.V1.ShopContext", "Owned.V2.ShopContext"],
+    "names": ["Initial", "GrowOwnedTypes"]
+  },
+  {
+    "name": "keys",
+    "provider": "sqlite",
+    "contexts": ["Keys.V1.KeysContext", "Keys.V2.KeysContext"],
+    "names": ["Initial", "Alter"]
+  },
+  {
+    "name": "rekey",
+    "provider": "npgsql",
+    "contexts": [
+      "Rekey.V1.RekeyContext",
+      "Rekey.V2.RekeyContext",
+      "Rekey.V3.RekeyContext"
+    ],
+    "names": ["Initial", "MoveKey", "Loosen"]
+  },
+  {
+    "name": "rename",
+    "provider": "sqlite",
+    "contexts": [
+      "Rename.RenameContextV1",
+      "Rename.RenameContextV2",
+      "Rename.RenameContextV3"
+    ],
+    "names": ["Initial", "RenameTable", "RenameColumn"]
+  },
+  {
+    "name": "postgres",
+    "provider": "npgsql",
+    "contexts": ["Pg.V1.PgContext", "Pg.V2.PgContext"],
+    "names": ["Initial", "Billing"]
+  },
+  {
+    "name": "fleet",
+    "provider": "sqlite",
+    "contexts": ["Fleet.V1.FleetContext", "Fleet.V2.FleetContext"],
+    "names": ["Initial", "Axles"]
+  }
+]

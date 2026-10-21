@@ -25,8 +25,7 @@ import type {
   IrOnDelete,
   IrSchema,
 } from '../src/ir.js';
-import { toCamelCase, toPascalCase } from '../src/naming.js';
-import { normalizeSchema, type NamingMode } from '../src/transforms.js';
+import type { NamingMode } from '../src/transforms.js';
 import { kitchenSinkSchema, stressSchema } from './gormFixtures.js';
 import {
   SOURCES_WITHOUT_VIEWS,
@@ -35,7 +34,13 @@ import {
   type ToolProbe,
   type VerifySource,
 } from './realToolSupport.js';
-import { compareWithDatabase, type DbSchema } from './sequelizeSupport.js';
+import {
+  compareWithDatabase,
+  expectedAssociations,
+  expectedSchema,
+  forSqlite,
+  type DbSchema,
+} from './sequelizeSupport.js';
 
 /**
  * Loads the Sequelize models that the emitter writes with the real library. For each schema (the canonical blog
@@ -187,32 +192,6 @@ const EXPECTED_OUTCOME: Readonly<Partial<Record<IrOnDelete, string>>> = {
   restrict: 'restrict',
   noAction: 'restrict',
 };
-
-/** The aliases a model's associations have in the output: `Model.alias`. */
-function expectedAssociations(schema: IrSchema, naming: NamingMode): string[] {
-  const className = (model: IrModel): string =>
-    /^[A-Z][A-Za-z0-9]*$/.test(model.name)
-      ? model.name
-      : toPascalCase(model.name);
-  const alias = (name: string): string =>
-    naming === 'normalize' ? toCamelCase(name) : name;
-  const names: string[] = [];
-  for (const model of schema.models) {
-    for (const relation of model.relations) {
-      const target: IrModel | undefined = schema.models.find(
-        (candidate: IrModel) => candidate.name === relation.targetModel
-      );
-      if (target === undefined) {
-        continue;
-      }
-      names.push(`${className(model)}.${alias(relation.name)}`);
-      if (relation.relatedName !== undefined) {
-        names.push(`${className(target)}.${alias(relation.relatedName)}`);
-      }
-    }
-  }
-  return names.sort();
-}
 
 /** The default a created row must show for a field, or undefined when the field has none to check. */
 function expectedDefault(
@@ -367,32 +346,6 @@ function compareExercise(
     }
   }
   return problems;
-}
-
-/**
- * SQLite cannot evaluate the database functions of a PostgreSQL schema (`gen_random_uuid()` from Prisma's
- * `dbgenerated`), so a row could not be inserted: those defaults are left out of the schema that is written.
- */
-function forSqlite(schema: IrSchema): IrSchema {
-  return {
-    ...schema,
-    models: schema.models.map((model: IrModel): IrModel => ({
-      ...model,
-      fields: model.fields.map((field: IrField): IrField => {
-        if (field.default?.kind !== 'dbExpression') {
-          return field;
-        }
-        const withoutDefault: IrField = { ...field };
-        delete withoutDefault.default;
-        return withoutDefault;
-      }),
-    })),
-  };
-}
-
-/** What the database should contain for a schema: the IR a naming mode would write. */
-function expectedSchema(schema: IrSchema, naming: NamingMode): IrSchema {
-  return naming === 'normalize' ? normalizeSchema(schema) : schema;
 }
 
 describe(titleWithReason('sequelize emitter: real Sequelize', probe), () => {

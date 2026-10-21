@@ -1,0 +1,22 @@
+import { Author } from './author.js';
+import { Profile } from './profile.js';
+import { Post } from './post.js';
+import { Category } from './category.js';
+import { Tag } from './tag.js';
+import { PostTag } from './postTag.js';
+import { Ledger } from './ledger.js';
+import { AuditLog } from './auditLog.js';
+
+export { Author, Profile, Post, Category, Tag, PostTag, Ledger, AuditLog };
+
+/**
+ * Every model of the schema. Sequelize 7 takes them in its constructor, together with the dialect, which
+ * is a class from its own package (npm install @sequelize/core @sequelize/postgres):
+ *
+ *   import { Sequelize } from '@sequelize/core';
+ *   import { PostgresDialect } from '@sequelize/postgres';
+ *   import { models } from './models/index.js';
+ *
+ *   const sequelize = new Sequelize({ dialect: PostgresDialect, url: process.env.DATABASE_URL, models });
+ */
+export const models = [Author, Profile, Post, Category, Tag, PostTag, Ledger, AuditLog];

@@ -1,0 +1,20 @@
+fieldType Account.id: bigInt -> int
+fieldDefault Account.created_at: now -> (none)
+fieldType Account.balance: decimal -> float
+fieldMaxDigits Account.balance: 10 -> (none)
+fieldDecimalPlaces Account.balance: 2 -> (none)
+fieldType Account.labels: string -> json
+fieldType Account.ttl: duration -> int
+fieldType Account.ip: ipAddress -> string
+fieldMaxLength Account.ip: (none) -> 45
+fieldType Account.homepage_url: string -> text
+fieldMaxLength Account.status: 10 -> (none)
+fieldEnum Account.status: Status -> AccountStatus
+fieldMaxLength Membership.role: 12 -> (none)
+fieldEnum Membership.role: Role -> MembershipRole
+modelRemoved legacy_order: model legacy_order -> (absent)
+modelAdded LegacyOrder: (absent) -> model LegacyOrder
+enumRemoved Status: enum Status -> (absent)
+enumRemoved Role: enum Role -> (absent)
+enumAdded AccountStatus: (absent) -> enum AccountStatus
+enumAdded MembershipRole: (absent) -> enum MembershipRole

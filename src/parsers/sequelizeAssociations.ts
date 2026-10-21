@@ -157,6 +157,11 @@ interface KeySpec {
   constraints: boolean | undefined;
   /** Sequelize's default `ON DELETE`, chosen by whether the column allows null. */
   defaultOnDelete: (allowNull: boolean) => string;
+  /**
+   * Sequelize 7 decides the default from `allowNull !== false` (a column that says nothing allows null);
+   * Sequelize 6 only from an `allowNull: true` it can see.
+   */
+  generation: 6 | 7;
 }
 
 function copyColumnType(
@@ -216,7 +221,10 @@ function injectKey(spec: KeySpec, project: Project): RawAttribute {
   } else {
     attribute = existing;
     // Sequelize decides the default action before it completes the column.
-    allowNullForDefault = existing.allowNull === true;
+    allowNullForDefault =
+      spec.generation === 7
+        ? existing.allowNull !== false
+        : existing.allowNull === true;
     if (attribute.type === undefined) {
       copyColumnType(attribute, keyAttribute);
     }
@@ -430,6 +438,7 @@ function injectJoinModel(plan: ManyToManyPlan, project: Project): void {
         onUpdate: options.onUpdate,
         constraints: options.constraints,
         defaultOnDelete: () => 'CASCADE',
+        generation: plan.assoc.file.generation,
       },
       project
     );
@@ -589,8 +598,14 @@ function linkBelongsTo(
       onDelete: assoc.options.onDelete,
       onUpdate: assoc.options.onUpdate,
       constraints: assoc.options.constraints,
+      // Sequelize 7 gives a belongsTo the same default as a hasMany.
       defaultOnDelete: (allowNull: boolean) =>
-        allowNull ? 'SET NULL' : 'NO ACTION',
+        allowNull
+          ? 'SET NULL'
+          : assoc.file.generation === 7
+            ? 'CASCADE'
+            : 'NO ACTION',
+      generation: assoc.file.generation,
     },
     project
   );
@@ -636,6 +651,7 @@ function linkHasOneOrMany(
       constraints: assoc.options.constraints,
       defaultOnDelete: (allowNull: boolean) =>
         allowNull ? 'SET NULL' : 'CASCADE',
+      generation: assoc.file.generation,
     },
     project
   );

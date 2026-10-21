@@ -1,0 +1,12 @@
+fieldType Book.tags: string -> text
+fieldDefault Book.tags: literal "[]" -> (none)
+fieldEnum Book.colors: color -> BookColors
+fieldEnum Book.color: color -> BookColor
+fieldDefault Book.settings: literal "{\"theme\": \"dark\", \"tabs\": [1, 2]}" -> literal "{\"theme\":\"dark\",\"tabs\":[1,2]}"
+fieldType Book.read_time: duration -> bigInt
+modelRemoved index: model index -> (absent)
+modelAdded Index: (absent) -> model Index
+enumRemoved color: enum color -> (absent)
+enumRemoved Status: enum Status -> (absent)
+enumAdded BookColors: (absent) -> enum BookColors
+enumAdded BookColor: (absent) -> enum BookColor

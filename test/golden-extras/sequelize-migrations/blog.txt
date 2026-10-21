@@ -1,0 +1,34 @@
+table Labels
+  column id int, not null, pk, default autoIncrement
+  column label string(40), not null
+  index tags_label_uq (label) unique
+table Notes
+  column id int, not null, pk, default autoIncrement
+  column text text, not null
+table Posts
+  column id int, not null, pk, default autoIncrement
+  column title string(200), not null
+  column body text, null
+  column published boolean, not null, default false
+  column views int, null, default 0
+  column createdAt dateTime, not null
+  column updatedAt dateTime, not null
+  column slug string(80), null
+  column rating decimal(4,2), null, default 0
+  foreignKey user (userId) -> User, on delete cascade
+  index posts_slug_unique (slug) unique
+  index posts_user_published (user, published)
+table PostTags
+  primary key (post, tag)
+  foreignKey post (postId) -> Post, on delete cascade
+  foreignKey tag (tagId) -> Label, on delete cascade
+table Users
+  column id int, not null, pk, default autoIncrement
+  column fullName string(255), not null
+  column email string(120), not null, unique
+  column role string, not null, default enum READER, enum UserRole
+  column createdAt dateTime, not null
+  column updatedAt dateTime, not null
+enum UserRole: admin, editor, reader
+warning: Skipped 1 raw SQL query (first at 20240106000000-rename-table-and-cleanup.js:22, tables: Users): raw SQL is not replayed, so the schema may differ from the real database.
+warning: Skipped 1 data statement (first at 20240106000000-rename-table-and-cleanup.js:18): row data is not part of the schema.

@@ -66,8 +66,11 @@ export interface OwnedConfig extends Scope {
   many: boolean;
   /** True for `ToJson()`: the owned type is stored in one JSON column. */
   toJson: boolean;
-  /** Set by OwnsOne / ComplexProperty with an explicit column prefix; unused by default. */
+  /** The table of `ToTable(...)` on an owned collection (the table of an owned type read as flattened is not used). */
   table?: string;
+  schema?: string;
+  /** Indexes and alternate keys declared inside an `OwnsMany` lambda; they belong to the collection's table. */
+  indexes: ConfigIndex[];
 }
 
 /** A relationship from HasOne / HasMany and what follows. */
@@ -200,7 +203,16 @@ export interface NavMember {
   requiredAttr: boolean;
 }
 
-export type Member = ScalarMember | NavMember;
+/** An owned collection (`OwnsMany`, or an `[Owned]` type used in a collection): its own table, read as a child entity. */
+export interface OwnedManyMember {
+  kind: 'ownedMany';
+  /** The collection property on the owner. */
+  name: string;
+  /** The child entity, which is also listed with the entities of the input. */
+  child: string;
+}
+
+export type Member = ScalarMember | NavMember | OwnedManyMember;
 
 /** One entity with its mapped members, before relationships are resolved. */
 export interface EntityInfo {
@@ -216,4 +228,6 @@ export interface EntityInfo {
   /** True when nullable reference types are in effect in the declaring file. */
   nullableRefs: boolean;
   order: number;
+  /** Set for the child entity of an owned collection: the entity that owns it and the collection property. */
+  ownedBy?: { owner: string; navigation: string };
 }

@@ -261,7 +261,8 @@ describe('directory input', () => {
   });
 
   it('names the expected files when a directory has none', async () => {
-    const root: string = project({ 'migrations/x.js': modelSource('X') });
+    // Seeders hold data, not models; a migrations folder is read when the project has no models (sequelize-migrations.test.ts).
+    const root: string = project({ 'seeders/x.js': modelSource('X') });
     const result = await runConversion({
       ...DEFAULT_OPTIONS,
       from: 'sequelize',

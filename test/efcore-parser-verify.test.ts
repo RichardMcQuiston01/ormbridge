@@ -58,6 +58,11 @@ const GROUPS: readonly VerifyGroup[] = [
     sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'inheritance')),
   },
   {
+    label: 'orders (owned collections, OwnsMany)',
+    context: 'OrdersContext',
+    sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'orders')),
+  },
+  {
     label: 'library (data annotations, delete behaviors)',
     context: 'LibraryContext',
     sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'library')),
@@ -100,7 +105,8 @@ describe(titleWithReason('efcore parser: real EF Core', probe), () => {
       expect(
         compareWithDatabase(
           ir,
-          toDbSchema((database ?? {}) as EfcoreDatabase, ir)
+          toDbSchema((database ?? {}) as EfcoreDatabase, ir),
+          { compositeForeignKeys: true }
         )
       ).toEqual([]);
     }
