@@ -682,12 +682,12 @@ describe('Zod emitter: valid TypeScript', () => {
 });
 
 describe('Zod emitter: registration', () => {
-  it('is registered as a write-only "zod" format that claims no extension', () => {
+  it('is registered as a readable and writable "zod" format that claims no extension', () => {
     const adapter = getFormat('zod');
     expect(adapter.ok).toBe(true);
     if (adapter.ok) {
       expect(adapter.value.extensions).toEqual([]);
-      expect(adapter.value.parse).toBeUndefined();
+      expect(adapter.value.parse).toBeDefined();
       expect(adapter.value.emit).toBeDefined();
     }
   });

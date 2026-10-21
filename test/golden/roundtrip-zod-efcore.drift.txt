@@ -1,0 +1,58 @@
+@@ AppDbContext.cs
++ entity.Property(e => e.Status).HasConversion(new PostStatusConverter());
+- 
+- .HasConversion(new PostStatusConverter())
+- .HasDefaultValue(PostStatus.DRAFT);
+- .Property(e => e.Status)
+- entity
+- entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+- entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+- entity.Property(e => e.IsFeatured).HasDefaultValue(false);
+- entity.Property(e => e.Metadata).HasDefaultValueSql("'{}'");
+- entity.Property(e => e.PublishedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+- entity.Property(e => e.ViewCount).HasDefaultValue(0);
+- modelBuilder.Entity<Category>(entity =>
+- {
+- });
+@@ Models/Category.cs
++ [Column("createdAt")]
++ [Column("parentId")]
++ [Column("updatedAt")]
+- [Column("created_at")]
+- [Column("parent_id")]
+- [Column("updated_at")]
+@@ Models/Post.cs
++ [Column("authorId")]
++ [Column("categoryId")]
++ [Column("createdAt")]
++ [Column("editorId")]
++ [Column("isFeatured")]
++ [Column("publicId")]
++ [Column("publishedAt")]
++ [Column("updatedAt")]
++ [Column("viewCount")]
++ public PostStatus Status { get; set; }
++ public bool IsFeatured { get; set; }
++ public int ViewCount { get; set; }
++ public string Metadata { get; set; } = string.Empty;
+- [Column("author_id")]
+- [Column("category_id")]
+- [Column("created_at")]
+- [Column("editor_id")]
+- [Column("is_featured")]
+- [Column("public_id")]
+- [Column("published_at")]
+- [Column("updated_at")]
+- [Column("view_count")]
+- public PostStatus Status { get; set; } = PostStatus.DRAFT;
+- public bool IsFeatured { get; set; } = false;
+- public int ViewCount { get; set; } = 0;
+- public string Metadata { get; set; } = null!;
+@@ Models/PostTags.cs
++ [Column("postId")]
++ [Column("tagId")]
+- [Column("post_id")]
+- [Column("tag_id")]
+@@ Models/Profile.cs
++ [Column("userId")]
+- [Column("user_id")]

@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ormbridge:schema",
+  "$defs": {
+    "PostStatus": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published"
+      ]
+    },
+    "User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "x-table-name": "user"
+    },
+    "Category": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "slug": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "parentId": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "updatedAt",
+        "name",
+        "slug"
+      ],
+      "additionalProperties": false,
+      "x-table-name": "category"
+    },
+    "Post": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "publicId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "body": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PostStatus",
+          "default": "draft"
+        },
+        "rating": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^-?[0-9]{1,2}(\\.[0-9]{1,2})?$"
+        },
+        "viewCount": {
+          "type": "integer",
+          "default": 0
+        },
+        "isFeatured": {
+          "type": "boolean",
+          "default": false
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "metadata": {},
+        "authorId": {
+          "type": "integer"
+        },
+        "editorId": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "categoryId": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "updatedAt",
+        "publicId",
+        "title",
+        "body",
+        "authorId",
+        "categoryId"
+      ],
+      "additionalProperties": false,
+      "x-table-name": "post"
+    },
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "additionalProperties": false,
+      "x-table-name": "tag"
+    },
+    "PostTags": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "postId": {
+          "type": "integer"
+        },
+        "tagId": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "id",
+        "postId",
+        "tagId"
+      ],
+      "additionalProperties": false,
+      "x-table-name": "post_tag"
+    },
+    "Profile": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "bio": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "avatar": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "userId": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "id",
+        "userId"
+      ],
+      "additionalProperties": false,
+      "x-table-name": "profile"
+    }
+  }
+}

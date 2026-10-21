@@ -351,12 +351,13 @@ function verify(schemasText: string, spec: Spec, label: string): void {
 }
 
 describe(titleWithReason('zod emitter: real Zod', probe), () => {
-  const cases: (readonly [VerifySource, NamingMode])[] = VERIFY_SOURCES.flatMap(
-    (source: VerifySource): (readonly [VerifySource, NamingMode])[] => [
-      [source, 'preserve'],
-      [source, 'normalize'],
-    ]
-  );
+  // A Zod source is read by test/zod-parser-verify.test.ts; converting it back to Zod is not a conversion.
+  const cases: (readonly [VerifySource, NamingMode])[] = VERIFY_SOURCES.filter(
+    (source: VerifySource) => source.format !== 'zod'
+  ).flatMap((source: VerifySource): (readonly [VerifySource, NamingMode])[] => [
+    [source, 'preserve'],
+    [source, 'normalize'],
+  ]);
 
   it.skipIf(!probe.available).each(cases)(
     'compiles and validates the schemas generated from %o (%s naming)',

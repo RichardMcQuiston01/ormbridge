@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PostStatus {
+  DRAFT @map("draft")
+  PUBLISHED @map("published")
+}
+
+model User {
+  id        Int      @id
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user")
+}
+
+model Category {
+  id        Int      @id
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+  name      String   @db.VarChar(100)
+  slug      String   @db.VarChar(50)
+  parentId  Int?     @map("parent_id")
+
+  @@map("category")
+}
+
+model Post {
+  id          Int        @id
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @map("updated_at") @db.Timestamptz(6)
+  publicId    String     @map("public_id") @db.Uuid
+  title       String     @db.VarChar(200)
+  body        String     @db.Text
+  status      PostStatus @default(DRAFT)
+  rating      Decimal?   @db.Decimal(4, 2)
+  viewCount   Int        @default(0) @map("view_count")
+  isFeatured  Boolean    @default(false) @map("is_featured")
+  publishedAt DateTime   @default(now()) @map("published_at") @db.Timestamptz(6)
+  metadata    Json       @default("{}")
+  authorId    Int        @map("author_id")
+  editorId    Int?       @map("editor_id")
+  categoryId  Int        @map("category_id")
+
+  @@map("post")
+}
+
+model Tag {
+  id        Int      @id
+  label     String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("tag")
+}
+
+model PostTags {
+  id        Int      @id
+  postId    Int      @map("post_id")
+  tagId     Int      @map("tag_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("post_tag")
+}
+
+model Profile {
+  id        Int      @id
+  bio       String?  @db.Text
+  avatar    String?  @db.VarChar(100)
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("profile")
+}

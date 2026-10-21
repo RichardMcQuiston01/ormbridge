@@ -1,0 +1,50 @@
+@@ src/Entity/Category.php
++ #[ORM\Column(name: 'created_at', type: 'datetimetz_immutable')]
+- 
+- #[ORM\Column(
+- $this->created_at = new DateTimeImmutable();
+- )]
+- name: 'created_at',
+- options: ['default' => 'CURRENT_TIMESTAMP'],
+- public function __construct()
+- type: 'datetimetz_immutable',
+- {
+- }
+@@ src/Entity/Post.php
++ #[ORM\Column(name: 'created_at', type: 'datetimetz_immutable')]
++ #[ORM\Column(name: 'is_featured', type: 'boolean')]
++ #[ORM\Column(name: 'published_at', type: 'datetimetz_immutable')]
++ #[ORM\Column(name: 'status', type: 'string', enumType: PostStatus::class)]
++ #[ORM\Column(name: 'view_count', type: 'integer')]
++ private PostStatus $status;
++ private bool $is_featured;
++ private int $view_count;
++ private mixed $metadata;
+- 
+- #[ORM\Column(
+- #[ORM\Column(
+- #[ORM\Column(
+- #[ORM\Column(name: 'is_featured', type: 'boolean', options: ['default' => false])]
+- #[ORM\Column(name: 'view_count', type: 'integer', options: ['default' => 0])]
+- $this->created_at = new DateTimeImmutable();
+- $this->published_at = new DateTimeImmutable();
+- )]
+- )]
+- )]
+- enumType: PostStatus::class,
+- name: 'created_at',
+- name: 'published_at',
+- name: 'status',
+- options: ['default' => 'CURRENT_TIMESTAMP'],
+- options: ['default' => 'CURRENT_TIMESTAMP'],
+- options: ['default' => 'draft'],
+- private PostStatus $status = PostStatus::DRAFT;
+- private bool $is_featured = false;
+- private int $view_count = 0;
+- private mixed $metadata = [];
+- public function __construct()
+- type: 'datetimetz_immutable',
+- type: 'datetimetz_immutable',
+- type: 'string',
+- {
+- }

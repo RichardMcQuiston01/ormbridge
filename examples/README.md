@@ -19,7 +19,7 @@ One runnable project per format. Each folder converts the shared blog schema in 
 | [`jpa`](jpa)                 | Hibernate / JPA (Java)  | both ways                                           |
 | [`graphene`](graphene)       | Graphene (GraphQL)      | write only (`generated/`)                           |
 | [`typescript`](typescript)   | TypeScript interfaces   | write only (`generated/`)                           |
-| [`zod`](zod)                 | Zod schemas             | write only (`generated/`)                           |
+| [`zod`](zod)                 | Zod schemas             | both ways (`generated/`)                            |
 | [`neo4j`](neo4j)             | Neo4j (Cypher)          | write only (`generated/`)                           |
 | [`neomodel`](neomodel)       | neomodel (Python)       | write only (`generated/`)                           |
 | [`sdn`](sdn)                 | Spring Data Neo4j       | write only (`generated/`)                           |

@@ -1,0 +1,1 @@
+ClickHouse cannot refresh a column on update from the DDL (User.updated_at, Tag.updated_at, PostTags.updated_at, Profile.updated_at); the application has to set it.

@@ -42,6 +42,7 @@ import { parseSequelize } from './parsers/sequelize.js';
 import { parseSqlAlchemy } from './parsers/sqlalchemy.js';
 import { parseSqlDdl } from './parsers/sqlDdl.js';
 import { parseTypeorm } from './parsers/typeorm.js';
+import { parseZod } from './parsers/zod.js';
 import { err, ok, type Result } from './result.js';
 import { checkStyle, type OutputStyle } from './styles.js';
 import {
@@ -528,9 +529,20 @@ const drizzleAdapter: FormatAdapter = {
 
 const zodAdapter: FormatAdapter = {
   name: 'zod',
-  // Output only, and no extension is claimed: ".ts" belongs to no single format, so pass --to zod.
+  // No extension is claimed: ".ts" belongs to no single format, so pass --from/--to zod.
   extensions: [],
-  description: 'Zod schemas (TypeScript, Zod 4)',
+  description: 'Zod schemas (TypeScript, Zod 3 and 4)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseZod(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
   emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
     const prepared: IrSchema =
       options.naming === 'normalize' ? normalizeSchema(schema) : schema;

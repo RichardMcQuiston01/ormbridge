@@ -6,6 +6,13 @@
       "from": "prisma",
       "to": "zod",
       "output": "generated/schemas.ts"
+    },
+    {
+      "name": "from-zod",
+      "input": "generated",
+      "from": "zod",
+      "to": "prisma",
+      "output": "prisma/schema.prisma"
     }
   ]
 }
