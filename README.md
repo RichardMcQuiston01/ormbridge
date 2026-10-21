@@ -23,7 +23,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; one file per model                                                       |
 | Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable`, `mysqlTable`, `sqliteTable` plus `relations()`                                          |
 | JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON)                              |
-| SQL DDL                     |  ✔   |   ✔   | `CREATE TABLE` and more for PostgreSQL, CockroachDB, MySQL, SQLite, SQL Server, ClickHouse (write) |
+| SQL DDL                     |  ✔   |   ✔   | Tables and migrations: PostgreSQL, CockroachDB, MySQL, SQLite, SQL Server, ClickHouse (write only) |
 | SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 (declarative, `Column()`, `Table()`) and SQLModel                                   |
 | Sequelize (JavaScript/TS)   |  ✔   |   ✔   | Sequelize 6; writes TypeScript or `sequelize-cli` (`--style define`)                               |
 | Entity Framework Core (C#)  |  ✔   |   ✔   | EF Core 8: annotations or `--style fluent`, and a `DbContext`                                      |

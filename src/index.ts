@@ -63,6 +63,7 @@ export type {
   SqlAlchemySourceFile,
 } from './parsers/sqlalchemy.js';
 export { parseSqlDdl } from './parsers/sqlDdl.js';
+export { orderSqlMigrationFiles } from './parsers/sqlMigrationOrder.js';
 export type { SqlDdlParseOptions, SqlDdlSourceFile } from './parsers/sqlDdl.js';
 export { parseTypeorm } from './parsers/typeorm.js';
 export type {

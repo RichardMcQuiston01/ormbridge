@@ -1489,19 +1489,32 @@ describe('ALTER TABLE', () => {
     expect(schema.warnings).toEqual([]);
   });
 
-  it('warns once per kind of change it does not replay, and about unknown tables', () => {
+  it('replays drops, renames and type changes (see sql-migration-replay.test.ts)', () => {
     const schema: IrSchema = parse(`
       CREATE TABLE t (id int PRIMARY KEY, a int);
       ALTER TABLE t DROP COLUMN a;
+      ALTER TABLE t ALTER COLUMN id TYPE bigint;
       ALTER TABLE t RENAME TO u;
-      ALTER TABLE t ALTER COLUMN a TYPE bigint;
+    `);
+    expect(schema.warnings).toEqual([]);
+    expect(model(schema, 'U').fields.map((item) => item.columnName)).toEqual([
+      'id',
+    ]);
+    expect(field(schema, 'U', 'id').type).toBe('bigInt');
+  });
+
+  it('warns once per kind of change it cannot replay, and about unknown tables', () => {
+    const schema: IrSchema = parse(`
+      CREATE TABLE t (id int PRIMARY KEY, a int);
+      ALTER TABLE t SET SCHEMA other;
+      ALTER TABLE t FROBNICATE;
+      ALTER TABLE t FROBNICATE AGAIN;
       ALTER TABLE nope ADD COLUMN x int;
       ALTER SEQUENCE s OWNED BY t.id;
     `);
     const text: string = schema.warnings.join('\n');
-    expect(text).toContain('ALTER TABLE ... DROP');
-    expect(text).toContain('ALTER TABLE ... RENAME');
-    expect(text).toContain('ALTER COLUMN');
+    expect(text).toContain('Skipped 1 ALTER TABLE ... SET SCHEMA statement');
+    expect(text).toContain('Skipped 2 ALTER TABLE ... FROBNICATE statements');
     expect(text).toContain('unknown table "nope"');
   });
 

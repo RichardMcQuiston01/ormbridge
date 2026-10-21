@@ -1,0 +1,94 @@
+## RENAME TABLE, including several renames and a swap
+table a_last
+  column id int, not null, pk
+table b
+  column id int, not null, pk
+table d
+  column id int, not null, pk
+  foreignKey a (a_id) -> ALast, on delete noAction, constraint b_ibfk_1
+warning: migration.sql:7: RENAME TABLE "nope" TO "other": the table does not exist at this point; the statement was skipped.
+
+## RENAME COLUMN keeps keys and foreign keys
+table c
+  column id int, not null, pk
+  foreignKey parent (parent) -> P, on delete noAction, constraint c_fk
+table p
+  column p_pk int, not null, pk
+  column title string(20), null, unique p_name
+  index p_name_idx (title)
+
+## CHANGE renames and redefines a column; MODIFY redefines it
+table t
+  column id bigInt, not null, pk, default autoIncrement
+  column d decimal(8,3), not null
+  column a_new bigInt, null, unique t_a
+  column b string(200), not null, default ""
+  column c string, null, enum TC
+enum TC: x, y, z
+warning: migration.sql:16: ALTER TABLE "t" MODIFY COLUMN "missing": the column does not exist at this point; the statement was skipped.
+warning: migration.sql:17: ALTER TABLE "t" CHANGE COLUMN "missing": the column does not exist at this point; the statement was skipped.
+warning: migration.sql:18: ALTER TABLE "t" CHANGE COLUMN "b": a column named "c" exists already; the statement was skipped.
+
+## ADD COLUMN with FIRST and AFTER, and a list of columns
+table t
+  column b int, null
+  column id int, not null, pk
+  column c int, null
+  column a int, null
+  column d int, null
+  column e string(5), not null, default "e"
+  index t_d (d)
+
+## DROP COLUMN takes the column out of keys and indexes, and drops what is left empty
+table t
+  column a int, not null, pk
+warning: migration.sql:11: ALTER TABLE "t" DROP COLUMN "nope": the column does not exist at this point; the statement was skipped.
+
+## DROP INDEX, KEY, FOREIGN KEY, PRIMARY KEY, CHECK and CONSTRAINT
+table p
+  column id int, not null, pk
+table t
+  column id int, not null
+  column a int, null
+  column b int, null
+  column c int, null
+  column d int, null
+warning: migration.sql:20: ALTER TABLE "t" DROP PRIMARY KEY: the table has no primary key at this point; the statement was skipped.
+warning: migration.sql:21: ALTER TABLE "t" DROP INDEX "t_missing": no index of that name exists at this point; the statement was skipped.
+warning: migration.sql:22: ALTER TABLE "t" DROP FOREIGN KEY "t_missing_fk": no foreign key of that name exists at this point; the statement was skipped.
+warning: table "t": the table has no primary key; most ORMs need one.
+
+## DROP INDEX ... ON, CREATE UNIQUE INDEX is a unique key, RENAME INDEX
+table t
+  column id int, not null, pk
+  column a int, null
+  column b int, null
+  column c int, null
+  index t_c_key (c) unique [c {"sort":"desc"}]
+  index t_a_ft (a) fulltext
+warning: migration.sql:11: DROP INDEX "nope": no index of that name exists at this point; the statement was skipped.
+
+## dropping the index MySQL built for a foreign key is not a warning
+table p
+  column id int, not null, pk
+table t
+  column id int, not null, pk
+  column p_id int, null
+
+## ALTER COLUMN SET DEFAULT and DROP DEFAULT; DROP TABLE of several tables
+table t
+  column id int, not null, pk
+  column a int, not null
+  column b int, null, default 9
+
+## data statements and TRUNCATE
+table t
+  column id int, not null, pk
+warning: Skipped 2 data statements (first at migration.sql:3): row data is not part of the schema.
+
+## changes that cannot be replayed are named in a warning
+table t
+  column id int, not null, pk
+  column a int, null
+warning: Skipped 1 ALTER TABLE ... PARTITION statement (first at migration.sql:6, table "t"): the change is not replayed, so the result may differ from the final database.
+warning: Skipped 1 ALTER TABLE ... ORDER statement (first at migration.sql:7, table "t"): the change is not replayed, so the result may differ from the final database.

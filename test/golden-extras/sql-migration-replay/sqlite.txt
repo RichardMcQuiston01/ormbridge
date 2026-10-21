@@ -1,0 +1,27 @@
+## RENAME TO, RENAME COLUMN, ADD COLUMN and DROP COLUMN
+table accounts
+  column id int, not null, pk, default autoIncrement
+  column full_name text, not null
+  column active int, not null, default 1
+table posts
+  column id int, not null, pk, default autoIncrement
+  foreignKey account (account_id) -> Account, on delete cascade
+  index posts_user_idx (account)
+
+## drizzle-kit recreates a table: new table, copy, drop, rename
+table posts
+  column id int, not null, pk, default autoIncrement
+  foreignKey user (user_id) -> User, on delete noAction
+  index posts_user_idx (user)
+table users
+  column id int, not null, pk, default autoIncrement
+  column name text, not null
+  column email text, null
+warning: Skipped 1 data statement (first at migration.sql:11): row data is not part of the schema.
+
+## DROP INDEX and DROP TABLE
+table a
+  column id int, not null, pk, default autoIncrement
+  column x int, null
+  index a_x_uq (x) unique
+warning: migration.sql:9: DROP TABLE "b": the table does not exist at this point; the statement was skipped.

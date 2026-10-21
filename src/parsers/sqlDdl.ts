@@ -17,7 +17,9 @@ import { singularize, toPascalCase, toSnakeCase } from '../naming.js';
 import { describeThrown, err, ok, type Result } from '../result.js';
 import {
   Cursor,
+  bestDialect,
   detectDialect,
+  dialectScores,
   MAX_SOURCE_CHARACTERS,
   sourceOf,
   splitStatements,
@@ -77,6 +79,8 @@ interface RawColumn {
   /** Tokens of the DEFAULT expression, without the DEFAULT keyword. */
   defaultTokens?: Token[];
   defaultText?: string;
+  /** SQL Server names its default constraints (`CONSTRAINT df_x DEFAULT 0`); DROP CONSTRAINT uses the name. */
+  defaultName?: string;
   autoIncrement: boolean;
   onUpdateNow: boolean;
   generated?: { expression: string; isStored: boolean };
@@ -121,6 +125,11 @@ interface RawTable {
   indexes: RawIndex[];
   checks: RawCheck[];
   withoutRowid: boolean;
+  /**
+   * MySQL builds an index for each foreign key and names it after the key. Those indexes are not modelled, but
+   * a later `DROP INDEX` (usually right after `DROP FOREIGN KEY`) names them, so the names are remembered.
+   */
+  implicitIndexes: Set<string>;
   dialect: SqlDialect;
   line: number;
   file: string;
@@ -142,7 +151,13 @@ type ConstraintResult =
   | { kind: 'reference'; reference: RawReference }
   | { kind: 'check'; check: RawCheck }
   | { kind: 'index'; index: RawIndex }
-  | { kind: 'default'; column: string; tokens: Token[]; text: string }
+  | {
+      kind: 'default';
+      column: string;
+      tokens: Token[];
+      text: string;
+      name?: string;
+    }
   | { kind: 'ignored' };
 
 interface FileContext {
@@ -165,6 +180,7 @@ interface WarningSink {
 
 interface SkippedKind {
   count: number;
+  /** Where the first statement of this kind is, with the table it names when there is one. */
   first: string;
 }
 
@@ -193,11 +209,15 @@ function recordSkipped(
   ctx: Context,
   file: FileContext,
   kind: string,
-  line: number
+  line: number,
+  table?: string
 ): void {
   const entry: SkippedKind | undefined = ctx.skipped.get(kind);
   if (entry === undefined) {
-    ctx.skipped.set(kind, { count: 1, first: `${file.name}:${line}` });
+    ctx.skipped.set(kind, {
+      count: 1,
+      first: `${file.name}:${line}${table === undefined ? '' : `, table "${table}"`}`,
+    });
   } else {
     entry.count += 1;
   }
@@ -249,8 +269,15 @@ function parseSources(
     suppressedWarnings: 0,
     skipped: new Map<string, SkippedKind>(),
   };
+  // A migration with no dialect hint of its own (ALTER TABLE t DROP COLUMN c) is read like the set it belongs to.
+  const setDialect: SqlDialect =
+    options.dialect ??
+    (sources.length > 1
+      ? detectDialect(sources.map((source) => source.text).join('\n'))
+      : 'postgresql');
   for (const source of sources) {
-    const dialect: SqlDialect = options.dialect ?? detectDialect(source.text);
+    const dialect: SqlDialect =
+      options.dialect ?? dialectOfFile(source.text, setDialect);
     const file: FileContext = {
       name: basename(source.path),
       text: source.text,
@@ -297,6 +324,22 @@ function parseSources(
     );
   }
   return ok(schema);
+}
+
+/**
+ * The dialect of one file of a set: its own hint when it has one, otherwise the dialect of the set. Backticks
+ * alone (what drizzle-kit writes for SQLite) are too weak a hint to move a file out of a SQLite set.
+ */
+function dialectOfFile(text: string, setDialect: SqlDialect): SqlDialect {
+  const scores: Record<SqlDialect, number> = dialectScores(text);
+  const best: SqlDialect = bestDialect(scores);
+  if (scores[best] === 0) {
+    return setDialect;
+  }
+  if (best === 'mysql' && scores.mysql === 1 && setDialect === 'sqlite') {
+    return setDialect;
+  }
+  return best;
 }
 
 function describeSkipReason(kind: string): string {
@@ -347,6 +390,8 @@ const QUIET_STATEMENTS: ReadonlySet<string> = new Set([
   'EXECUTE',
   'CHECKPOINT',
   'DISCARD',
+  // TRUNCATE empties a table and changes no column, key or index.
+  'TRUNCATE',
 ]);
 
 /** Data statements, reported together as one warning. */
@@ -356,7 +401,6 @@ const DATA_STATEMENTS: ReadonlySet<string> = new Set([
   'DELETE',
   'SELECT',
   'COPY',
-  'TRUNCATE',
   'MERGE',
   'REPLACE',
   'WITH',
@@ -396,6 +440,13 @@ function handleStatement(
     recordSkipped(ctx, file, 'unrecognised', line);
     return;
   }
+  if (
+    (head.up === 'EXEC' || head.up === 'EXECUTE') &&
+    cursor.isKeyword('SP_RENAME', 1)
+  ) {
+    handleSpRename(ctx, file, cursor);
+    return;
+  }
   if (QUIET_STATEMENTS.has(head.up)) {
     return;
   }
@@ -412,6 +463,9 @@ function handleStatement(
       return;
     case 'DROP':
       handleDrop(ctx, file, cursor);
+      return;
+    case 'RENAME':
+      handleRename(ctx, file, cursor);
       return;
     default:
       recordSkipped(ctx, file, head.up, line);
@@ -589,6 +643,7 @@ function createTable(
     indexes: [],
     checks: [],
     withoutRowid: false,
+    implicitIndexes: new Set<string>(),
     dialect: file.dialect,
     line,
     file: file.name,
@@ -1044,6 +1099,7 @@ function parseTableConstraint(
           column: column.value,
           tokens: expression,
           text: defaultExpression(expression, file.text),
+          ...(name === undefined ? {} : { name }),
         };
       }
       return { kind: 'ignored' };
@@ -1125,6 +1181,15 @@ function applyConstraint(
       return;
     case 'reference':
       table.references.push(result.reference);
+      if (table.dialect === 'mysql') {
+        table.implicitIndexes.add(
+          (
+            result.reference.name ??
+            result.reference.columns[0] ??
+            ''
+          ).toLowerCase()
+        );
+      }
       return;
     case 'check':
       table.checks.push(result.check);
@@ -1143,6 +1208,11 @@ function applyConstraint(
       }
       column.defaultTokens = result.tokens;
       column.defaultText = result.text;
+      if (result.name === undefined) {
+        delete column.defaultName;
+      } else {
+        column.defaultName = result.name;
+      }
       return;
     }
     default:
@@ -1286,6 +1356,10 @@ function parseColumn(
         const tokens: Token[] = readDefault(cursor);
         column.defaultTokens = tokens;
         column.defaultText = defaultExpression(tokens, file.text);
+        if (pendingName !== undefined) {
+          column.defaultName = pendingName;
+          pendingName = undefined;
+        }
         continue;
       }
       case 'PRIMARY':
@@ -1514,7 +1588,7 @@ function createIndex(
     return;
   }
   cursor.acceptKeyword('CONCURRENTLY');
-  cursor.acceptKeywords('IF', 'NOT', 'EXISTS');
+  const ifNotExists: boolean = cursor.acceptKeywords('IF', 'NOT', 'EXISTS');
   let name: string | undefined;
   if (!cursor.isKeyword('ON')) {
     const parsed: QualifiedName | undefined = parseQualifiedName(cursor);
@@ -1570,9 +1644,41 @@ function createIndex(
     );
     return;
   }
+  if (
+    ifNotExists &&
+    name !== undefined &&
+    table.indexes.some(
+      (existing: RawIndex) =>
+        existing.name !== undefined && sameName(existing.name, name)
+    )
+  ) {
+    return;
+  }
+  const elements: RawIndexElement[] = readIndexElements(group);
+  if (
+    file.dialect === 'mysql' &&
+    isUnique &&
+    kind === undefined &&
+    method === undefined &&
+    !isPartial &&
+    elements.every(
+      (element: RawIndexElement) =>
+        element.column !== undefined &&
+        !element.descending &&
+        element.length === undefined &&
+        element.ops === undefined
+    )
+  ) {
+    // In MySQL a unique index is a unique key: SHOW CREATE TABLE writes it as UNIQUE KEY.
+    table.uniques.push({
+      columns: elements.map((element: RawIndexElement) => element.column ?? ''),
+      ...(name === undefined ? {} : { name }),
+    });
+    return;
+  }
   table.indexes.push({
     ...(name === undefined ? {} : { name }),
-    elements: readIndexElements(group),
+    elements,
     isUnique,
     ...(kind === undefined ? {} : { kind }),
     ...(method === undefined || method === 'btree' ? {} : { method }),
@@ -1665,42 +1771,688 @@ function findEnum(
   return found === undefined || found.dropped ? undefined : found;
 }
 
+// ---------------------------------------------------------------------------
+// Replaying schema changes (ALTER, RENAME, DROP)
+// ---------------------------------------------------------------------------
+
+function sameName(left: string, right: string): boolean {
+  return left.toLowerCase() === right.toLowerCase();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Says why a statement did not change anything, naming the file, line and statement. */
+function warnStatement(
+  ctx: Context,
+  file: FileContext,
+  line: number,
+  statement: string,
+  problem: string
+): void {
+  warn(
+    ctx,
+    `${file.name}:${line}: ${statement}: ${problem}; the statement was skipped.`
+  );
+}
+
+/**
+ * Gives every unnamed constraint and index the name the database would have given it. The database keeps that
+ * name when the table or a column is renamed (`t_a_key` stays `t_a_key` after `RENAME COLUMN a TO b`), while
+ * the name this reader would work out follows the new names, so it is written down before a rename.
+ */
+function freezeNames(table: RawTable): void {
+  if (table.primaryKey !== undefined && table.primaryKey.name === undefined) {
+    const name: string | undefined = impliedName(
+      table,
+      'primaryKey',
+      0,
+      table.primaryKey.columns
+    );
+    if (name !== undefined && table.dialect !== 'mysql') {
+      table.primaryKey.name = name;
+    }
+  }
+  table.uniques.forEach((unique: RawUnique, position: number): void => {
+    unique.name ??= impliedName(table, 'unique', position, unique.columns);
+  });
+  table.references.forEach(
+    (reference: RawReference, position: number): void => {
+      reference.name ??= impliedName(
+        table,
+        'reference',
+        position,
+        reference.columns
+      );
+    }
+  );
+  table.checks.forEach((check: RawCheck, position: number): void => {
+    check.name ??= impliedName(
+      table,
+      'check',
+      position,
+      checkColumns(table, check)
+    );
+  });
+  table.indexes.forEach((index: RawIndex, position: number): void => {
+    index.name ??= impliedName(
+      table,
+      'index',
+      position,
+      index.elements
+        .map((element: RawIndexElement) => element.column ?? '')
+        .filter((column: string) => column !== '')
+    );
+  });
+}
+
+/** Drops the primary key. Its columns keep the NOT NULL they got from it, in every dialect. */
+function dropPrimaryKey(table: RawTable): void {
+  if (table.primaryKey === undefined) {
+    return;
+  }
+  for (const name of table.primaryKey.columns) {
+    const column: RawColumn | undefined = findColumn(table, name);
+    if (column !== undefined) {
+      column.notNull = true;
+    }
+  }
+  delete table.primaryKey;
+}
+
+function rebuildColumnIndex(table: RawTable): void {
+  table.columnIndex.clear();
+  for (const column of table.columns) {
+    const key: string = column.name.toLowerCase();
+    if (!table.columnIndex.has(key)) {
+      table.columnIndex.set(key, column);
+    }
+  }
+}
+
+function targetOf(
+  ctx: Context,
+  owner: RawTable,
+  reference: RawReference
+): RawTable | undefined {
+  return lookupTable(
+    ctx,
+    {
+      ...(reference.refSchema === undefined
+        ? {}
+        : { schema: reference.refSchema }),
+      name: reference.refTable,
+    },
+    owner.dialect
+  );
+}
+
+interface InboundReference {
+  owner: RawTable;
+  reference: RawReference;
+}
+
+/** The foreign keys of all tables (the table itself included) that point at `target`. */
+function inboundReferences(ctx: Context, target: RawTable): InboundReference[] {
+  const found: InboundReference[] = [];
+  for (const owner of ctx.tables) {
+    if (owner.dropped) {
+      continue;
+    }
+    for (const reference of owner.references) {
+      if (targetOf(ctx, owner, reference) === target) {
+        found.push({ owner, reference });
+      }
+    }
+  }
+  return found;
+}
+
+function renameTable(
+  ctx: Context,
+  file: FileContext,
+  table: RawTable,
+  newName: string,
+  line: number
+): void {
+  if (sameName(table.name, newName)) {
+    table.name = newName;
+    return;
+  }
+  const clash: RawTable | undefined = lookupTable(
+    ctx,
+    {
+      ...(table.schema === undefined ? {} : { schema: table.schema }),
+      name: newName,
+    },
+    table.dialect
+  );
+  if (clash !== undefined && clash !== table) {
+    warnStatement(
+      ctx,
+      file,
+      line,
+      `RENAME of the table "${table.name}" to "${newName}"`,
+      `a table named "${newName}" exists already`
+    );
+    return;
+  }
+  const inbound: InboundReference[] = inboundReferences(ctx, table);
+  freezeNames(table);
+  ctx.tableByKey.delete(tableKey(table.schema, table.name));
+  const oldList: RawTable[] =
+    ctx.tablesByName.get(table.name.toLowerCase()) ?? [];
+  ctx.tablesByName.set(
+    table.name.toLowerCase(),
+    oldList.filter((candidate: RawTable) => candidate !== table)
+  );
+  table.name = newName;
+  ctx.tableByKey.set(tableKey(table.schema, table.name), table);
+  const newList: RawTable[] = ctx.tablesByName.get(newName.toLowerCase()) ?? [];
+  newList.push(table);
+  ctx.tablesByName.set(newName.toLowerCase(), newList);
+  for (const entry of inbound) {
+    entry.reference.refTable = newName;
+  }
+}
+
+function replaceName(names: string[], from: string, to: string): void {
+  for (let at: number = 0; at < names.length; at += 1) {
+    if (sameName(names[at] ?? '', from)) {
+      names[at] = to;
+    }
+  }
+}
+
+function mentions(tokens: readonly Token[], name: string): boolean {
+  return tokens.some(
+    (token: Token) =>
+      (token.kind === 'word' || token.kind === 'ident') &&
+      sameName(token.value, name)
+  );
+}
+
+function renameColumn(
+  ctx: Context,
+  table: RawTable,
+  column: RawColumn,
+  newName: string
+): void {
+  const oldName: string = column.name;
+  const inbound: InboundReference[] = inboundReferences(ctx, table);
+  freezeNames(table);
+  column.name = newName;
+  rebuildColumnIndex(table);
+  if (table.primaryKey !== undefined) {
+    replaceName(table.primaryKey.columns, oldName, newName);
+  }
+  for (const unique of table.uniques) {
+    replaceName(unique.columns, oldName, newName);
+  }
+  for (const index of table.indexes) {
+    for (const element of index.elements) {
+      if (element.column !== undefined && sameName(element.column, oldName)) {
+        element.column = newName;
+      }
+    }
+  }
+  for (const reference of table.references) {
+    replaceName(reference.columns, oldName, newName);
+  }
+  for (const entry of inbound) {
+    replaceName(entry.reference.refColumns, oldName, newName);
+  }
+  const pattern: RegExp = new RegExp(`\\b${escapeRegExp(oldName)}\\b`, 'gi');
+  for (const check of table.checks) {
+    check.tokens = check.tokens.map((token: Token): Token =>
+      (token.kind === 'word' || token.kind === 'ident') &&
+      sameName(token.value, oldName)
+        ? {
+            ...token,
+            value: newName,
+            up: token.kind === 'word' ? newName.toUpperCase() : '',
+          }
+        : token
+    );
+    check.text = check.text.replace(pattern, newName);
+  }
+  for (const other of table.columns) {
+    if (other.generated !== undefined) {
+      other.generated = {
+        ...other.generated,
+        expression: other.generated.expression.replace(pattern, newName),
+      };
+    }
+  }
+}
+
+/**
+ * Removes a column and what the database removes with it: PostgreSQL, SQLite and SQL Server drop every
+ * key, index and check that mentions the column, MySQL only takes the column out of its keys and indexes
+ * (and drops the ones left without a column). Foreign keys of other tables that point at the column go too
+ * (the effect of CASCADE, the only way to drop a referenced column).
+ */
+function removeColumn(
+  table: RawTable,
+  column: RawColumn,
+  inbound: InboundReference[]
+): void {
+  table.columns = table.columns.filter(
+    (candidate: RawColumn) => candidate !== column
+  );
+  rebuildColumnIndex(table);
+  const name: string = column.name;
+  const has = (names: readonly string[]): boolean =>
+    names.some((candidate: string) => sameName(candidate, name));
+  const without = (names: string[]): string[] =>
+    names.filter((candidate: string) => !sameName(candidate, name));
+  if (table.dialect === 'mysql') {
+    if (table.primaryKey !== undefined && has(table.primaryKey.columns)) {
+      const remaining: string[] = without(table.primaryKey.columns);
+      if (remaining.length === 0) {
+        delete table.primaryKey;
+      } else {
+        table.primaryKey.columns = remaining;
+      }
+    }
+    table.uniques = table.uniques.filter((unique: RawUnique): boolean => {
+      unique.columns = without(unique.columns);
+      return unique.columns.length > 0;
+    });
+    table.indexes = table.indexes.filter((index: RawIndex): boolean => {
+      index.elements = index.elements.filter(
+        (element: RawIndexElement) =>
+          element.column === undefined || !sameName(element.column, name)
+      );
+      return index.elements.length > 0;
+    });
+  } else {
+    if (table.primaryKey !== undefined && has(table.primaryKey.columns)) {
+      dropPrimaryKey(table);
+    }
+    table.uniques = table.uniques.filter(
+      (unique: RawUnique) => !has(unique.columns)
+    );
+    table.indexes = table.indexes.filter(
+      (index: RawIndex) =>
+        !index.elements.some(
+          (element: RawIndexElement) =>
+            element.column !== undefined && sameName(element.column, name)
+        )
+    );
+  }
+  table.references = table.references.filter(
+    (reference: RawReference) => !has(reference.columns)
+  );
+  table.checks = table.checks.filter(
+    (check: RawCheck) => !mentions(check.tokens, name)
+  );
+  for (const entry of inbound) {
+    if (has(entry.reference.refColumns)) {
+      entry.owner.references = entry.owner.references.filter(
+        (reference: RawReference) => reference !== entry.reference
+      );
+    }
+  }
+}
+
+/** Foreign keys that point at a table that is going away (DROP TABLE ... CASCADE). */
+function removeInbound(inbound: InboundReference[], except: RawTable): void {
+  for (const entry of inbound) {
+    if (entry.owner !== except) {
+      entry.owner.references = entry.owner.references.filter(
+        (reference: RawReference) => reference !== entry.reference
+      );
+    }
+  }
+}
+
+/** Builds the unique name a database gives to an unnamed constraint or index, to find it by that name. */
+function impliedName(
+  table: RawTable,
+  kind: NamedKind,
+  position: number,
+  columns: readonly string[]
+): string | undefined {
+  if (table.dialect === 'mysql') {
+    switch (kind) {
+      case 'primaryKey':
+        return 'PRIMARY';
+      case 'unique':
+      case 'index':
+        return columns[0];
+      case 'reference':
+        return `${table.name}_ibfk_${position + 1}`;
+      case 'check':
+        return `${table.name}_chk_${position + 1}`;
+    }
+  }
+  if (table.dialect === 'sqlserver' || table.dialect === 'sqlite') {
+    // SQL Server invents random names and SQLite names nothing, so there is no name to work out.
+    return undefined;
+  }
+  switch (kind) {
+    case 'primaryKey':
+      return `${table.name}_pkey`;
+    case 'unique':
+      return `${table.name}_${columns.join('_')}_key`;
+    case 'reference':
+      return `${table.name}_${columns.join('_')}_fkey`;
+    case 'check':
+      return columns.length === 1
+        ? `${table.name}_${columns[0]}_check`
+        : `${table.name}_check`;
+    case 'index':
+      return `${table.name}_${columns.join('_')}_idx`;
+  }
+}
+
+type NamedKind = 'primaryKey' | 'unique' | 'reference' | 'check' | 'index';
+
+/** Where a constraint, key or index was found, so it can be dropped or renamed. */
+interface NamedObject {
+  kind: NamedKind | 'default';
+  table: RawTable;
+  position: number;
+}
+
+type NameScope = 'constraint' | 'index' | 'foreignKey' | 'check';
+
+function inScope(scope: NameScope, kind: NamedKind | 'default'): boolean {
+  switch (scope) {
+    case 'constraint':
+      return kind !== 'index';
+    case 'index':
+      return kind === 'index' || kind === 'unique' || kind === 'primaryKey';
+    case 'foreignKey':
+      return kind === 'reference';
+    case 'check':
+      return kind === 'check';
+  }
+}
+
+/** The distinct columns a check expression mentions, to name it the way PostgreSQL does. */
+function checkColumns(table: RawTable, check: RawCheck): string[] {
+  return table.columns
+    .filter((column: RawColumn) => mentions(check.tokens, column.name))
+    .map((column: RawColumn) => column.name);
+}
+
+function findNamed(
+  table: RawTable,
+  name: string,
+  scope: NameScope
+): NamedObject | undefined {
+  const candidates: {
+    object: NamedObject;
+    explicit?: string;
+    implied?: string;
+  }[] = [];
+  if (table.primaryKey !== undefined) {
+    candidates.push({
+      object: { kind: 'primaryKey', table, position: 0 },
+      ...(table.primaryKey.name === undefined
+        ? {}
+        : { explicit: table.primaryKey.name }),
+      implied: impliedName(table, 'primaryKey', 0, table.primaryKey.columns),
+    });
+  }
+  table.uniques.forEach((unique: RawUnique, position: number): void => {
+    candidates.push({
+      object: { kind: 'unique', table, position },
+      ...(unique.name === undefined ? {} : { explicit: unique.name }),
+      implied: impliedName(table, 'unique', position, unique.columns),
+    });
+  });
+  table.references.forEach(
+    (reference: RawReference, position: number): void => {
+      candidates.push({
+        object: { kind: 'reference', table, position },
+        ...(reference.name === undefined ? {} : { explicit: reference.name }),
+        implied: impliedName(table, 'reference', position, reference.columns),
+      });
+    }
+  );
+  table.checks.forEach((check: RawCheck, position: number): void => {
+    candidates.push({
+      object: { kind: 'check', table, position },
+      ...(check.name === undefined ? {} : { explicit: check.name }),
+      implied: impliedName(
+        table,
+        'check',
+        position,
+        checkColumns(table, check)
+      ),
+    });
+  });
+  table.indexes.forEach((index: RawIndex, position: number): void => {
+    const columns: string[] = index.elements
+      .map((element: RawIndexElement) => element.column ?? '')
+      .filter((column: string) => column !== '');
+    candidates.push({
+      object: { kind: 'index', table, position },
+      ...(index.name === undefined ? {} : { explicit: index.name }),
+      implied: impliedName(table, 'index', position, columns),
+    });
+  });
+  table.columns.forEach((column: RawColumn, position: number): void => {
+    if (column.defaultName !== undefined) {
+      candidates.push({
+        object: { kind: 'default', table, position },
+        explicit: column.defaultName,
+      });
+    }
+  });
+  const usable = candidates.filter((candidate) =>
+    inScope(scope, candidate.object.kind)
+  );
+  return (
+    usable.find(
+      (candidate) =>
+        candidate.explicit !== undefined && sameName(candidate.explicit, name)
+    ) ??
+    usable.find(
+      (candidate) =>
+        candidate.explicit === undefined &&
+        candidate.implied !== undefined &&
+        sameName(candidate.implied, name)
+    )
+  )?.object;
+}
+
+function removeNamed(found: NamedObject): void {
+  const table: RawTable = found.table;
+  switch (found.kind) {
+    case 'primaryKey':
+      dropPrimaryKey(table);
+      return;
+    case 'unique':
+      table.uniques.splice(found.position, 1);
+      return;
+    case 'reference':
+      table.references.splice(found.position, 1);
+      return;
+    case 'check':
+      table.checks.splice(found.position, 1);
+      return;
+    case 'index':
+      table.indexes.splice(found.position, 1);
+      return;
+    case 'default': {
+      const column: RawColumn | undefined = table.columns[found.position];
+      if (column !== undefined) {
+        delete column.defaultTokens;
+        delete column.defaultText;
+        delete column.defaultName;
+      }
+      return;
+    }
+  }
+}
+
+function nameNamed(found: NamedObject, name: string): void {
+  const table: RawTable = found.table;
+  switch (found.kind) {
+    case 'primaryKey':
+      if (table.primaryKey !== undefined) {
+        table.primaryKey.name = name;
+      }
+      return;
+    case 'unique': {
+      const unique: RawUnique | undefined = table.uniques[found.position];
+      if (unique !== undefined) {
+        unique.name = name;
+      }
+      return;
+    }
+    case 'reference': {
+      const reference: RawReference | undefined =
+        table.references[found.position];
+      if (reference !== undefined) {
+        reference.name = name;
+      }
+      return;
+    }
+    case 'check': {
+      const check: RawCheck | undefined = table.checks[found.position];
+      if (check !== undefined) {
+        check.name = name;
+      }
+      return;
+    }
+    case 'index': {
+      const index: RawIndex | undefined = table.indexes[found.position];
+      if (index !== undefined) {
+        index.name = name;
+      }
+      return;
+    }
+    case 'default': {
+      const column: RawColumn | undefined = table.columns[found.position];
+      if (column !== undefined) {
+        column.defaultName = name;
+      }
+      return;
+    }
+  }
+}
+
+/** Finds an index or constraint by name in one table, or in every table when none is given (names are schema-wide). */
+function findNamedAnywhere(
+  ctx: Context,
+  table: RawTable | undefined,
+  schema: string | undefined,
+  name: string,
+  scope: NameScope
+): NamedObject | undefined {
+  if (table !== undefined) {
+    return findNamed(table, name, scope);
+  }
+  for (const candidate of ctx.tables) {
+    if (
+      candidate.dropped ||
+      (schema !== undefined &&
+        candidate.schema !== undefined &&
+        !sameName(candidate.schema, schema))
+    ) {
+      continue;
+    }
+    const found: NamedObject | undefined = findNamed(candidate, name, scope);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+  return undefined;
+}
+
+// Serial types are auto-increment columns; once their default or type is touched they become plain integers.
+const SERIAL_BASE: Readonly<Record<string, string>> = {
+  serial: 'integer',
+  serial4: 'integer',
+  smallserial: 'smallint',
+  serial2: 'smallint',
+  bigserial: 'bigint',
+  serial8: 'bigint',
+};
+
+/** Turns a `serial` column into an integer column marked auto-increment. Returns true when it was one. */
+function detachSerial(column: RawColumn, dialect: SqlDialect): boolean {
+  const base: string | undefined = SERIAL_BASE[column.type.name];
+  if (base === undefined || dialect === 'sqlite' || dialect === 'mysql') {
+    return false;
+  }
+  column.autoIncrement = true;
+  column.notNull = true;
+  column.type = { ...column.type, name: base, text: base };
+  return true;
+}
+
+function setDefault(
+  file: FileContext,
+  column: RawColumn,
+  cursor: Cursor,
+  dialect: SqlDialect
+): void {
+  const wasSerial: boolean = detachSerial(column, dialect);
+  const tokens: Token[] = readDefault(cursor);
+  column.defaultTokens = tokens;
+  column.defaultText = defaultExpression(tokens, file.text);
+  delete column.defaultName;
+  if (wasSerial && !/nextval|unique_rowid/i.test(column.defaultText)) {
+    column.autoIncrement = false;
+  }
+}
+
+/** True for a word that begins an ALTER TABLE action, as opposed to the next column of an `ADD a int, b int` list. */
+const ALTER_VERBS: ReadonlySet<string> = new Set([
+  'ADD',
+  'DROP',
+  'ALTER',
+  'MODIFY',
+  'CHANGE',
+  'RENAME',
+  'SET',
+  'RESET',
+  'OWNER',
+  'ENABLE',
+  'DISABLE',
+  'FORCE',
+  'NO',
+  'CLUSTER',
+  'REPLICA',
+  'ATTACH',
+  'DETACH',
+  'VALIDATE',
+  'INHERIT',
+  'OF',
+  'NOT',
+  'WITH',
+  'CHECK',
+  'NOCHECK',
+  'TRIGGER',
+  'SWITCH',
+  'REBUILD',
+]);
+
 function handleAlter(ctx: Context, file: FileContext, cursor: Cursor): void {
   const line: number = cursor.peek().line;
   cursor.next();
   if (cursor.isKeyword('TYPE')) {
     cursor.next();
-    const name: QualifiedName | undefined = parseQualifiedName(cursor);
-    const target: RawEnum | undefined =
-      name === undefined ? undefined : findEnum(ctx, name);
-    if (target !== undefined && cursor.acceptKeywords('ADD', 'VALUE')) {
-      cursor.acceptKeywords('IF', 'NOT', 'EXISTS');
-      const value: Token = cursor.next();
-      if (value.kind === 'string' && !target.seen.has(value.value)) {
-        let position: number = target.values.length;
-        if (cursor.isKeyword('BEFORE') || cursor.isKeyword('AFTER')) {
-          const after: boolean = cursor.next().up === 'AFTER';
-          const anchor: Token = cursor.next();
-          // Looking the anchor up is linear; a huge enum is appended to instead.
-          const anchorAt: number =
-            target.values.length > MAX_POSITIONED_ENUM_VALUES
-              ? -1
-              : target.values.indexOf(anchor.value);
-          if (anchorAt !== -1) {
-            position = after ? anchorAt + 1 : anchorAt;
-          }
-        }
-        target.values.splice(position, 0, value.value);
-        target.seen.add(value.value);
-      }
-    }
+    alterType(ctx, file, cursor, line);
+    return;
+  }
+  if (cursor.isKeyword('INDEX')) {
+    cursor.next();
+    alterIndex(ctx, file, cursor, line);
     return;
   }
   if (!cursor.acceptKeyword('TABLE')) {
     // ALTER SEQUENCE, ALTER VIEW, ALTER DATABASE and similar change nothing the model holds.
     return;
   }
-  cursor.acceptKeywords('IF', 'EXISTS');
+  const ifExists: boolean = cursor.acceptKeywords('IF', 'EXISTS');
   cursor.acceptKeyword('ONLY');
   const name: QualifiedName | undefined = parseQualifiedName(cursor);
   if (name === undefined) {
@@ -1719,13 +2471,53 @@ function handleAlter(ctx: Context, file: FileContext, cursor: Cursor): void {
   }
   const table: RawTable | undefined = lookupTable(ctx, name, file.dialect);
   if (table === undefined) {
-    warn(
-      ctx,
-      `${file.name}:${line}: ALTER TABLE on the unknown table "${name.name}" was skipped.`
-    );
+    if (!ifExists) {
+      warn(
+        ctx,
+        `${file.name}:${line}: ALTER TABLE on the unknown table "${name.name}" was skipped.`
+      );
+    }
     return;
   }
+  // SQL Server lists items after one verb: ALTER TABLE t ADD a int, b int / DROP COLUMN a, b / DROP CONSTRAINT a, b.
+  let continuation: string[] = [];
   for (const action of splitTopLevel(rest)) {
+    const first: Token | undefined = action[0];
+    if (
+      file.dialect === 'sqlserver' &&
+      continuation.length > 0 &&
+      first !== undefined &&
+      !(first.kind === 'word' && ALTER_VERBS.has(first.up))
+    ) {
+      const prefix: Token[] = continuation.map((word: string): Token => ({
+        kind: 'word',
+        text: word,
+        value: word,
+        up: word,
+        start: first.start,
+        end: first.start,
+        line: first.line,
+      }));
+      handleAlterAction(
+        ctx,
+        file,
+        table,
+        new Cursor([...prefix, ...action]),
+        line
+      );
+      continue;
+    }
+    continuation = [];
+    if (first?.kind === 'word' && first.up === 'ADD') {
+      continuation = ['ADD'];
+    } else if (
+      first?.kind === 'word' &&
+      first.up === 'DROP' &&
+      action[1]?.kind === 'word' &&
+      (action[1].up === 'COLUMN' || action[1].up === 'CONSTRAINT')
+    ) {
+      continuation = ['DROP', action[1].up];
+    }
     handleAlterAction(ctx, file, table, new Cursor(action), line);
   }
 }
@@ -1737,7 +2529,6 @@ const QUIET_ALTER_ACTIONS: ReadonlySet<string> = new Set([
   'FORCE',
   'NO',
   'CLUSTER',
-  'SET',
   'RESET',
   'REPLICA',
   'CHECK',
@@ -1760,7 +2551,53 @@ const QUIET_ALTER_ACTIONS: ReadonlySet<string> = new Set([
   'NOT',
   'UNION',
   'WITH',
+  'SWITCH',
+  'REBUILD',
+  'DEFAULT',
 ]);
+
+/** MySQL: a trailing `FIRST` or `AFTER col` places a column; the tokens without it are returned. */
+function splitColumnPosition(tokens: Token[]): {
+  tokens: Token[];
+  first: boolean;
+  after?: string;
+} {
+  const last: Token | undefined = tokens[tokens.length - 1];
+  const beforeLast: Token | undefined = tokens[tokens.length - 2];
+  if (last?.kind === 'word' && last.up === 'FIRST') {
+    return { tokens: tokens.slice(0, -1), first: true };
+  }
+  if (
+    beforeLast?.kind === 'word' &&
+    beforeLast.up === 'AFTER' &&
+    (last?.kind === 'word' || last?.kind === 'ident')
+  ) {
+    return { tokens: tokens.slice(0, -2), first: false, after: last.value };
+  }
+  return { tokens, first: false };
+}
+
+function placeColumn(
+  table: RawTable,
+  column: RawColumn,
+  position: { first: boolean; after?: string }
+): void {
+  if (!position.first && position.after === undefined) {
+    return;
+  }
+  const rest: RawColumn[] = table.columns.filter(
+    (candidate: RawColumn) => candidate !== column
+  );
+  let at: number = 0;
+  if (position.after !== undefined) {
+    const anchor: number = rest.findIndex((candidate: RawColumn) =>
+      sameName(candidate.name, position.after ?? '')
+    );
+    at = anchor === -1 ? rest.length : anchor + 1;
+  }
+  rest.splice(at, 0, column);
+  table.columns = rest;
+}
 
 function handleAlterAction(
   ctx: Context,
@@ -1773,78 +2610,738 @@ function handleAlterAction(
   if (head.kind !== 'word') {
     return;
   }
-  if (head.up === 'ADD') {
-    cursor.next();
-    cursor.acceptKeyword('COLUMN');
-    cursor.acceptKeywords('IF', 'NOT', 'EXISTS');
-    if (isConstraintStart(cursor, file.dialect)) {
-      applyConstraint(
-        ctx,
-        table,
-        parseTableConstraint(ctx, file, cursor, table.name)
-      );
+  const statement = (text: string): string =>
+    `ALTER TABLE "${table.name}" ${text}`;
+  switch (head.up) {
+    case 'ADD':
+      addToTable(ctx, file, table, cursor, line);
       return;
-    }
-    if (cursor.isKeyword('GENERATED') || cursor.isPunct('(') || cursor.atEnd) {
+    case 'DROP':
+      dropFromTable(ctx, file, table, cursor, line, statement);
       return;
-    }
-    const column: RawColumn | undefined = parseColumn(
-      ctx,
-      file,
-      cursor,
-      table,
-      table.name
-    );
-    if (column === undefined) {
-      warn(
-        ctx,
-        `${file.name}:${line}: ALTER TABLE "${table.name}" ADD could not be read and was skipped.`
-      );
-    }
-    return;
-  }
-  if (head.up === 'ALTER') {
-    cursor.next();
-    cursor.acceptKeyword('COLUMN');
-    const columnToken: Token = cursor.next();
-    const column: RawColumn | undefined = findColumn(table, columnToken.value);
-    if (column === undefined) {
+    case 'ALTER':
+      alterColumn(ctx, file, table, cursor, line, statement);
       return;
-    }
-    if (cursor.acceptKeywords('SET', 'NOT', 'NULL')) {
-      column.notNull = true;
-    } else if (cursor.acceptKeywords('DROP', 'NOT', 'NULL')) {
-      column.notNull = false;
-    } else if (cursor.acceptKeywords('SET', 'DEFAULT')) {
-      const tokens: Token[] = readDefault(cursor);
-      column.defaultTokens = tokens;
-      column.defaultText = defaultExpression(tokens, file.text);
-    } else if (cursor.acceptKeywords('DROP', 'DEFAULT')) {
-      delete column.defaultTokens;
-      delete column.defaultText;
-    } else if (cursor.acceptKeyword('ADD') && cursor.isKeyword('GENERATED')) {
-      column.autoIncrement = true;
-    } else {
-      recordSkipped(
+    case 'MODIFY':
+    case 'CHANGE': {
+      cursor.next();
+      cursor.acceptKeyword('COLUMN');
+      cursor.acceptKeywords('IF', 'EXISTS');
+      const from: Token = cursor.next();
+      if (head.up === 'MODIFY') {
+        // The definition starts with the column name, which is the column being changed.
+        cursor.position -= 1;
+      }
+      redefineColumn(
         ctx,
         file,
-        'ALTER TABLE ... ALTER COLUMN (type or option change)',
-        line
+        table,
+        from.value,
+        head.up === 'CHANGE',
+        cursor,
+        line,
+        statement(`${head.up} COLUMN "${from.value}"`)
       );
+      return;
     }
-    return;
+    case 'RENAME':
+      renameInTable(ctx, file, table, cursor, line, statement);
+      return;
+    case 'SET':
+      if (cursor.isKeyword('SCHEMA', 1)) {
+        recordSkipped(
+          ctx,
+          file,
+          'ALTER TABLE ... SET SCHEMA',
+          line,
+          table.name
+        );
+      }
+      return;
+    default:
+      break;
   }
   if (QUIET_ALTER_ACTIONS.has(head.up)) {
     return;
   }
-  recordSkipped(ctx, file, `ALTER TABLE ... ${head.up}`, line);
+  recordSkipped(ctx, file, `ALTER TABLE ... ${head.up}`, line, table.name);
+}
+
+function addToTable(
+  ctx: Context,
+  file: FileContext,
+  table: RawTable,
+  cursor: Cursor,
+  line: number
+): void {
+  cursor.next();
+  const hasColumnKeyword: boolean = cursor.acceptKeyword('COLUMN');
+  const ifNotExists: boolean = cursor.acceptKeywords('IF', 'NOT', 'EXISTS');
+  if (cursor.isPunct('(')) {
+    // MySQL: ADD COLUMN (a int, b int)
+    const group: Token[] = cursor.readGroup() ?? [];
+    for (const element of splitTopLevel(group)) {
+      addElement(ctx, file, table, new Cursor(element), line, ifNotExists);
+    }
+    return;
+  }
+  if (
+    !hasColumnKeyword &&
+    (cursor.isKeyword('PARTITION') ||
+      cursor.isKeyword('PERIOD') ||
+      cursor.isKeyword('SYSTEM') ||
+      cursor.isKeyword('SUPPORT'))
+  ) {
+    return;
+  }
+  if (cursor.isKeyword('GENERATED') || cursor.atEnd) {
+    return;
+  }
+  addElement(ctx, file, table, cursor, line, ifNotExists);
+}
+
+function addElement(
+  ctx: Context,
+  file: FileContext,
+  table: RawTable,
+  cursor: Cursor,
+  line: number,
+  ifNotExists: boolean
+): void {
+  if (isConstraintStart(cursor, file.dialect)) {
+    applyConstraint(
+      ctx,
+      table,
+      parseTableConstraint(ctx, file, cursor, table.name)
+    );
+    return;
+  }
+  const nameToken: Token = cursor.peek();
+  if (
+    ifNotExists &&
+    (nameToken.kind === 'word' || nameToken.kind === 'ident') &&
+    findColumn(table, nameToken.value) !== undefined
+  ) {
+    return;
+  }
+  const remaining: Token[] = cursor.tokens.slice(cursor.position, cursor.end);
+  const position = splitColumnPosition(remaining);
+  const before: number = table.columns.length;
+  const column: RawColumn | undefined = parseColumn(
+    ctx,
+    file,
+    new Cursor(position.tokens),
+    table,
+    table.name
+  );
+  if (column === undefined) {
+    warn(
+      ctx,
+      `${file.name}:${line}: ALTER TABLE "${table.name}" ADD could not be read and was skipped.`
+    );
+    return;
+  }
+  if (table.columns.length > before) {
+    placeColumn(table, column, position);
+  }
+}
+
+function dropFromTable(
+  ctx: Context,
+  file: FileContext,
+  table: RawTable,
+  cursor: Cursor,
+  line: number,
+  statement: (text: string) => string
+): void {
+  cursor.next();
+  const dropNamed = (scope: NameScope, label: string): void => {
+    const ifExists: boolean = cursor.acceptKeywords('IF', 'EXISTS');
+    const nameToken: Token = cursor.next();
+    if (nameToken.kind !== 'word' && nameToken.kind !== 'ident') {
+      return;
+    }
+    const found: NamedObject | undefined = findNamed(
+      table,
+      nameToken.value,
+      scope
+    );
+    if (found === undefined) {
+      if (
+        scope === 'index' &&
+        table.implicitIndexes.delete(nameToken.value.toLowerCase())
+      ) {
+        return;
+      }
+      if (!ifExists) {
+        warnStatement(
+          ctx,
+          file,
+          line,
+          statement(`DROP ${label} "${nameToken.value}"`),
+          `no ${label.toLowerCase()} of that name exists at this point`
+        );
+      }
+      return;
+    }
+    removeNamed(found);
+  };
+  if (cursor.acceptKeyword('CONSTRAINT')) {
+    dropNamed('constraint', 'CONSTRAINT');
+  } else if (cursor.acceptKeyword('INDEX') || cursor.acceptKeyword('KEY')) {
+    dropNamed('index', 'INDEX');
+  } else if (cursor.acceptKeywords('FOREIGN', 'KEY')) {
+    dropNamed('foreignKey', 'FOREIGN KEY');
+  } else if (cursor.acceptKeywords('PRIMARY', 'KEY')) {
+    if (table.primaryKey === undefined) {
+      warnStatement(
+        ctx,
+        file,
+        line,
+        statement('DROP PRIMARY KEY'),
+        'the table has no primary key at this point'
+      );
+    } else {
+      dropPrimaryKey(table);
+    }
+  } else if (cursor.acceptKeyword('CHECK')) {
+    dropNamed('check', 'CHECK');
+  } else {
+    // DROP [COLUMN] [IF EXISTS] name (MySQL also allows DROP name).
+    cursor.acceptKeyword('COLUMN');
+    const ifExists: boolean = cursor.acceptKeywords('IF', 'EXISTS');
+    const nameToken: Token = cursor.next();
+    if (nameToken.kind !== 'word' && nameToken.kind !== 'ident') {
+      return;
+    }
+    const column: RawColumn | undefined = findColumn(table, nameToken.value);
+    if (column === undefined) {
+      if (!ifExists) {
+        warnStatement(
+          ctx,
+          file,
+          line,
+          statement(`DROP COLUMN "${nameToken.value}"`),
+          'the column does not exist at this point'
+        );
+      }
+      return;
+    }
+    removeColumn(table, column, inboundReferences(ctx, table));
+  }
+}
+
+/** `ALTER COLUMN c SET <word>` options that change storage or sequences, not the model. */
+const QUIET_COLUMN_SETTINGS: ReadonlySet<string> = new Set([
+  'STATISTICS',
+  'STORAGE',
+  'COMPRESSION',
+  'GENERATED',
+  'VISIBLE',
+  'INVISIBLE',
+  'SEQUENCE',
+  'START',
+  'INCREMENT',
+  'MAXVALUE',
+  'MINVALUE',
+  'CACHE',
+  'CYCLE',
+  'NO',
+]);
+
+function alterColumn(
+  ctx: Context,
+  file: FileContext,
+  table: RawTable,
+  cursor: Cursor,
+  line: number,
+  statement: (text: string) => string
+): void {
+  cursor.next();
+  if (cursor.acceptKeywords('PRIMARY', 'KEY')) {
+    // CockroachDB: ALTER PRIMARY KEY USING COLUMNS (a, b)
+    if (cursor.acceptKeyword('USING') && cursor.acceptKeyword('COLUMNS')) {
+      const columns: string[] = readColumnList(cursor);
+      if (columns.length > 0) {
+        table.primaryKey = {
+          columns,
+          ...(table.primaryKey?.name === undefined
+            ? {}
+            : { name: table.primaryKey.name }),
+        };
+      }
+    }
+    return;
+  }
+  cursor.acceptKeyword('COLUMN');
+  const ifExists: boolean = cursor.acceptKeywords('IF', 'EXISTS');
+  const columnToken: Token = cursor.next();
+  const column: RawColumn | undefined = findColumn(table, columnToken.value);
+  if (column === undefined) {
+    if (!ifExists) {
+      warnStatement(
+        ctx,
+        file,
+        line,
+        statement(`ALTER COLUMN "${columnToken.value}"`),
+        'the column does not exist at this point'
+      );
+    }
+    return;
+  }
+  const dialect: SqlDialect = file.dialect;
+  if (cursor.acceptKeywords('SET', 'NOT', 'NULL')) {
+    column.notNull = true;
+  } else if (cursor.acceptKeywords('DROP', 'NOT', 'NULL')) {
+    column.notNull = false;
+  } else if (cursor.acceptKeywords('SET', 'DEFAULT')) {
+    setDefault(file, column, cursor, dialect);
+  } else if (cursor.acceptKeywords('DROP', 'DEFAULT')) {
+    if (detachSerial(column, dialect)) {
+      column.autoIncrement = false;
+    }
+    delete column.defaultTokens;
+    delete column.defaultText;
+    delete column.defaultName;
+  } else if (cursor.acceptKeywords('DROP', 'IDENTITY')) {
+    detachSerial(column, dialect);
+    column.autoIncrement = false;
+    // An identity column is NOT NULL, and stays so.
+    column.notNull = true;
+  } else if (cursor.acceptKeywords('DROP', 'EXPRESSION')) {
+    delete column.generated;
+  } else if (cursor.acceptKeyword('ADD') && cursor.isKeyword('GENERATED')) {
+    column.autoIncrement = true;
+  } else if (
+    cursor.isKeyword('TYPE') ||
+    (cursor.isKeyword('SET') &&
+      cursor.isKeyword('DATA', 1) &&
+      cursor.isKeyword('TYPE', 2))
+  ) {
+    if (cursor.acceptKeyword('SET')) {
+      cursor.next();
+    }
+    cursor.next();
+    changeType(ctx, file, table, column, cursor, line, statement, false);
+  } else if (
+    cursor.isKeyword('RESTART') ||
+    cursor.isKeyword('RESET') ||
+    (cursor.isKeyword('SET') &&
+      (QUIET_COLUMN_SETTINGS.has(cursor.peek(1).up) ||
+        cursor.peek(1).kind === 'punct'))
+  ) {
+    // SET STATISTICS / STORAGE / COMPRESSION / VISIBLE, SET GENERATED, RESTART: no effect on the model.
+    return;
+  } else if (dialect === 'sqlserver' && cursor.peek().kind !== 'punct') {
+    // SQL Server: ALTER COLUMN c varchar(100) NOT NULL
+    changeType(ctx, file, table, column, cursor, line, statement, true);
+  } else {
+    recordSkipped(
+      ctx,
+      file,
+      'ALTER TABLE ... ALTER COLUMN (type or option change)',
+      line,
+      table.name
+    );
+  }
+}
+
+function changeType(
+  ctx: Context,
+  file: FileContext,
+  table: RawTable,
+  column: RawColumn,
+  cursor: Cursor,
+  line: number,
+  statement: (text: string) => string,
+  setsNullability: boolean
+): void {
+  const type: RawType = parseType(cursor, file.text, file.dialect);
+  if (type.name === '') {
+    warnStatement(
+      ctx,
+      file,
+      line,
+      statement(`ALTER COLUMN "${column.name}" TYPE`),
+      'the new type could not be read'
+    );
+    return;
+  }
+  detachSerial(column, file.dialect);
+  column.type = type;
+  if (setsNullability) {
+    // SQL Server restates the nullability; NULL is the default when it is not written.
+    column.notNull = false;
+    while (!cursor.atEnd) {
+      if (cursor.acceptKeywords('NOT', 'NULL')) {
+        column.notNull = true;
+      } else {
+        cursor.next();
+      }
+    }
+  }
+  void table;
+}
+
+/** MySQL `MODIFY col definition` and `CHANGE old new definition`: the definition replaces the column. */
+function redefineColumn(
+  ctx: Context,
+  file: FileContext,
+  table: RawTable,
+  oldName: string,
+  isChange: boolean,
+  cursor: Cursor,
+  line: number,
+  label: string
+): void {
+  const existing: RawColumn | undefined = findColumn(table, oldName);
+  if (existing === undefined) {
+    warnStatement(
+      ctx,
+      file,
+      line,
+      label,
+      'the column does not exist at this point'
+    );
+    return;
+  }
+  const position = splitColumnPosition(
+    cursor.tokens.slice(cursor.position, cursor.end)
+  );
+  const scratch: RawTable = {
+    ...table,
+    columns: [],
+    columnIndex: new Map<string, RawColumn>(),
+    uniques: [],
+    references: [],
+    indexes: [],
+    checks: [],
+  };
+  delete scratch.primaryKey;
+  const parsed: RawColumn | undefined = parseColumn(
+    ctx,
+    file,
+    new Cursor(position.tokens),
+    scratch,
+    table.name
+  );
+  if (parsed === undefined) {
+    warnStatement(
+      ctx,
+      file,
+      line,
+      label,
+      'the new definition could not be read'
+    );
+    return;
+  }
+  if (isChange && !sameName(parsed.name, existing.name)) {
+    if (findColumn(table, parsed.name) !== undefined) {
+      warnStatement(
+        ctx,
+        file,
+        line,
+        label,
+        `a column named "${parsed.name}" exists already`
+      );
+      return;
+    }
+    renameColumn(ctx, table, existing, parsed.name);
+  }
+  const at: number = table.columns.indexOf(existing);
+  if (at !== -1) {
+    parsed.name = existing.name;
+    table.columns[at] = parsed;
+    rebuildColumnIndex(table);
+  }
+  for (const unique of scratch.uniques) {
+    table.uniques.push(unique);
+  }
+  for (const reference of scratch.references) {
+    table.references.push(reference);
+  }
+  for (const check of scratch.checks) {
+    table.checks.push(check);
+  }
+  if (scratch.primaryKey !== undefined && table.primaryKey === undefined) {
+    table.primaryKey = { columns: [parsed.name] };
+  }
+  placeColumn(table, parsed, position);
+}
+
+function renameInTable(
+  ctx: Context,
+  file: FileContext,
+  table: RawTable,
+  cursor: Cursor,
+  line: number,
+  statement: (text: string) => string
+): void {
+  cursor.next();
+  const rename = (scope: NameScope | 'column', label: string): void => {
+    const fromToken: Token = cursor.next();
+    cursor.acceptKeyword('TO');
+    const toToken: Token = cursor.next();
+    if (
+      (fromToken.kind !== 'word' && fromToken.kind !== 'ident') ||
+      (toToken.kind !== 'word' && toToken.kind !== 'ident')
+    ) {
+      return;
+    }
+    const text: string = statement(`RENAME ${label} "${fromToken.value}"`);
+    if (scope === 'column') {
+      const column: RawColumn | undefined = findColumn(table, fromToken.value);
+      if (column === undefined) {
+        warnStatement(
+          ctx,
+          file,
+          line,
+          text,
+          'the column does not exist at this point'
+        );
+      } else if (
+        !sameName(fromToken.value, toToken.value) &&
+        findColumn(table, toToken.value) !== undefined
+      ) {
+        warnStatement(
+          ctx,
+          file,
+          line,
+          text,
+          `a column named "${toToken.value}" exists already`
+        );
+      } else {
+        renameColumn(ctx, table, column, toToken.value);
+      }
+      return;
+    }
+    const found: NamedObject | undefined = findNamed(
+      table,
+      fromToken.value,
+      scope
+    );
+    if (found === undefined) {
+      warnStatement(
+        ctx,
+        file,
+        line,
+        text,
+        `no ${label.toLowerCase()} of that name exists at this point`
+      );
+      return;
+    }
+    nameNamed(found, toToken.value);
+  };
+  if (cursor.acceptKeyword('COLUMN')) {
+    rename('column', 'COLUMN');
+  } else if (cursor.acceptKeyword('CONSTRAINT')) {
+    rename('constraint', 'CONSTRAINT');
+  } else if (cursor.acceptKeyword('INDEX') || cursor.acceptKeyword('KEY')) {
+    rename('index', 'INDEX');
+  } else if (cursor.isKeyword('TO') || cursor.isKeyword('AS')) {
+    cursor.next();
+    renameToName(ctx, file, table, cursor, line);
+  } else if (cursor.isKeyword('TO', 1)) {
+    // PostgreSQL allows RENAME a TO b for a column.
+    rename('column', 'COLUMN');
+  } else {
+    // MySQL: ALTER TABLE t RENAME u
+    renameToName(ctx, file, table, cursor, line);
+  }
+}
+
+function renameToName(
+  ctx: Context,
+  file: FileContext,
+  table: RawTable,
+  cursor: Cursor,
+  line: number
+): void {
+  const target: QualifiedName | undefined = parseQualifiedName(cursor);
+  if (target !== undefined) {
+    renameTable(ctx, file, table, target.name, line);
+  }
+}
+
+/** `ALTER TYPE name RENAME TO new`, `RENAME VALUE 'a' TO 'b'` and `ADD VALUE`. */
+function alterType(
+  ctx: Context,
+  file: FileContext,
+  cursor: Cursor,
+  line: number
+): void {
+  const name: QualifiedName | undefined = parseQualifiedName(cursor);
+  const target: RawEnum | undefined =
+    name === undefined ? undefined : findEnum(ctx, name);
+  if (target === undefined) {
+    return;
+  }
+  if (cursor.acceptKeywords('RENAME', 'VALUE')) {
+    const from: Token = cursor.next();
+    cursor.acceptKeyword('TO');
+    const to: Token = cursor.next();
+    const at: number = target.values.indexOf(from.value);
+    if (from.kind === 'string' && to.kind === 'string' && at !== -1) {
+      target.values[at] = to.value;
+      target.seen.delete(from.value);
+      target.seen.add(to.value);
+      for (const table of ctx.tables) {
+        for (const column of table.columns) {
+          if (
+            !table.dropped &&
+            sameName(column.type.userName, target.name) &&
+            column.defaultTokens !== undefined
+          ) {
+            column.defaultTokens = column.defaultTokens.map(
+              (token: Token): Token =>
+                token.kind === 'string' && token.value === from.value
+                  ? { ...token, value: to.value }
+                  : token
+            );
+          }
+        }
+      }
+    } else {
+      warnStatement(
+        ctx,
+        file,
+        line,
+        `ALTER TYPE "${target.name}" RENAME VALUE`,
+        'the value does not exist at this point'
+      );
+    }
+    return;
+  }
+  if (cursor.acceptKeywords('RENAME', 'TO')) {
+    const to: QualifiedName | undefined = parseQualifiedName(cursor);
+    if (to === undefined) {
+      return;
+    }
+    const oldName: string = target.name;
+    ctx.enumsByName.delete(oldName.toLowerCase());
+    target.name = to.name;
+    ctx.enumsByName.set(to.name.toLowerCase(), target);
+    for (const table of ctx.tables) {
+      for (const column of table.columns) {
+        if (!table.dropped && sameName(column.type.userName, oldName)) {
+          column.type = {
+            ...column.type,
+            userName: to.name,
+            name: to.name.toLowerCase(),
+          };
+        }
+      }
+    }
+    return;
+  }
+  if (cursor.acceptKeywords('ADD', 'VALUE')) {
+    cursor.acceptKeywords('IF', 'NOT', 'EXISTS');
+    const value: Token = cursor.next();
+    if (value.kind === 'string' && !target.seen.has(value.value)) {
+      let position: number = target.values.length;
+      if (cursor.isKeyword('BEFORE') || cursor.isKeyword('AFTER')) {
+        const after: boolean = cursor.next().up === 'AFTER';
+        const anchor: Token = cursor.next();
+        // Looking the anchor up is linear; a huge enum is appended to instead.
+        const anchorAt: number =
+          target.values.length > MAX_POSITIONED_ENUM_VALUES
+            ? -1
+            : target.values.indexOf(anchor.value);
+        if (anchorAt !== -1) {
+          position = after ? anchorAt + 1 : anchorAt;
+        }
+      }
+      target.values.splice(position, 0, value.value);
+      target.seen.add(value.value);
+    }
+  }
+}
+
+/** Reads `[schema.]name` or CockroachDB's `table@name` (the scanner reads `table@name` as one word). */
+function parseIndexName(
+  cursor: Cursor
+): { schema?: string; name: string; table?: string } | undefined {
+  const parsed: QualifiedName | undefined = parseQualifiedName(cursor);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  const at: number = parsed.name.lastIndexOf('@');
+  if (at > 0) {
+    return {
+      name: parsed.name.slice(at + 1),
+      table: parsed.name.slice(0, at),
+    };
+  }
+  return parsed;
+}
+
+function indexOwner(
+  ctx: Context,
+  file: FileContext,
+  parsed: { schema?: string; name: string; table?: string },
+  onTable: QualifiedName | undefined
+): { table: RawTable | undefined; hasTable: boolean } {
+  if (parsed.table !== undefined) {
+    return {
+      table: lookupTable(ctx, { name: parsed.table }, file.dialect),
+      hasTable: true,
+    };
+  }
+  if (onTable !== undefined) {
+    return { table: lookupTable(ctx, onTable, file.dialect), hasTable: true };
+  }
+  if (file.dialect === 'sqlserver' && parsed.schema !== undefined) {
+    // The old SQL Server form: DROP INDEX table.index
+    return {
+      table: lookupTable(ctx, { name: parsed.schema }, file.dialect),
+      hasTable: true,
+    };
+  }
+  return { table: undefined, hasTable: false };
+}
+
+function alterIndex(
+  ctx: Context,
+  file: FileContext,
+  cursor: Cursor,
+  line: number
+): void {
+  const ifExists: boolean = cursor.acceptKeywords('IF', 'EXISTS');
+  const parsed = parseIndexName(cursor);
+  if (parsed === undefined || !cursor.acceptKeywords('RENAME', 'TO')) {
+    return;
+  }
+  const to: Token = cursor.next();
+  const owner = indexOwner(ctx, file, parsed, undefined);
+  const found: NamedObject | undefined = findNamedAnywhere(
+    ctx,
+    owner.table,
+    parsed.schema,
+    parsed.name,
+    'index'
+  );
+  if (found === undefined) {
+    if (!ifExists) {
+      warnStatement(
+        ctx,
+        file,
+        line,
+        `ALTER INDEX "${parsed.name}" RENAME TO "${to.value}"`,
+        'no index of that name exists at this point'
+      );
+    }
+    return;
+  }
+  nameNamed(found, to.value);
 }
 
 function handleDrop(ctx: Context, file: FileContext, cursor: Cursor): void {
+  const line: number = cursor.peek().line;
   cursor.next();
   const kind: Token = cursor.next();
   if (kind.up === 'TABLE') {
-    cursor.acceptKeywords('IF', 'EXISTS');
+    const ifExists: boolean = cursor.acceptKeywords('IF', 'EXISTS');
+    const dropped: { table: RawTable; inbound: InboundReference[] }[] = [];
     for (;;) {
       const name: QualifiedName | undefined = parseQualifiedName(cursor);
       if (name === undefined) {
@@ -1852,11 +3349,25 @@ function handleDrop(ctx: Context, file: FileContext, cursor: Cursor): void {
       }
       const table: RawTable | undefined = lookupTable(ctx, name, file.dialect);
       if (table !== undefined) {
+        dropped.push({ table, inbound: inboundReferences(ctx, table) });
         table.dropped = true;
         ctx.tableByKey.delete(tableKey(table.schema, table.name));
+      } else if (!ifExists) {
+        warnStatement(
+          ctx,
+          file,
+          line,
+          `DROP TABLE "${name.name}"`,
+          'the table does not exist at this point'
+        );
       }
       if (!cursor.acceptPunct(',')) {
         break;
+      }
+    }
+    if (cursor.isKeyword('CASCADE')) {
+      for (const entry of dropped) {
+        removeInbound(entry.inbound, entry.table);
       }
     }
   } else if (kind.up === 'TYPE') {
@@ -1867,7 +3378,240 @@ function handleDrop(ctx: Context, file: FileContext, cursor: Cursor): void {
     if (target !== undefined) {
       target.dropped = true;
     }
+  } else if (kind.up === 'INDEX') {
+    dropIndexes(ctx, file, cursor, line);
   }
+}
+
+/** `DROP INDEX` in the four dialects: `a, b`, `a ON t`, `t.a` and CockroachDB's `t@a`. */
+function dropIndexes(
+  ctx: Context,
+  file: FileContext,
+  cursor: Cursor,
+  line: number
+): void {
+  cursor.acceptKeyword('CONCURRENTLY');
+  const ifExists: boolean = cursor.acceptKeywords('IF', 'EXISTS');
+  for (;;) {
+    const parsed = parseIndexName(cursor);
+    if (parsed === undefined) {
+      break;
+    }
+    let onTable: QualifiedName | undefined;
+    if (cursor.acceptKeyword('ON')) {
+      onTable = parseQualifiedName(cursor);
+    }
+    const owner = indexOwner(ctx, file, parsed, onTable);
+    const indexName: string = parsed.name;
+    const found: NamedObject | undefined =
+      owner.hasTable && owner.table === undefined
+        ? undefined
+        : findNamedAnywhere(
+            ctx,
+            owner.table,
+            owner.hasTable ? undefined : parsed.schema,
+            indexName,
+            'index'
+          );
+    if (found === undefined) {
+      if (
+        owner.table?.implicitIndexes.delete(indexName.toLowerCase()) === true
+      ) {
+        continue;
+      }
+      if (!ifExists) {
+        warnStatement(
+          ctx,
+          file,
+          line,
+          `DROP INDEX "${indexName}"`,
+          'no index of that name exists at this point'
+        );
+      }
+    } else if (found.kind === 'primaryKey') {
+      // MySQL: DROP INDEX `PRIMARY` ON t
+      removeNamed(found);
+    } else {
+      removeNamed(found);
+    }
+    if (!cursor.acceptPunct(',')) {
+      break;
+    }
+  }
+}
+
+/** MySQL `RENAME TABLE a TO b, c TO d`. */
+function handleRename(ctx: Context, file: FileContext, cursor: Cursor): void {
+  const line: number = cursor.peek().line;
+  cursor.next();
+  if (!cursor.acceptKeyword('TABLE')) {
+    return;
+  }
+  cursor.acceptKeywords('IF', 'EXISTS');
+  for (;;) {
+    const from: QualifiedName | undefined = parseQualifiedName(cursor);
+    if (from === undefined || !cursor.acceptKeyword('TO')) {
+      break;
+    }
+    const to: QualifiedName | undefined = parseQualifiedName(cursor);
+    const table: RawTable | undefined = lookupTable(ctx, from, file.dialect);
+    if (to !== undefined) {
+      if (table === undefined) {
+        warnStatement(
+          ctx,
+          file,
+          line,
+          `RENAME TABLE "${from.name}" TO "${to.name}"`,
+          'the table does not exist at this point'
+        );
+      } else {
+        renameTable(ctx, file, table, to.name, line);
+      }
+    }
+    if (!cursor.acceptPunct(',')) {
+      break;
+    }
+  }
+}
+
+/** Splits the quoted object name of `sp_rename 'dbo.t.c'` into its parts. */
+function splitObjectName(value: string): string[] {
+  return value
+    .split('.')
+    .map((part: string) => part.replace(/^[[\]"`]+|[[\]"`]+$/g, ''))
+    .filter((part: string) => part !== '');
+}
+
+/** SQL Server `EXEC sp_rename 'dbo.t.old', 'new', 'COLUMN'` (also INDEX and OBJECT, and the named-parameter form). */
+function handleSpRename(ctx: Context, file: FileContext, cursor: Cursor): void {
+  const line: number = cursor.peek().line;
+  cursor.next();
+  cursor.next();
+  const positional: string[] = [];
+  const named: Map<string, string> = new Map<string, string>();
+  for (const argument of splitTopLevel(
+    cursor.tokens.slice(cursor.position, cursor.end)
+  )) {
+    const parts: Cursor = new Cursor(argument);
+    const first: Token = parts.peek();
+    if (first.kind === 'word' && first.value.startsWith('@')) {
+      // The named form: @objname = N'dbo.t', @newname = N'u', @objtype = N'COLUMN'
+      parts.next();
+      parts.acceptPunct('=');
+      named.set(first.value.slice(1).toLowerCase(), parts.next().value);
+    } else {
+      positional.push(parts.next().value);
+    }
+  }
+  const objectName: string = named.get('objname') ?? positional[0] ?? '';
+  const newName: string = named.get('newname') ?? positional[1] ?? '';
+  const objectType: string = (
+    named.get('objtype') ??
+    positional[2] ??
+    'OBJECT'
+  ).toUpperCase();
+  const parts: string[] = splitObjectName(objectName);
+  const statement: string = `sp_rename '${objectName}', '${newName}'`;
+  if (parts.length === 0 || newName === '') {
+    warnStatement(
+      ctx,
+      file,
+      line,
+      statement,
+      'the arguments could not be read'
+    );
+    return;
+  }
+  const lookup = (tableParts: string[]): RawTable | undefined => {
+    const tableName: string | undefined = tableParts[tableParts.length - 1];
+    if (tableName === undefined) {
+      return undefined;
+    }
+    const schema: string | undefined = tableParts[tableParts.length - 2];
+    return lookupTable(
+      ctx,
+      schema === undefined ? { name: tableName } : { schema, name: tableName },
+      file.dialect
+    );
+  };
+  if (objectType === 'COLUMN' || objectType === 'INDEX') {
+    const leaf: string = parts[parts.length - 1] ?? '';
+    const table: RawTable | undefined = lookup(parts.slice(0, -1));
+    if (table === undefined) {
+      warnStatement(
+        ctx,
+        file,
+        line,
+        statement,
+        'the table does not exist at this point'
+      );
+      return;
+    }
+    if (objectType === 'COLUMN') {
+      const column: RawColumn | undefined = findColumn(table, leaf);
+      if (column === undefined) {
+        warnStatement(
+          ctx,
+          file,
+          line,
+          statement,
+          'the column does not exist at this point'
+        );
+      } else if (
+        findColumn(table, newName) !== undefined &&
+        !sameName(leaf, newName)
+      ) {
+        warnStatement(
+          ctx,
+          file,
+          line,
+          statement,
+          `a column named "${newName}" exists already`
+        );
+      } else {
+        renameColumn(ctx, table, column, newName);
+      }
+      return;
+    }
+    const found: NamedObject | undefined = findNamed(table, leaf, 'index');
+    if (found === undefined) {
+      warnStatement(
+        ctx,
+        file,
+        line,
+        statement,
+        'the index does not exist at this point'
+      );
+    } else {
+      nameNamed(found, newName);
+    }
+    return;
+  }
+  const table: RawTable | undefined = lookup(parts);
+  if (table !== undefined) {
+    renameTable(ctx, file, table, newName, line);
+    return;
+  }
+  // A constraint is renamed with the OBJECT type and its schema-qualified name.
+  const constraint: string = parts[parts.length - 1] ?? '';
+  const found: NamedObject | undefined = findNamedAnywhere(
+    ctx,
+    undefined,
+    parts.length > 1 ? parts[parts.length - 2] : undefined,
+    constraint,
+    'constraint'
+  );
+  if (found === undefined) {
+    warnStatement(
+      ctx,
+      file,
+      line,
+      statement,
+      'no table or constraint of that name exists at this point'
+    );
+    return;
+  }
+  nameNamed(found, newName);
 }
 
 // ---------------------------------------------------------------------------
@@ -2118,6 +3862,40 @@ function targetKeyColumns(target: RawTable): RawColumn[] {
   return found;
 }
 
+/**
+ * True when the table has an index of its own. MySQL builds an index for every foreign key, and a dump lists it,
+ * so a plain index over exactly the columns of a foreign key does not count (the same rule `buildIndexes` uses).
+ */
+function hasOwnIndexes(table: RawTable, build: ModelBuild): boolean {
+  if (table.dialect !== 'mysql') {
+    return table.indexes.length > 0;
+  }
+  const keyColumns: Set<string> = new Set<string>(
+    build.references.map((reference: ResolvedReference): string =>
+      reference.columns
+        .map((column: RawColumn) => column.name.toLowerCase())
+        .join('\u0000')
+    )
+  );
+  return table.indexes.some(
+    (index: RawIndex): boolean =>
+      index.isUnique ||
+      index.kind !== undefined ||
+      index.isPartial ||
+      index.method !== undefined ||
+      index.elements.some(
+        (element: RawIndexElement) => element.column === undefined
+      ) ||
+      !keyColumns.has(
+        index.elements
+          .map((element: RawIndexElement) =>
+            (element.column ?? '').toLowerCase()
+          )
+          .join('\u0000')
+      )
+  );
+}
+
 function buildSchema(
   ctx: Context,
   tables: RawTable[],
@@ -2291,7 +4069,7 @@ function buildSchema(
       key.length !== 2 ||
       build.references.length !== 2 ||
       table.uniques.length > 0 ||
-      table.indexes.length > 0 ||
+      hasOwnIndexes(table, build) ||
       table.checks.length > 0 ||
       referencedTables.has(table)
     ) {

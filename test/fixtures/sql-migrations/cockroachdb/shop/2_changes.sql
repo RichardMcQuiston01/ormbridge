@@ -1,0 +1,12 @@
+ALTER TABLE orders RENAME TO purchase;
+ALTER TABLE purchase RENAME COLUMN state TO status;
+ALTER TABLE purchase RENAME COLUMN customer_id TO buyer_id;
+ALTER INDEX purchase@orders_customer_idx RENAME TO purchase_buyer_idx;
+DROP INDEX purchase@orders_state_idx;
+ALTER TABLE customer ALTER COLUMN full_name SET NOT NULL;
+ALTER TABLE purchase ALTER COLUMN total SET DEFAULT 1;
+ALTER TABLE customer ADD COLUMN nickname STRING(40);
+ALTER TABLE customer DROP COLUMN nickname;
+ALTER TABLE customer RENAME CONSTRAINT customer_email_key TO customer_email_unique;
+CREATE INDEX purchase_status_idx ON purchase (status, total) STORING (buyer_id);
+INSERT INTO customer (email, full_name) VALUES ('a@example.com', 'A');

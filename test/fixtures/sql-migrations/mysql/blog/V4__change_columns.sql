@@ -1,0 +1,8 @@
+ALTER TABLE post MODIFY COLUMN views bigint NOT NULL DEFAULT 0;
+ALTER TABLE post ALTER COLUMN summary SET DEFAULT '';
+UPDATE post SET summary = '' WHERE summary IS NULL;
+ALTER TABLE post MODIFY COLUMN summary varchar(100) NOT NULL DEFAULT '';
+ALTER TABLE post ALTER COLUMN rating SET DEFAULT 0;
+ALTER TABLE post ALTER COLUMN legacy_flag DROP DEFAULT;
+ALTER TABLE writer MODIFY COLUMN bio varchar(500) NULL;
+ALTER TABLE post MODIFY COLUMN status ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'draft';
