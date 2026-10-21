@@ -610,13 +610,25 @@ export function splitStatements(tokens: readonly Token[]): Token[][] {
  * expression. Ties and files without any hint are read as PostgreSQL.
  */
 export function detectDialect(text: string): SqlDialect {
+  return detectDialectHint(text) ?? 'postgresql';
+}
+
+/** Like `detectDialect`, but answers undefined for text with no dialect-specific syntax at all. */
+export function detectDialectHint(text: string): SqlDialect | undefined {
+  const scores: Record<SqlDialect, number> = dialectScores(text);
+  const best: SqlDialect = bestDialect(scores);
+  return scores[best] === 0 ? undefined : best;
+}
+
+/** How many dialect-specific patterns of each dialect the text contains. */
+export function dialectScores(text: string): Record<SqlDialect, number> {
   const score = (patterns: RegExp[]): number =>
     patterns.reduce(
       (total: number, pattern: RegExp): number =>
         total + (pattern.test(text) ? 1 : 0),
       0
     );
-  const scores: Record<SqlDialect, number> = {
+  return {
     sqlserver: score([
       /\bIDENTITY\s*\(\s*\d+\s*,\s*\d+\s*\)/i,
       /^\s*GO\s*$/im,
@@ -674,8 +686,12 @@ export function detectDialect(text: string): SqlDialect {
       /\bFAMILY\s+("primary"|fam_\d)/i,
     ]),
   };
+}
+
+/** The dialect with the highest score. A tie goes to SQLite over MySQL (both quote with backticks), and to PostgreSQL over all. */
+export function bestDialect(scores: Record<SqlDialect, number>): SqlDialect {
   let best: SqlDialect = 'postgresql';
-  for (const dialect of ['sqlserver', 'mysql', 'sqlite'] as SqlDialect[]) {
+  for (const dialect of ['sqlserver', 'sqlite', 'mysql'] as SqlDialect[]) {
     if (scores[dialect] > scores[best]) {
       best = dialect;
     }

@@ -27,7 +27,7 @@ if (!result.ok) {
 }
 ```
 
-All functions return a `Result` (`{ ok: true, value } | { ok: false, error }`) instead of throwing, with a descriptive error code and message. Parsers and emitters are exported too (`parseDjango`, `parsePrisma`, `parseTypeorm`, `parseDrizzle`, `parseDoctrine`, `parseLaravel`, `parseGorm`, `parseJsonSchema`, `parseSqlDdl`, `parseSqlAlchemy`, `parseSequelize`, `parseEfcore`, `parseJpa`, `emitPrisma`, `emitDjango`, `emitDoctrine`, `emitLaravel`, `emitGorm`, `emitDrizzle`, `emitJsonSchema`, `emitZod`, `emitNeo4j`, `emitNeomodel`, `emitSdn`, `emitSqlDdl`, `emitSqlAlchemy`, `emitSequelize`, `emitEfcore`, `emitJpa`), all built on a shared intermediate representation, which is how new formats plug in.
+All functions return a `Result` (`{ ok: true, value } | { ok: false, error }`) instead of throwing, with a descriptive error code and message. Parsers and emitters are exported too (`parseDjango`, `parsePrisma`, `parseTypeorm`, `parseDrizzle`, `parseZod`, `parseDoctrine`, `parseLaravel`, `parseGorm`, `parseJsonSchema`, `parseSqlDdl`, `parseSqlAlchemy`, `parseSequelize`, `parseEfcore`, `parseJpa`, `emitPrisma`, `emitDjango`, `emitDoctrine`, `emitLaravel`, `emitGorm`, `emitDrizzle`, `emitJsonSchema`, `emitZod`, `emitNeo4j`, `emitNeomodel`, `emitSdn`, `emitSqlDdl`, `emitSqlAlchemy`, `emitSequelize`, `emitEfcore`, `emitJpa`), all built on a shared intermediate representation, which is how new formats plug in. `orderSqlMigrationFiles(paths)` puts SQL migration files in the order they run (Flyway versions, the drizzle-kit journal or natural file-name order), for callers that pass several files to `parseSqlDdl`.
 
 [Back to Top](#api-reference)
 

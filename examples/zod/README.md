@@ -1,16 +1,17 @@
 # Zod example
 
-This folder shows the `zod` format: Zod 4 schemas and inferred types generated from the shared Prisma schema [`../schema/schema.prisma`](../schema/schema.prisma). The format is write-only, so there is no round trip.
+This folder shows the `zod` format both ways: Zod 4 schemas and inferred types generated from the shared Prisma schema [`../schema/schema.prisma`](../schema/schema.prisma), and the Zod file read back into a Prisma schema.
 
-- `ormbridge.config.json` defines one conversion, `to-zod` (`prisma` to `zod`).
-- `generated/schemas.ts` is its output: for each model a row, create and update schema, plus a `WithRelations` schema where relations exist.
+- `ormbridge.config.json` defines two conversions: `to-zod` (`prisma` to `zod`) and `from-zod` (`zod` to `prisma`).
+- `generated/schemas.ts` is the output of `to-zod`: for each model a row, create and update schema, plus a `WithRelations` schema where relations exist.
+- `prisma/schema.prisma` is the output of `from-zod`. Zod describes rows, not tables, so it is not the same schema as the one you started with: table names, defaults, unique constraints, indexes and relations are gone, and the foreign-key columns are plain fields. The [Zod guide](../../docs/formats/zod.md#what-is-lost) lists what is lost.
 
 Generated files are committed. Regenerate or verify them with:
 
 ```sh
 cd examples/zod
-npx ormbridge convert           # rewrites generated/schemas.ts
-npx ormbridge convert --check   # exit code 3 if it is out of date
+npx ormbridge convert           # rewrites both generated files
+npx ormbridge convert --check   # exit code 3 if one is out of date
 ```
 
 Inside this repository, run `npm run build` first and use `node ../../dist/cli.js convert` (or `npm run examples` / `npm run examples:check` from the root, which cover every example). To use the output in your own project, install `zod` 4.

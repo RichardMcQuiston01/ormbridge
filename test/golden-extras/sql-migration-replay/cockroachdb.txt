@@ -1,0 +1,13 @@
+## indexes are named table@index, and can be dropped and renamed that way
+table t
+  column id bigInt, not null, pk
+  column a bigInt, null
+  column b bigInt, null
+  index t_a_lookup (a)
+
+## SET DATA TYPE and ALTER PRIMARY KEY
+table t (pk t_pkey)
+  column id bigInt, not null
+  column slug string(20), not null
+  column n bigInt, null
+  primary key (slug, id)

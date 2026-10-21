@@ -22,15 +22,15 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both                                                 |
 | GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; one file per model                                                       |
 | Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable`, `mysqlTable`, `sqliteTable` plus `relations()`                                          |
+| Zod schemas (TypeScript)    |  ✔   |   ✔   | Reads Zod 3 and Zod 4 `z.object` schemas; writes Zod 4 schemas and inferred types                  |
 | JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON)                              |
-| SQL DDL                     |  ✔   |   ✔   | `CREATE TABLE` and more for PostgreSQL, CockroachDB, MySQL, SQLite, SQL Server, ClickHouse (write) |
+| SQL DDL                     |  ✔   |   ✔   | Tables and migrations: PostgreSQL, CockroachDB, MySQL, SQLite, SQL Server, ClickHouse (write only) |
 | SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 (declarative, `Column()`, `Table()`) and SQLModel                                   |
 | Sequelize (JavaScript/TS)   |  ✔   |   ✔   | Sequelize 6; writes TypeScript or `sequelize-cli` (`--style define`)                               |
 | Entity Framework Core (C#)  |  ✔   |   ✔   | EF Core 8: annotations or `--style fluent`, and a `DbContext`                                      |
-| Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` (default) or Hibernate 5 `--style javax`                                     |
+| Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` or 5 `--style javax`; `@EmbeddedId` keys; Lombok option                      |
 | TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                                                          |
 | Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django                                         |
-| Zod schemas                 |      |   ✔   | Zod 4 schemas and inferred types                                                                   |
 | Neo4j (Cypher)              |      |   ✔   | Node constraints and indexes; relationships as comments; `--style enterprise` for Enterprise       |
 | Spring Data Neo4j (Java)    |      |   ✔   | SDN 7 for Spring Boot 3: `@Node`, `@Relationship`, `@RelationshipProperties` classes               |
 | neomodel (Python, Neo4j)    |      |   ✔   | `StructuredNode` classes, relationships with cardinality, `StructuredRel` for join tables          |
@@ -86,10 +86,11 @@ A TypeORM project to Prisma (a folder needs `--from`):
 ormbridge convert --from typeorm -i ./src/entities -o ./prisma/schema.prisma
 ```
 
-Prisma to Zod schemas:
+Prisma to Zod schemas, and Zod schemas to Prisma (a folder needs `--from zod`):
 
 ```bash
 ormbridge convert -i ./prisma/schema.prisma --to zod -o ./src/schemas.ts
+ormbridge convert --from zod -i ./src/schemas -o ./prisma/schema.prisma
 ```
 
 Prisma to a Neo4j Cypher schema (constraints and indexes; `--style enterprise` adds Enterprise Edition statements):

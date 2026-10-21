@@ -1,0 +1,117 @@
+import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';
+
+export enum PostStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+}
+
+@Entity('User')
+export class User {
+  @PrimaryColumn({ type: 'int' })
+  id!: number;
+}
+
+@Entity('Category')
+export class Category {
+  @PrimaryColumn({ type: 'int' })
+  id!: number;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  created_at!: Date;
+
+  @Column({ type: 'timestamptz' })
+  updated_at!: Date;
+
+  @Column({ type: 'varchar', length: 100 })
+  name!: string;
+
+  @Column({ type: 'varchar', length: 50 })
+  slug!: string;
+
+  @Column({ type: 'int', nullable: true })
+  parent_id!: number | null;
+}
+
+@Entity('Post')
+export class Post {
+  @PrimaryColumn({ type: 'int' })
+  id!: number;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  created_at!: Date;
+
+  @Column({ type: 'timestamptz' })
+  updated_at!: Date;
+
+  @Column({ type: 'uuid' })
+  public_id!: string;
+
+  @Column({ type: 'varchar', length: 200 })
+  title!: string;
+
+  @Column({ type: 'text' })
+  body!: string;
+
+  @Column({ type: 'enum', enum: PostStatus, default: PostStatus.DRAFT })
+  status!: PostStatus;
+
+  @Column({ type: 'decimal', precision: 4, scale: 2, nullable: true })
+  rating!: string | null;
+
+  @Column({ type: 'int', default: 0 })
+  view_count!: number;
+
+  @Column({ type: 'boolean', default: false })
+  is_featured!: boolean;
+
+  @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  published_at!: Date;
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  metadata!: unknown;
+
+  @Column({ type: 'int' })
+  author_id!: number;
+
+  @Column({ type: 'int', nullable: true })
+  editor_id!: number | null;
+
+  @Column({ type: 'int' })
+  category_id!: number;
+}
+
+@Entity('Tag')
+export class Tag {
+  @PrimaryColumn({ type: 'int' })
+  id!: number;
+
+  @Column({ type: 'varchar', length: 50 })
+  label!: string;
+}
+
+@Entity('PostTags')
+export class PostTags {
+  @PrimaryColumn({ type: 'int' })
+  id!: number;
+
+  @Column({ type: 'int' })
+  post_id!: number;
+
+  @Column({ type: 'int' })
+  tag_id!: number;
+}
+
+@Entity('Profile')
+export class Profile {
+  @PrimaryColumn({ type: 'int' })
+  id!: number;
+
+  @Column({ type: 'text', nullable: true })
+  bio!: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  avatar!: string | null;
+
+  @Column({ type: 'int' })
+  user_id!: number;
+}

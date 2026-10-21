@@ -1,0 +1,13 @@
+ALTER TABLE member DROP CONSTRAINT member_alt_org_id_fkey;
+ALTER TABLE member DROP CONSTRAINT member_score_check;
+ALTER TABLE member DROP CONSTRAINT member_org_id_email_key;
+DROP INDEX member_nick_idx;
+DROP INDEX member_alt_org_id_nick_idx;
+DROP INDEX IF EXISTS public.member_org_id_score_idx;
+ALTER TABLE org RENAME slug TO handle;
+ALTER TABLE org DROP CONSTRAINT org_slug_key;
+ALTER TABLE org ADD CONSTRAINT org_handle_key UNIQUE (handle);
+ALTER TABLE member ALTER COLUMN org_id SET NOT NULL;
+ALTER TABLE member ALTER COLUMN id DROP IDENTITY;
+ALTER TABLE member DROP CONSTRAINT member_pkey;
+ALTER TABLE member ADD PRIMARY KEY (email);

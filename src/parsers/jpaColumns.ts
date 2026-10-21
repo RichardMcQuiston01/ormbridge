@@ -31,9 +31,16 @@ export interface BuiltField {
   readOnly: boolean;
 }
 
-/** The IR name of a member: `address.street` is `addressStreet`. */
+/**
+ * The IR name of a member: `address.street` is `addressStreet`. An attribute of an `@EmbeddedId` leaves out the name
+ * of the `@EmbeddedId` attribute (`id.sku` is `sku`), so that the key reads like the same key as an `@IdClass`.
+ */
 export function irFieldName(member: Member): string {
-  return toCamelCase(member.path.join('_'));
+  const path: string[] =
+    member.inEmbeddedId && member.path.length > 1 && !member.prefixedKeyName
+      ? member.path.slice(1)
+      : member.path;
+  return toCamelCase(path.join('_'));
 }
 
 /** Removes the backticks and quotes that make an identifier case-sensitive: `` `Order` `` is `Order`. */

@@ -14,6 +14,7 @@ import {
   type FormatName,
   type SourceText,
 } from './convert.js';
+import { orderSqlMigrationFiles } from './parsers/sqlMigrationOrder.js';
 import { describeThrown, err, ok, type Result } from './result.js';
 
 /** Directories skipped only when reading PHP projects: Composer packages and Symfony's cache/log directory. */
@@ -70,7 +71,10 @@ const SQL_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   '.git',
 ]);
 
-/** Rollback scripts (`001_init.down.sql`, `down.sql`, `V2__x.undo.sql`) undo a schema instead of describing it. */
+/**
+ * Rollback scripts (`001_init.down.sql`, `down.sql`, `V2__x.undo.sql`) undo a schema instead of describing it.
+ * Flyway's `U2__x.sql` undo scripts and callbacks are dropped when the files are put in migration order.
+ */
 const SQL_ROLLBACK_FILES: RegExp =
   /(?:^|[._-])(?:down|rollback|revert|undo)\.sql$/i;
 
@@ -479,7 +483,10 @@ async function discoverInputFiles(
       const roots: string[] =
         format === 'laravel' ? await laravelRoots(input) : [input];
       for (const root of roots) {
-        files.push(...(await walkDirectory(root, format)));
+        const found: string[] = await walkDirectory(root, format);
+        files.push(
+          ...(format === 'sql' ? await orderMigrations(found) : found)
+        );
       }
     } else {
       files.push(input);
@@ -493,25 +500,27 @@ async function discoverInputFiles(
           ? 'TypeScript (.ts) entity files'
           : format === 'drizzle'
             ? 'TypeScript (.ts) Drizzle schema files'
-            : format === 'doctrine'
-              ? 'PHP (.php) entity files'
-              : format === 'laravel'
-                ? 'PHP (.php) migration and model files (database/migrations and app/)'
-                : format === 'gorm'
-                  ? 'Go (.go) model files'
-                  : format === 'json-schema'
-                    ? 'JSON (.json) schema or OpenAPI files'
-                    : format === 'sql'
-                      ? 'SQL (.sql) files'
-                      : format === 'sqlalchemy'
-                        ? 'Python (.py) files with SQLAlchemy or SQLModel models'
-                        : format === 'sequelize'
-                          ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files'
-                          : format === 'efcore'
-                            ? 'C# (.cs) files with Entity Framework Core models'
-                            : format === 'jpa'
-                              ? 'Java (.java) files with Hibernate / JPA entities'
-                              : '.prisma files';
+            : format === 'zod'
+              ? 'TypeScript or JavaScript (.ts, .mts, .js, .mjs) files with Zod schemas'
+              : format === 'doctrine'
+                ? 'PHP (.php) entity files'
+                : format === 'laravel'
+                  ? 'PHP (.php) migration and model files (database/migrations and app/)'
+                  : format === 'gorm'
+                    ? 'Go (.go) model files'
+                    : format === 'json-schema'
+                      ? 'JSON (.json) schema or OpenAPI files'
+                      : format === 'sql'
+                        ? 'SQL (.sql) files'
+                        : format === 'sqlalchemy'
+                          ? 'Python (.py) files with SQLAlchemy or SQLModel models'
+                          : format === 'sequelize'
+                            ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files'
+                            : format === 'efcore'
+                              ? 'C# (.cs) files with Entity Framework Core models'
+                              : format === 'jpa'
+                                ? 'Java (.java) files with Hibernate / JPA entities'
+                                : '.prisma files';
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -528,6 +537,12 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
     return (
       extname(filePath) === '.ts' &&
       !/\.(d|test|spec)\.ts$/.test(basename(filePath))
+    );
+  }
+  if (format === 'zod') {
+    return (
+      /^\.(ts|mts|js|mjs)$/.test(extname(filePath)) &&
+      !/\.(d|test|spec)\.(ts|mts|js|mjs)$/.test(basename(filePath))
     );
   }
   if (format === 'sequelize') {
@@ -649,6 +664,44 @@ async function laravelRoots(directory: string): Promise<string[]> {
     }
   }
   return roots.length > 0 ? roots : [directory];
+}
+
+/**
+ * Puts the SQL files of a directory in migration order: Flyway version order, the drizzle-kit journal
+ * (`meta/_journal.json`) or natural file-name order. See `orderSqlMigrationFiles`.
+ */
+async function orderMigrations(files: string[]): Promise<string[]> {
+  const journals: Map<string, string[]> = new Map<string, string[]>();
+  for (const directory of new Set(files.map((file: string) => dirname(file)))) {
+    const text: string | undefined = await readIfExists(
+      join(directory, 'meta', '_journal.json')
+    );
+    if (text === undefined) {
+      continue;
+    }
+    try {
+      const parsed: unknown = JSON.parse(text);
+      const entries: unknown =
+        typeof parsed === 'object' && parsed !== null
+          ? (parsed as { entries?: unknown }).entries
+          : undefined;
+      if (Array.isArray(entries)) {
+        journals.set(
+          directory,
+          entries
+            .map((entry: unknown) =>
+              typeof entry === 'object' && entry !== null
+                ? (entry as { tag?: unknown }).tag
+                : undefined
+            )
+            .filter((tag: unknown): tag is string => typeof tag === 'string')
+        );
+      }
+    } catch {
+      // A journal that is not valid JSON is ignored: the files fall back to file-name order.
+    }
+  }
+  return orderSqlMigrationFiles(files, journals);
 }
 
 async function walkDirectory(

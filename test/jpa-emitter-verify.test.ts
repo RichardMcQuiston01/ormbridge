@@ -2,7 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { emitJpa, JPA_STYLES, type JpaStyle } from '../src/emitters/jpa.js';
+import {
+  emitJpa,
+  JPA_STYLES,
+  type JpaKeyMode,
+  type JpaStyle,
+} from '../src/emitters/jpa.js';
 import type { MultiFileEmitOutput } from '../src/formats.js';
 import type {
   IrField,
@@ -91,6 +96,12 @@ interface Combo {
   naming: NamingMode;
   provider: Provider;
   name: string;
+  /** How composite keys are written; the default is `idclass`. */
+  keyMode?: JpaKeyMode;
+  /** True when the entities use Lombok annotations in place of accessors. */
+  lombok?: boolean;
+  /** Shown in the test title: the key mode and Lombok, or `default`. */
+  variant: string;
   /** The IR the database has to match. */
   schema?: IrSchema;
   output?: MultiFileEmitOutput;
@@ -109,6 +120,7 @@ const COMBOS: Combo[] = SUBJECTS.flatMap((subject: Subject, index: number) => [
       naming,
       provider: 'postgresql' as const,
       name: `s${index}_jakarta_${naming}_pg`,
+      variant: 'default',
     },
     {
       subject,
@@ -116,6 +128,28 @@ const COMBOS: Combo[] = SUBJECTS.flatMap((subject: Subject, index: number) => [
       naming,
       provider: 'sqlite' as const,
       name: `s${index}_javax_${naming}_sqlite`,
+      variant: 'default',
+    },
+    // @EmbeddedId key classes with Lombok accessors (the compiler runs Lombok as an annotation processor).
+    {
+      subject,
+      style: 'jakarta' as const,
+      naming,
+      provider: 'postgresql' as const,
+      name: `s${index}_jakarta_${naming}_pg_embedded_lombok`,
+      keyMode: 'embedded' as const,
+      lombok: true,
+      variant: 'embedded keys + Lombok',
+    },
+    {
+      subject,
+      style: 'javax' as const,
+      naming,
+      provider: 'sqlite' as const,
+      name: `s${index}_javax_${naming}_sqlite_embedded_lombok`,
+      keyMode: 'embedded' as const,
+      lombok: true,
+      variant: 'embedded keys + Lombok',
     },
   ]),
   {
@@ -124,6 +158,26 @@ const COMBOS: Combo[] = SUBJECTS.flatMap((subject: Subject, index: number) => [
     naming: 'preserve' as const,
     provider: 'sqlite' as const,
     name: `s${index}_jakarta_preserve_sqlite`,
+    variant: 'default',
+  },
+  // Each new mode alone: embedded keys with hand-written accessors, and Lombok with @IdClass keys.
+  {
+    subject,
+    style: 'jakarta' as const,
+    naming: 'preserve' as const,
+    provider: 'sqlite' as const,
+    name: `s${index}_jakarta_preserve_sqlite_embedded`,
+    keyMode: 'embedded' as const,
+    variant: 'embedded keys',
+  },
+  {
+    subject,
+    style: 'javax' as const,
+    naming: 'preserve' as const,
+    provider: 'sqlite' as const,
+    name: `s${index}_javax_preserve_sqlite_lombok`,
+    lombok: true,
+    variant: 'Lombok',
   },
 ]);
 
@@ -138,6 +192,7 @@ const COMPILE_ONLY: Combo[] = SUBJECTS.flatMap(
           naming: 'preserve',
           provider,
           name: `c${index}_${style}_${provider}`,
+          variant: 'default',
         })
       )
     )
@@ -301,6 +356,8 @@ beforeAll(async () => {
       provider: combo.provider,
       naming: combo.naming,
       style: combo.style,
+      ...(combo.keyMode === undefined ? {} : { keyMode: combo.keyMode }),
+      ...(combo.lombok === undefined ? {} : { lombok: combo.lombok }),
     });
     write(root, combo);
   }
@@ -354,7 +411,7 @@ function databaseOf(combo: Combo): JpaDatabase {
 
 describe(titleWithReason('jpa emitter: real Hibernate', probe), () => {
   it.skipIf(!probe.available).each(COMBOS)(
-    'compiles and creates the schema of $subject.label in H2 ($style style, $naming naming, $provider)',
+    'compiles and creates the schema of $subject.label in H2 ($style style, $naming naming, $provider, $variant)',
     (combo: Combo) => {
       const database: JpaDatabase = databaseOf(combo);
       const ir: IrSchema = expectedSchema(
@@ -372,7 +429,7 @@ describe(titleWithReason('jpa emitter: real Hibernate', probe), () => {
   );
 
   it.skipIf(!probe.available).each(COMBOS)(
-    'saves rows of $subject.label with the defaults, enums and generated values of the IR ($style style, $naming naming, $provider)',
+    'saves rows of $subject.label with the defaults, enums and generated values of the IR ($style style, $naming naming, $provider, $variant)',
     (combo: Combo) => {
       const database: JpaDatabase = databaseOf(combo);
       const ir: IrSchema = expectedSchema(

@@ -1,0 +1,59 @@
++ export const BlogCategoryCreateSchema = BlogCategorySchema.partial({ parent_id: true });
++ export const BlogPostCreateSchema = BlogPostSchema.partial({ rating: true, editor_id: true });
++ export const BlogProfileCreateSchema = BlogProfileSchema.partial({ bio: true, avatar: true });
++ export const BlogTagCreateSchema = BlogTagSchema;
++ export const BlogUserCreateSchema = BlogUserSchema;
+- 
+- 
+- 
+- 
+- 
+- author: z.lazy(() => BlogUserWithRelationsSchema).optional(),
+- author?: BlogUserWithRelations;
+- author_blog_posts: z.array(z.lazy(() => BlogPostWithRelationsSchema)).optional(),
+- author_blog_posts?: BlogPostWithRelations[];
+- blog_categories: z.array(z.lazy(() => BlogCategoryWithRelationsSchema)).optional(),
+- blog_categories?: BlogCategoryWithRelations[];
+- blog_posts: z.array(z.lazy(() => BlogPostWithRelationsSchema)).optional(),
+- blog_posts: z.array(z.lazy(() => BlogPostWithRelationsSchema)).optional(),
+- blog_posts?: BlogPostWithRelations[];
+- blog_posts?: BlogPostWithRelations[];
+- blog_profile: z.lazy(() => BlogProfileWithRelationsSchema).nullable().optional(),
+- blog_profile?: BlogProfileWithRelations | null;
+- category: z.lazy(() => BlogCategoryWithRelationsSchema).optional(),
+- category?: BlogCategoryWithRelations;
+- editor: z.lazy(() => BlogUserWithRelationsSchema).nullable().optional(),
+- editor?: BlogUserWithRelations | null;
+- editor_blog_posts: z.array(z.lazy(() => BlogPostWithRelationsSchema)).optional(),
+- editor_blog_posts?: BlogPostWithRelations[];
+- export const BlogCategoryCreateSchema = BlogCategorySchema.omit({ id: true }).partial({ created_at: true, parent_id: true });
+- export const BlogCategoryWithRelationsSchema: z.ZodType<BlogCategoryWithRelations> = BlogCategorySchema.extend({
+- export const BlogPostCreateSchema = BlogPostSchema.omit({ id: true }).partial({ created_at: true, public_id: true, status: true, rating: true, view_count: true, is_featured: true, published_at: true, metadata: true, editor_id: true });
+- export const BlogPostWithRelationsSchema: z.ZodType<BlogPostWithRelations> = BlogPostSchema.extend({
+- export const BlogProfileCreateSchema = BlogProfileSchema.omit({ id: true }).partial({ bio: true, avatar: true });
+- export const BlogProfileWithRelationsSchema: z.ZodType<BlogProfileWithRelations> = BlogProfileSchema.extend({
+- export const BlogTagCreateSchema = BlogTagSchema.omit({ id: true });
+- export const BlogTagWithRelationsSchema: z.ZodType<BlogTagWithRelations> = BlogTagSchema.extend({
+- export const BlogUserCreateSchema = BlogUserSchema.omit({ id: true });
+- export const BlogUserWithRelationsSchema: z.ZodType<BlogUserWithRelations> = BlogUserSchema.extend({
+- export type BlogCategoryWithRelations = BlogCategory & {
+- export type BlogPostWithRelations = BlogPost & {
+- export type BlogProfileWithRelations = BlogProfile & {
+- export type BlogTagWithRelations = BlogTag & {
+- export type BlogUserWithRelations = BlogUser & {
+- parent: z.lazy(() => BlogCategoryWithRelationsSchema).nullable().optional(),
+- parent?: BlogCategoryWithRelations | null;
+- tags: z.array(z.lazy(() => BlogTagWithRelationsSchema)).optional(),
+- tags?: BlogTagWithRelations[];
+- user: z.lazy(() => BlogUserWithRelationsSchema).optional(),
+- user?: BlogUserWithRelations;
+- });
+- });
+- });
+- });
+- });
+- };
+- };
+- };
+- };
+- };

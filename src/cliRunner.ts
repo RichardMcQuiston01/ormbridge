@@ -21,6 +21,11 @@ import {
   type FormatAdapter,
   type FormatName,
 } from './formats.js';
+import {
+  isJpaKeyMode,
+  JPA_KEY_MODES,
+  type JpaKeyMode,
+} from './emitters/jpa.js';
 import { checkStyle, OUTPUT_STYLES, type OutputStyle } from './styles.js';
 import {
   countLines,
@@ -63,6 +68,8 @@ interface ConvertFlags {
   goPackage?: string;
   prismaVersion?: string;
   style?: string;
+  jpaKey?: string;
+  lombok?: boolean;
   /** A path, or false when --no-config was given. */
   config?: string | boolean;
   dryRun?: boolean;
@@ -119,6 +126,8 @@ interface MergedSettings {
   /** A number from the config file or the raw text of the flag. */
   prismaVersion?: number | string;
   style?: string;
+  jpaKey?: string;
+  lombok?: boolean;
 }
 
 /** Validates merged settings and builds the options for one conversion. */
@@ -196,6 +205,17 @@ function buildRunOptions(
     style = checked.value;
   }
 
+  let jpaKey: JpaKeyMode | undefined;
+  if (settings.jpaKey !== undefined) {
+    if (!isJpaKeyMode(settings.jpaKey)) {
+      return failure(
+        'INVALID_OPTION',
+        `Invalid --jpa-key value "${settings.jpaKey}". Expected one of: ${JPA_KEY_MODES.join(', ')}.`
+      );
+    }
+    jpaKey = settings.jpaKey;
+  }
+
   let prismaVersion: PrismaVersion | undefined;
   if (settings.prismaVersion !== undefined) {
     const versionText: string = String(settings.prismaVersion).trim();
@@ -232,6 +252,8 @@ function buildRunOptions(
         : { goPackage: settings.goPackage }),
       ...(prismaVersion === undefined ? {} : { prismaVersion }),
       ...(style === undefined ? {} : { style }),
+      ...(jpaKey === undefined ? {} : { jpaKey }),
+      ...(settings.lombok === undefined ? {} : { lombok: settings.lombok }),
       ...(settings.conventions === undefined
         ? {}
         : { conventions: settings.conventions }),
@@ -341,6 +363,12 @@ function planRuns(
     }
     if (flags.style !== undefined) {
       settings.style = flags.style;
+    }
+    if (flags.jpaKey !== undefined) {
+      settings.jpaKey = flags.jpaKey;
+    }
+    if (flags.lombok !== undefined) {
+      settings.lombok = flags.lombok;
     }
     const options: Result<RunOptions> = buildRunOptions(settings, mode);
     if (!options.ok) {
@@ -594,6 +622,14 @@ export async function runCli(
     .option(
       '--style <name>',
       `layout of the SQLAlchemy, Sequelize, EF Core, JPA and Neo4j output (${OUTPUT_STYLES.join(' | ')}): sqlalchemy | sqlmodel for --to sqlalchemy (default: sqlalchemy), init | define for --to sequelize (default: init), annotations | fluent for --to efcore (default: annotations), jakarta | javax for --to jpa (default: jakarta), community | enterprise for --to neo4j (default: community; enterprise adds the statements that need Neo4j Enterprise Edition)`
+    )
+    .option(
+      '--jpa-key <mode>',
+      `how the JPA output writes a composite primary key (${JPA_KEY_MODES.join(' | ')}): idclass writes an @IdClass class (default), embedded writes an @Embeddable key class with @EmbeddedId (and @MapsId on a relationship in the key); a single-column key is always an @Id; only --to jpa reads it`
+    )
+    .option(
+      '--lombok',
+      'write Lombok annotations (@Getter, @Setter, @NoArgsConstructor; @EqualsAndHashCode on key classes) instead of hand-written accessors in the JPA output; the project needs Lombok; only --to jpa reads it'
     )
     .option(
       '--dry-run',

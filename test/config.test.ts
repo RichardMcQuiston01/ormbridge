@@ -130,6 +130,25 @@ describe('loadConfigFile', () => {
     expect(config.conversions[0]?.style).toBe('sqlalchemy');
   });
 
+  it('reads the jpaKey and lombok keys', async () => {
+    const path: string = join(workDirectory, 'ormbridge.config.json');
+    await writeFile(
+      path,
+      JSON.stringify({
+        input: 'Model.java',
+        to: 'jpa',
+        jpaKey: 'embedded',
+        lombok: true,
+        conversions: [{ name: 'plain', jpaKey: 'idclass', lombok: false }],
+      })
+    );
+    const config: ConfigFile = expectOk(await loadConfigFile(path));
+    expect(config.defaults.jpaKey).toBe('embedded');
+    expect(config.defaults.lombok).toBe(true);
+    expect(config.conversions[0]?.jpaKey).toBe('idclass');
+    expect(config.conversions[0]?.lombok).toBe(false);
+  });
+
   it('reads the conventions key and rejects other values', async () => {
     const path: string = join(workDirectory, 'ormbridge.config.json');
     await writeFile(
@@ -252,6 +271,12 @@ describe('parseConfig validation', () => {
       { style: 3 },
       '"style" must be one of sqlalchemy, sqlmodel, init, define, annotations, fluent, jakarta, javax, community, enterprise (got 3)',
     ],
+    [
+      { jpaKey: 'composite' },
+      '"jpaKey" must be one of idclass, embedded (got "composite")',
+    ],
+    [{ jpaKey: 1 }, '"jpaKey" must be one of idclass, embedded (got 1)'],
+    [{ lombok: 'yes' }, '"lombok" must be true or false (got "yes")'],
     [{ prismaVersion: 8 }, '"prismaVersion" must be the number 6 or 7 (got 8)'],
     [
       { prismaVersion: '7' },

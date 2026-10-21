@@ -1,0 +1,11 @@
+@@ database/migrations/2024_01_01_000003_create_Post_table.php
++ $table->boolean('is_featured');
++ $table->dateTime('published_at');
++ $table->enum('status', ['draft', 'published']);
++ $table->integer('view_count');
++ $table->jsonb('metadata');
+- $table->boolean('is_featured')->default(false);
+- $table->dateTime('published_at')->useCurrent();
+- $table->enum('status', ['draft', 'published'])->default('draft');
+- $table->integer('view_count')->default(0);
+- $table->jsonb('metadata')->default('{}');

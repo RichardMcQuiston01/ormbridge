@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import type { IrField, IrModel, IrSchema } from '../src/ir.js';
+import type { IrField, IrModel, IrRelation, IrSchema } from '../src/ir.js';
 import type { EmitOnlyCell, MatrixCell } from './conversionMatrix.js';
 import { formatDifference, type IrDifference } from './irCompare.js';
 
@@ -86,6 +86,18 @@ export const LOSS_REASONS: readonly LossReason[] = [
     title: 'Many-to-many becomes an array property in JSON Schema',
     explanation:
       'A many-to-many relation is written as an array of references on each side and is read back as a many-to-many field on the model defined first, with a join table named after the two models rather than the source table. An explicit join model (Prisma) is a model with two single references; it is read back as an ordinary model and keeps its composite key through `x-primary-key`.',
+  },
+  {
+    id: 'zod-no-database-rules',
+    title: 'Zod validates values, not tables',
+    explanation:
+      'A Zod schema describes one row as it travels, so it has no table or column names, unique constraints, indexes, composite primary keys or defaults, and it cannot say that the database refreshes a column on every save. The Zod writer leaves them out of the row schema (a default only makes the column optional in the create schema, which the reader skips). The reader names the table after the schema and takes the column name from the property name, so a table such as `blog_post` comes back as `Post`.',
+  },
+  {
+    id: 'zod-no-relations',
+    title: 'Zod rows hold no relations',
+    explanation:
+      'The row schema has no relation fields: a foreign key stays as a plain integer or key property and the related rows go into the with-relations schema, which the reader skips. The foreign key, its delete rule, the reverse name and many-to-many fields are therefore gone, and a foreign key that had no property of its own (Django, Doctrine) gains one.',
   },
   {
     id: 'sqlalchemy-reverse-name',
@@ -280,32 +292,6 @@ export const EMIT_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
         title: 'Both sides of every relation',
         explanation:
           'Every foreign key gets a `one()` relation on its table and the matching `many()` (or `one()` for a one-to-one) on the target. Two tables joined more than once, and self references, carry a `relationName` on both sides because Drizzle cannot pair them otherwise. An unnamed reverse relation is named after the plural of the model (`posts`). Tables are ordered so a table follows the tables it references; a reference to a table declared later (a cycle or a self reference) is annotated with `AnyPgColumn` (`AnyMySqlColumn`, `AnySQLiteColumn`).',
-      },
-    ],
-    zod: [
-      {
-        id: 'zod-wire-types',
-        title: 'Types that JSON cannot carry',
-        explanation:
-          'Big integers and decimals are validated as strings of digits (a decimal with `max_digits` and `decimal_places` gets a pattern sized to them), UUIDs with `z.uuid()` (which only accepts RFC 9562 versions and variants), binary data as base64 text, durations and times as plain strings, and JSON columns as `z.unknown()`. Date columns use `z.coerce.date()`, which also accepts `null` and numbers, so a null in a required date column is not rejected; the `dates: "string"` option validates ISO text strictly instead.',
-      },
-      {
-        id: 'zod-create-update',
-        title: 'Create and update schemas are inferred',
-        explanation:
-          'The IR has no notion of an API payload. `<Model>CreateSchema` leaves out auto-increment keys, generated columns and auto-updated timestamps, and makes columns with a default (or a database default) and nullable columns optional. `<Model>UpdateSchema` is the create schema made partial, so it cannot change a generated column. Views get neither.',
-      },
-      {
-        id: 'zod-relations',
-        title: 'Relations are a separate schema',
-        explanation:
-          'Relation fields are not part of `<Model>Schema`; the foreign-key scalar is. A model that takes part in a relation also gets `<Model>WithRelationsSchema`, where every related row is optional and resolved lazily. Referential actions (`onDelete`), `related_name` collisions and composite foreign keys are not validation rules, so they are dropped (a composite key stays as its scalar columns).',
-      },
-      {
-        id: 'zod-database-rules',
-        title: 'Database-only rules are not checked',
-        explanation:
-          'Unique constraints, indexes, check constraints, string lengths below the database limit, integer ranges, enum value order and column names are not validated or kept; only string `max_length`, enum membership, nullability and the types above are. Enum labels are kept as comments. Ranges become an object with `lower`, `upper` and `bounds`, and hstore a record of nullable strings.',
       },
     ],
     neo4j: [
@@ -545,6 +531,74 @@ export const READ_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
           'Only JSON is read (the package has no YAML parser, so a YAML OpenAPI document must be converted first). References are followed between the files that are given: `#/...` pointers, `#`, and `$id`- or path-relative references; remote references are never fetched and named anchors (`$anchor`, `$dynamicRef`) are not resolved. An unresolved reference keeps its property as a `json` column.',
       },
     ],
+    zod: [
+      {
+        id: 'zod-static',
+        title: 'Reading: the modules are read, not run',
+        explanation:
+          'The reader parses the TypeScript or JavaScript with tree-sitter and never imports or runs it, so only what is written literally is understood: `z.object({ ... })` schemas bound to a top-level `const`, the Zod 3 and Zod 4 spellings of types and string formats, other schemas and property objects by name (also from other input files), and string constants, arrays and TypeScript enums for `z.enum` and `z.nativeEnum`. Schemas built inside functions or loops, computed property names, `z.object(shapeFromAFunction())` and anything imported from a package are not seen (the unresolvable ones produce a warning). `zod/mini` function-style checks are not read.',
+      },
+      {
+        id: 'zod-keys',
+        title: 'Reading: keys, tables and names',
+        explanation:
+          'Zod has no keys, tables or indexes. The property named `id` (in any case) is the primary key; a model without one has no key and a warning says so. The table is named after the schema (`UserSchema` becomes `User`, with the first letter in upper case), and the column after the property. Unique constraints, indexes, delete rules and auto-updated columns do not exist in Zod, so they cannot be read.',
+      },
+      {
+        id: 'zod-types',
+        title: 'Reading: column types are guessed from the schema',
+        explanation:
+          'A string with `.max(n)` is a length-limited `string`, any other string is `text`. Numbers are `float` unless `.int()` or `z.int()` is used, `z.bigint()` and `z.int64()` are `bigInt`, `z.date()` and `z.coerce.date()` are `dateTime` (Zod cannot tell a date from a date-time there; `z.iso.date()` is a `date`). Formats that have a column type become it (`uuid`, `ipv4`, `ipv6`, `base64`, ISO date, time and duration); formats without one (`email`, `url`, `cuid`, ...) are plain strings. A string checked with the decimal or big-integer pattern the Zod writer produces is read back as a `decimal` (with its precision) or a `bigInt`. `z.enum`, `z.nativeEnum` and a union of string literals become enums; arrays of these types become array columns. Defaults are read when they are a literal, an enum member, `() => new Date()`, `crypto.randomUUID()` or an empty object or list for json.',
+      },
+      {
+        id: 'zod-dropped-rules',
+        title: 'Reading: rules with no column',
+        explanation:
+          'The IR has no comment slot and no validation rules, so `.describe()` and `.meta()` are dropped without a word, and `.min()`, `.regex()`, `.email()`, `.positive()`, `.refine()`, `.transform()`, `.pipe()`, `.brand()` and the like are dropped with one warning per schema that names every property and rule. `.length(n)` keeps only the maximum. A literal (`z.literal("a")`) keeps its type, not the exact value.',
+      },
+      {
+        id: 'zod-json',
+        title: 'Reading: values with no column type become json',
+        explanation:
+          '`z.record`, `z.any`, `z.unknown` and `z.json` are json columns. A nested `z.object`, a tuple, an intersection, a discriminated union and a union of unlike types are json too, each with a warning that names the model and the property. A union of equal types is that type, a union with `null` or `undefined` is nullable, and a union of string literals is an enum.',
+      },
+      {
+        id: 'zod-relations-read',
+        title: 'Reading: schemas that hold schemas',
+        explanation:
+          'A property that holds another schema of the input (`author: UserSchema`, also inside `z.lazy` or a Zod 4 getter) is read as a foreign key to that model, with a warning (the column is named `<property>_id`; there is no delete rule). A list of schemas is the reverse side of a foreign key when the other model points back, and a many-to-many otherwise. The foreign-key scalar of the writer (`author_id: z.number().int()`) is a plain property: the reader cannot know it belongs to a relation.',
+      },
+      {
+        id: 'zod-derived',
+        title: 'Reading: extend, pick, omit, partial and required',
+        explanation:
+          'A schema built with `.extend`, `.merge`, `.pick`, `.omit`, `.partial`, `.required` or a spread of `Other.shape` is resolved when the base is in the input, and becomes a model of its own. The create, update and with-relations schemas the Zod writer derives from a row schema (`PostCreateSchema`, `PostUpdateSchema`, `PostWithRelationsSchema`) are skipped, because they describe the same table. A schema built from one that is not in the input is skipped with a warning.',
+      },
+      {
+        id: 'zod-wire-types',
+        title: 'Writing: types that JSON cannot carry',
+        explanation:
+          'Big integers and decimals are validated as strings of digits (a decimal with `max_digits` and `decimal_places` gets a pattern sized to them), UUIDs with `z.uuid()` (which only accepts RFC 9562 versions and variants), binary data as base64 text, durations and times as plain strings, and JSON columns as `z.unknown()`. Date columns use `z.coerce.date()`, which also accepts `null` and numbers, so a null in a required date column is not rejected; the `dates: "string"` option validates ISO text strictly instead.',
+      },
+      {
+        id: 'zod-create-update',
+        title: 'Writing: create and update schemas are inferred',
+        explanation:
+          'The IR has no notion of an API payload. `<Model>CreateSchema` leaves out auto-increment keys, generated columns and auto-updated timestamps, and makes columns with a default (or a database default) and nullable columns optional. `<Model>UpdateSchema` is the create schema made partial, so it cannot change a generated column. Views get neither.',
+      },
+      {
+        id: 'zod-relations',
+        title: 'Writing: relations are a separate schema',
+        explanation:
+          'Relation fields are not part of `<Model>Schema`; the foreign-key scalar is. A model that takes part in a relation also gets `<Model>WithRelationsSchema`, where every related row is optional and resolved lazily. Referential actions (`onDelete`), `related_name` collisions and composite foreign keys are not validation rules, so they are dropped (a composite key stays as its scalar columns).',
+      },
+      {
+        id: 'zod-database-rules',
+        title: 'Writing: database-only rules are not checked',
+        explanation:
+          'Unique constraints, indexes, check constraints, string lengths below the database limit, integer ranges, enum value order and column names are not validated or kept; only string `max_length`, enum membership, nullability and the types above are. Enum labels are kept as comments. Ranges become an object with `lower`, `upper` and `bounds`, and hstore a record of nullable strings.',
+      },
+    ],
     sqlalchemy: [
       {
         id: 'sqlalchemy-static',
@@ -600,7 +654,7 @@ export const READ_ONLY_NOTES: Readonly<Record<string, readonly LossReason[]>> =
         id: 'sql-dropped-statements',
         title: 'Statements and clauses with no model equivalent',
         explanation:
-          "Only `CREATE TABLE`, `CREATE TYPE ... AS ENUM`, `CREATE INDEX` and `ALTER TABLE` (`ADD COLUMN`, `ADD CONSTRAINT`, `ALTER COLUMN` default and nullability) are read. Views, functions, procedures, triggers, sequences, domains, composite types, row data (`INSERT`, `COPY`), comments (`COMMENT ON`, `COMMENT=`), grants, storage options (`ENGINE=`, `WITH (...)`, tablespaces, partitioning, inheritance) and `CHECK` / `EXCLUDE` constraints have no place in the model and are dropped; each kind is reported once as a warning with a count. A `CHECK` of the form `col IN (...)` or `col = 'a' OR col = 'b'` on a text column is the one exception: it becomes an enum, because SQLite and SQL Server have no enum type.",
+          "`CREATE TABLE`, `CREATE TYPE ... AS ENUM` and `CREATE INDEX` are read, and the changes that follow them are replayed in order, so a folder of migrations (Flyway, drizzle-kit or plain numbered files) is read as the schema it ends with: `ALTER TABLE` (add, drop and rename columns, change types, nullability and defaults, add, drop and rename constraints and indexes), `RENAME TABLE`, `DROP TABLE`, `DROP INDEX`, `ALTER INDEX ... RENAME`, `ALTER TYPE` and SQL Server `sp_rename`. Views, functions, procedures, triggers, sequences, domains, composite types, row data (`INSERT`, `UPDATE`, `DELETE`, `COPY`, reported in one warning), comments (`COMMENT ON`, `COMMENT=`), grants, storage options (`ENGINE=`, `WITH (...)`, tablespaces, partitioning, inheritance) and `CHECK` / `EXCLUDE` constraints have no place in the model and are dropped; each kind is reported once as a warning with a count. A `CHECK` of the form `col IN (...)` or `col = 'a' OR col = 'b'` on a text column is the one exception: it becomes an enum, because SQLite and SQL Server have no enum type.",
       },
       {
         id: 'sql-types',
@@ -853,6 +907,68 @@ function explainJsonSchemaDifference(
   }
 }
 
+/** Differences that come from Zod describing a row's values and not the table around it. */
+function explainZodDifference(
+  difference: IrDifference,
+  cell: MatrixCell
+): string | undefined {
+  if (cell.source === 'zod') {
+    // The second trip writes the Zod schema again, and the Zod writer leaves defaults out of the row schema.
+    if (difference.kind === 'fieldDefault' && difference.after === '(none)') {
+      return 'zod-no-database-rules';
+    }
+    // Drizzle derives its own join table (`PostTag`) in place of the explicit `PostTags` schema.
+    return cell.target === 'drizzle' && difference.kind === 'tableName'
+      ? 'drizzle-join-tables'
+      : undefined;
+  }
+  if (cell.target !== 'zod') {
+    return undefined;
+  }
+  const model: IrModel | undefined = cell.sourceSchema.models.find(
+    (candidate: IrModel) => candidate.name === difference.model
+  );
+  switch (difference.kind) {
+    case 'tableName':
+    case 'fieldUnique':
+    case 'indexRemoved':
+    case 'compositePrimaryKey':
+    case 'fieldAutoUpdated':
+      return 'zod-no-database-rules';
+    case 'fieldDefault':
+      return difference.after === '(none)'
+        ? 'zod-no-database-rules'
+        : undefined;
+    case 'relationRemoved':
+      return 'zod-no-relations';
+    case 'fieldAdded':
+      return model?.relations.some(
+        (relation: IrRelation) =>
+          relation.columnName.replace(/_/g, '').toLowerCase() ===
+          (difference.field ?? '').replace(/_/g, '').toLowerCase()
+      )
+        ? 'zod-no-relations'
+        : model?.fields.some(
+              (field: IrField) =>
+                field.columnName !== field.name &&
+                field.name === difference.field
+            )
+          ? 'zod-no-database-rules'
+          : undefined;
+    case 'fieldRemoved':
+      // A column whose name differs from its field name comes back under the field name (a fieldAdded follows).
+      return model?.fields.some(
+        (field: IrField) =>
+          field.columnName === difference.field &&
+          field.columnName !== field.name
+      )
+        ? 'zod-no-database-rules'
+        : undefined;
+    default:
+      return undefined;
+  }
+}
+
 function explainSqlAlchemyDifference(
   difference: IrDifference
 ): string | undefined {
@@ -939,6 +1055,15 @@ export function explainDifference(
       return jsonSchemaReason;
     }
   }
+  if (involves(cell, 'zod')) {
+    const zodReason: string | undefined = explainZodDifference(
+      difference,
+      cell
+    );
+    if (zodReason !== undefined) {
+      return zodReason;
+    }
+  }
   if (involves(cell, 'sqlalchemy')) {
     const sqlAlchemyReason: string | undefined =
       explainSqlAlchemyDifference(difference);
@@ -1022,7 +1147,8 @@ export function explainDifference(
         : undefined;
     case 'modelRemoved':
       // The explicit join model of a Prisma source (`PostTags`) is replaced by the one Drizzle derives.
-      return cell.target === 'drizzle' && cell.source === 'prisma'
+      return cell.target === 'drizzle' &&
+        (cell.source === 'prisma' || cell.source === 'zod')
         ? 'drizzle-join-tables'
         : undefined;
     case 'modelAdded':

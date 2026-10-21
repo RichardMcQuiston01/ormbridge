@@ -16,7 +16,14 @@ import {
   isEfcoreStyle,
   isValidCsharpNamespace,
 } from './emitters/efcore.js';
-import { emitJpa, isJpaStyle, isValidJavaPackage } from './emitters/jpa.js';
+import {
+  emitJpa,
+  isJpaKeyMode,
+  isJpaStyle,
+  isValidJavaPackage,
+  JPA_KEY_MODES,
+  type JpaKeyMode,
+} from './emitters/jpa.js';
 import { emitNeo4j, isNeo4jStyle } from './emitters/neo4j.js';
 import {
   emitSdn,
@@ -42,6 +49,7 @@ import { parseSequelize } from './parsers/sequelize.js';
 import { parseSqlAlchemy } from './parsers/sqlalchemy.js';
 import { parseSqlDdl } from './parsers/sqlDdl.js';
 import { parseTypeorm } from './parsers/typeorm.js';
+import { parseZod } from './parsers/zod.js';
 import { err, ok, type Result } from './result.js';
 import { checkStyle, type OutputStyle } from './styles.js';
 import {
@@ -99,6 +107,16 @@ export interface FormatOptions {
    * `IEntityTypeConfiguration<T>` per entity). Only the `sqlalchemy`, `sequelize` and `efcore` formats read it.
    */
   style?: OutputStyle;
+  /**
+   * How the JPA output writes a composite primary key: `idclass` (default; an `@IdClass` class) or `embedded` (an
+   * `@Embeddable` key class with `@EmbeddedId`, and `@MapsId` on a relationship in the key). Only `jpa` reads it.
+   */
+  jpaKey?: JpaKeyMode;
+  /**
+   * Write Lombok annotations (`@Getter`, `@Setter`, `@NoArgsConstructor`; `@EqualsAndHashCode` on key classes) in
+   * the JPA output instead of hand-written accessors (default false). Only `jpa` reads it.
+   */
+  lombok?: boolean;
   /**
    * Write ormbridge's `x-` convention keywords (table names, keys, indexes, referential actions) into JSON Schema
    * output (default true). Turn it off for validators that reject unknown keywords. Only `json-schema` reads it.
@@ -528,9 +546,20 @@ const drizzleAdapter: FormatAdapter = {
 
 const zodAdapter: FormatAdapter = {
   name: 'zod',
-  // Output only, and no extension is claimed: ".ts" belongs to no single format, so pass --to zod.
+  // No extension is claimed: ".ts" belongs to no single format, so pass --from/--to zod.
   extensions: [],
-  description: 'Zod schemas (TypeScript, Zod 4)',
+  description: 'Zod schemas (TypeScript, Zod 3 and 4)',
+  parse: (
+    sources: SourceText[],
+    options: FormatOptions
+  ): Promise<Result<IrSchema>> =>
+    parseZod(
+      sources.map((source: SourceText) => ({
+        path: source.path,
+        text: source.text,
+      })),
+      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
+    ),
   emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
     const prepared: IrSchema =
       options.naming === 'normalize' ? normalizeSchema(schema) : schema;
@@ -785,6 +814,12 @@ const jpaAdapter: FormatAdapter = {
         return checked;
       }
     }
+    if (options.jpaKey !== undefined && !isJpaKeyMode(String(options.jpaKey))) {
+      return err(
+        'INVALID_OPTION',
+        `Invalid jpaKey "${String(options.jpaKey)}" for the jpa format. Expected one of: ${JPA_KEY_MODES.join(', ')}.`
+      );
+    }
     const packageName: string | undefined = options.namespace?.replace(
       /^\.+|\.+$/g,
       ''
@@ -804,6 +839,8 @@ const jpaAdapter: FormatAdapter = {
         ...(options.style === undefined || !isJpaStyle(options.style)
           ? {}
           : { style: options.style }),
+        ...(options.jpaKey === undefined ? {} : { keyMode: options.jpaKey }),
+        ...(options.lombok === undefined ? {} : { lombok: options.lombok }),
       })
     );
   },

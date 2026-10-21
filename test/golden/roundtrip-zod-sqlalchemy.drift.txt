@@ -1,0 +1,29 @@
++ created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
++ created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
++ is_featured: Mapped[bool] = mapped_column(Boolean)
++ metadata_: Mapped[Any] = mapped_column(JSON)
++ published_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
++ view_count: Mapped[int] = mapped_column(Integer)
+- "metadata",
+- )
+- )
+- )
+- )
+- DateTime(timezone=True),
+- DateTime(timezone=True),
+- DateTime(timezone=True),
+- JSON,
+- created_at: Mapped[datetime.datetime] = mapped_column(
+- created_at: Mapped[datetime.datetime] = mapped_column(
+- false,
+- func,
+- is_featured: Mapped[bool] = mapped_column(Boolean, server_default=false())
+- metadata_: Mapped[Any] = mapped_column(
+- published_at: Mapped[datetime.datetime] = mapped_column(
+- server_default="draft",
+- server_default=func.now(),
+- server_default=func.now(),
+- server_default=func.now(),
+- server_default=text("'{}'"),
+- text,
+- view_count: Mapped[int] = mapped_column(Integer, server_default=text("0"))

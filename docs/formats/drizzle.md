@@ -27,6 +27,16 @@ The runnable example is in [examples/drizzle](../../examples/drizzle/).
 
 The full table is in the README section "Drizzle ORM (`--from drizzle`)".
 
+## Reading `drizzle-kit` migrations
+
+`drizzle-kit generate` writes SQL migrations next to the schema: `drizzle/0000_name.sql`, `drizzle/0001_name.sql`, ... and `drizzle/meta/_journal.json`. The schema file is the better source, but when only the migrations are at hand, the SQL reader replays them (it is not part of `--from drizzle`):
+
+```sh
+npx ormbridge convert -i ./drizzle --from sql --to prisma -o prisma/schema.prisma
+```
+
+The files run in the order of the journal. The `--> statement-breakpoint` lines are comments. Renames, dropped columns, changed types, indexes and the SQLite way of changing a table (create a `__new_` table, copy the rows, drop the old table, rename the new one) are all replayed, and the data copy is reported in one warning. The SQL describes the database, not your TypeScript, so names are the table and column names (`blog_posts`), not the variable names. See [Migrations in the SQL format](sql.md#migrations).
+
 ## Writing
 
 Output is two files:

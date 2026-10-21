@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ormbridge:schema",
+  "$defs": {
+    "PostStatus": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published"
+      ]
+    },
+    "User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Category": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "slug": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "parent_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "updated_at",
+        "name",
+        "slug"
+      ],
+      "additionalProperties": false
+    },
+    "Post": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "public_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "body": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PostStatus",
+          "default": "draft"
+        },
+        "rating": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^-?[0-9]{1,2}(\\.[0-9]{1,2})?$"
+        },
+        "view_count": {
+          "type": "integer",
+          "default": 0
+        },
+        "is_featured": {
+          "type": "boolean",
+          "default": false
+        },
+        "published_at": {
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "metadata": {},
+        "author_id": {
+          "type": "integer"
+        },
+        "editor_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "category_id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "updated_at",
+        "public_id",
+        "title",
+        "body",
+        "author_id",
+        "category_id"
+      ],
+      "additionalProperties": false
+    },
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 50
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "PostTags": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "post_id": {
+          "type": "integer"
+        },
+        "tag_id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "post_id",
+        "tag_id"
+      ],
+      "additionalProperties": false
+    },
+    "Profile": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "bio": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "avatar": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "user_id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "user_id"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

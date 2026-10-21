@@ -1,0 +1,53 @@
+export enum PostStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+}
+
+export interface User {
+  id: number;
+}
+
+export interface Category {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  slug: string;
+  parent_id: number | null;
+}
+
+export interface Post {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  public_id: string;
+  title: string;
+  body: string;
+  status: PostStatus;
+  rating: string | null;
+  view_count: number;
+  is_featured: boolean;
+  published_at: string;
+  metadata: unknown;
+  author_id: number;
+  editor_id: number | null;
+  category_id: number;
+}
+
+export interface Tag {
+  id: number;
+  label: string;
+}
+
+export interface PostTags {
+  id: number;
+  post_id: number;
+  tag_id: number;
+}
+
+export interface Profile {
+  id: number;
+  bio: string | null;
+  avatar: string | null;
+  user_id: number;
+}

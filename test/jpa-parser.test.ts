@@ -970,6 +970,85 @@ describe('keys', () => {
     expect(relation(schema, 'Pair', 'left').columnName).toBe('left_id');
   });
 
+  it('reads @IdClass and @EmbeddedId as the same key, with the same attribute names', async () => {
+    const asIdClass: IrSchema = await parse(
+      `class LineId { String sku; Integer no; }
+       @Entity @IdClass(LineId.class) class Line { @Id @Column(name = "sku_code", length = 8) String sku; @Id Integer no; String note; }`
+    );
+    const asEmbedded: IrSchema = await parse(
+      `@Embeddable class LineId { @Column(name = "sku_code", length = 8) String sku; Integer no; }
+       @Entity class Line { @EmbeddedId LineId id; String note; }`
+    );
+    expect(model(asEmbedded, 'Line').compositePrimaryKey).toEqual([
+      'sku',
+      'no',
+    ]);
+    expect(model(asIdClass, 'Line').compositePrimaryKey).toEqual(['sku', 'no']);
+    expect(model(asEmbedded, 'Line')).toEqual(model(asIdClass, 'Line'));
+    expect(asEmbedded.warnings).toEqual([]);
+  });
+
+  it('keeps the @EmbeddedId name as a prefix when a key attribute would clash with another attribute', async () => {
+    const schema: IrSchema = await parse(
+      `@Embeddable class PairId { Integer left; Integer right; }
+       @Entity class Pair { @EmbeddedId PairId id; @Column(name = "left_copy") Integer left; }`
+    );
+    expect(model(schema, 'Pair').compositePrimaryKey).toEqual([
+      'idLeft',
+      'right',
+    ]);
+    expect(names(schema, 'Pair')).toContain('left');
+  });
+
+  it('reads an @EmbeddedId whose key class has a relationship, nested embeddables and Lombok annotations', async () => {
+    const schema: IrSchema = await parse(
+      `@Entity class Owner { @Id Long id; }
+       @Embeddable class Range { Integer from; Integer to; }
+       @Embeddable @lombok.Getter @lombok.Setter @lombok.EqualsAndHashCode class SlotId {
+         @ManyToOne(optional = false) @JoinColumn(name = "owner_ref") Owner owner;
+         @Embedded Range span; }
+       @Entity @lombok.Getter class Slot { @EmbeddedId SlotId id; String label; }`
+    );
+    const slot: IrModel = model(schema, 'Slot');
+    expect(slot.compositePrimaryKey).toEqual(['owner', 'spanFrom', 'spanTo']);
+    expect(relation(schema, 'Slot', 'owner')).toMatchObject({
+      columnName: 'owner_ref',
+      targetModel: 'Owner',
+    });
+    expect(names(schema, 'Slot')).toEqual(['spanFrom', 'spanTo', 'label']);
+  });
+
+  it('warns that an @Embedded value object was flattened into plain columns, and not for the key', async () => {
+    const schema: IrSchema = await parse(
+      `@Embeddable class Address { String street; String city; }
+       @Embeddable class PairId { Integer a; Integer b; }
+       @Entity class Home { @EmbeddedId PairId id; @Embedded Address address; }`
+    );
+    expect(names(schema, 'Home')).toEqual([
+      'a',
+      'b',
+      'addressStreet',
+      'addressCity',
+    ]);
+    expect(
+      warningsMatching(schema, /the embedded Address was flattened/)
+    ).toEqual([
+      'Home.address: the embedded Address was flattened into the columns address.street, address.city; the shared model has no embedded type, so other formats get plain columns and the value object itself is lost.',
+    ]);
+    expect(warningsMatching(schema, /PairId/)).toEqual([]);
+  });
+
+  it('warns once when a mapped superclass or a single-table hierarchy reads an embedded attribute again', async () => {
+    const schema: IrSchema = await parse(
+      `@Embeddable class Geo { Double lat; Double lon; }
+       @Entity @Inheritance class Base { @Id Long id; }
+       @Entity class Sub extends Base { @Embedded Geo geo; }`
+    );
+    expect(warningsMatching(schema, /Sub\.geo: the embedded Geo/)).toHaveLength(
+      1
+    );
+  });
+
   it('reads a shared key (@MapsId) and a derived identity (@Id on a relationship)', async () => {
     const schema: IrSchema = await parse(
       `@Entity class Person { @Id Long id; }

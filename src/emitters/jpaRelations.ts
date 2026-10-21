@@ -18,6 +18,7 @@ import { attributeNameOf, javaString, uniqueName } from './jpaNames.js';
 import {
   Imports,
   type Attribute,
+  type JpaKeyMode,
   type JpaStyle,
   type ModelPlan,
 } from './jpaTypes.js';
@@ -36,6 +37,8 @@ export interface InverseLink {
 
 export interface RelationContext {
   style: JpaStyle;
+  /** How a composite primary key is written; a relationship in one gets `@MapsId` instead of `@Id` when embedded. */
+  keyMode: JpaKeyMode;
   schema: IrSchema;
   plans: ReadonlyMap<string, ModelPlan>;
   keys: ReadonlyMap<string, KeyInfo>;
@@ -48,6 +51,8 @@ export interface RelationContext {
 /** A relation that is part of a primary key: its attribute name and the type of the key it points at. */
 export interface KeyRelation {
   attribute: string;
+  /** The foreign key column, which the `@Embeddable` key class repeats. */
+  column: string;
   type: string;
   imports: Imports;
 }
@@ -236,7 +241,14 @@ export function addOwningRelations(
     }
     const annotations: AnnotationNode[] = [];
     if (isKey) {
-      annotations.push(annotation(imports.persistence('Id')));
+      // In an @EmbeddedId the key class holds the column; the relationship takes its value from it.
+      annotations.push(
+        ctx.keyMode === 'embedded' && (info?.parts.length ?? 0) > 1
+          ? annotation(imports.persistence('MapsId'), [
+              [undefined, javaString(attributeName)],
+            ])
+          : annotation(imports.persistence('Id'))
+      );
     }
     annotations.push(
       annotation(
@@ -268,6 +280,7 @@ export function addOwningRelations(
       const keyType = ctx.keyTypes.get(target.name);
       keyRelations.set(relation, {
         attribute: attributeName,
+        column: relation.columnName,
         type: keyType?.type ?? 'Object',
         imports: keyType?.imports ?? imports,
       });

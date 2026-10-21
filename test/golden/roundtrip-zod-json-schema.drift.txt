@@ -1,0 +1,24 @@
++ "$ref": "#/$defs/PostStatus"
++ "created_at",
++ "created_at",
++ "format": "date-time"
++ "format": "date-time"
++ "format": "date-time"
++ "is_featured",
++ "published_at",
++ "status",
++ "type": "boolean"
++ "type": "integer"
++ "view_count",
+- "$ref": "#/$defs/PostStatus",
+- "default": "draft"
+- "default": 0
+- "default": false
+- "format": "date-time",
+- "format": "date-time",
+- "format": "date-time",
+- "readOnly": true
+- "readOnly": true
+- "readOnly": true
+- "type": "boolean",
+- "type": "integer",

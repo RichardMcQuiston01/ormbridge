@@ -1,0 +1,37 @@
+@@ index.ts
++ export { Category, Post, PostTags, Profile, Tag, User };
++ return { Category, Post, PostTags, Profile, Tag, User };
+- export { User, Category, Post, Tag, PostTags, Profile };
+- return { User, Category, Post, Tag, PostTags, Profile };
+@@ post.ts
++ declare is_featured: boolean;
++ declare metadata: unknown;
++ declare published_at: Date;
++ declare status: 'draft' | 'published';
++ declare view_count: number;
++ is_featured: { type: DataTypes.BOOLEAN, allowNull: false },
++ metadata: { type: DataTypes.JSONB, allowNull: false },
++ published_at: { type: DataTypes.DATE, allowNull: false },
++ view_count: { type: DataTypes.INTEGER, allowNull: false },
+- allowNull: false,
+- allowNull: false,
+- allowNull: false,
+- declare is_featured: CreationOptional<boolean>;
+- declare metadata: CreationOptional<unknown>;
+- declare published_at: CreationOptional<Date>;
+- declare status: CreationOptional<'draft' | 'published'>;
+- declare view_count: CreationOptional<number>;
+- defaultValue: 'draft',
+- defaultValue: 0,
+- defaultValue: DataTypes.NOW,
+- defaultValue: false,
+- is_featured: {
+- metadata: { type: DataTypes.JSONB, allowNull: false, defaultValue: {} },
+- published_at: {
+- type: DataTypes.BOOLEAN,
+- type: DataTypes.DATE,
+- type: DataTypes.INTEGER,
+- view_count: {
+- },
+- },
+- },
