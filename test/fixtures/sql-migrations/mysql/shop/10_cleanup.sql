@@ -1,12 +1,12 @@
---liquibase formatted sql
+-- liquibase formatted sql
 
---changeset shop:cleanup-1
+-- changeset shop:cleanup-1
 ALTER TABLE product DROP COLUMN legacy_code;
 CREATE INDEX order_line_sku_qty_idx ON order_line (sku, quantity);
 DROP INDEX order_line_sku_idx ON order_line;
---rollback DROP INDEX order_line_sku_qty_idx ON order_line;
+-- rollback DROP INDEX order_line_sku_qty_idx ON order_line;
 
---changeset shop:cleanup-2
+-- changeset shop:cleanup-2
 ALTER TABLE customer DROP FOREIGN KEY customer_ibfk_1;
 ALTER TABLE customer DROP INDEX referred_by;
 ALTER TABLE customer ADD CONSTRAINT customer_referred_fk FOREIGN KEY (referred_by) REFERENCES customer (id) ON DELETE CASCADE;
