@@ -34,6 +34,15 @@ export class Imports {
     }
   }
 
+  /** Drops the imports whose simple name the text never uses (the imports an attribute brought along). */
+  prune(text: string): void {
+    for (const simple of [...this.names.keys()]) {
+      if (!new RegExp(`\\b${simple}\\b`).test(text)) {
+        this.names.delete(simple);
+      }
+    }
+  }
+
   /** The import lines in ASCII order; `java.lang` classes and the file's own package need none. */
   lines(): string[] {
     return [...this.names.values()]
@@ -75,13 +84,18 @@ export interface Attribute {
   imports: Imports;
 }
 
-/** A component of a composite primary key and the type its `@IdClass` field has. */
+/** How a composite primary key is written: an `@IdClass` class (default) or an `@Embeddable` class with `@EmbeddedId`. */
+export type JpaKeyMode = 'idclass' | 'embedded';
+
+/** A component of a composite primary key and the type its key class field has. */
 export interface IdPart {
-  /** The attribute name in the entity (and in the id class). */
+  /** The attribute name in the entity (and in the key class). */
   name: string;
   /** The boxed Java type. */
   type: string;
   imports: Imports;
+  /** Annotations of the field in an `@Embeddable` key class (`@Column`, `@Enumerated`, ...). */
+  annotations?: AnnotationNode[];
 }
 
 /** What the generated class of a model is made of. */
@@ -96,7 +110,7 @@ export interface ModelPlan {
   attributes: Attribute[];
   classAnnotations: AnnotationNode[];
   imports: Imports;
-  /** The `@IdClass` class, when the primary key has several columns. */
+  /** The `@IdClass` or `@Embeddable` key class, when the primary key has several columns. */
   idClass?: { name: string; parts: IdPart[] };
   /** True when the key is a relationship: Hibernate then wants the entity itself to be `Serializable`. */
   serializable?: boolean;

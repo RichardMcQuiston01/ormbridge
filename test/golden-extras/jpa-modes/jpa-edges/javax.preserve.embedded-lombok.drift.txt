@@ -1,0 +1,12 @@
+modelRemoved Table: model Table -> (absent)
+fieldUnique Everything.slug: true -> false
+fieldType Everything.open_text: string -> text
+fieldDefault Everything.grade: enum member b -> literal 20
+indexAdded Everything: (absent) -> unique (slug)
+relationOnDelete LedgerEntry.ledger: restrict -> noAction
+relationOnDelete LedgerEntry.by_number: setNull -> noAction
+fieldPrimaryKey Note.at: false -> true
+relationOnDelete Friend.boss: setNull -> noAction
+modelAdded TableEntity: (absent) -> model TableEntity
+enumRemoved mode: enum mode -> (absent)
+enumAdded Mode: (absent) -> enum Mode

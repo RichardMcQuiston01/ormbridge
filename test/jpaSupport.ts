@@ -381,6 +381,7 @@ export const JPA_EXTRAS: readonly string[] = [
   'inheritance-joined',
   'inheritance-table-per-class',
   'composite-keys',
+  'embedded-keys',
   'embeddables',
   'many-to-many',
   'javax',

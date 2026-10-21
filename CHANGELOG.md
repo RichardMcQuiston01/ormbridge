@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+Two gaps of the Hibernate / JPA format are closed: composite primary keys can be written as `@Embeddable` classes with `@EmbeddedId`, and Lombok accessors are a separate option. The default output does not change.
+
+### Added
+
+- JPA writer: `--jpa-key embedded` (config key `jpaKey`, `emitJpa` option `keyMode`, `convertText` option `jpaKey`; values `idclass`, the default, and `embedded`). A composite primary key is written as an `@Embeddable` key class (`<Entity>Id`: `Serializable`, a `@Column` on every part, constructors, accessors, `equals`, `hashCode`) and one `@EmbeddedId` attribute on the entity; a relation that is part of the key keeps its attribute and gets `@MapsId("<attribute>")`, and the key class repeats its foreign key column. Keys of one column stay a plain `@Id`. It works with both styles and both naming modes. `JPA_KEY_MODES`, `isJpaKeyMode` and the `JpaKeyMode` type are exported.
+- JPA writer: `--lombok` (config key `lombok`, `emitJpa` and `convertText` option `lombok`). Entities get `@Getter`, `@Setter` and `@NoArgsConstructor` instead of accessors; key classes get `@NoArgsConstructor`, `@AllArgsConstructor` and `@EqualsAndHashCode` (an `@Embeddable` key class also `@Getter` and `@Setter`) instead of constructors, `equals` and `hashCode`. It works with `jakarta` and `javax`, and with both key modes. The options were not added as `--style` values, because a style picks one value of one axis (`jakarta` or `javax`) and these two combine freely with it and with each other. Other targets ignore both options, as they ignore `--style`.
+- JPA reader: an `@Embedded` value object that is flattened into plain columns now gets a warning naming the entity, the attribute and the columns (`Home.address: the embedded Address was flattened into the columns address.street, address.city; ...`), because the shared model has no embedded type and the class is lost. The `@Embeddable` of an `@EmbeddedId` gets none.
+- Verification with the real tools: `test/jpa-emitter-verify.test.ts` also writes every schema with embedded keys and Lombok (both together in both styles and both naming modes; each option alone in one) and compiles it with Lombok 1.18.32 as an annotation processor (`pom-javax.xml` now has Lombok too). Hibernate 6.4 and 5.6 create the schema in H2 and it is compared with the IR; `Exercise.java` builds the `@EmbeddedId` value (taking the parts that a `@MapsId` relation supplies from the saved target), saves a row, loads it again by its key object and checks that the key reported by Hibernate is equal to the one saved (`equals` and `hashCode`, also Lombok's). The tests skip with a reason when Java or Maven is missing. The `real-tools-java` job is unchanged.
+- Tests and fixtures: `jpa-embedded-lombok.test.ts` (unit tests, reading the output back as the same key), `jpa-modes-golden.test.ts` and `test/golden-extras/jpa-modes` (goldens of both options for four fixtures, with what reading the output back changes), the fixture `test/fixtures/jpa-extras/embedded-keys` (an `@EmbeddedId` with Lombok, `@MapsId` and `@AttributeOverride`), reader tests for `@IdClass` and `@EmbeddedId` as the same key, and CLI and config tests for the new options.
+- Docs: `docs/formats/jpa.md` (embedded keys, Lombok, value objects), `docs/CLI.md`, `docs/FIELD_MAPPING.md`, `docs/LIMITATIONS.md`, `README.md`, `ROADMAP.md` (both items done; inheritance, `@Version`, a Kotlin / Spring Data flavour, JSON for Hibernate 5 and `orm.xml` remain) and `test/README.md`.
+
+### Changed
+
+- **Output change** (JPA reader): the attributes of an `@EmbeddedId` are named like the `@Id` attributes of an `@IdClass`, without the name of the `@EmbeddedId` attribute as a prefix: `sku` where `idSku` was read before, so both forms of a key read back as the same primary key (`compositePrimaryKey: ['sku', 'warehouse']`). The column names do not change. If the new name would be the name of another attribute of the entity, the old prefixed name is kept. Output written from such a model (Prisma and other formats) has the new field names.
+- **Output change** (JPA reader): the new warning for flattened `@Embedded` value objects (see above) appears in `warnings` and on stderr. A warning that several entities read again (an attribute of a mapped superclass or of a single-table hierarchy) is now listed once.
+- No **Output change** for the JPA writer without the new options: every existing golden file passes untouched.
+
 ## 0.13.0 - 2026-10-20
 
 Two new write-only formats for Neo4j, neomodel and Spring Data Neo4j. `--to neomodel` writes Python classes for the neomodel library and `--to sdn` writes Java entity classes for Spring Data Neo4j 7 (Spring Boot 3). **Output change:** none for existing formats.
