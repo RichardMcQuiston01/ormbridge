@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.14.0 - 2026-10-21
+
+Three reader and writer gaps are closed: SQL migrations are replayed completely, Zod schemas can be read, and JPA writes `@EmbeddedId` keys and Lombok accessors. **Output change:** the SQL reader (applied `ALTER`/`RENAME`/`DROP` statements, MySQL unique indexes, MySQL join tables, directory file order) and the JPA reader (`@EmbeddedId` attribute names); every other conversion is unchanged.
+
 The SQL reader now replays migrations completely. A folder of `.sql` migrations (Flyway, drizzle-kit, Prisma, Liquibase formatted SQL or plain numbered files) is read as the schema the database ends with. **Output change:** `ALTER TABLE` statements that used to be skipped with a warning (renames, dropped columns, type changes, dropped constraints and indexes, `RENAME TABLE`, `DROP INDEX`) are now applied, so the schema read from such input changes, and the warnings `Skipped N ALTER TABLE ... DROP / RENAME / ALTER COLUMN statements` are gone. A MySQL join table that a dump lists with its foreign-key indexes is now read as a many-to-many field, like the other dialects. Nothing else changes for input without those statements.
 
 Two gaps of the Hibernate / JPA format are closed: composite primary keys can be written as `@Embeddable` classes with `@EmbeddedId`, and Lombok accessors are a separate option. The default output does not change.
