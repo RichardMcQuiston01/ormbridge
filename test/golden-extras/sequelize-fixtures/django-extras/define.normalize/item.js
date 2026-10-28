@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
       kinds: {
         type: DataTypes.ARRAY(DataTypes.ENUM('tool', 'toy')),
         allowNull: false,
-        defaultValue: '[]',
+        defaultValue: [],
       },
       attributes: {
         type: DataTypes.HSTORE,

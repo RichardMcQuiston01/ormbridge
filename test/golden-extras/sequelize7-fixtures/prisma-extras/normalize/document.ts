@@ -29,7 +29,7 @@ import {
       using: 'BTREE',
       fields: [{ name: 'title', order: 'DESC' }, 'created'],
     },
-    { using: 'GIN', fields: [{ name: 'meta', operator: 'JsonbPathOps' }] },
+    { using: 'GIN', fields: [{ name: 'meta', operator: 'jsonb_path_ops' }] },
     { name: 'uq_document_title_day', unique: true, fields: ['title', 'day'] },
   ],
 })

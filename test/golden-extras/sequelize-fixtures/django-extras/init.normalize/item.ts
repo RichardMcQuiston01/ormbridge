@@ -72,7 +72,7 @@ export class Item extends Model<
         kinds: {
           type: DataTypes.ARRAY(DataTypes.ENUM('tool', 'toy')),
           allowNull: false,
-          defaultValue: '[]',
+          defaultValue: [],
         },
         attributes: {
           type: DataTypes.HSTORE,

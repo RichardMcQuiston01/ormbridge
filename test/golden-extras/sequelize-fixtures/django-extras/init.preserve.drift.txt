@@ -1,4 +1,5 @@
 fieldDefault Item.tags: literal "[]" -> (none)
+fieldDefault Item.kinds: literal "[]" -> (none)
 fieldMaxLength Item.kinds: 32 -> (none)
 fieldEnum Item.kinds: ItemKind -> ItemKinds
 fieldDefault Item.attributes: literal "{}" -> (none)
