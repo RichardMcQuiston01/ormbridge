@@ -458,6 +458,23 @@ describe('sequelize 7 emitter: what PostgreSQL and MySQL refuse', () => {
     );
   });
 
+  it('keeps an operator class that is already the database name, schema-qualified or not', () => {
+    const schema: IrSchema = schemaOf([
+      model('Doc', {
+        tableName: 'doc',
+        fields: [idField(), field('title', { maxLength: 40 })],
+        indexes: [
+          index(['title'], {
+            fieldOptions: { title: { ops: 'pg_catalog.text_pattern_ops' } },
+          }),
+        ],
+      }),
+    ]);
+    expect(squash(fileText(emit(schema), 'doc.ts'))).toContain(
+      "operator: 'pg_catalog.text_pattern_ops'"
+    );
+  });
+
   it('writes an empty array of enum values as an array, not as a string', () => {
     const schema: IrSchema = schemaOf(
       [

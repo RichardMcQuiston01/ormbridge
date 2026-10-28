@@ -96,15 +96,13 @@ const SUBJECTS: readonly Subject[] = [
 ];
 
 /**
- * What MySQL can hold of a schema written for PostgreSQL: the database functions (`gen_random_uuid()`) have no
- * MySQL spelling, so those defaults are left out as for SQLite, and an index over a JSON column (which the writer
- * skips with a warning) is not expected.
+ * What MySQL holds of a schema: an index over a JSON column (or an array, which MySQL stores as JSON) is skipped by
+ * the writer with a warning, so the database must not have it. The writer still gets the index.
  */
-function forMysql(schema: IrSchema): IrSchema {
-  const withoutExpressions: IrSchema = forSqlite(schema);
+function withoutJsonIndexes(schema: IrSchema): IrSchema {
   return {
-    ...withoutExpressions,
-    models: withoutExpressions.models.map((candidate: IrModel): IrModel => {
+    ...schema,
+    models: schema.models.map((candidate: IrModel): IrModel => {
       const unindexable: Set<string> = new Set(
         candidate.fields
           .filter(
@@ -218,7 +216,7 @@ describe.each(SERVER_CASES)(
       async (_label: string, naming: NamingMode, subject: Subject) => {
         const built: IrSchema = await subject.build();
         const schema: IrSchema =
-          server.kind === 'mysql' ? forMysql(built) : built;
+          server.kind === 'mysql' ? forSqlite(built) : built;
         const output: MultiFileEmitOutput = emitSequelize(
           structuredClone(schema),
           { provider: server.provider, naming, style: 'v7' }
@@ -240,7 +238,11 @@ describe.each(SERVER_CASES)(
         expect(run.status, run.stderr).toBe(0);
         const database: Run7 = result as Run7;
 
-        const ir: IrSchema = expectedSchema(schema, naming);
+        // The writer is given the indexes over JSON columns and has to skip them; the database must not have them.
+        const ir: IrSchema = expectedSchema(
+          server.kind === 'mysql' ? withoutJsonIndexes(schema) : schema,
+          naming
+        );
         expect(compareWithDatabase(ir, database)).toEqual([]);
         expect(compareServerColumns(server.kind, ir, database)).toEqual([]);
         const declared: string[] = database.associations.map(

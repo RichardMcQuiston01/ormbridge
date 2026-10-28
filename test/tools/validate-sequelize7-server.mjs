@@ -1,9 +1,9 @@
 // Loads Sequelize 7 (`@sequelize/core`) models with the real library, creates their tables in a scratch database
 // of a real PostgreSQL or MySQL server (`sequelize.sync()`), reads the database back through the system catalogs
 // (`pg_catalog` for PostgreSQL, `information_schema` for MySQL) and prints what it holds, plus the associations
-// the models declare, as JSON. The scratch database is dropped at the end.
+// the models declare, as JSON. The scratch database (named by the caller, who also drops it if this process is killed) is dropped at the end.
 //
-// Usage: node validate-sequelize7-server.mjs <SEQUELIZE7_DIR> <entry module> <postgres|mysql> <server URL>
+// Usage: node validate-sequelize7-server.mjs <SEQUELIZE7_DIR> <entry module> <postgres|mysql> <server URL> <scratch database>
 //
 // SEQUELIZE7_DIR is a directory where `npm install @sequelize/core @sequelize/postgres @sequelize/mysql` has been
 // run. The server URL is SQL_POSTGRES_URL or SQL_MYSQL_URL (user, password, host and port are used; the database
@@ -19,14 +19,13 @@
 //     indexes:     [{ name, unique, origin, columns }]   (origin `pk` for the primary key, `c` otherwise)
 //     foreignKeys: [{ column, table, to, onDelete, onUpdate }]   (one entry per column; actions in upper case)
 //   associations: [{ model, as, type }]
-import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
 import { URL } from 'node:url';
 
-const [sequelizeDir, entry, kind, serverUrl] = process.argv.slice(2);
-if (!sequelizeDir || !entry || !kind || !serverUrl) {
+const [sequelizeDir, entry, kind, serverUrl, scratch] = process.argv.slice(2);
+if (!sequelizeDir || !entry || !kind || !serverUrl || !scratch) {
   throw new Error(
     'Usage: validate-sequelize7-server.mjs <SEQUELIZE7_DIR> <entry module> <postgres|mysql> <server URL>'
   );
@@ -282,7 +281,6 @@ async function main() {
       'The entry module must export "models", an array of model classes.'
     );
   }
-  const scratch = `ormbridge_s7_${randomBytes(4).toString('hex')}`;
   const admin = new Sequelize({
     ...connection(kind === 'postgres' ? 'postgres' : undefined),
     logging: false,

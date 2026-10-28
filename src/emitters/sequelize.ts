@@ -1401,11 +1401,16 @@ function indexEntries(
       options = Object.keys(rest).length === 0 ? undefined : rest;
     }
     if (options?.ops !== undefined && context.dialect === 'postgres') {
-      // Prisma names an operator class `JsonbPathOps`; PostgreSQL knows it as `jsonb_path_ops`.
+      // Prisma names an operator class `JsonbPathOps`; PostgreSQL knows it as `jsonb_path_ops`. A name that is
+      // not in Prisma's PascalCase (`jsonb_path_ops`, `pg_catalog.text_pattern_ops`) is the database's own.
       const raw: RegExpExecArray | null = /^raw\(\s*["'](.*)["']\s*\)$/.exec(
         options.ops
       );
-      options = { ...options, ops: raw?.[1] ?? toSnakeCase(options.ops) };
+      const prisma: boolean = /^[A-Z][A-Za-z0-9]*$/.test(options.ops);
+      options = {
+        ...options,
+        ops: raw?.[1] ?? (prisma ? toSnakeCase(options.ops) : options.ops),
+      };
     }
     fields.push(indexField(column, options));
   }

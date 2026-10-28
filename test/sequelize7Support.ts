@@ -12,7 +12,14 @@ import { fileURLToPath } from 'node:url';
 import type { IrDefault, IrEnum, IrField, IrSchema } from '../src/ir.js';
 import type { ToolProbe } from './realToolSupport.js';
 import type { DbColumn, DbSchema, DbTable } from './sequelizeSupport.js';
-import { probeMysql, probePostgres } from './sqlDdlSupport.js';
+import {
+  mysqlConnection,
+  probeMysql,
+  probePostgres,
+  randomName,
+  runClient,
+  type MysqlConnection,
+} from './sqlDdlSupport.js';
 
 /**
  * What the Sequelize 7 verification tests share: finding the install (`SEQUELIZE7_DIR`), setting up a scratch
@@ -183,6 +190,36 @@ export function probeSequelize7Server(
   return setup.probe();
 }
 
+/** Drops the scratch database of a run with the `psql` / `mysql` client; a failure is ignored (it may be gone). */
+function dropScratchDatabase(kind: ServerKind, name: string): void {
+  try {
+    if (kind === 'postgres') {
+      runClient(
+        'psql',
+        [
+          process.env.SQL_POSTGRES_URL ?? '',
+          '-X',
+          '-q',
+          '-c',
+          `DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`,
+        ],
+        {}
+      );
+      return;
+    }
+    const connection: MysqlConnection | undefined = mysqlConnection();
+    if (connection !== undefined) {
+      runClient(
+        connection.client,
+        [...connection.args, '-e', `DROP DATABASE IF EXISTS \`${name}\``],
+        connection.environment
+      );
+    }
+  } catch {
+    // Nothing to clean up, or the server is gone.
+  }
+}
+
 /**
  * Loads the compiled entry module, syncs it into a scratch database of the PostgreSQL or MySQL server and reads
  * the result back from the catalogs (`tools/validate-sequelize7-server.mjs`).
@@ -193,6 +230,7 @@ export function run7Server(
   directory: string,
   entry: string
 ): { run: SpawnSyncReturns<string>; result: Run7 | undefined } {
+  const scratch: string = randomName('ormbridge_s7');
   const run: SpawnSyncReturns<string> = spawnSync(
     process.execPath,
     [
@@ -203,9 +241,12 @@ export function run7Server(
       join(directory, entry),
       kind,
       process.env[SERVERS[kind].urlVariable] ?? '',
+      scratch,
     ],
     { cwd: directory, encoding: 'utf8', timeout: 240_000 }
   );
+  // The script drops its database in a `finally`, which a killed process (the timeout) never reaches.
+  dropScratchDatabase(kind, scratch);
   return {
     run,
     result: run.status === 0 ? (JSON.parse(run.stdout) as Run7) : undefined,
