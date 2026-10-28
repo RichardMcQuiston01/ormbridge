@@ -21,7 +21,7 @@
 #   ajv       Ajv and ajv-formats (AJV_DIR)
 #   drizzle   Drizzle ORM and drizzle-kit (DRIZZLE_DIR)
 #   sequelize Sequelize 6 and sequelize-cli (SEQUELIZE_DIR)
-#   sequelize7 Sequelize 7, @sequelize/core with the SQLite dialect (SEQUELIZE7_DIR)
+#   sequelize7 Sequelize 7, @sequelize/core with the SQLite, PostgreSQL and MySQL dialects (SEQUELIZE7_DIR)
 #   zod       Zod 4 and, as the alias zod3, Zod 3 (ZOD_DIR)
 #   sql       better-sqlite3 for the SQL DDL tests (SQL_DIR)
 #   prisma    the Prisma CLI, major versions 6 and 7 (PRISMA6_BIN, PRISMA7_BIN)
@@ -148,14 +148,17 @@ install_sequelize() {
 }
 
 install_sequelize7() {
-  echo "Installing Sequelize 7 (@sequelize/core, the SQLite dialect) and TypeScript into ${target}/sequelize7" >&2
+  echo "Installing Sequelize 7 (@sequelize/core, the SQLite, PostgreSQL and MySQL dialects) and TypeScript into ${target}/sequelize7" >&2
   mkdir -p "${target}/sequelize7"
   cd "${target}/sequelize7"
   [ -f package.json ] || npm init -y > /dev/null
-  # Sequelize 7 is still an alpha release: both packages are pinned (SEQUELIZE7_VERSION overrides the version), so a new
-  # alpha cannot break the job. The decorator models are compiled with tsc, and @sequelize/sqlite3 brings sqlite3.
+  # Sequelize 7 is still an alpha release: the core and the dialect packages are pinned to one version
+  # (SEQUELIZE7_VERSION overrides it), so a new alpha cannot break the job. The decorator models are compiled with tsc;
+  # @sequelize/sqlite3 brings sqlite3, @sequelize/postgres pg and @sequelize/mysql mysql2 (the tests that use them
+  # also need SQL_POSTGRES_URL / SQL_MYSQL_URL).
   local version="${SEQUELIZE7_VERSION:-7.0.0-alpha.48}"
-  npm install --silent "@sequelize/core@${version}" "@sequelize/sqlite3@${version}" typescript @types/node
+  npm install --silent "@sequelize/core@${version}" "@sequelize/sqlite3@${version}" "@sequelize/postgres@${version}" \
+    "@sequelize/mysql@${version}" typescript @types/node
 }
 
 install_zod() {

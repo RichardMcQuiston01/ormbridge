@@ -855,8 +855,20 @@ function scalarTypeSpec(
         );
         return { expression: 'DataTypes.DOUBLE', ts: 'number' };
       }
-      const precision: number | undefined = field.maxDigits;
-      const scale: number | undefined = field.decimalPlaces;
+      let precision: number | undefined = field.maxDigits;
+      let scale: number | undefined = field.decimalPlaces;
+      if (
+        context.style === 'v7' &&
+        context.dialect === 'mysql' &&
+        precision === undefined
+      ) {
+        // The Sequelize 7 MySQL dialect refuses a DECIMAL without precision and scale.
+        precision = 10;
+        scale = 0;
+        context.warnings.push(
+          `${label}: the Sequelize 7 MySQL dialect needs a precision for DECIMAL; DECIMAL(10, 0), the MySQL default, was written.`
+        );
+      }
       const args: string =
         precision === undefined
           ? ''
@@ -1030,14 +1042,15 @@ function literalDefault(
   if (typeof value !== 'string') {
     return String(value);
   }
+  // The empty default of an array of enum values is an array too: the string `'[]'` is refused for the column.
+  if ((field.arrayDepth ?? 0) > 0 && value === '[]') {
+    return '[]';
+  }
   if (enumeration !== undefined) {
     const member: IrEnumValue | undefined = enumMember(enumeration, value);
     return quote(member === undefined ? value : member.dbValue);
   }
   if ((field.arrayDepth ?? 0) > 0) {
-    if (value === '[]') {
-      return '[]';
-    }
     context.warnings.push(
       `${label}: the array default ${value} cannot be written; it was dropped.`
     );
@@ -1363,6 +1376,21 @@ function indexEntries(
       );
       return undefined;
     }
+    const indexed: IrField | undefined = model.fields.find(
+      (candidate: IrField) =>
+        candidate.name === name || candidate.columnName === name
+    );
+    if (
+      context.dialect === 'mysql' &&
+      indexed !== undefined &&
+      (indexed.type === 'json' || (indexed.arrayDepth ?? 0) > 0)
+    ) {
+      // JSON is what a MySQL array column is written as, too.
+      context.warnings.push(
+        `${label}: MySQL cannot index the JSON column "${name}"; the index was skipped.`
+      );
+      return undefined;
+    }
     let options: IrIndexFieldOptions | undefined = index.fieldOptions?.[name];
     if (context.cockroach && options?.ops !== undefined) {
       context.warnings.push(
@@ -1371,6 +1399,18 @@ function indexEntries(
       const { ops: _dropped, ...rest } = options;
       void _dropped;
       options = Object.keys(rest).length === 0 ? undefined : rest;
+    }
+    if (options?.ops !== undefined && context.dialect === 'postgres') {
+      // Prisma names an operator class `JsonbPathOps`; PostgreSQL knows it as `jsonb_path_ops`. A name that is
+      // not in Prisma's PascalCase (`jsonb_path_ops`, `pg_catalog.text_pattern_ops`) is the database's own.
+      const raw: RegExpExecArray | null = /^raw\(\s*["'](.*)["']\s*\)$/.exec(
+        options.ops
+      );
+      const prisma: boolean = /^[A-Z][A-Za-z0-9]*$/.test(options.ops);
+      options = {
+        ...options,
+        ops: raw?.[1] ?? (prisma ? toSnakeCase(options.ops) : options.ops),
+      };
     }
     fields.push(indexField(column, options));
   }
@@ -1400,6 +1440,10 @@ function indexEntries(
     ) {
       context.warnings.push(
         `${label}: CockroachDB builds an inverted (GIN) index only over JSON, array or spatial columns, so USING GIN was dropped.`
+      );
+    } else if (dialect === 'mysql' && method !== 'BTREE' && method !== 'HASH') {
+      context.warnings.push(
+        `${label}: MySQL indexes are B-tree or hash; USING ${method} was dropped.`
       );
     } else if (dialect === 'postgres' || dialect === 'mysql') {
       using = method;
@@ -1524,6 +1568,11 @@ function renderModel(
       // Sequelize would name the SQLite table "schema.table" instead.
       context.warnings.push(
         `${model.name}: SQLite has no database schemas; the schema "${model.schema}" was ignored.`
+      );
+    } else if (context.dialect === 'mysql') {
+      // A MySQL schema is another database, which Sequelize would name in every query ("schema"."table").
+      context.warnings.push(
+        `${model.name}: MySQL has no schemas inside a database (a schema is another database); the schema "${model.schema}" was ignored.`
       );
     } else {
       options.push(`schema: ${quote(model.schema)}`);
