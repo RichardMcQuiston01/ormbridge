@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.16.0 - 2026-10-30
+
+The Sequelize 7 output is now verified against real PostgreSQL 16 and MySQL 8 servers, and the fixes that checking showed are in the writer. **Output change:** `--to sequelize` writes the PostgreSQL operator class `jsonb_path_ops` for Prisma's `JsonbPathOps` and `[]` for the default of an array of enum values, and, for MySQL, `DECIMAL(10, 0)` for a `DECIMAL` without precision and no index over a JSON or array column, no model schema and no index method other than `BTREE` or `HASH` (each with a warning); every other conversion is unchanged.
+
 The Sequelize 7 output and fixtures are now run against real PostgreSQL 16 and MySQL 8 servers, not only SQLite. **Output change:** a few small fixes to `--to sequelize` that the real servers showed (below); every other conversion, and every existing golden file except the `prisma-extras` and `django-extras` Sequelize ones (`golden-extras/sequelize-fixtures/`, `sequelize7-fixtures/`), is unchanged. SQL Server stays on the roadmap.
 
 ### Added
