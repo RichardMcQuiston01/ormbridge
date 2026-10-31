@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## 0.16.0 - 2026-10-30
+
+The Sequelize 7 output is now verified against real PostgreSQL 16 and MySQL 8 servers, and the fixes that checking showed are in the writer. **Output change:** `--to sequelize` writes the PostgreSQL operator class `jsonb_path_ops` for Prisma's `JsonbPathOps` and `[]` for the default of an array of enum values, and, for MySQL, `DECIMAL(10, 0)` for a `DECIMAL` without precision and no index over a JSON or array column, no model schema and no index method other than `BTREE` or `HASH` (each with a warning); every other conversion is unchanged.
+
+The Sequelize 7 output and fixtures are now run against real PostgreSQL 16 and MySQL 8 servers, not only SQLite. **Output change:** a few small fixes to `--to sequelize` that the real servers showed (below); every other conversion, and every existing golden file except the `prisma-extras` and `django-extras` Sequelize ones (`golden-extras/sequelize-fixtures/`, `sequelize7-fixtures/`), is unchanged. SQL Server stays on the roadmap.
+
+### Added
+
+- `test/sequelize7-server-verify.test.ts` and `test/tools/validate-sequelize7-server.mjs`: the models `--style v7 --provider postgresql` / `mysql` writes (the canonical blog schema of every format, the extras, the kitchen-sink and stress fixtures and a `BIGINT` / `DECIMAL` schema, both naming modes) and the Sequelize 7 reader fixtures are compiled with `tsc --strict`, defined with the real `@sequelize/core` and synced into a scratch database of the server. The tables, columns, types (real `BIGINT` and `DECIMAL(p,s)`), nullability, defaults, keys, indexes and foreign keys with their actions that the catalogs report are compared with the IR. The tests skip with a reason without `SQL_POSTGRES_URL` / `SQL_MYSQL_URL` or the dialect package, and run in the `real-tools-databases` CI job.
+- The `sequelize7` component of `test/tools/setup-verification-tools.sh` also installs `@sequelize/postgres` and `@sequelize/mysql`, pinned to the version of `@sequelize/core` (7.0.0-alpha.48).
+
+### Changed
+
+- **Output change** (Sequelize writer, all styles, PostgreSQL): the operator class of an index is written as PostgreSQL names it, `jsonb_path_ops` where `JsonbPathOps` (Prisma's spelling) was written, which PostgreSQL refused (`operator class "jsonbpathops" does not exist`). A `raw("...")` operator class is unwrapped.
+- **Output change** (Sequelize writer, all styles): the empty default of an array of enum values is written as `[]` where it was the string `'[]'`, which Sequelize 7 refuses for an array column on PostgreSQL.
+- **Output change** (Sequelize writer, `--provider mysql`): a `DECIMAL` without precision is written as `DECIMAL(10, 0)` with a warning in `--style v7` (the Sequelize 7 MySQL dialect throws on the bare type); a model `schema` is ignored with a warning (MySQL would take it for another database); `using` other than `BTREE` and `HASH` (`GIN`, ...) is dropped with a warning; and an index over a JSON column, or an array column (written as JSON), is skipped with a warning because MySQL refuses it.
+
 ## 0.15.0 - 2026-10-21
 
 Two more migration readers and a new Sequelize generation: EF Core migrations are replayed (with `OwnsMany`), and `sequelize-cli` migrations are replayed while Sequelize 7 is read and written. **Output change:** the EF Core reader (`OwnsMany` properties are now models; a directory input also reads `Migrations/`) and the Sequelize reader (a project root with migrations but no models is converted; `uuidv4`/`uuidV1` defaults are read as UUID defaults; the `--style` error text and the `formats` line list the new styles); every other conversion is unchanged.
