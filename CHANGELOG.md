@@ -18,6 +18,7 @@ The Sequelize 7 output and fixtures are now run against real PostgreSQL 16 and M
 - **Output change** (Sequelize writer, all styles, PostgreSQL): the operator class of an index is written as PostgreSQL names it, `jsonb_path_ops` where `JsonbPathOps` (Prisma's spelling) was written, which PostgreSQL refused (`operator class "jsonbpathops" does not exist`). A `raw("...")` operator class is unwrapped.
 - **Output change** (Sequelize writer, all styles): the empty default of an array of enum values is written as `[]` where it was the string `'[]'`, which Sequelize 7 refuses for an array column on PostgreSQL.
 - **Output change** (Sequelize writer, `--provider mysql`): a `DECIMAL` without precision is written as `DECIMAL(10, 0)` with a warning in `--style v7` (the Sequelize 7 MySQL dialect throws on the bare type); a model `schema` is ignored with a warning (MySQL would take it for another database); `using` other than `BTREE` and `HASH` (`GIN`, ...) is dropped with a warning; and an index over a JSON column, or an array column (written as JSON), is skipped with a warning because MySQL refuses it.
+- Package metadata and docs only, no conversion changes: the donation and `funding` link is PayPal instead of Stripe (`funding` in `package.json`, the README donation section, `donate.png` replacing `donate.svg`), so the funding link npm shows for this version is the PayPal one ([#97](https://github.com/RichardMcQuiston01/ormbridge/pull/97)).
 
 ## 0.15.0 - 2026-10-21
 
