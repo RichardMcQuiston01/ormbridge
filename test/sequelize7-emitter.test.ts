@@ -417,6 +417,133 @@ describe('sequelize 7 emitter: SQLite types', () => {
   });
 });
 
+describe('sequelize 7 emitter: what PostgreSQL and MySQL refuse', () => {
+  it('gives a MySQL DECIMAL without a precision the MySQL default, which the dialect needs', () => {
+    const schema: IrSchema = schemaOf([
+      model('Thing', {
+        fields: [idField(), field('price', { type: 'decimal' })],
+      }),
+    ]);
+    const mysql: MultiFileEmitOutput = emit(schema, { provider: 'mysql' });
+    expect(squash(fileText(mysql, 'thing.ts'))).toContain(
+      '@Attribute(DataTypes.DECIMAL(10, 0))'
+    );
+    expect(mysql.warnings).toEqual([
+      'Thing.price: the Sequelize 7 MySQL dialect needs a precision for DECIMAL; DECIMAL(10, 0), the MySQL default, was written.',
+    ]);
+    // PostgreSQL has unconstrained decimals, and Sequelize 6 accepts the bare type on MySQL.
+    expect(fileText(emit(schema), 'thing.ts')).toContain(
+      '@Attribute(DataTypes.DECIMAL)'
+    );
+    expect(
+      fileText(emit(schema, { provider: 'mysql', style: 'init' }), 'thing.ts')
+    ).toContain('DataTypes.DECIMAL,');
+  });
+
+  it('writes the operator class of an index as PostgreSQL names it', () => {
+    const schema: IrSchema = schemaOf([
+      model('Doc', {
+        tableName: 'doc',
+        fields: [idField(), field('meta', { type: 'json' })],
+        indexes: [
+          index(['meta'], {
+            method: 'Gin',
+            fieldOptions: { meta: { ops: 'JsonbPathOps' } },
+          }),
+        ],
+      }),
+    ]);
+    expect(squash(fileText(emit(schema), 'doc.ts'))).toContain(
+      "{ using: 'GIN', fields: [{ name: 'meta', operator: 'jsonb_path_ops' }] }"
+    );
+  });
+
+  it('keeps an operator class that is already the database name, schema-qualified or not', () => {
+    const schema: IrSchema = schemaOf([
+      model('Doc', {
+        tableName: 'doc',
+        fields: [idField(), field('title', { maxLength: 40 })],
+        indexes: [
+          index(['title'], {
+            fieldOptions: { title: { ops: 'pg_catalog.text_pattern_ops' } },
+          }),
+        ],
+      }),
+    ]);
+    expect(squash(fileText(emit(schema), 'doc.ts'))).toContain(
+      "operator: 'pg_catalog.text_pattern_ops'"
+    );
+  });
+
+  it('writes an empty array of enum values as an array, not as a string', () => {
+    const schema: IrSchema = schemaOf(
+      [
+        model('Item', {
+          fields: [
+            idField(),
+            field('kinds', {
+              enumName: 'Kind',
+              arrayDepth: 1,
+              default: { kind: 'literal', value: '[]' },
+            }),
+          ],
+        }),
+      ],
+      [
+        {
+          name: 'Kind',
+          values: [
+            { name: 'TOOL', dbValue: 'tool' },
+            { name: 'TOY', dbValue: 'toy' },
+          ],
+        },
+      ]
+    );
+    expect(fileText(emit(schema), 'item.ts')).toContain('@Default([])');
+  });
+
+  it('leaves out what MySQL cannot hold: schemas, index methods other than B-tree and hash, and indexes over JSON', () => {
+    const schema: IrSchema = schemaOf([
+      model('Doc', {
+        tableName: 'doc',
+        schema: 'audit',
+        fields: [
+          idField(),
+          field('meta', { type: 'json' }),
+          field('title', { maxLength: 40 }),
+        ],
+        indexes: [
+          index(['meta'], { method: 'Gin' }),
+          index(['title'], { method: 'Hash' }),
+        ],
+      }),
+    ]);
+    const output: MultiFileEmitOutput = emit(schema, { provider: 'mysql' });
+    const text: string = squash(fileText(output, 'doc.ts'));
+    expect(text).not.toContain('schema:');
+    expect(text).not.toContain('GIN');
+    expect(text).toContain("{ using: 'HASH', fields: ['title'] }");
+    expect(output.warnings).toEqual([
+      'Doc: MySQL has no schemas inside a database (a schema is another database); the schema "audit" was ignored.',
+      'Doc index (meta): MySQL cannot index the JSON column "meta"; the index was skipped.',
+    ]);
+    // A GIN index over a column MySQL can index loses only its method.
+    const plain: MultiFileEmitOutput = emit(
+      schemaOf([
+        model('Doc', {
+          tableName: 'doc',
+          fields: [idField(), field('title', { maxLength: 40 })],
+          indexes: [index(['title'], { method: 'Gin' })],
+        }),
+      ]),
+      { provider: 'mysql' }
+    );
+    expect(plain.warnings).toEqual([
+      'Doc index (title): MySQL indexes are B-tree or hash; USING GIN was dropped.',
+    ]);
+  });
+});
+
 describe('sequelize 7 emitter: relations', () => {
   const user = model('User', { tableName: 'users' });
 

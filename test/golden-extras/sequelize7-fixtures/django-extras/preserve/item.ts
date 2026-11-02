@@ -58,7 +58,7 @@ export class Item extends Model<
 
   @Attribute(DataTypes.ARRAY(DataTypes.ENUM('tool', 'toy')))
   @NotNull
-  @Default('[]')
+  @Default([])
   declare kinds: CreationOptional<('tool' | 'toy')[]>;
 
   @Attribute(DataTypes.HSTORE)
