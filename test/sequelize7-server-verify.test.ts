@@ -9,21 +9,7 @@ import type { IrField, IrIndex, IrModel, IrSchema } from '../src/ir.js';
 import { parseSequelize } from '../src/parsers/sequelize.js';
 import type { NamingMode } from '../src/transforms.js';
 import { expectOk } from './helpers.js';
-import {
-  field,
-  idField,
-  kitchenSinkSchema,
-  model,
-  schemaOf,
-  stressSchema,
-} from './gormFixtures.js';
-import {
-  SOURCES_WITHOUT_VIEWS,
-  parseSource,
-  titleWithReason,
-  type ToolProbe,
-  type VerifySource,
-} from './realToolSupport.js';
+import { titleWithReason, type ToolProbe } from './realToolSupport.js';
 import {
   compareServerColumns,
   compile7,
@@ -35,6 +21,7 @@ import {
   type Sequelize7Probe,
   type ServerKind,
 } from './sequelize7Support.js';
+import { SUBJECTS, type Subject } from './sequelize7Subjects.js';
 import {
   compareWithDatabase,
   expectedAssociations,
@@ -79,22 +66,6 @@ afterAll(() => {
   }
 });
 
-/** One schema to write: its name and how to build the IR. */
-interface Subject {
-  label: string;
-  build: () => Promise<IrSchema>;
-}
-
-const SUBJECTS: readonly Subject[] = [
-  ...SOURCES_WITHOUT_VIEWS.map((source: VerifySource): Subject => ({
-    label: source.label,
-    build: () => parseSource(source),
-  })),
-  { label: 'kitchen-sink', build: () => Promise.resolve(kitchenSinkSchema()) },
-  { label: 'stress', build: () => Promise.resolve(stressSchema()) },
-  { label: 'bigint-decimal', build: () => Promise.resolve(numbersSchema()) },
-];
-
 /**
  * What MySQL holds of a schema: an index over a JSON column (or an array, which MySQL stores as JSON) is skipped by
  * the writer with a warning, so the database must not have it. The writer still gets the index.
@@ -120,35 +91,6 @@ function withoutJsonIndexes(schema: IrSchema): IrSchema {
       };
     }),
   };
-}
-
-/**
- * The two types the SQLite dialect of Sequelize 7 lacks: a 64-bit key and column, and exact decimals (with and
- * without a default), which PostgreSQL and MySQL have to create as `BIGINT` and `DECIMAL(p,s)`.
- */
-function numbersSchema(): IrSchema {
-  return schemaOf([
-    model('Ledger', {
-      tableName: 'ledger',
-      fields: [
-        idField({ type: 'bigInt' }),
-        field('views', { type: 'bigInt', isNullable: true }),
-        field('balance', {
-          type: 'decimal',
-          maxDigits: 12,
-          decimalPlaces: 2,
-          default: { kind: 'literal', value: 0 },
-        }),
-        field('rate', {
-          type: 'decimal',
-          maxDigits: 5,
-          decimalPlaces: 4,
-          isNullable: true,
-        }),
-        field('whole', { type: 'decimal', maxDigits: 20, decimalPlaces: 0 }),
-      ],
-    }),
-  ]);
 }
 
 /** One reader fixture group, as in `sequelize7-parser-verify.test.ts`. */
