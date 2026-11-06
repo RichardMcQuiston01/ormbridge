@@ -17,6 +17,7 @@ import {
   normalizeSchema,
   type NamingMode,
 } from '../transforms.js';
+import { CascadeGraph } from './cascadePaths.js';
 import {
   COCKROACH_PREFIX,
   cockroachMissingType,
@@ -2101,21 +2102,7 @@ function orderTables(context: EmitContext, tables: TableDef[]): TableDef[] {
  * path to a table. Those keys are written with NO ACTION instead, and the warning names them.
  */
 function limitCascadePaths(context: EmitContext, ordered: TableDef[]): void {
-  const edges: Map<string, Set<string>> = new Map<string, Set<string>>();
-  const reachFrom = (start: string): Set<string> => {
-    const seen: Set<string> = new Set<string>();
-    const queue: string[] = [start];
-    while (queue.length > 0) {
-      const current: string | undefined = queue.pop();
-      for (const next of edges.get(current ?? '') ?? []) {
-        if (!seen.has(next)) {
-          seen.add(next);
-          queue.push(next);
-        }
-      }
-    }
-    return seen;
-  };
+  const graph: CascadeGraph = new CascadeGraph();
   const cascades = (action: IrOnDelete | undefined): boolean =>
     action === 'cascade' || action === 'setNull' || action === 'setDefault';
   for (const table of ordered) {
@@ -2125,24 +2112,7 @@ function limitCascadePaths(context: EmitContext, ordered: TableDef[]): void {
       }
       const parent: string = key.target.name;
       const child: string = table.model.name;
-      let conflict: boolean = parent === child || reachFrom(child).has(parent);
-      if (!conflict) {
-        // A second path: some table that already reaches the parent (or is the parent) reaches the
-        // child, or anything below it, another way.
-        const below: Set<string> = reachFrom(child);
-        below.add(child);
-        for (const root of edges.keys()) {
-          if (root !== parent && !reachFrom(root).has(parent)) {
-            continue;
-          }
-          const reached: Set<string> = reachFrom(root);
-          if ([...below].some((name: string) => reached.has(name))) {
-            conflict = true;
-            break;
-          }
-        }
-      }
-      if (conflict) {
+      if (graph.conflicts(parent, child)) {
         context.warnings.push(
           `${key.label}: SQL Server rejects cascading actions that form a cycle or a second cascade path; the foreign key was written with NO ACTION.`
         );
@@ -2150,9 +2120,7 @@ function limitCascadePaths(context: EmitContext, ordered: TableDef[]): void {
         key.onUpdate = undefined;
         continue;
       }
-      const children: Set<string> = edges.get(parent) ?? new Set<string>();
-      children.add(child);
-      edges.set(parent, children);
+      graph.add(parent, child);
     }
   }
 }

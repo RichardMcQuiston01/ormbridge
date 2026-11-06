@@ -40,15 +40,15 @@ export class Book extends Model<
   @NotNull
   declare title: string;
 
-  @Attribute(DataTypes.TEXT)
+  @Attribute(DataTypes.JSON)
   @NotNull
   @Default([])
   declare tags: CreationOptional<string[]>;
 
-  @Attribute(DataTypes.TEXT)
+  @Attribute(DataTypes.JSON)
   declare grid: CreationOptional<number[][] | null>;
 
-  @Attribute(DataTypes.TEXT)
+  @Attribute(DataTypes.JSON)
   declare colors: CreationOptional<('red' | 'green')[] | null>;
 
   @Attribute(DataTypes.STRING)
@@ -61,7 +61,7 @@ export class Book extends Model<
   @Default(9.99)
   declare price: CreationOptional<string>;
 
-  @Attribute(DataTypes.TEXT)
+  @Attribute(DataTypes.JSON)
   @NotNull
   @Default({ theme: 'dark', tabs: [1, 2] })
   declare settings: CreationOptional<unknown>;
@@ -99,7 +99,7 @@ export class Book extends Model<
   @Attribute(DataTypes.TEXT)
   declare window: CreationOptional<string | null>;
 
-  @Attribute(DataTypes.TEXT)
+  @Attribute(DataTypes.JSON)
   declare extra: CreationOptional<Record<string, string | null> | null>;
 
   @Attribute(DataTypes.BIGINT)
@@ -121,13 +121,13 @@ export class Book extends Model<
   declare latest_for?: NonAttribute<Author[]>;
 
   @BelongsTo(() => Author, {
-    foreignKey: { name: 'author_id', onDelete: 'CASCADE' },
+    foreignKey: { name: 'author_id', onDelete: 'NO ACTION' },
     inverse: { type: 'hasMany', as: 'books' },
   })
   declare author?: NonAttribute<Author>;
 
   @BelongsTo(() => Author, {
-    foreignKey: { name: 'editor_id', onDelete: 'SET NULL' },
+    foreignKey: { name: 'editor_id', onDelete: 'NO ACTION' },
     inverse: { type: 'hasMany', as: 'edited_books' },
   })
   declare editor?: NonAttribute<Author>;

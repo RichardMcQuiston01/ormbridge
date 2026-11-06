@@ -1,9 +1,12 @@
-Book.tags: SQL Server has no array column type; the array was written as TEXT.
-Book.grid: SQL Server has no array column type; the array was written as TEXT.
+Book.author: Sequelize's SQL Server dialect does not write ON UPDATE actions; ON UPDATE CASCADE is not created.
+Book.author: SQL Server rejects cascading actions that form a cycle or a second cascade path; NO ACTION was written, not CASCADE.
+Book.editor: Sequelize's SQL Server dialect drops the ON DELETE action of a second key to Author; NO ACTION was written, not SET NULL.
+Series.parent: Sequelize's SQL Server dialect drops the ON DELETE action of a key that points at its own table; NO ACTION was written, not SET NULL.
+Book.tags: SQL Server has no array column type; the array was written as JSON.
+Book.grid: SQL Server has no array column type; the array was written as JSON.
 Book.colors: Sequelize's ENUM for SQL Server drops NOT NULL and the default; the column was written as STRING and the values are only used for typing.
-Book.colors: SQL Server has no array column type; the array was written as TEXT.
+Book.colors: SQL Server has no array column type; the array was written as JSON.
 Book.color: Sequelize's ENUM for SQL Server drops NOT NULL and the default; the column was written as STRING and the values are only used for typing.
-Book.settings: SQL Server has no JSON column type before SQL Server 2025 (Sequelize would create a column of type JSON); the column was written as TEXT.
 Book.window: range columns exist only on PostgreSQL; the field was written as TEXT.
-Book.extra: hstore exists only on PostgreSQL; the field was written as TEXT.
+Book.extra: hstore exists only on PostgreSQL; the field was written as JSON.
 Book.read_time: Sequelize has no interval type; the duration was written as BIGINT (microseconds).

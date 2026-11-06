@@ -35,7 +35,7 @@ export class Series extends Model<
   declare parent_id: CreationOptional<number | null>;
 
   @HasMany(() => Series, {
-    foreignKey: { name: 'parent_id', onDelete: 'SET NULL' },
+    foreignKey: { name: 'parent_id', onDelete: 'NO ACTION' },
     inverse: 'parent',
   })
   declare children?: NonAttribute<Series[]>;
