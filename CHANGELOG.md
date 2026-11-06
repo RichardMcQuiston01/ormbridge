@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.17.0 - 2026-11-06
+
 The Sequelize 7 output for SQL Server is now checked without a SQL Server, and the defects that checking showed are fixed in the writer. **Output change:** `--to sequelize --provider sqlserver` writes different referential actions, JSON columns, decimals, indexes, schemas and database defaults (below, each with a warning); every other provider and conversion is unchanged, and so is every golden file except the `sqlserver` ones of the `constructs` fixture (`golden-extras/sequelize-providers/` and `sequelize7-providers/`).
 
 Running the output against a real SQL Server instance is **not done and stays open**: the SQL Server container image requires accepting Microsoft's license, which this project does not do, so no SQL Server (and no substitute image) is used anywhere. What is verified is that the models load with the real `@sequelize/mssql` dialect and that the DDL text its query generator writes reads back as the schema; that SQL Server accepts and runs that DDL is not verified.
