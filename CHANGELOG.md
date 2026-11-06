@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-`--from efcore` reads table-per-type (TPT) inheritance as EF Core stores it, and table-per-concrete-type (TPC) with the inherited columns and without a model for the abstract base. Both used to be read as independent tables, each with the columns of its base classes and no link between them. Checked against the SQLite database the real EF Core 8 creates and against the migrations and model snapshots it generates (SQLite and PostgreSQL).
+## 0.18.0 - 2026-11-06
+
+`--from efcore` reads table-per-type (TPT) inheritance as EF Core stores it, and table-per-concrete-type (TPC) with the inherited columns and without a model for the abstract base. Both used to be read as independent tables, each with the columns of its base classes and no link between them. Checked against the SQLite database the real EF Core 8 creates and against the migrations and model snapshots it generates (SQLite and PostgreSQL). **Output change:** `--from efcore` on models and migrations with table-per-type or table-per-concrete-type inheritance gives different models (below); table-per-hierarchy and every other conversion are unchanged.
 
 ### Changed
 
