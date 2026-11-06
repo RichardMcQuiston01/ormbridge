@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Vehicle {
+  id    String @id @map("Id") @db.Uuid
+  plate String @map("Plate") @db.Text
+  car   Car?
+  truck Truck?
+
+  @@map("Vehicles")
+}
+
+model Car {
+  doors   Int     @map("Doors")
+  Id      String  @id @db.Uuid
+  vehicle Vehicle @relation(fields: [Id], references: [id], onDelete: Cascade)
+
+  @@map("Cars")
+}
+
+model Truck {
+  payload Decimal @map("Payload")
+  Id      String  @id @db.Uuid
+  vehicle Vehicle @relation(fields: [Id], references: [id], onDelete: Cascade)
+
+  @@map("Trucks")
+}

@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cat {
+  id       String    @id @map("Id") @db.Uuid
+  name     String    @map("Name") @db.Text
+  lives    Int       @map("Lives")
+  born     DateTime? @map("Born") @db.Timestamptz(6)
+  KeeperId Int?
+  keeper   Keeper?   @relation(fields: [KeeperId], references: [id], onDelete: NoAction)
+
+  @@index([name])
+  @@map("Cats")
+}
+
+model Dog {
+  id       String    @id @map("Id") @db.Uuid
+  name     String    @map("Name") @db.Text
+  breed    String    @map("Breed") @db.Text
+  born     DateTime? @map("Born") @db.Timestamptz(6)
+  KeeperId Int?
+  keeper   Keeper?   @relation(fields: [KeeperId], references: [id], onDelete: NoAction)
+
+  @@index([name])
+  @@map("Dogs")
+}
+
+model Keeper {
+  id       Int      @id @default(autoincrement()) @map("Id")
+  name     String   @map("Name") @db.Text
+  animals  Cat[]
+  animals2 Dog[]
+  animals3 Kitten[]
+
+  @@map("Keepers")
+}
+
+model Kitten {
+  id       String    @id @map("Id") @db.Uuid
+  name     String    @map("Name") @db.Text
+  born     DateTime? @map("Born") @db.Timestamptz(6)
+  lives    Int       @map("Lives")
+  mother   String?   @map("Mother") @db.Text
+  KeeperId Int?
+  keeper   Keeper?   @relation(fields: [KeeperId], references: [id], onDelete: NoAction)
+
+  @@index([name])
+  @@map("Kittens")
+}

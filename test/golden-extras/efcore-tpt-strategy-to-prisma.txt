@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Shape {
+  id      String   @id @default(uuid()) @map("Id") @db.Uuid
+  label   String   @map("Label") @db.Text
+  circle  Circle?
+  polygon Polygon?
+
+  @@map("Shapes")
+}
+
+model Circle {
+  radius Float  @map("Radius")
+  Id     String @id @db.Uuid
+  shape  Shape  @relation(fields: [Id], references: [id], onDelete: Cascade)
+  ring   Ring?
+
+  @@map("Circles")
+}
+
+model Ring {
+  inner  Float  @map("Inner")
+  Id     String @id @db.Uuid
+  circle Circle @relation(fields: [Id], references: [Id], onDelete: Cascade)
+
+  @@map("Rings")
+}
+
+model Polygon {
+  sides    Int     @map("Sides")
+  Id       String  @id @db.Uuid
+  shape    Shape   @relation(fields: [Id], references: [id], onDelete: Cascade)
+  CanvasId String? @db.Uuid
+  canvas   Canvas? @relation(fields: [CanvasId], references: [id], onDelete: NoAction)
+
+  @@map("Polygons")
+}
+
+model Canvas {
+  id       String    @id @default(uuid()) @map("Id") @db.Uuid
+  title    String    @map("Title") @db.Text
+  polygons Polygon[]
+
+  @@map("Canvases")
+}

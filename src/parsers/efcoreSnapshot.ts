@@ -100,6 +100,10 @@ export interface SnapEntity {
   schema?: string | null;
   isView: boolean;
   baseType?: string;
+  /** `UseTptMappingStrategy()` / `UseTpcMappingStrategy()` / `UseTphMappingStrategy()`, written on the root of a hierarchy. */
+  mapping?: 'tph' | 'tpt' | 'tpc';
+  /** True for `ToTable((string)null)`: the entity has no table (the abstract base type of a table-per-concrete-type hierarchy). */
+  noTable: boolean;
   owned: SnapOwned[];
   requiredNavigations: Set<string>;
   relations: SnapRelation[];
@@ -121,6 +125,7 @@ function newEntity(name: string): SnapEntity {
     alternateKeys: [],
     indexes: [],
     isView: false,
+    noTable: false,
     owned: [],
     requiredNavigations: new Set(),
     relations: [],
@@ -471,6 +476,11 @@ function readBlock(
         }
         if (name !== undefined) {
           entity.table = name;
+        } else if (
+          first.args[0] !== undefined &&
+          evaluate(first.args[0], NO_CONSTANTS).kind === 'null'
+        ) {
+          entity.noTable = true;
         }
         const schemaNode: SyntaxNode | undefined = first.args[1];
         if (schemaNode !== undefined) {
@@ -499,6 +509,15 @@ function readBlock(
         }
         break;
       }
+      case 'UseTphMappingStrategy':
+        entity.mapping = 'tph';
+        break;
+      case 'UseTptMappingStrategy':
+        entity.mapping = 'tpt';
+        break;
+      case 'UseTpcMappingStrategy':
+        entity.mapping = 'tpc';
+        break;
       case 'HasBaseType': {
         const base: string | undefined = text(first.args[0]);
         if (base !== undefined) {
@@ -952,6 +971,43 @@ function rootOf(
   return current;
 }
 
+/** The types an entity derives from that are in the snapshot, nearest first. */
+function ancestorsOf(
+  entity: SnapEntity,
+  entities: ReadonlyMap<string, SnapEntity>
+): SnapEntity[] {
+  const found: SnapEntity[] = [];
+  let current: SnapEntity = entity;
+  for (let guard: number = 0; guard < 32; guard += 1) {
+    const base: SnapEntity | undefined =
+      current.baseType === undefined
+        ? undefined
+        : entities.get(current.baseType);
+    if (base === undefined || found.includes(base)) {
+      break;
+    }
+    found.push(base);
+    current = base;
+  }
+  return found;
+}
+
+/**
+ * How an entity that has a table of its own and derives from another entity is stored. The root of the hierarchy
+ * says which (`UseTptMappingStrategy()` or `UseTpcMappingStrategy()`); a table of its own without one is table per type.
+ */
+function strategyOf(
+  entity: SnapEntity,
+  ancestors: readonly SnapEntity[]
+): 'tpt' | 'tpc' {
+  for (const item of [entity, ...ancestors]) {
+    if (item.mapping === 'tpt' || item.mapping === 'tpc') {
+      return item.mapping;
+    }
+  }
+  return 'tpt';
+}
+
 /** Turns the entities of the snapshot into tables. */
 export function snapshotSchema(
   entities: ReadonlyMap<string, SnapEntity>,
@@ -970,11 +1026,16 @@ export function snapshotSchema(
     keyColumns: new Map(),
   };
   const columnMaps: Map<string, Map<string, string>> = new Map();
-  // Root entities first, so that a table-per-hierarchy table exists before its derived types add columns.
+  /** For an entity with a table of its own below another entity: how it is stored and the types it derives from. */
+  const hierarchy: Map<
+    SnapEntity,
+    { strategy: 'tpt' | 'tpc'; ancestors: SnapEntity[] }
+  > = new Map();
+  // Base types first: a table per hierarchy has to exist before its derived types add columns, and a table per type
+  // before the table whose key references it.
   const ordered: SnapEntity[] = [...entities.values()].sort(
     (first: SnapEntity, second: SnapEntity) =>
-      Number(rootOf(first, entities) !== first) -
-      Number(rootOf(second, entities) !== second)
+      ancestorsOf(first, entities).length - ancestorsOf(second, entities).length
   );
   for (const entity of ordered) {
     if (entity.isView) {
@@ -1002,25 +1063,72 @@ export function snapshotSchema(
       addIndexes(rootTable, entity, columns);
       continue;
     }
+    if (entity.noTable) {
+      warn(
+        `${path}: ${shortEntityName(entity.name)} has no table (the abstract base type of a table-per-concrete-type hierarchy), so it is not a model; its columns are on the tables of the types that derive from it.`
+      );
+      continue;
+    }
     const table: MigrationTable = newTable(entity, state);
     state.tableOf.set(entity.name, table);
+    const ancestors: SnapEntity[] = ancestorsOf(entity, entities);
+    const base: SnapEntity | undefined = ancestors[0];
+    const strategy: 'tpt' | 'tpc' | undefined =
+      base === undefined ? undefined : strategyOf(entity, ancestors);
+    if (base !== undefined && strategy !== undefined) {
+      hierarchy.set(entity, { strategy, ancestors });
+      warn(
+        strategy === 'tpt'
+          ? `${path}: ${shortEntityName(entity.name)} derives from ${shortEntityName(base.name)} and has a table of its own (table per type); it was read as the table "${table.name}" whose primary key also references the table of ${shortEntityName(base.name)}, and the class hierarchy is not kept.`
+          : `${path}: ${shortEntityName(entity.name)} derives from ${shortEntityName(base.name)} (table per concrete type); it was read as the independent table "${table.name}" with the columns of its base types, and the class hierarchy is not kept.`
+      );
+    }
+    // The key is declared on the root of the hierarchy: a table per type repeats its column, a table per concrete type
+    // repeats all the columns of the base types.
+    const keyEntity: SnapEntity | undefined = [entity, ...ancestors].find(
+      (item: SnapEntity) => item.key !== undefined
+    );
+    const keyNames: string[] = keyEntity?.key ?? [];
     // The key columns are needed by owned collections, so the key is resolved before the columns are added.
-    const keyNames: string[] = entity.key ?? [];
     state.keyColumns.set(
       entity,
       keyNames.map(
-        (name: string) => entity.properties.get(name)?.column ?? name
+        (name: string) => keyEntity?.properties.get(name)?.column ?? name
       )
     );
-    const columns: Map<string, string> = addColumns(
-      table,
+    const columns: Map<string, string> = new Map();
+    if (strategy === 'tpt' && keyEntity !== undefined) {
+      for (const name of keyNames) {
+        const property: SnapProperty | undefined =
+          keyEntity.properties.get(name);
+        if (property === undefined) {
+          continue;
+        }
+        const columnName: string = property.column ?? name;
+        columns.set(name, columnName);
+        table.columns.push(
+          columnOfProperty(property, columnName, name, false, true)
+        );
+      }
+    }
+    const sources: SnapEntity[] = [
+      ...(strategy === 'tpc' ? [...ancestors].reverse() : []),
       entity,
-      '',
-      '',
-      false,
-      new Set(),
-      state
-    );
+    ];
+    for (const source of sources) {
+      const added: Map<string, string> = addColumns(
+        table,
+        source,
+        '',
+        '',
+        false,
+        new Set(),
+        state
+      );
+      for (const [name, column] of added) {
+        columns.set(name, column);
+      }
+    }
     columnMaps.set(entity.name, columns);
     if (keyNames.length > 0) {
       table.primaryKey = {
@@ -1028,7 +1136,9 @@ export function snapshotSchema(
         ...(entity.keyName === undefined ? {} : { name: entity.keyName }),
       };
     }
-    addIndexes(table, entity, columns);
+    for (const source of sources) {
+      addIndexes(table, source, columns);
+    }
     schema.set(tableKey(table.schema, table.name), table);
   }
   // Relationships need every table, so they come last.
@@ -1040,11 +1150,26 @@ export function snapshotSchema(
     if (table === undefined || columns === undefined) {
       continue;
     }
-    for (const relation of entity.relations) {
+    // A table per concrete type has the foreign keys that its base types declare too.
+    const declared: SnapRelation[] = [
+      ...(hierarchy.get(entity)?.strategy === 'tpc'
+        ? [...(hierarchy.get(entity)?.ancestors ?? [])]
+            .reverse()
+            .flatMap((ancestor: SnapEntity) => ancestor.relations)
+        : []),
+      ...entity.relations,
+    ];
+    for (const relation of declared) {
       const principal: SnapEntity | undefined = entities.get(relation.target);
       const principalTable: MigrationTable | undefined = state.tableOf.get(
         relation.target
       );
+      if (principal?.noTable === true) {
+        warn(
+          `${path}: the relationship from ${shortEntityName(entity.name)} to ${shortEntityName(relation.target)} points at the abstract base type of a table-per-concrete-type hierarchy, which has no table, so it was skipped.`
+        );
+        continue;
+      }
       if (principal === undefined || principalTable === undefined) {
         warn(
           `${path}: the relationship from ${shortEntityName(entity.name)} to ${shortEntityName(relation.target)} points at an entity that is not in the model snapshot, so it was skipped.`

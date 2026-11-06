@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Pet {
+  petNo   Int    @id @default(autoincrement()) @map("pet_no")
+  name    String @map("Name") @db.VarChar(40)
+  OwnerNo Int?
+  owner   Owner? @relation(fields: [OwnerNo], references: [ownerNo], onDelete: NoAction)
+  bird    Bird?
+  fish    Fish?
+
+  @@map("pet")
+}
+
+model Bird {
+  wingSpan Float   @map("wing_span")
+  canFly   Boolean @map("CanFly")
+  pet_no   Int     @id
+  pet      Pet     @relation(fields: [pet_no], references: [petNo], onDelete: Cascade)
+
+  @@map("pet_bird")
+}
+
+model Fish {
+  water   String? @map("Water") @db.VarChar(30)
+  pet_no  Int     @id
+  pet     Pet     @relation(fields: [pet_no], references: [petNo], onDelete: Cascade)
+  tank_no Int?
+  tank    Tank?   @relation(fields: [tank_no], references: [tankNo], onDelete: NoAction)
+
+  @@map("pet_fish")
+}
+
+model Owner {
+  ownerNo  Int    @id @default(autoincrement()) @map("OwnerNo")
+  fullName String @map("FullName") @db.Text
+  pets     Pet[]
+
+  @@map("owner")
+}
+
+model Tank {
+  tankNo Int    @id @default(autoincrement()) @map("TankNo")
+  litres Int    @map("Litres")
+  fishes Fish[]
+
+  @@map("tank")
+}

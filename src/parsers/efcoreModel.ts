@@ -230,4 +230,11 @@ export interface EntityInfo {
   order: number;
   /** Set for the child entity of an owned collection: the entity that owns it and the collection property. */
   ownedBy?: { owner: string; navigation: string };
+  /**
+   * Table per type: the entity of the base type, whose table this table's primary key also references. The members
+   * are the ones this type declares plus the key members of the base.
+   */
+  tptBase?: string;
+  /** True for the abstract base type of a table-per-concrete-type hierarchy: it has no table and is not a model. */
+  tableless?: boolean;
 }

@@ -1,0 +1,2 @@
+Bird: table-per-type inheritance (Bird derives from Pet, each in its own table) is read as the table "pet_bird" whose primary key also references Pet (a one-to-one relationship); the class hierarchy is not kept, and the columns of Pet are read only on Pet.
+Fish: table-per-type inheritance (Fish derives from Pet, each in its own table) is read as the table "pet_fish" whose primary key also references Pet (a one-to-one relationship); the class hierarchy is not kept, and the columns of Pet are read only on Pet.
