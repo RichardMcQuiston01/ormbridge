@@ -24,6 +24,11 @@ public class Van : Vehicle
 
 public class DepotContext : DbContext
 {
+    public DepotContext(DbContextOptions<DepotContext> options)
+        : base(options)
+    {
+    }
+
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
 
     public DbSet<Truck> Trucks => Set<Truck>();
