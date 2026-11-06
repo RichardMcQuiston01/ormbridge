@@ -593,40 +593,134 @@ export function buildEntities(
     }
   }
 
-  const isSeparateTable = (name: string): boolean => {
+  /** The mapping strategy set on the entity or on the nearest ancestor that sets one. */
+  const strategyOf = (name: string): EntityConfig['mapping'] => {
+    let current: string | undefined = name;
+    for (
+      let depth: number = 0;
+      current !== undefined && depth < MAX_HIERARCHY_DEPTH;
+      depth += 1
+    ) {
+      const mapping: EntityConfig['mapping'] = store.entity(current)?.mapping;
+      if (mapping !== undefined) {
+        return mapping;
+      }
+      current = baseOf.get(current);
+    }
+    return undefined;
+  };
+
+  /** How a derived entity is stored: in the table of its base (table per hierarchy), or in a table of its own. */
+  const inheritanceOf = (name: string): 'tph' | 'tpt' | 'tpc' => {
     const base: string | undefined = baseOf.get(name);
     const config: EntityConfig | undefined = store.entity(name);
     if (base === undefined || config === undefined) {
-      return true;
+      return 'tph';
+    }
+    const strategy: EntityConfig['mapping'] = strategyOf(name);
+    if (strategy === 'tpt' || strategy === 'tpc') {
+      return strategy;
     }
     const baseConfig: EntityConfig | undefined = store.entity(base);
-    return (
-      config.mapping === 'tpt' ||
-      config.mapping === 'tpc' ||
-      baseConfig?.mapping === 'tpt' ||
-      baseConfig?.mapping === 'tpc' ||
-      (config.table !== undefined && config.table !== baseConfig?.table) ||
+    const baseTable: string =
+      baseConfig?.table ?? project.dbSets.get(base) ?? base;
+    const separate: boolean =
+      (config.table !== undefined && config.table !== baseTable) ||
       (config.viewName !== undefined &&
-        config.viewName !== baseConfig?.viewName)
-    );
+        config.viewName !== baseConfig?.viewName);
+    // ToTable on a derived type of a hierarchy that sets no strategy gives it its own table: table per type.
+    return separate ? 'tpt' : 'tph';
+  };
+
+  /** The base entities of an entity, nearest first. */
+  const ancestorsOf = (name: string): string[] => {
+    const found: string[] = [];
+    let current: string | undefined = baseOf.get(name);
+    for (
+      let depth: number = 0;
+      current !== undefined && depth < MAX_HIERARCHY_DEPTH;
+      depth += 1
+    ) {
+      found.push(current);
+      current = baseOf.get(current);
+    }
+    return found;
+  };
+
+  /**
+   * The configuration of a type with a table of its own. It names the key of its base (HasKey / [Key] on the base)
+   * when it names none itself. A table per concrete type also holds the columns of its bases, so it takes their
+   * property settings, ignored members, owned types and indexes too.
+   */
+  const configFor = (
+    name: string,
+    stored: EntityConfig,
+    inheritance: 'tph' | 'tpt' | 'tpc'
+  ): EntityConfig => {
+    if (inheritance === 'tph') {
+      return stored;
+    }
+    const ancestors: EntityConfig[] = ancestorsOf(name)
+      .map((ancestor: string) => store.entity(ancestor))
+      .filter((item): item is EntityConfig => item !== undefined);
+    const key: string[] | undefined =
+      stored.key ??
+      ancestors.find((item: EntityConfig) => item.key !== undefined)?.key;
+    if (inheritance === 'tpt') {
+      return key === undefined ? stored : { ...stored, key };
+    }
+    const bases: EntityConfig[] = [...ancestors].reverse();
+    // The annotations were read for the whole class chain, so a property has settings from both sides.
+    const props: Map<string, PropConfig> = new Map();
+    for (const item of [...bases, stored]) {
+      for (const [property, settings] of item.props) {
+        props.set(property, { ...props.get(property), ...settings });
+      }
+    }
+    return {
+      ...stored,
+      ...(key === undefined ? {} : { key }),
+      props,
+      ignored: new Set([
+        ...bases.flatMap((item: EntityConfig) => [...item.ignored]),
+        ...stored.ignored,
+      ]),
+      owned: new Map([
+        ...bases.flatMap((item: EntityConfig) => [...item.owned]),
+        ...stored.owned,
+      ]),
+      indexes: [
+        ...bases.flatMap((item: EntityConfig) => item.indexes),
+        ...stored.indexes,
+      ],
+    };
   };
 
   for (const name of store.entityOrder) {
     const cls: CsClass | undefined = project.classes.get(name);
-    const config: EntityConfig | undefined = store.entity(name);
-    if (cls === undefined || config === undefined) {
+    const storedConfig: EntityConfig | undefined = store.entity(name);
+    if (cls === undefined || storedConfig === undefined) {
       continue;
     }
     const base: string | undefined = baseOf.get(name);
-    const separate: boolean = isSeparateTable(name);
-    if (base !== undefined && separate) {
+    const inheritance: 'tph' | 'tpt' | 'tpc' = inheritanceOf(name);
+    const separate: boolean = inheritance !== 'tph';
+    const abstractTpc: boolean =
+      strategyOf(name) === 'tpc' && cls.modifiers.includes('abstract');
+    const config: EntityConfig = configFor(name, storedConfig, inheritance);
+    if (base !== undefined && inheritance === 'tpc' && !abstractTpc) {
       project.warnings.push(
-        `${name}: table-per-type or table-per-concrete-type inheritance (the base entity ${base} is stored in another table) is not represented; ${name} was read as an independent table with the columns of its base classes.`
+        `${name}: table-per-concrete-type inheritance (${name} derives from ${base}, and each concrete type has a table with all columns) is read as an independent table with the columns of its base classes; the tables are not linked and the class hierarchy is not kept.`
+      );
+    }
+    if (base !== undefined && inheritance === 'tpt') {
+      project.warnings.push(
+        `${name}: table-per-type inheritance (${name} derives from ${base}, each in its own table) is read as the table "${config.viewName ?? config.table ?? project.dbSets.get(name) ?? name}" whose primary key also references ${base} (a one-to-one relationship); the class hierarchy is not kept, and the columns of ${base} are read only on ${base}.`
       );
     }
     let chain: CsClass[] = classChain(cls, project);
-    if (base !== undefined && !separate) {
-      // Table per hierarchy: only the classes below the base entity belong to this entity.
+    if (base !== undefined && inheritance !== 'tpc') {
+      // Table per hierarchy and per type: only the classes below the base entity belong to this entity.
       const baseIndex: number = chain.findIndex(
         (item: CsClass) => item.name === base
       );
@@ -710,6 +804,8 @@ export function buildEntities(
       members,
       nullableRefs,
       order: project.classOrder.get(name) ?? 0,
+      ...(base !== undefined && inheritance === 'tpt' ? { tptBase: base } : {}),
+      ...(abstractTpc ? { tableless: true } : {}),
     });
   }
 

@@ -1,0 +1,3 @@
+tpt/Migrations/ZooContextModelSnapshot.cs: Cat derives from Animal and has a table of its own (table per type); it was read as the table "Cats" whose primary key also references the table of Animal, and the class hierarchy is not kept.
+tpt/Migrations/ZooContextModelSnapshot.cs: Dog derives from Animal and has a table of its own (table per type); it was read as the table "Dogs" whose primary key also references the table of Animal, and the class hierarchy is not kept.
+tpt/Migrations/ZooContextModelSnapshot.cs: Kitten derives from Cat and has a table of its own (table per type); it was read as the table "Kittens" whose primary key also references the table of Cat, and the class hierarchy is not kept.

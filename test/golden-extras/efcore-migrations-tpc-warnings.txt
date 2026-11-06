@@ -1,0 +1,4 @@
+tpc/Migrations/ZooContextModelSnapshot.cs: Animal has no table (the abstract base type of a table-per-concrete-type hierarchy), so it is not a model; its columns are on the tables of the types that derive from it.
+tpc/Migrations/ZooContextModelSnapshot.cs: Cat derives from Animal (table per concrete type); it was read as the independent table "Cats" with the columns of its base types, and the class hierarchy is not kept.
+tpc/Migrations/ZooContextModelSnapshot.cs: Dog derives from Animal (table per concrete type); it was read as the independent table "Dogs" with the columns of its base types, and the class hierarchy is not kept.
+tpc/Migrations/ZooContextModelSnapshot.cs: Kitten derives from Cat (table per concrete type); it was read as the independent table "Kittens" with the columns of its base types, and the class hierarchy is not kept.

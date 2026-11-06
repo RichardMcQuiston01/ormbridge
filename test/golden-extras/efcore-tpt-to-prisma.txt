@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Animal {
+  id       Int      @id @default(autoincrement()) @map("Id")
+  name     String   @map("Name") @db.Text
+  arrived  DateTime @map("Arrived") @db.Timestamptz(6)
+  KeeperId Int?
+  keeper   Keeper?  @relation(fields: [KeeperId], references: [id], onDelete: NoAction)
+  cat      Cat?
+  dog      Dog?
+
+  @@map("Animals")
+}
+
+model Cat {
+  lives  Int     @map("Lives")
+  indoor Boolean @map("Indoor")
+  Id     Int     @id
+  animal Animal  @relation(fields: [Id], references: [id], onDelete: Cascade)
+  kitten Kitten?
+
+  @@map("Cats")
+}
+
+model Kitten {
+  mother String?  @map("Mother") @db.Text
+  bornOn DateTime @map("BornOn") @db.Timestamptz(6)
+  Id     Int      @id
+  cat    Cat      @relation(fields: [Id], references: [Id], onDelete: Cascade)
+
+  @@map("Kittens")
+}
+
+model Dog {
+  breed     String   @map("Breed") @db.Text
+  Id        Int      @id
+  animal    Animal   @relation(fields: [Id], references: [id], onDelete: Cascade)
+  TrainerId Int?
+  trainer   Trainer? @relation(fields: [TrainerId], references: [id], onDelete: NoAction)
+
+  @@map("Dogs")
+}
+
+model Keeper {
+  id      Int      @id @default(autoincrement()) @map("Id")
+  name    String   @map("Name") @db.Text
+  animals Animal[]
+
+  @@map("Keepers")
+}
+
+model Trainer {
+  id   Int    @id @default(autoincrement()) @map("Id")
+  name String @map("Name") @db.Text
+  dogs Dog[]
+
+  @@map("Trainers")
+}

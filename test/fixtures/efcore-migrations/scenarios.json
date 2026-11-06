@@ -52,5 +52,23 @@
     "provider": "sqlite",
     "contexts": ["Fleet.V1.FleetContext", "Fleet.V2.FleetContext"],
     "names": ["Initial", "Axles"]
+  },
+  {
+    "name": "tpt",
+    "provider": "sqlite",
+    "contexts": ["Tpt.V1.ZooContext", "Tpt.V2.ZooContext"],
+    "names": ["Initial", "Kittens"]
+  },
+  {
+    "name": "tptpg",
+    "provider": "npgsql",
+    "contexts": ["TptPg.V1.FleetContext"],
+    "names": ["Initial"]
+  },
+  {
+    "name": "tpc",
+    "provider": "sqlite",
+    "contexts": ["Tpc.V1.ZooContext", "Tpc.V2.ZooContext"],
+    "names": ["Initial", "Kittens"]
   }
 ]

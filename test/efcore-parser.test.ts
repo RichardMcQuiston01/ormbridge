@@ -2027,7 +2027,7 @@ public class Ctx : DbContext { public DbSet<Shape> Shapes => Set<Shape>(); publi
     });
   });
 
-  it('reads table-per-type as independent tables and says so', async () => {
+  it('reads table-per-type as a table whose key references the base table and says so', async () => {
     const schema: IrSchema = await parse(`
 public class Base { public int Id { get; set; } public string A { get; set; } = null!; }
 public class Child : Base { public string B { get; set; } = null!; }
@@ -2037,8 +2037,214 @@ public class Ctx : DbContext { public DbSet<Base> Bases => Set<Base>(); public D
       'Base',
       'Child',
     ]);
-    expect(names(schema, 'Child')).toEqual(['id', 'a', 'b']);
-    expect(warningsMatching(schema, /table-per-type/)).toHaveLength(1);
+    // Only the columns of Child itself, and the key is the foreign key to Base.
+    expect(names(schema, 'Base')).toEqual(['id', 'a']);
+    expect(names(schema, 'Child')).toEqual(['b']);
+    expect(model(schema, 'Child').tableName).toBe('children');
+    expect(model(schema, 'Child').relations).toEqual([
+      {
+        name: 'base',
+        kind: 'oneToOne',
+        targetModel: 'Base',
+        columnName: 'Id',
+        isNullable: false,
+        onDelete: 'cascade',
+        isPrimaryKey: true,
+      },
+    ]);
+    expect(model(schema, 'Base').relations).toEqual([]);
+    expect(warningsMatching(schema, /table-per-type/)).toEqual([
+      'Child: table-per-type inheritance (Child derives from Base, each in its own table) is read as the table "children" whose primary key also references Base (a one-to-one relationship); the class hierarchy is not kept, and the columns of Base are read only on Base.',
+    ]);
+  });
+
+  it('reads table-per-type from [Table] on the derived class and keeps the column name of a key', async () => {
+    const schema: IrSchema = await parse(`
+[Table("pet")] public class Pet { [Key, Column("pet_no")] public int PetNo { get; set; } public string Name { get; set; } = null!; }
+[Table("pet_bird")] public class Bird : Pet { public double Span { get; set; } }
+public class Ctx : DbContext { public DbSet<Pet> Pets => Set<Pet>(); public DbSet<Bird> Birds => Set<Bird>(); }`);
+    expect(names(schema, 'Bird')).toEqual(['span']);
+    expect(model(schema, 'Bird').relations[0]).toMatchObject({
+      name: 'pet',
+      kind: 'oneToOne',
+      targetModel: 'Pet',
+      columnName: 'pet_no',
+      isPrimaryKey: true,
+      onDelete: 'cascade',
+    });
+  });
+
+  it('keeps table per hierarchy when the derived class names the table of its base', async () => {
+    const schema: IrSchema = await parse(`
+[Table("pets")] public class Pet { public int Id { get; set; } }
+[Table("pets")] public class Bird : Pet { public double Span { get; set; } }
+public class Ctx : DbContext { public DbSet<Pet> Pets => Set<Pet>(); }`);
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual(['Pet']);
+    expect(names(schema, 'Pet')).toContain('span');
+    expect(warningsMatching(schema, /table-per-type/)).toEqual([]);
+  });
+
+  it('follows UseTptMappingStrategy down three levels without ToTable calls', async () => {
+    const schema: IrSchema = await parse(`
+public abstract class Shape { public Guid Id { get; set; } public string Label { get; set; } = null!; }
+public class Circle : Shape { public double Radius { get; set; } }
+public class Ring : Circle { public double Inner { get; set; } }
+public class Ctx : DbContext { public DbSet<Shape> Shapes => Set<Shape>(); public DbSet<Circle> Circles => Set<Circle>(); public DbSet<Ring> Rings => Set<Ring>();
+  protected override void OnModelCreating(ModelBuilder b) { b.Entity<Shape>().UseTptMappingStrategy(); } }`);
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual([
+      'Shape',
+      'Circle',
+      'Ring',
+    ]);
+    expect(names(schema, 'Circle')).toEqual(['radius']);
+    expect(names(schema, 'Ring')).toEqual(['inner']);
+    expect(model(schema, 'Circle').tableName).toBe('Circles');
+    expect(model(schema, 'Ring').relations).toEqual([
+      expect.objectContaining({
+        name: 'circle',
+        targetModel: 'Circle',
+        columnName: 'Id',
+        isPrimaryKey: true,
+      }),
+    ]);
+    expect(warningsMatching(schema, /table-per-type/)).toHaveLength(2);
+  });
+
+  it('keeps the relations of a derived type and of its base apart', async () => {
+    const schema: IrSchema = await parse(`
+public class Animal { public int Id { get; set; } public int? KeeperId { get; set; } public Keeper? Keeper { get; set; } }
+public class Dog : Animal { public int? TrainerId { get; set; } public Trainer? Trainer { get; set; } }
+public class Keeper { public int Id { get; set; } public List<Animal> Animals { get; set; } = new(); }
+public class Trainer { public int Id { get; set; } public List<Dog> Dogs { get; set; } = new(); }
+public class Ctx : DbContext { public DbSet<Animal> Animals => Set<Animal>(); public DbSet<Dog> Dogs => Set<Dog>(); public DbSet<Keeper> Keepers => Set<Keeper>(); public DbSet<Trainer> Trainers => Set<Trainer>();
+  protected override void OnModelCreating(ModelBuilder b) { b.Entity<Dog>().ToTable("Dogs"); } }`);
+    expect(relation(schema, 'Animal', 'keeper').targetModel).toBe('Keeper');
+    expect(
+      model(schema, 'Dog').relations.map((item: IrRelation) => item.name)
+    ).toEqual(['animal', 'trainer']);
+    expect(relation(schema, 'Dog', 'trainer')).toMatchObject({
+      kind: 'foreignKey',
+      targetModel: 'Trainer',
+      columnName: 'TrainerId',
+    });
+    expect(model(schema, 'Keeper').relations).toEqual([]);
+    expect(model(schema, 'Trainer').relations).toEqual([]);
+  });
+
+  it('lets a relationship point at a table-per-type table', async () => {
+    const schema: IrSchema = await parse(`
+public class Animal { public int Id { get; set; } }
+public class Cat : Animal { public List<Toy> Toys { get; set; } = new(); }
+public class Toy { public int Id { get; set; } public int CatId { get; set; } public Cat Cat { get; set; } = null!; }
+public class Ctx : DbContext { public DbSet<Animal> Animals => Set<Animal>(); public DbSet<Cat> Cats => Set<Cat>(); public DbSet<Toy> Toys => Set<Toy>();
+  protected override void OnModelCreating(ModelBuilder b) { b.Entity<Cat>().ToTable("Cats"); } }`);
+    expect(relation(schema, 'Toy', 'cat')).toMatchObject({
+      targetModel: 'Cat',
+      columnName: 'CatId',
+    });
+    expect(model(schema, 'Cat').fields).toEqual([]);
+  });
+
+  it('gives a derived type the key that only the base names', async () => {
+    const schema: IrSchema = await parse(`
+public class Animal { public int Code { get; set; } public string Name { get; set; } = null!; }
+public class Cat : Animal { public int Lives { get; set; } }
+public class Ctx : DbContext { public DbSet<Animal> Animals => Set<Animal>(); public DbSet<Cat> Cats => Set<Cat>();
+  protected override void OnModelCreating(ModelBuilder b) { b.Entity<Animal>().HasKey(a => a.Code); b.Entity<Cat>().ToTable("cats"); } }`);
+    expect(model(schema, 'Cat').relations[0]).toMatchObject({
+      name: 'animal',
+      columnName: 'Code',
+      isPrimaryKey: true,
+    });
+    expect(names(schema, 'Cat')).toEqual(['lives']);
+  });
+
+  it('reads one derived type with a table of its own next to siblings that share the table of the base', async () => {
+    const schema: IrSchema = await parse(`
+public abstract class Vehicle { public int Id { get; set; } }
+public class Car : Vehicle { public int Doors { get; set; } }
+public class Bus : Vehicle { public int Seats { get; set; } }
+public class Tram : Vehicle { public int Lines { get; set; } }
+public class Ctx : DbContext { public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+  protected override void OnModelCreating(ModelBuilder b) { b.Entity<Tram>().ToTable("trams"); b.Entity<Car>(); b.Entity<Bus>(); } }`);
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual([
+      'Vehicle',
+      'Tram',
+    ]);
+    expect(names(schema, 'Vehicle')).toEqual([
+      'id',
+      'doors',
+      'seats',
+      'discriminator',
+    ]);
+    expect(names(schema, 'Tram')).toEqual(['lines']);
+    expect(relation(schema, 'Tram', 'vehicle').isPrimaryKey).toBe(true);
+  });
+
+  it('warns and keeps the table when the base type has no key to share', async () => {
+    const schema: IrSchema = await parse(`
+public class Base { public string A { get; set; } = null!; }
+public class Child : Base { public string B { get; set; } = null!; }
+public class Ctx : DbContext { public DbSet<Base> Bases => Set<Base>(); public DbSet<Child> Children => Set<Child>();
+  protected override void OnModelCreating(ModelBuilder b) { b.Entity<Child>().ToTable("children"); } }`);
+    expect(names(schema, 'Child')).toEqual(['b']);
+    expect(
+      warningsMatching(schema, /Base has no primary key to share/)
+    ).toHaveLength(1);
+  });
+
+  it('reads table-per-concrete-type as independent tables with the inherited columns and no table for the abstract base', async () => {
+    const schema: IrSchema = await parse(`
+public abstract class Machine { public Guid Id { get; set; } public string Serial { get; set; } = null!; public int? DepotId { get; set; } public Depot? Depot { get; set; } }
+public class Car : Machine { public int Doors { get; set; } }
+public class Truck : Machine { public decimal Payload { get; set; } }
+public class Pickup : Truck { public bool Cover { get; set; } }
+public class Depot { public int Id { get; set; } public List<Machine> Machines { get; set; } = new(); }
+public class Ctx : DbContext { public DbSet<Depot> Depots => Set<Depot>(); public DbSet<Car> Cars => Set<Car>(); public DbSet<Truck> Trucks => Set<Truck>(); public DbSet<Pickup> Pickups => Set<Pickup>();
+  protected override void OnModelCreating(ModelBuilder b) { b.Entity<Machine>().UseTpcMappingStrategy(); b.Entity<Machine>().HasIndex(m => m.Serial).IsUnique(); } }`);
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual([
+      'Car',
+      'Truck',
+      'Pickup',
+      'Depot',
+    ]);
+    expect(names(schema, 'Car')).toEqual(['id', 'serial', 'doors']);
+    expect(names(schema, 'Pickup')).toEqual([
+      'id',
+      'serial',
+      'payload',
+      'cover',
+    ]);
+    // Every table has the foreign key of the base, and nothing links the tables of the hierarchy.
+    for (const name of ['Car', 'Truck', 'Pickup']) {
+      expect(
+        model(schema, name).relations.map(
+          (item: IrRelation) => item.targetModel
+        )
+      ).toEqual(['Depot']);
+      expect(field(schema, name, 'serial').isUnique).toBe(true);
+    }
+    expect(
+      warningsMatching(
+        schema,
+        /abstract base type of a table-per-concrete-type/
+      )
+    ).toHaveLength(2);
+    expect(
+      warningsMatching(schema, /table-per-concrete-type inheritance/)
+    ).toHaveLength(3);
+  });
+
+  it('keeps the property settings of the base on every table of a table per concrete type', async () => {
+    const schema: IrSchema = await parse(`
+public abstract class Machine { public int Id { get; set; } public string Serial { get; set; } = null!; }
+public class Car : Machine { public int Doors { get; set; } }
+public class Ctx : DbContext { public DbSet<Car> Cars => Set<Car>();
+  protected override void OnModelCreating(ModelBuilder b) { b.Entity<Machine>().UseTpcMappingStrategy(); b.Entity<Machine>().Property(m => m.Serial).HasMaxLength(12).HasColumnName("serial_no"); } }`);
+    expect(field(schema, 'Car', 'serial')).toMatchObject({
+      columnName: 'serial_no',
+      maxLength: 12,
+    });
   });
 
   it('flattens a mapped base class that has no DbSet', async () => {
@@ -2246,17 +2452,28 @@ describe('extras fixture', () => {
       });
   }
 
-  async function convertExtras(group: string): Promise<ConvertResult> {
+  async function convertExtras(
+    group: string,
+    to: string = 'prisma'
+  ): Promise<ConvertResult> {
     return expectOk(
       await convertText(
         csharpFiles(join(root, group)).map((path: string) => ({
           path,
           text: readFileSync(path, 'utf8'),
         })),
-        { ...DEFAULT_OPTIONS, appLabel: group, from: 'efcore', to: 'prisma' }
+        { ...DEFAULT_OPTIONS, appLabel: group, from: 'efcore', to }
       )
     );
   }
+
+  /** The fixtures of table per type and table per concrete type. */
+  const INHERITANCE_GROUPS: readonly string[] = [
+    'tpt',
+    'tpt-annotations',
+    'tpt-strategy',
+    'tpc',
+  ];
 
   it('reads shop: conventions, owned types, composite keys, skip navigations', async () => {
     const schema: IrSchema = expectOk(
@@ -2293,7 +2510,7 @@ describe('extras fixture', () => {
     ]);
   });
 
-  it.each(['shop', 'inheritance', 'library', 'orders'])(
+  it.each(['shop', 'inheritance', 'library', 'orders', ...INHERITANCE_GROUPS])(
     'matches the Prisma golden for %s',
     async (group: string) => {
       const result: ConvertResult = await convertExtras(group);
@@ -2301,7 +2518,7 @@ describe('extras fixture', () => {
     }
   );
 
-  it.each(['shop', 'inheritance', 'library', 'orders'])(
+  it.each(['shop', 'inheritance', 'library', 'orders', ...INHERITANCE_GROUPS])(
     'matches the warnings golden for %s',
     async (group: string) => {
       const result: ConvertResult = await convertExtras(group);
@@ -2309,6 +2526,14 @@ describe('extras fixture', () => {
         `efcore-${group}-warnings.txt`,
         result.warnings.map((warning: string) => `${warning}\n`).join('')
       );
+    }
+  );
+
+  it.each(INHERITANCE_GROUPS)(
+    'writes %s as SQL with the key of a derived table as a foreign key to its base table',
+    async (group: string) => {
+      const result: ConvertResult = await convertExtras(group, 'sql');
+      expectMatchesExtrasGolden(`efcore-${group}-to-sql.txt`, result.output);
     }
   );
 });

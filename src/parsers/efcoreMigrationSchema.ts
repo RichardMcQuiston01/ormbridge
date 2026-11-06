@@ -519,8 +519,16 @@ export function buildMigrationSchema(
         );
         continue;
       }
+      const targetName: string = modelNames.get(principal) ?? principal.name;
+      // The primary key of a table per type is also the foreign key to its base table: a column called just "Id" says
+      // nothing about the relationship, so the relation is named after the table it points to.
+      const sharesKey: boolean =
+        key.length === foreignKey.columns.length &&
+        key.every((name: string) => foreignKey.columns.includes(name));
+      const label: string = stripKeySuffix(columnLabel(first));
       const baseName: string = toCamelCase(
-        foreignKey.navigation ?? stripKeySuffix(columnLabel(first))
+        foreignKey.navigation ??
+          (sharesKey && /^(?:Id|ID|id|_id)$/.test(label) ? targetName : label)
       );
       let relationName: string = baseName === '' ? 'ref' : baseName;
       const ownField: string | undefined = names.get(first.name);
@@ -540,7 +548,6 @@ export function buildMigrationSchema(
       const kind: 'foreignKey' | 'oneToOne' = isUnique
         ? 'oneToOne'
         : 'foreignKey';
-      const targetName: string = modelNames.get(principal) ?? principal.name;
       const targetFields: Map<string, string> =
         fieldNames.get(principal) ?? new Map();
       const principalKey: string[] = keyColumnsOf(principal);

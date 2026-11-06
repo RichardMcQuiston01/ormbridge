@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Car {
+  id      String   @id @default(uuid()) @map("Id") @db.Uuid
+  serial  String   @unique @map("Serial") @db.Text
+  builtOn DateTime @map("BuiltOn") @db.Timestamptz(6)
+  doors   Int      @map("Doors")
+  DepotId Int?
+  depot   Depot?   @relation(fields: [DepotId], references: [id], onDelete: NoAction)
+
+  @@map("Cars")
+}
+
+model Truck {
+  id      String   @id @default(uuid()) @map("Id") @db.Uuid
+  serial  String   @unique @map("Serial") @db.Text
+  builtOn DateTime @map("BuiltOn") @db.Timestamptz(6)
+  payload Decimal  @map("Payload")
+  DepotId Int?
+  depot   Depot?   @relation(fields: [DepotId], references: [id], onDelete: NoAction)
+
+  @@map("Trucks")
+}
+
+model Pickup {
+  id      String   @id @default(uuid()) @map("Id") @db.Uuid
+  serial  String   @unique @map("Serial") @db.Text
+  builtOn DateTime @map("BuiltOn") @db.Timestamptz(6)
+  payload Decimal  @map("Payload")
+  cover   Boolean  @map("Cover")
+  DepotId Int?
+  depot   Depot?   @relation(fields: [DepotId], references: [id], onDelete: NoAction)
+
+  @@map("Pickups")
+}
+
+model Depot {
+  id         Int      @id @default(autoincrement()) @map("Id")
+  city       String   @map("City") @db.Text
+  car_set    Car[]
+  truck_set  Truck[]
+  pickup_set Pickup[]
+
+  @@map("Depots")
+}

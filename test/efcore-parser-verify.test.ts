@@ -58,6 +58,26 @@ const GROUPS: readonly VerifyGroup[] = [
     sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'inheritance')),
   },
   {
+    label: 'zoo (table per type, ToTable on the derived types, three levels)',
+    context: 'ZooContext',
+    sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'tpt')),
+  },
+  {
+    label: 'pets (table per type, data annotations)',
+    context: 'PetsContext',
+    sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'tpt-annotations')),
+  },
+  {
+    label: 'shapes (table per type, UseTptMappingStrategy)',
+    context: 'ShapesContext',
+    sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'tpt-strategy')),
+  },
+  {
+    label: 'garage (table per concrete type)',
+    context: 'GarageContext',
+    sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'tpc')),
+  },
+  {
     label: 'orders (owned collections, OwnsMany)',
     context: 'OrdersContext',
     sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'orders')),
