@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Output change** (EF Core migrations, table per type with a composite key): the composite foreign key from the key of a derived table to its base table was named after the first key column (`regionRef` for the key `(Region, Number)`); it is now named after the base table (`vehicle`), as the entity classes and a single `Id` key already did. Only migrations and model snapshots whose primary key is also a composite foreign key give a different relation name; every other conversion is unchanged.
+
+### Tests
+
+- A table-per-type fixture with a composite key (`Vehicle` keyed by `Region` and `Number`, `Truck` and `Van` deriving from it), read from entity classes and from migrations with the model snapshot, with the same Prisma output both ways. The migrations are written by hand in the shape EF Core 8 generates; the scenario is also listed for the real EF Core checks (`real-tools-dotnet`), which compare the replay with the relational model EF Core builds.
+
 ### Documentation
 
 - EF Core: the docs and the roadmap now say that enums cannot be read from migrations or the model snapshot (EF Core writes only the underlying column type, never the enum), so only entity classes give enums. No behaviour changes.

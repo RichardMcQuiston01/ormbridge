@@ -164,6 +164,7 @@ const SCENARIOS: readonly string[] = [
   'rename',
   'fleet',
   'tpt',
+  'tptcomposite',
   'tptpg',
   'tpc',
 ];

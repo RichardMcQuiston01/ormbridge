@@ -1,0 +1,2 @@
+Truck: table-per-type inheritance (Truck derives from Vehicle, each in its own table) is read as the table "Trucks" whose primary key also references Vehicle (a one-to-one relationship); the class hierarchy is not kept, and the columns of Vehicle are read only on Vehicle.
+Van: table-per-type inheritance (Van derives from Vehicle, each in its own table) is read as the table "Vans" whose primary key also references Vehicle (a one-to-one relationship); the class hierarchy is not kept, and the columns of Vehicle are read only on Vehicle.
