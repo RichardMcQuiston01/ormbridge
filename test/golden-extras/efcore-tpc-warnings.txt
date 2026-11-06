@@ -1,0 +1,5 @@
+Car: table-per-concrete-type inheritance (Car derives from Machine, and each concrete type has a table with all columns) is read as an independent table with the columns of its base classes; the tables are not linked and the class hierarchy is not kept.
+Truck: table-per-concrete-type inheritance (Truck derives from Machine, and each concrete type has a table with all columns) is read as an independent table with the columns of its base classes; the tables are not linked and the class hierarchy is not kept.
+Pickup: table-per-concrete-type inheritance (Pickup derives from Truck, and each concrete type has a table with all columns) is read as an independent table with the columns of its base classes; the tables are not linked and the class hierarchy is not kept.
+Machine: the abstract base type of a table-per-concrete-type hierarchy has no table, so it is not a model; its columns are on the tables of the types that derive from it.
+Depot.Machines: Machine is the abstract base type of a table-per-concrete-type hierarchy and has no table, so the navigation was skipped. (The tables of the types that derive from it hold their own foreign keys.)

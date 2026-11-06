@@ -261,13 +261,15 @@ export function buildSchema(
       );
       const location: string = `${info.name}.${link.dependentNav?.name ?? link.foreignKey.join('+')}`;
       const baseName: string =
-        link.dependentNav !== undefined
-          ? toCamelCase(link.dependentNav.name)
-          : toCamelCase(
-              link.isShadow || members[0] === undefined
-                ? principal.name
-                : stripKeySuffix(members[0].name)
-            );
+        link.sharedKey === true
+          ? toCamelCase(principal.name)
+          : link.dependentNav !== undefined
+            ? toCamelCase(link.dependentNav.name)
+            : toCamelCase(
+                link.isShadow || members[0] === undefined
+                  ? principal.name
+                  : stripKeySuffix(members[0].name)
+              );
       let relationName: string = baseName;
       while (
         takenNames.has(relationName) &&
@@ -375,7 +377,8 @@ export function buildSchema(
         ...(constraintName === undefined ? {} : { constraintName }),
       };
       orderedRelations.push({
-        order: memberOrder(link.dependentNav),
+        // The foreign key to the base table of a table-per-type table comes first, like its key.
+        order: link.sharedKey === true ? -1 : memberOrder(link.dependentNav),
         value: relation,
       });
       takenNames.add(relationName);

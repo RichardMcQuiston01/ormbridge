@@ -163,6 +163,9 @@ const SCENARIOS: readonly string[] = [
   'rekey',
   'rename',
   'fleet',
+  'tpt',
+  'tptpg',
+  'tpc',
 ];
 
 describe('migrations written by EF Core', () => {

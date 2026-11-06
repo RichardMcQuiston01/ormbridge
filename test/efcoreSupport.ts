@@ -307,6 +307,10 @@ export const EFCORE_EXTRAS: readonly string[] = [
   'shop',
   'library',
   'inheritance',
+  'tpt',
+  'tpt-annotations',
+  'tpt-strategy',
+  'tpc',
 ];
 
 /** Reads one of the `efcore-extras` fixtures into the IR. */

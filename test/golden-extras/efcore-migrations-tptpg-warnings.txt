@@ -1,0 +1,2 @@
+tptpg/Migrations/FleetContextModelSnapshot.cs: Car derives from Vehicle and has a table of its own (table per type); it was read as the table "Cars" whose primary key also references the table of Vehicle, and the class hierarchy is not kept.
+tptpg/Migrations/FleetContextModelSnapshot.cs: Truck derives from Vehicle and has a table of its own (table per type); it was read as the table "Trucks" whose primary key also references the table of Vehicle, and the class hierarchy is not kept.

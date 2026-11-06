@@ -30,6 +30,8 @@ export interface Link {
   required: boolean | undefined;
   onDelete: string | undefined;
   constraintName: string | undefined;
+  /** True for the foreign key that a table-per-type table has from its primary key to the table of its base type. */
+  sharedKey?: boolean;
 }
 
 /** A many-to-many relationship through skip navigations. */
@@ -169,12 +171,79 @@ function attributeKey(
   return undefined;
 }
 
+/**
+ * Table per type: the table of a derived type has the columns that type declares, and its primary key is also a
+ * foreign key (cascade delete) to the primary key of the table of its base type. Gives such an entity the key members
+ * of its base and returns that foreign key as a relationship.
+ */
+export function sharedKeyLinks(
+  infos: readonly EntityInfo[],
+  resolve: Resolver,
+  warn: (message: string) => void
+): Link[] {
+  const links: Link[] = [];
+  const visited: Set<EntityInfo> = new Set();
+  const link = (info: EntityInfo): void => {
+    if (info.tptBase === undefined || visited.has(info)) {
+      return;
+    }
+    visited.add(info);
+    const principal: EntityInfo | undefined = resolve(info.tptBase);
+    if (principal === undefined || principal === info) {
+      warn(
+        `${info.name}: the base type ${info.tptBase} is not an entity in the input; the table of ${info.name} was read without the foreign key to its base table.`
+      );
+      return;
+    }
+    // The key of the base may itself come from the type above it.
+    link(principal);
+    const keyNames: string[] = keyOf(principal);
+    const keyMembers: (ScalarMember | undefined)[] = keyNames.map(
+      (name: string) => findScalar(principal, name)
+    );
+    if (
+      keyNames.length === 0 ||
+      keyMembers.some((member) => member === undefined)
+    ) {
+      warn(
+        `${info.name}: the base type ${principal.name} has no primary key to share, so the table of ${info.name} was read without the foreign key to its base table.`
+      );
+      return;
+    }
+    const inherited: ScalarMember[] = keyMembers
+      .filter((member): member is ScalarMember => member !== undefined)
+      .filter(
+        (member: ScalarMember) => findScalar(info, member.name) === undefined
+      )
+      .map((member: ScalarMember): ScalarMember => ({ ...member }));
+    info.members.unshift(...inherited);
+    info.config = { ...info.config, key: keyNames };
+    links.push({
+      dependent: info,
+      principal,
+      foreignKey: keyNames,
+      isShadow: false,
+      principalKey: keyNames,
+      isOneToOne: true,
+      required: true,
+      onDelete: 'Cascade',
+      constraintName: undefined,
+      sharedKey: true,
+    });
+  };
+  for (const info of infos) {
+    link(info);
+  }
+  return links;
+}
+
 /** Reads the relationships of the entities from the fluent API, [ForeignKey], [InverseProperty] and conventions. */
 export function resolveRelationships(
   infos: readonly EntityInfo[],
   store: ConfigStore,
   resolve: Resolver,
-  warn: (message: string) => void
+  warn: (message: string) => void,
+  tableless: ReadonlySet<string> = new Set()
 ): Relationships {
   const links: Link[] = [];
   const manyToMany: ManyToManyLink[] = [];
@@ -266,8 +335,13 @@ export function resolveRelationships(
         continue;
       }
       if (owner === undefined || target === undefined) {
+        const missing: string | undefined = [rel.owner, targetName].find(
+          (name) => name !== undefined && tableless.has(name)
+        );
         warn(
-          `${place}: the relationship points to ${targetName ?? 'an unknown type'}, which is not an entity in the input; it was skipped.`
+          missing === undefined
+            ? `${place}: the relationship points to ${targetName ?? 'an unknown type'}, which is not an entity in the input; it was skipped.`
+            : `${place}: the relationship involves ${missing}, the abstract base type of a table-per-concrete-type hierarchy, which has no table; it was skipped. (The tables of the types that derive from it hold their own foreign keys.)`
         );
         continue;
       }
@@ -351,7 +425,9 @@ export function resolveRelationships(
       const target: EntityInfo | undefined = resolve(nav.target);
       if (target === undefined) {
         warn(
-          `${place}: ${nav.target} is not an entity in the input; the navigation was skipped.`
+          tableless.has(nav.target)
+            ? `${place}: ${nav.target} is the abstract base type of a table-per-concrete-type hierarchy and has no table, so the navigation was skipped. (The tables of the types that derive from it hold their own foreign keys.)`
+            : `${place}: ${nav.target} is not an entity in the input; the navigation was skipped.`
         );
         consumed.add(nav);
         continue;

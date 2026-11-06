@@ -22,7 +22,11 @@ import { buildEntities, classChain, expandEntities } from './efcoreEntities.js';
 import { ConfigStore } from './efcoreFluent.js';
 import type { EntityInfo, Project, Scope } from './efcoreModel.js';
 import { completeOwnedCollections } from './efcoreOwned.js';
-import { keyOf, resolveRelationships } from './efcoreRelations.js';
+import {
+  keyOf,
+  resolveRelationships,
+  sharedKeyLinks,
+} from './efcoreRelations.js';
 import { elementType, isKnownScalar, isValueType } from './efcoreTypes.js';
 
 export interface EfcoreSourceFile {
@@ -261,9 +265,17 @@ function readEfcore(
         `marked with an EF Core data annotation such as [Table], [Key], [Index] or [ForeignKey].`
     );
   }
-  const roots: EntityInfo[] = mergeHierarchies(entityInfos, (message: string) =>
-    warnings.push(message)
+  const roots: EntityInfo[] = mergeHierarchies(
+    entityInfos.filter((info: EntityInfo) => info.tableless !== true),
+    (message: string) => warnings.push(message)
   );
+  for (const info of entityInfos) {
+    if (info.tableless === true) {
+      warnings.push(
+        `${info.name}: the abstract base type of a table-per-concrete-type hierarchy has no table, so it is not a model; its columns are on the tables of the types that derive from it.`
+      );
+    }
+  }
   const byName: Map<string, EntityInfo> = new Map();
   for (const info of roots) {
     byName.set(info.name, info);
@@ -278,13 +290,24 @@ function readEfcore(
     store,
     (message: string) => warnings.push(message)
   );
+  // Table per type: the key of a derived type is the key of its base, which the base gives it before relationships look for keys.
+  const sharedKeys = sharedKeyLinks(
+    roots,
+    (name: string): EntityInfo | undefined => byName.get(name),
+    (message: string) => warnings.push(message)
+  );
   const relationships = resolveRelationships(
     roots,
     store,
     (name: string): EntityInfo | undefined => byName.get(name),
-    (message: string) => warnings.push(message)
+    (message: string) => warnings.push(message),
+    new Set(
+      entityInfos
+        .filter((info: EntityInfo) => info.tableless === true)
+        .map((info: EntityInfo) => info.name)
+    )
   );
-  relationships.links.push(...ownedLinks);
+  relationships.links.push(...sharedKeys, ...ownedLinks);
   // The join entity of UsingEntity<T> gets the two foreign keys as its composite key unless it names one.
   for (const info of roots) {
     if (info.config.joinEntity === true && keyOf(info).length === 0) {
