@@ -1,3 +1,7 @@
+Book.author: Sequelize's SQL Server dialect does not write ON UPDATE actions; ON UPDATE CASCADE is not created.
+Book.author: SQL Server rejects cascading actions that form a cycle or a second cascade path; NO ACTION was written, not CASCADE.
+Book.editor: Sequelize's SQL Server dialect drops the ON DELETE action of a second key to Author; NO ACTION was written, not SET NULL.
+Series.parent: Sequelize's SQL Server dialect drops the ON DELETE action of a key that points at its own table; NO ACTION was written, not SET NULL.
 Book.tags: SQL Server has no array column type; the array was written as TEXT.
 Book.grid: SQL Server has no array column type; the array was written as TEXT.
 Book.colors: Sequelize's ENUM for SQL Server drops NOT NULL and the default; the column was written as STRING and the values are only used for typing.

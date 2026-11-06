@@ -31,23 +31,23 @@ export function initModels(sequelize: Sequelize) {
   Book.belongsTo(Author, {
     as: 'author',
     foreignKey: 'author_id',
-    onDelete: 'CASCADE',
+    onDelete: 'NO ACTION',
   });
   Author.hasMany(Book, {
     as: 'books',
     foreignKey: 'author_id',
-    onDelete: 'CASCADE',
+    onDelete: 'NO ACTION',
   });
 
   Book.belongsTo(Author, {
     as: 'editor',
     foreignKey: 'editor_id',
-    onDelete: 'SET NULL',
+    onDelete: 'NO ACTION',
   });
   Author.hasMany(Book, {
     as: 'edited_books',
     foreignKey: 'editor_id',
-    onDelete: 'SET NULL',
+    onDelete: 'NO ACTION',
   });
 
   Book.belongsTo(Series, {
@@ -60,12 +60,12 @@ export function initModels(sequelize: Sequelize) {
   Series.belongsTo(Series, {
     as: 'parent',
     foreignKey: 'parent_id',
-    onDelete: 'SET NULL',
+    onDelete: 'NO ACTION',
   });
   Series.hasMany(Series, {
     as: 'children',
     foreignKey: 'parent_id',
-    onDelete: 'SET NULL',
+    onDelete: 'NO ACTION',
   });
 
   Audiobook.belongsTo(Book, {

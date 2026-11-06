@@ -544,6 +544,263 @@ describe('sequelize 7 emitter: what PostgreSQL and MySQL refuse', () => {
   });
 });
 
+describe('sequelize 7 emitter: what SQL Server refuses', () => {
+  const sqlServer = (schema: IrSchema): MultiFileEmitOutput =>
+    emit(schema, { provider: 'sqlserver' });
+
+  it('writes JSON as the dialect stores it, with a default that is not an object on a TEXT column', () => {
+    const schema: IrSchema = schemaOf([
+      model('Doc', {
+        tableName: 'doc',
+        fields: [
+          idField(),
+          field('meta', {
+            type: 'json',
+            default: { kind: 'literal', value: '{}' },
+          }),
+          field('tags', { arrayDepth: 1 }),
+        ],
+      }),
+    ]);
+    const output: MultiFileEmitOutput = sqlServer(schema);
+    const text: string = squash(fileText(output, 'doc.ts'));
+    expect(text).toContain('@Attribute(DataTypes.JSON) @NotNull @Default({})');
+    expect(text).toContain('@Attribute(DataTypes.JSON) @NotNull declare tags');
+    expect(output.warnings).toEqual([
+      'Doc.tags: SQL Server has no array column type; the array was written as JSON.',
+    ]);
+    // Sequelize 6 has no JSON type on SQL Server: the document stays text.
+    expect(
+      fileText(emit(schema, { provider: 'sqlserver', style: 'init' }), 'doc.ts')
+    ).toContain('DataTypes.TEXT');
+  });
+
+  it('gives a DECIMAL without a precision the SQL Server default, which the dialect needs', () => {
+    const schema: IrSchema = schemaOf([
+      model('Thing', {
+        fields: [idField(), field('price', { type: 'decimal' })],
+      }),
+    ]);
+    const output: MultiFileEmitOutput = sqlServer(schema);
+    expect(squash(fileText(output, 'thing.ts'))).toContain(
+      '@Attribute(DataTypes.DECIMAL(18, 0))'
+    );
+    expect(output.warnings).toEqual([
+      'Thing.price: the Sequelize 7 SQL Server dialect needs a precision for DECIMAL; DECIMAL(18, 0), the SQL Server default, was written.',
+    ]);
+  });
+
+  it('writes NO ACTION for RESTRICT, and drops the ON UPDATE action the dialect would not write', () => {
+    const schema: IrSchema = schemaOf([
+      model('Parent'),
+      model('Child', {
+        tableName: 'child',
+        relations: [
+          relation('parent', 'Parent', {
+            onDelete: 'restrict',
+            onUpdate: 'cascade',
+          }),
+        ],
+      }),
+    ]);
+    const output: MultiFileEmitOutput = sqlServer(schema);
+    expect(squash(fileText(output, 'child.ts'))).toContain(
+      "foreignKey: { name: 'parent_id', onDelete: 'NO ACTION' }"
+    );
+    expect(output.warnings).toEqual([
+      'Child.parent: SQL Server has no ON DELETE RESTRICT; NO ACTION, which behaves the same way there, was written.',
+      "Child.parent: Sequelize's SQL Server dialect does not write ON UPDATE actions; ON UPDATE CASCADE is not created.",
+    ]);
+  });
+
+  it('writes NO ACTION where the dialect drops the action: a key to its own table and a second key to one table', () => {
+    const schema: IrSchema = schemaOf([
+      model('Person', {
+        tableName: 'person',
+        relations: [
+          relation('boss', 'Person', {
+            onDelete: 'setNull',
+            isNullable: true,
+          }),
+        ],
+      }),
+      model('Note', {
+        tableName: 'note',
+        relations: [
+          relation('author', 'Person', { onDelete: 'cascade' }),
+          relation('reviewer', 'Person', {
+            onDelete: 'setNull',
+            isNullable: true,
+          }),
+        ],
+      }),
+    ]);
+    const output: MultiFileEmitOutput = sqlServer(schema);
+    expect(squash(fileText(output, 'person.ts'))).toContain(
+      "foreignKey: { name: 'boss_id', onDelete: 'NO ACTION' }"
+    );
+    const note: string = squash(fileText(output, 'note.ts'));
+    expect(note).toContain(
+      "foreignKey: { name: 'author_id', onDelete: 'CASCADE' }"
+    );
+    expect(note).toContain(
+      "foreignKey: { name: 'reviewer_id', onDelete: 'NO ACTION' }"
+    );
+    expect(output.warnings).toEqual([
+      "Person.boss: Sequelize's SQL Server dialect drops the ON DELETE action of a key that points at its own table; NO ACTION was written, not SET NULL.",
+      "Note.reviewer: Sequelize's SQL Server dialect drops the ON DELETE action of a second key to Person; NO ACTION was written, not SET NULL.",
+    ]);
+    // PostgreSQL keeps the actions.
+    expect(squash(fileText(emit(schema), 'note.ts'))).toContain(
+      "foreignKey: { name: 'reviewer_id', onDelete: 'SET NULL' }"
+    );
+  });
+
+  it('writes NO ACTION for a cascade that would make a cycle or a second cascade path', () => {
+    // Root -> Left -> Leaf and Root -> Right -> Leaf: SQL Server refuses the second path to Leaf.
+    const schema: IrSchema = schemaOf([
+      model('Root', { tableName: 'root' }),
+      model('Left', {
+        tableName: 'left_side',
+        relations: [relation('root', 'Root')],
+      }),
+      model('Right', {
+        tableName: 'right_side',
+        relations: [relation('root', 'Root')],
+      }),
+      model('Leaf', {
+        tableName: 'leaf',
+        relations: [relation('left', 'Left'), relation('right', 'Right')],
+      }),
+    ]);
+    const output: MultiFileEmitOutput = sqlServer(schema);
+    expect(squash(fileText(output, 'leaf.ts'))).toContain(
+      "foreignKey: { name: 'left_id', onDelete: 'CASCADE' }"
+    );
+    expect(squash(fileText(output, 'leaf.ts'))).toContain(
+      "foreignKey: { name: 'right_id', onDelete: 'NO ACTION' }"
+    );
+    expect(output.warnings).toEqual([
+      'Leaf.right: SQL Server rejects cascading actions that form a cycle or a second cascade path; NO ACTION was written, not CASCADE.',
+    ]);
+  });
+
+  it('does not change the schema it is given', () => {
+    const schema: IrSchema = schemaOf([
+      model('Parent'),
+      model('Child', {
+        tableName: 'child',
+        relations: [relation('parent', 'Parent', { onDelete: 'restrict' })],
+      }),
+    ]);
+    const before: IrSchema = structuredClone(schema);
+    emitSequelize(schema, {
+      provider: 'sqlserver',
+      naming: 'preserve',
+      style: 'v7',
+    });
+    expect(schema).toEqual(before);
+  });
+
+  it('leaves out the schema "public" and writes another schema', () => {
+    const output: MultiFileEmitOutput = sqlServer(
+      schemaOf([
+        model('A', { tableName: 'a', schema: 'public' }),
+        model('B', { tableName: 'b', schema: 'audit' }),
+      ])
+    );
+    expect(fileText(output, 'a.ts')).not.toContain('schema:');
+    expect(fileText(output, 'b.ts')).toContain("schema: 'audit'");
+    expect(output.warnings).toEqual([
+      'A: SQL Server has no schema "public" (its default schema is dbo); the schema was ignored.',
+    ]);
+  });
+
+  it('writes SQL Server functions for database default expressions', () => {
+    const output: MultiFileEmitOutput = sqlServer(
+      schemaOf([
+        model('Doc', {
+          tableName: 'doc',
+          fields: [
+            idField({
+              type: 'uuid',
+              default: {
+                kind: 'dbExpression',
+                expression: 'gen_random_uuid()',
+              },
+            }),
+            field('seen_at', {
+              type: 'dateTime',
+              default: { kind: 'dbExpression', expression: 'now()' },
+            }),
+            field('code', {
+              default: { kind: 'dbExpression', expression: "upper('x')" },
+            }),
+          ],
+        }),
+      ])
+    );
+    const text: string = squash(fileText(output, 'doc.ts'));
+    expect(text).toContain("@Default(sql.literal('NEWID()'))");
+    expect(text).toContain("@Default(sql.literal('SYSDATETIMEOFFSET()'))");
+    expect(text).toContain(`@Default(sql.literal("upper('x')"))`);
+    expect(output.warnings).toEqual([
+      "Doc.code: the database default expression upper('x') was written as it is; check that SQL Server accepts it.",
+    ]);
+  });
+
+  it('skips an index or unique constraint over a column SQL Server stores as MAX, and drops index options it lacks', () => {
+    const output: MultiFileEmitOutput = sqlServer(
+      schemaOf([
+        model('Doc', {
+          tableName: 'doc',
+          fields: [
+            idField(),
+            field('meta', { type: 'json' }),
+            field('body', { type: 'text', isUnique: true }),
+            field('title', { maxLength: 40 }),
+          ],
+          indexes: [
+            index(['meta']),
+            index(['title'], {
+              fieldOptions: { title: { length: 10, sort: 'desc' } },
+            }),
+          ],
+        }),
+      ])
+    );
+    const text: string = squash(fileText(output, 'doc.ts'));
+    expect(text).toContain("{ fields: [{ name: 'title', order: 'DESC' }] }");
+    expect(text).not.toContain("fields: ['meta']");
+    expect(text).not.toContain('@Unique');
+    expect(output.warnings).toEqual([
+      'Doc.body: SQL Server cannot index a column written as NVARCHAR(MAX); the unique constraint was dropped.',
+      'Doc index (meta): SQL Server cannot index the column "meta" (it is written as NVARCHAR(MAX)); the index was skipped.',
+      'Doc index (title): SQL Server indexes have no prefix length; the option of "title" was dropped.',
+    ]);
+  });
+
+  it('warns that a nullable unique column holds a single NULL', () => {
+    const output: MultiFileEmitOutput = sqlServer(
+      schemaOf([
+        model('User', {
+          tableName: 'user',
+          fields: [
+            idField(),
+            field('email', { maxLength: 80, isUnique: true, isNullable: true }),
+            field('nick', { maxLength: 30, isNullable: true }),
+          ],
+          indexes: [index(['nick'], { isUnique: true })],
+        }),
+      ])
+    );
+    expect(output.warnings).toEqual([
+      'User.email: a unique column on SQL Server allows only one NULL (other databases allow any number); use a filtered unique index to keep that.',
+      'User index (nick): a unique index on SQL Server treats NULLs as equal, so a nullable column allows one row with NULL (other databases allow any number); use a filtered unique index to keep that.',
+    ]);
+  });
+});
+
 describe('sequelize 7 emitter: relations', () => {
   const user = model('User', { tableName: 'users' });
 

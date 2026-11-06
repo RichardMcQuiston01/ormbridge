@@ -16,6 +16,7 @@ import { toCamelCase, toPascalCase, toSnakeCase } from '../naming.js';
 import { underscore } from '../parsers/sequelizeInflection.js';
 import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
 import { normalizeSchema, type NamingMode } from '../transforms.js';
+import { CascadeGraph } from './cascadePaths.js';
 import {
   COCKROACH_PREFIX,
   cockroachInvertible,
@@ -336,6 +337,9 @@ export function emitSequelize(
     return { files, warnings: context.warnings };
   }
 
+  if (context.dialect === 'mssql') {
+    context.schema = sqlServerActions(context);
+  }
   planModels(context);
   planInverseAliases(context);
 
@@ -484,6 +488,76 @@ function enumMember(enumeration: IrEnum, raw: string): IrEnumValue | undefined {
     enumeration.values.find((value: IrEnumValue) => value.name === raw) ??
     enumeration.values.find((value: IrEnumValue) => value.dbValue === raw)
   );
+}
+
+// ---------------------------------------------------------------------------
+// SQL Server: referential actions
+// ---------------------------------------------------------------------------
+
+/**
+ * The schema with the referential actions SQL Server will really have, and a warning for each one that changes.
+ * SQL Server has no RESTRICT (NO ACTION is its equivalent), refuses a cascading action that makes a cycle or a
+ * second cascade path, and Sequelize's SQL Server dialect drops the action of a key that points at its own table
+ * and of every key after the first to the same table, and every ON UPDATE action. The relations are copied; the
+ * schema of the caller is not changed.
+ */
+function sqlServerActions(context: EmitContext): IrSchema {
+  const graph: CascadeGraph = new CascadeGraph();
+  const cascades = (action: IrOnDelete | undefined): boolean =>
+    action === 'cascade' || action === 'setNull' || action === 'setDefault';
+  const models: IrModel[] = context.schema.models.map(
+    (model: IrModel): IrModel => ({
+      ...model,
+      relations: model.relations.map((relation: IrRelation): IrRelation => ({
+        ...relation,
+      })),
+    })
+  );
+  for (const model of models) {
+    const targets: Set<string> = new Set<string>();
+    for (const relation of model.relations) {
+      if (relation.kind === 'manyToMany') {
+        continue;
+      }
+      const label: string = `${model.name}.${relation.name}`;
+      if (relation.onDelete === 'restrict') {
+        context.warnings.push(
+          `${label}: SQL Server has no ON DELETE RESTRICT; NO ACTION, which behaves the same way there, was written.`
+        );
+        relation.onDelete = 'noAction';
+      }
+      if (relation.onUpdate !== undefined) {
+        if (
+          relation.onUpdate !== 'noAction' &&
+          relation.onUpdate !== 'restrict'
+        ) {
+          context.warnings.push(
+            `${label}: Sequelize's SQL Server dialect does not write ON UPDATE actions; ON UPDATE ${ON_ACTIONS[relation.onUpdate]} is not created.`
+          );
+        }
+        delete relation.onUpdate;
+      }
+      const repeated: boolean = targets.has(relation.targetModel);
+      targets.add(relation.targetModel);
+      if (!cascades(relation.onDelete)) {
+        continue;
+      }
+      if (relation.targetModel === model.name || repeated) {
+        context.warnings.push(
+          `${label}: Sequelize's SQL Server dialect drops the ON DELETE action of ${relation.targetModel === model.name ? 'a key that points at its own table' : `a second key to ${relation.targetModel}`}; NO ACTION was written, not ${ON_ACTIONS[relation.onDelete]}.`
+        );
+        relation.onDelete = 'noAction';
+      } else if (graph.conflicts(relation.targetModel, model.name)) {
+        context.warnings.push(
+          `${label}: SQL Server rejects cascading actions that form a cycle or a second cascade path; NO ACTION was written, not ${ON_ACTIONS[relation.onDelete]}.`
+        );
+        relation.onDelete = 'noAction';
+      } else {
+        graph.add(relation.targetModel, model.name);
+      }
+    }
+  }
+  return { ...context.schema, models };
 }
 
 // ---------------------------------------------------------------------------
@@ -768,12 +842,18 @@ function dialectName(dialect: Dialect): string {
   }
 }
 
-/** JSON where the dialect has it; Sequelize's SQL Server dialect has none, so text holds the document. */
+/**
+ * JSON where the dialect has it. Sequelize 7's SQL Server dialect stores JSON as NVARCHAR(MAX); Sequelize 6's has
+ * none, so text holds the document.
+ */
 function jsonTypeOf(context: EmitContext, label: string, what: string): string {
   switch (context.dialect) {
     case 'postgres':
       return 'DataTypes.JSONB';
     case 'mssql':
+      if (context.style === 'v7') {
+        return 'DataTypes.JSON';
+      }
       context.warnings.push(
         `${label}: SQL Server has no JSON column type before SQL Server 2025 (Sequelize would create a column of type JSON); the ${what} was written as TEXT.`
       );
@@ -859,14 +939,15 @@ function scalarTypeSpec(
       let scale: number | undefined = field.decimalPlaces;
       if (
         context.style === 'v7' &&
-        context.dialect === 'mysql' &&
+        (context.dialect === 'mysql' || context.dialect === 'mssql') &&
         precision === undefined
       ) {
-        // The Sequelize 7 MySQL dialect refuses a DECIMAL without precision and scale.
-        precision = 10;
+        // The Sequelize 7 MySQL and SQL Server dialects refuse a DECIMAL without precision and scale.
+        const mysql: boolean = context.dialect === 'mysql';
+        precision = mysql ? 10 : 18;
         scale = 0;
         context.warnings.push(
-          `${label}: the Sequelize 7 MySQL dialect needs a precision for DECIMAL; DECIMAL(10, 0), the MySQL default, was written.`
+          `${label}: the Sequelize 7 ${dialectName(context.dialect)} dialect needs a precision for DECIMAL; DECIMAL(${precision}, 0), the ${dialectName(context.dialect)} default, was written.`
         );
       }
       const args: string =
@@ -920,7 +1001,7 @@ function scalarTypeSpec(
         };
       }
       context.warnings.push(
-        `${label}: hstore exists only on PostgreSQL; the field was written as ${dialect === 'mssql' ? 'TEXT' : 'JSON'}.`
+        `${label}: hstore exists only on PostgreSQL; the field was written as ${dialect === 'mssql' && context.style !== 'v7' ? 'TEXT' : 'JSON'}.`
       );
       return {
         expression: jsonTypeOf({ ...context, warnings: [] }, label, 'field'),
@@ -1019,7 +1100,7 @@ function defaultOf(
     }
     case 'dbExpression':
       context.usesLiteral = true;
-      return `${context.style === 'v7' ? 'sql' : 'Sequelize'}.literal(${quote(defaultExpression(context, value.expression))})`;
+      return `${context.style === 'v7' ? 'sql' : 'Sequelize'}.literal(${quote(defaultExpression(context, label, field, value.expression))})`;
     case 'clientGenerated':
       context.warnings.push(
         `${label}: the ${value.generator}() default is generated by Prisma Client; Sequelize has no equivalent and the default was dropped.`
@@ -1079,8 +1160,60 @@ function literalDefault(
 const PLAIN_DEFAULT: RegExp =
   /^(current_(timestamp|date|time)(\(\d*\))?|localtimestamp|now\(\)|null|true|false|-?\d+(\.\d+)?|'(?:[^']|'')*')$/i;
 
+/** The functions that generate a UUID in PostgreSQL, MySQL and SQL Server, as written without spaces. */
+const UUID_FUNCTIONS: ReadonlySet<string> = new Set([
+  'gen_random_uuid()',
+  'uuid_generate_v4()',
+  'uuid()',
+  '(uuid())',
+  'newid()',
+  'newsequentialid()',
+]);
+
+/** The functions that return the current time, as written without spaces. */
+const NOW_FUNCTIONS: ReadonlySet<string> = new Set([
+  'now()',
+  'current_timestamp',
+  'current_timestamp()',
+  'getdate()',
+  'getutcdate()',
+  'sysdatetime()',
+  'sysutcdatetime()',
+  'sysdatetimeoffset()',
+]);
+
+/** SQL Server's own spelling of a default expression PostgreSQL or MySQL spells another way. */
+function sqlServerExpression(
+  context: EmitContext,
+  label: string,
+  field: IrField,
+  expression: string
+): string {
+  const compactText: string = expression.replace(/\s+/g, '').toLowerCase();
+  if (UUID_FUNCTIONS.has(compactText) && field.type === 'uuid') {
+    return 'NEWID()';
+  }
+  if (NOW_FUNCTIONS.has(compactText) && field.type === 'dateTime') {
+    return 'SYSDATETIMEOFFSET()';
+  }
+  if (!PLAIN_DEFAULT.test(expression.trim())) {
+    context.warnings.push(
+      `${label}: the database default expression ${expression} was written as it is; check that SQL Server accepts it.`
+    );
+  }
+  return expression;
+}
+
 /** SQLite and MySQL accept an expression as a default only in parentheses: `DEFAULT (uuid())`. */
-function defaultExpression(context: EmitContext, expression: string): string {
+function defaultExpression(
+  context: EmitContext,
+  label: string,
+  field: IrField,
+  expression: string
+): string {
+  if (context.dialect === 'mssql') {
+    return sqlServerExpression(context, label, field, expression).trim();
+  }
   const trimmed: string = expression.trim();
   const needsParentheses: boolean =
     (context.dialect === 'sqlite' || context.dialect === 'mysql') &&
@@ -1170,13 +1303,26 @@ function fieldAttribute(
     }
   }
   const defaultValue: string | undefined = defaultOf(context, label, field);
+  let unique: boolean = field.isUnique && !isKey;
+  if (unique && context.dialect === 'mssql') {
+    if (unbounded(field)) {
+      context.warnings.push(
+        `${label}: SQL Server cannot index a column written as ${field.type === 'bytes' ? 'VARBINARY(MAX)' : 'NVARCHAR(MAX)'}; the unique constraint was dropped.`
+      );
+      unique = false;
+    } else if (field.isNullable) {
+      context.warnings.push(
+        `${label}: a unique column on SQL Server allows only one NULL (other databases allow any number); use a filtered unique index to keep that.`
+      );
+    }
+  }
   const sqliteInteger: boolean =
     autoIncrement && context.dialect === 'sqlite' && field.type === 'bigInt';
   const entries: string[] = compact([
     isKey ? 'primaryKey: true' : undefined,
     autoIncrement ? 'autoIncrement: true' : undefined,
     !isKey && !field.isNullable ? 'allowNull: false' : undefined,
-    field.isUnique && !isKey
+    unique
       ? field.uniqueName === undefined
         ? 'unique: true'
         : `unique: ${quote(field.uniqueName)}`
@@ -1294,6 +1440,16 @@ function keyAttribute(
   const isKey: boolean =
     relation.isPrimaryKey === true ||
     (model.compositePrimaryKey?.includes(relation.name) ?? false);
+  if (
+    context.dialect === 'mssql' &&
+    relation.kind === 'oneToOne' &&
+    !isKey &&
+    relation.isNullable
+  ) {
+    context.warnings.push(
+      `${label}: a unique column on SQL Server allows only one NULL (other databases allow any number); use a filtered unique index to keep that.`
+    );
+  }
   const entries: string[] = compact([
     isKey ? 'primaryKey: true' : undefined,
     !isKey && !relation.isNullable ? 'allowNull: false' : undefined,
@@ -1361,6 +1517,20 @@ function indexField(
   return entries.length === 1 ? quote(column) : `{ ${entries.join(', ')} }`;
 }
 
+/**
+ * True for a field that SQL Server stores as NVARCHAR(MAX) or VARBINARY(MAX) (long text, JSON, arrays, binary
+ * data), which it cannot use in an index or a unique constraint.
+ */
+function unbounded(field: IrField): boolean {
+  return (
+    (field.arrayDepth ?? 0) > 0 ||
+    (field.enumName === undefined &&
+      ['text', 'json', 'bytes', 'hstore', 'range', 'unsupported'].includes(
+        field.type
+      ))
+  );
+}
+
 function indexEntries(
   context: EmitContext,
   model: IrModel,
@@ -1391,7 +1561,31 @@ function indexEntries(
       );
       return undefined;
     }
+    if (
+      context.dialect === 'mssql' &&
+      indexed !== undefined &&
+      unbounded(indexed)
+    ) {
+      context.warnings.push(
+        `${label}: SQL Server cannot index the column "${name}" (it is written as ${indexed.type === 'bytes' ? 'VARBINARY(MAX)' : 'NVARCHAR(MAX)'}); the index was skipped.`
+      );
+      return undefined;
+    }
     let options: IrIndexFieldOptions | undefined = index.fieldOptions?.[name];
+    if (
+      context.dialect === 'mssql' &&
+      (options?.length !== undefined || options?.ops !== undefined)
+    ) {
+      // The dialect writes a column's sort order only: a prefix length is a MySQL feature, an operator class one of
+      // PostgreSQL.
+      context.warnings.push(
+        `${label}: SQL Server indexes have no ${options?.length === undefined ? 'operator classes' : 'prefix length'}; the option of "${name}" was dropped.`
+      );
+      const { length: _length, ops: _ops, ...rest } = options ?? {};
+      void _length;
+      void _ops;
+      options = Object.keys(rest).length === 0 ? undefined : rest;
+    }
     if (context.cockroach && options?.ops !== undefined) {
       context.warnings.push(
         `${label}: CockroachDB supports only trigram operator classes on inverted indexes; the operator class of "${name}" was dropped.`
@@ -1415,6 +1609,27 @@ function indexEntries(
     fields.push(indexField(column, options));
   }
   const dialect: Dialect = context.dialect;
+  if (dialect === 'mssql' && index.isUnique) {
+    const nullable: boolean = index.fields.some(
+      (name: string) =>
+        model.fields.some(
+          (candidate: IrField) =>
+            (candidate.name === name || candidate.columnName === name) &&
+            candidate.isNullable
+        ) ||
+        model.relations.some(
+          (candidate: IrRelation) =>
+            candidate.kind !== 'manyToMany' &&
+            (candidate.name === name || candidate.columnName === name) &&
+            candidate.isNullable
+        )
+    );
+    if (nullable) {
+      context.warnings.push(
+        `${label}: a unique index on SQL Server treats NULLs as equal, so a nullable column allows one row with NULL (other databases allow any number); use a filtered unique index to keep that.`
+      );
+    }
+  }
   let using: string | undefined;
   if (index.method !== undefined) {
     const method: string | undefined =
@@ -1573,6 +1788,11 @@ function renderModel(
       // A MySQL schema is another database, which Sequelize would name in every query ("schema"."table").
       context.warnings.push(
         `${model.name}: MySQL has no schemas inside a database (a schema is another database); the schema "${model.schema}" was ignored.`
+      );
+    } else if (context.dialect === 'mssql' && model.schema === 'public') {
+      // PostgreSQL's default schema; SQL Server has no schema of that name (its default is dbo) and sync() does not create one.
+      context.warnings.push(
+        `${model.name}: SQL Server has no schema "public" (its default schema is dbo); the schema was ignored.`
       );
     } else {
       options.push(`schema: ${quote(model.schema)}`);
