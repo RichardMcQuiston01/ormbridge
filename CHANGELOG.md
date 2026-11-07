@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.20.0 - 2026-11-07
+
+This release reads Zod Mini and adds optimistic locking and joined inheritance to the JPA format. **Output changes:** `--from jpa` marks a `@Version` attribute as the optimistic-locking counter (its warning is gone) and `--to jpa` writes `@Version` back; `--from zod` on a file that uses `zod/mini` or `.check(...)` gives different models and warnings; `--to jpa --jpa-inheritance joined` is new and off by default. Everything else is unchanged.
+
 `--from zod` reads Zod Mini (`zod/mini`): the wrappers written as functions (`z._default(x, value)` was kept as a json column and is now the default of `x`), the rules in `.check(...)` (a `z.maxLength(n)` was ignored and is now the maximum length of the string, as `.max(n)` is) and the objects derived with functions (`z.extend`, `z.pick`, `z.omit`, `z.partial` and `z.required` of a schema in the input were skipped and are now models of their own, as the methods are). **Output change:** `--from zod` on a file that uses `zod/mini`, or `.check(...)`, gives different models and warnings (below); every file written with the full library's methods is read as before.
 
 ### Added
