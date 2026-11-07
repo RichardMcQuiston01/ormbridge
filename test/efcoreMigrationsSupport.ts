@@ -82,7 +82,7 @@ export type MigrationToolOutput = Record<string, MigrationScenarioOutput>;
 
 export interface Scenario {
   name: string;
-  provider: 'sqlite' | 'npgsql';
+  provider: 'sqlite' | 'npgsql' | 'sqlserver';
   contexts: string[];
   names?: string[];
 }

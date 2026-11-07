@@ -226,7 +226,7 @@ if want neomodel; then
 fi
 
 if want dotnet; then
-  echo "Preparing the .NET SDK and the EF Core 8 packages (SQLite and Npgsql providers) in ${target}/efcore" >&2
+  echo "Preparing the .NET SDK and the EF Core 8 packages (SQLite, Npgsql and SQL Server providers) in ${target}/efcore" >&2
   dotnet_bin="${DOTNET:-$(command -v dotnet || true)}"
   if [ -z "${dotnet_bin}" ]; then
     # No SDK installed: try Microsoft's installer (needs network access to dot.net and the download hosts).

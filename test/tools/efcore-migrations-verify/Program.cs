@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 // Usage: dotnet run -- <manifest.json>
 //
-// The manifest is a list of scenarios: { "name": "blog", "provider": "sqlite" | "npgsql", "contexts": ["Blog.V1.Context", ...] }.
+// The manifest is a list of scenarios: { "name": "blog", "provider": "sqlite" | "npgsql" | "sqlserver", "contexts": ["Blog.V1.Context", ...] }.
 // Each context is one version of a model (a DbContext in its own namespace). For every version the tool does what
 // `dotnet ef migrations add` does: it asks EF Core's model differ for the operations that lead from the previous
 // version to this one and has the C# migration generator write the migration class, its Designer file and the
@@ -56,6 +56,10 @@ static List<Dictionary<string, object>> Run(Scenario scenario)
         {
             builder.UseNpgsql("Host=localhost;Database=none");
         }
+        else if (scenario.Provider == "sqlserver")
+        {
+            builder.UseSqlServer("Server=localhost;Database=none");
+        }
         else
         {
             builder.UseSqlite("Data Source=:memory:");
@@ -67,6 +71,10 @@ static List<Dictionary<string, object>> Run(Scenario scenario)
         if (scenario.Provider == "npgsql")
         {
             new Npgsql.EntityFrameworkCore.PostgreSQL.Design.Internal.NpgsqlDesignTimeServices().ConfigureDesignTimeServices(services);
+        }
+        else if (scenario.Provider == "sqlserver")
+        {
+            new Microsoft.EntityFrameworkCore.SqlServer.Design.Internal.SqlServerDesignTimeServices().ConfigureDesignTimeServices(services);
         }
         else
         {
