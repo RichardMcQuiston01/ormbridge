@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.19.0 - 2026-11-07
+
+`--from efcore` on migrations and model snapshots now names the composite foreign key of a table-per-type table after its base table, as it already did for entity classes and single-column keys. The docs and the roadmap also say that enums cannot be read from migrations (EF Core writes only the column type). **Output change:** `--from efcore` on migrations or snapshots whose primary key is also a composite foreign key gives a different relation name (below); every other conversion is unchanged.
+
 ### Fixed
 
 - **Output change** (EF Core migrations, table per type with a composite key): the composite foreign key from the key of a derived table to its base table was named after the first key column (`regionRef` for the key `(Region, Number)`); it is now named after the base table (`vehicle`), as the entity classes and a single `Id` key already did. Only migrations and model snapshots whose primary key is also a composite foreign key give a different relation name; every other conversion is unchanged.
