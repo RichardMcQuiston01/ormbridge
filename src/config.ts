@@ -3,8 +3,11 @@ import { dirname, join, resolve } from 'node:path';
 import { PRISMA_PROVIDERS } from './emitters/prisma.js';
 import { describeThrown, err, ok, type Result } from './result.js';
 import {
+  isJpaInheritanceMode,
   isJpaKeyMode,
+  JPA_INHERITANCE_MODES,
   JPA_KEY_MODES,
+  type JpaInheritanceMode,
   type JpaKeyMode,
 } from './emitters/jpa.js';
 import { isOutputStyle, OUTPUT_STYLES, type OutputStyle } from './styles.js';
@@ -44,6 +47,8 @@ export interface ConversionConfig {
   style?: OutputStyle;
   /** How the JPA output writes a composite primary key: `idclass` (default) or `embedded` (`@EmbeddedId`). */
   jpaKey?: JpaKeyMode;
+  /** How the JPA output writes a model whose primary key is its relation to another model: `none` (default) or `joined` (a subclass). */
+  jpaInheritance?: JpaInheritanceMode;
   /** Write Lombok annotations instead of hand-written accessors in the JPA output (default false). */
   lombok?: boolean;
   /** Write the `x-` convention keywords into JSON Schema output (default true). */
@@ -76,6 +81,7 @@ const CONVERSION_KEYS: readonly string[] = [
   'prismaVersion',
   'style',
   'jpaKey',
+  'jpaInheritance',
   'lombok',
   'conventions',
 ];
@@ -349,6 +355,20 @@ function parseConversion(
       );
     }
     config.jpaKey = jpaKey;
+  }
+
+  const jpaInheritance: unknown = raw['jpaInheritance'];
+  if (jpaInheritance !== undefined) {
+    if (
+      typeof jpaInheritance !== 'string' ||
+      !isJpaInheritanceMode(jpaInheritance)
+    ) {
+      return fail(
+        'jpaInheritance',
+        `must be one of ${JPA_INHERITANCE_MODES.join(', ')} (got ${describeValue(jpaInheritance)}).`
+      );
+    }
+    config.jpaInheritance = jpaInheritance;
   }
 
   const lombok: unknown = raw['lombok'];

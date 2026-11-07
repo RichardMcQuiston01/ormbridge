@@ -505,21 +505,55 @@ final class Exercise {
     String schema = binding.getTable().getSchema();
     String table = binding.getTable().getName();
     String qualified = (schema == null ? "" : "\"" + schema + "\".") + "\"" + table + "\"";
-    try (Statement statement = connection.createStatement();
-        ResultSet rows = statement.executeQuery("SELECT * FROM " + qualified)) {
-      ResultSetMetaData meta = rows.getMetaData();
-      if (!rows.next()) {
-        return null;
+    try {
+      Map<String, Object> own = readOwnRow(type, binding, qualified);
+      if (own != null) {
+        return own;
       }
-      Map<String, Object> row = new LinkedHashMap<>();
-      for (int index = 1; index <= meta.getColumnCount(); index++) {
-        row.put(meta.getColumnName(index), plain(rows.getObject(index)));
+      try (Statement statement = connection.createStatement();
+          ResultSet rows = statement.executeQuery("SELECT * FROM " + qualified)) {
+        return rows.next() ? row(rows) : null;
       }
-      return row;
     } catch (Exception e) {
       errors.add(table + ": reading the row failed: " + e);
       return null;
     }
+  }
+
+  /**
+   * The row of the saved instance itself, found by its single-column identifier. A table can hold several rows (the root
+   * of a joined hierarchy has one for every subclass instance that was saved); null when the key is not a plain value.
+   */
+  private Map<String, Object> readOwnRow(Class<?> type, PersistentClass binding, String qualified) {
+    Object instance = saved.get(type);
+    if (instance == null
+        || binding.getTable().getPrimaryKey() == null
+        || binding.getTable().getPrimaryKey().getColumns().size() != 1) {
+      return null;
+    }
+    Object id = factory.getPersistenceUnitUtil().getIdentifier(instance);
+    if (!(id instanceof String || id instanceof Number || id instanceof UUID)) {
+      return null;
+    }
+    String column = binding.getTable().getPrimaryKey().getColumns().get(0).getName();
+    try (java.sql.PreparedStatement statement =
+        connection.prepareStatement("SELECT * FROM " + qualified + " WHERE \"" + column + "\" = ?")) {
+      statement.setObject(1, id);
+      try (ResultSet rows = statement.executeQuery()) {
+        return rows.next() ? row(rows) : null;
+      }
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private Map<String, Object> row(ResultSet rows) throws Exception {
+    ResultSetMetaData meta = rows.getMetaData();
+    Map<String, Object> row = new LinkedHashMap<>();
+    for (int index = 1; index <= meta.getColumnCount(); index++) {
+      row.put(meta.getColumnName(index), plain(rows.getObject(index)));
+    }
+    return row;
   }
 
   // -------------------------------------------------------------------------------------------

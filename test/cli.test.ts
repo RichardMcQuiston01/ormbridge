@@ -1496,6 +1496,90 @@ model Line {
     expect(await readFile(line, 'utf8')).toContain('@IdClass(LineId.class)');
   });
 
+  it('writes a one-to-one primary key as a subclass with --jpa-inheritance joined, from a flag or the config key', async () => {
+    const schemaPath: string = join(workDirectory, 'schema.prisma');
+    await writeFile(
+      schemaPath,
+      `model Animal {
+  id   Int    @id
+  name String
+  cat  Cat?
+}
+
+model Cat {
+  animal   Animal @relation(fields: [animalId], references: [id])
+  animalId Int     @id
+  lives    Int
+}
+`
+    );
+    const flagged: string = join(workDirectory, 'jpa-joined-flag');
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      schemaPath,
+      '--to',
+      'jpa',
+      '--jpa-inheritance',
+      'joined',
+      '-o',
+      flagged,
+    ]);
+    expect(run.code).toBe(EXIT_OK);
+    const cat: string = await readFile(
+      join(flagged, 'app', 'models', 'Cat.java'),
+      'utf8'
+    );
+    expect(cat).toContain('public class Cat extends Animal {');
+    expect(cat).toContain('@PrimaryKeyJoinColumn(name = "animalId"');
+    expect(
+      await readFile(join(flagged, 'app', 'models', 'Animal.java'), 'utf8')
+    ).toContain('@Inheritance(strategy = InheritanceType.JOINED)');
+    // The default keeps the derived identity.
+    const plain: string = join(workDirectory, 'jpa-joined-default');
+    expect(
+      (await cli(['convert', '-i', schemaPath, '--to', 'jpa', '-o', plain]))
+        .code
+    ).toBe(EXIT_OK);
+    expect(
+      await readFile(join(plain, 'app', 'models', 'Cat.java'), 'utf8')
+    ).not.toContain('extends');
+    // The config key does the same, and the flag overrides it.
+    const configured: string = join(workDirectory, 'jpa-joined-config');
+    await writeConfig({
+      input: schemaPath,
+      to: 'jpa',
+      output: configured,
+      jpaInheritance: 'joined',
+    });
+    expect((await cli(['convert'])).code).toBe(EXIT_OK);
+    const file = join(configured, 'app', 'models', 'Cat.java');
+    expect(await readFile(file, 'utf8')).toContain('extends Animal');
+    expect((await cli(['convert', '--jpa-inheritance', 'none'])).code).toBe(
+      EXIT_OK
+    );
+    expect(await readFile(file, 'utf8')).not.toContain('extends');
+  });
+
+  it('rejects an unknown --jpa-inheritance value and lists the option in the help', async () => {
+    const run: CliRun = await cli([
+      'convert',
+      '-i',
+      BLOG_FIXTURE_PATH,
+      '--to',
+      'jpa',
+      '--jpa-inheritance',
+      'single',
+    ]);
+    expect(run.code).toBe(EXIT_USAGE_ERROR);
+    expect(run.stderr).toContain(
+      'Invalid --jpa-inheritance value "single". Expected one of: none, joined.'
+    );
+    expect((await cli(['convert', '--help'])).stdout).toContain(
+      '--jpa-inheritance <mode>'
+    );
+  });
+
   it('rejects an unknown --jpa-key value and lists the options in the help', async () => {
     const run: CliRun = await cli([
       'convert',

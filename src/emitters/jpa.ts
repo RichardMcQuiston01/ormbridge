@@ -9,6 +9,15 @@ import {
 } from './jpaColumns.js';
 import { planEnums, renderConverterBody, renderEnumBody } from './jpaEnums.js';
 import { annotation, type AnnotationNode } from './jpaFormat.js';
+import {
+  isJpaInheritanceMode,
+  JPA_INHERITANCE_MODES,
+  NO_JOINED,
+  planJoined,
+  type JoinedChild,
+  type JoinedPlan,
+  type JpaInheritanceMode,
+} from './jpaInheritance.js';
 import { keyOf, type KeyInfo, type KeyPart } from './jpaKeys.js';
 import { renderKeyClass } from './jpaKeyClass.js';
 import {
@@ -57,6 +66,7 @@ import type { PrismaProvider } from './prisma.js';
 
 export { DEFAULT_JPA_PACKAGE, isValidJavaPackage } from './jpaNames.js';
 export type { JpaKeyMode, JpaStyle } from './jpaTypes.js';
+export { isJpaInheritanceMode, JPA_INHERITANCE_MODES, type JpaInheritanceMode };
 
 export const JPA_STYLES: readonly JpaStyle[] = ['jakarta', 'javax'];
 
@@ -89,6 +99,12 @@ export interface JpaEmitOptions {
    * A single-column key is always an `@Id`.
    */
   keyMode?: JpaKeyMode;
+  /**
+   * How a model whose primary key is its one-to-one relation to another model is written: `none` (default; a
+   * derived identity, `@Id @OneToOne`) or `joined` (a subclass of the other model, `@Inheritance(strategy = JOINED)`
+   * on the root and `@PrimaryKeyJoinColumn` on the subclass). The tables are the same either way.
+   */
+  inheritance?: JpaInheritanceMode;
   /**
    * Write Lombok annotations (`@Getter`, `@Setter`, `@NoArgsConstructor`; `@EqualsAndHashCode` on key classes)
    * in place of hand-written accessors (default false).
@@ -215,6 +231,13 @@ function planAndRender(
   for (const model of schema.models) {
     keys.set(model.name, keyOf(model, warn));
   }
+  const joined: JoinedPlan =
+    options.inheritance === 'joined'
+      ? planJoined(schema.models, keys, warn)
+      : NO_JOINED;
+  // With joined inheritance a superclass is planned before its subclasses, which must not reuse its attribute names.
+  const ordered: readonly IrModel[] =
+    joined.children.size > 0 ? joined.order : schema.models;
 
   // Columns ------------------------------------------------------------------------------------
   const context: ColumnContext = {
@@ -225,12 +248,18 @@ function planAndRender(
     ...(isCockroach(options.provider) ? { sequentialKeys } : {}),
   };
   const built: Map<IrField, BuiltColumn> = new Map<IrField, BuiltColumn>();
-  for (const model of schema.models) {
+  for (const model of ordered) {
     const plan: ModelPlan = planFor(plans, model);
     const info: KeyInfo = keys.get(model.name) ?? {
       parts: [],
       synthesized: false,
     };
+    const superclass: JoinedChild | undefined = joined.children.get(model.name);
+    if (superclass !== undefined) {
+      for (const name of planFor(plans, superclass.parent).used) {
+        plan.used.add(name);
+      }
+    }
     for (const field of model.fields) {
       const wanted: string = attributeNameOf(field.name);
       const name: string = uniqueName(wanted, plan.used);
@@ -303,10 +332,11 @@ function planAndRender(
     keys,
     keyTypes,
     inverses: [] as InverseLink[],
+    joined: joined.children,
     warn,
   };
   const keyRelations: Map<string, Map<IrRelation, KeyRelation>> = new Map();
-  for (const model of schema.models) {
+  for (const model of ordered) {
     keyRelations.set(
       model.name,
       addOwningRelations(relationContext, planFor(plans, model))
@@ -326,6 +356,33 @@ function planAndRender(
       annotation(imports.persistence('Entity')),
       tableAnnotation({ model, imports, warn })
     );
+    const subclass: JoinedChild | undefined = joined.children.get(model.name);
+    if (joined.roots.has(model.name)) {
+      plan.classAnnotations.push(
+        annotation(imports.persistence('Inheritance'), [
+          ['strategy', `${imports.persistence('InheritanceType')}.JOINED`],
+        ])
+      );
+    }
+    if (subclass !== undefined) {
+      plan.classAnnotations.push(
+        annotation(imports.persistence('PrimaryKeyJoinColumn'), [
+          ['name', javaString(subclass.column)],
+          ['referencedColumnName', javaString(subclass.parentColumn)],
+        ])
+      );
+      if (subclass.relation.onDelete === 'cascade') {
+        plan.classAnnotations.push(
+          annotation(imports.hibernate('OnDelete'), [
+            ['action', `${imports.hibernate('OnDeleteAction')}.CASCADE`],
+          ])
+        );
+      } else if (subclass.relation.onDelete !== 'noAction') {
+        warn(
+          `${model.name}: a subclass table can only be written with ON DELETE CASCADE (@OnDelete); the ${subclass.relation.onDelete} action of its key was dropped and the database default (no action) applies.`
+        );
+      }
+    }
     if (info.parts.length > 1) {
       const embedded: boolean = keyMode === 'embedded';
       const parts: IdPart[] = [];
@@ -419,7 +476,11 @@ function planAndRender(
         rendered.lines
       );
     }
-    if (info.parts.length === 1 && info.parts[0]?.kind === 'relation') {
+    if (
+      info.parts.length === 1 &&
+      info.parts[0]?.kind === 'relation' &&
+      subclass === undefined
+    ) {
       plan.serializable = true;
       // The entity is Serializable only because Hibernate 5 asks for it; its relationship attributes are not.
       plan.classAnnotations.push(
