@@ -203,3 +203,42 @@ namespace Tpc.V2
         }
     }
 }
+
+// Table per type with a composite key (SQLite): the key of each derived table is the two columns of the key of the
+// base table, and it is also the composite foreign key to it.
+
+namespace TptComposite.V1
+{
+    public abstract class Vehicle
+    {
+        public string Region { get; set; } = "";
+        public int Number { get; set; }
+        public string Plate { get; set; } = "";
+    }
+
+    public class Truck : Vehicle
+    {
+        public decimal Payload { get; set; }
+    }
+
+    public class Van : Vehicle
+    {
+        public int Seats { get; set; }
+    }
+
+    public class DepotContext : DbContext
+    {
+        public DepotContext(DbContextOptions options) : base(options) { }
+        public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+        public DbSet<Truck> Trucks => Set<Truck>();
+        public DbSet<Van> Vans => Set<Van>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Vehicle>().HasKey(v => new { v.Region, v.Number });
+            modelBuilder.Entity<Vehicle>().ToTable("Vehicles");
+            modelBuilder.Entity<Truck>().ToTable("Trucks");
+            modelBuilder.Entity<Van>().ToTable("Vans");
+        }
+    }
+}

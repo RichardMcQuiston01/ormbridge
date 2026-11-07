@@ -521,14 +521,17 @@ export function buildMigrationSchema(
       }
       const targetName: string = modelNames.get(principal) ?? principal.name;
       // The primary key of a table per type is also the foreign key to its base table: a column called just "Id" says
-      // nothing about the relationship, so the relation is named after the table it points to.
+      // nothing about the relationship, and neither does the first column of a composite key (`Region` of
+      // `(Region, Number)`), so the relation is named after the table it points to.
       const sharesKey: boolean =
         key.length === foreignKey.columns.length &&
         key.every((name: string) => foreignKey.columns.includes(name));
       const label: string = stripKeySuffix(columnLabel(first));
+      const namedAfterTarget: boolean =
+        sharesKey &&
+        (foreignKey.columns.length > 1 || /^(?:Id|ID|id|_id)$/.test(label));
       const baseName: string = toCamelCase(
-        foreignKey.navigation ??
-          (sharesKey && /^(?:Id|ID|id|_id)$/.test(label) ? targetName : label)
+        foreignKey.navigation ?? (namedAfterTarget ? targetName : label)
       );
       let relationName: string = baseName === '' ? 'ref' : baseName;
       const ownField: string | undefined = names.get(first.name);

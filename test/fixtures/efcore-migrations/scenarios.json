@@ -60,6 +60,12 @@
     "names": ["Initial", "Kittens"]
   },
   {
+    "name": "tptcomposite",
+    "provider": "sqlite",
+    "contexts": ["TptComposite.V1.DepotContext"],
+    "names": ["Initial"]
+  },
+  {
     "name": "tptpg",
     "provider": "npgsql",
     "contexts": ["TptPg.V1.FleetContext"],
