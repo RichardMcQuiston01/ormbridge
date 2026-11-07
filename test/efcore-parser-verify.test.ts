@@ -73,6 +73,11 @@ const GROUPS: readonly VerifyGroup[] = [
     sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'tpt-strategy')),
   },
   {
+    label: 'depot (table per type, composite key)',
+    context: 'DepotContext',
+    sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'tpt-composite')),
+  },
+  {
     label: 'garage (table per concrete type)',
     context: 'GarageContext',
     sources: csharpFiles(join(FIXTURES, 'efcore-extras', 'tpc')),

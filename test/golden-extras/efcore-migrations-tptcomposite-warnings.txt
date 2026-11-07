@@ -1,0 +1,2 @@
+tptcomposite/Migrations/DepotContextModelSnapshot.cs: Truck derives from Vehicle and has a table of its own (table per type); it was read as the table "Trucks" whose primary key also references the table of Vehicle, and the class hierarchy is not kept.
+tptcomposite/Migrations/DepotContextModelSnapshot.cs: Van derives from Vehicle and has a table of its own (table per type); it was read as the table "Vans" whose primary key also references the table of Vehicle, and the class hierarchy is not kept.

@@ -2472,6 +2472,7 @@ describe('extras fixture', () => {
     'tpt',
     'tpt-annotations',
     'tpt-strategy',
+    'tpt-composite',
     'tpc',
   ];
 
@@ -2508,6 +2509,42 @@ describe('extras fixture', () => {
       'Tier',
       'OrderState',
     ]);
+  });
+
+  it('reads a table per type with a composite key: the two key columns are also a composite foreign key to the base table', async () => {
+    const schema: IrSchema = expectOk(
+      await parseEfcore(
+        csharpFiles(join(root, 'tpt-composite')).map((path: string) => ({
+          path,
+          text: readFileSync(path, 'utf8'),
+        })),
+        { appLabel: 'tpt-composite' }
+      )
+    );
+    expect(model(schema, 'Vehicle').compositePrimaryKey).toEqual([
+      'region',
+      'number',
+    ]);
+    for (const name of ['Truck', 'Van']) {
+      const derived: IrModel = model(schema, name);
+      expect(derived.compositePrimaryKey).toEqual(['region', 'number']);
+      expect(derived.fields.map((item: IrField) => item.name)).toEqual([
+        'region',
+        'number',
+        name === 'Truck' ? 'payload' : 'seats',
+      ]);
+      expect(derived.compositeForeignKeys).toEqual([
+        {
+          name: 'vehicle',
+          targetModel: 'Vehicle',
+          fields: ['region', 'number'],
+          references: ['region', 'number'],
+          kind: 'oneToOne',
+          isNullable: false,
+          onDelete: 'cascade',
+        },
+      ]);
+    }
   });
 
   it.each(['shop', 'inheritance', 'library', 'orders', ...INHERITANCE_GROUPS])(
