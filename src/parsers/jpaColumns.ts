@@ -422,11 +422,7 @@ export function buildField(
   }
   const computed: Ann | undefined = notes.get('GeneratedColumn', true);
   const expression: string | undefined = computed?.string('value');
-  if (notes.has('Version')) {
-    ctx.warn(
-      `${place}: the @Version attribute is Hibernate's optimistic-locking counter; it was read as an ordinary column.`
-    );
-  }
+  const isVersion: boolean = notes.has('Version');
   if (
     notes.has('Convert') &&
     converter === undefined &&
@@ -445,6 +441,7 @@ export function buildField(
     isUnique: unique && !(isKey && singleKey),
     isNullable,
     isAutoUpdated,
+    ...(isVersion ? { isVersion: true } : {}),
     ...(defaultValue === undefined ? {} : { default: defaultValue }),
     ...(irType === 'string' && maxLength !== undefined ? { maxLength } : {}),
     ...(irType === 'decimal' && maxDigits !== undefined ? { maxDigits } : {}),

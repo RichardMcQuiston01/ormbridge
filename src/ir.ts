@@ -71,6 +71,11 @@ export interface IrField {
   decimalPlaces?: number;
   /** True when the value is refreshed on every save (Django auto_now, Prisma @updatedAt). */
   isAutoUpdated: boolean;
+  /**
+   * True when the column is an optimistic-locking counter that the ORM increments on every update and checks on
+   * write (JPA `@Version`). Formats without the concept store it as an ordinary column.
+   */
+  isVersion?: boolean;
   /** Name of an IrEnum when the field is enum-backed. */
   enumName?: string;
   /**

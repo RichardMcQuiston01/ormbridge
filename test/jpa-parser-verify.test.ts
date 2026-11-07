@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import type { IrSchema } from '../src/ir.js';
+import type { IrField, IrModel, IrSchema } from '../src/ir.js';
 import {
   isToolError,
   JPA_EXTRAS,
@@ -74,6 +74,18 @@ describe(titleWithReason('jpa parser: real Hibernate ORM', probe), () => {
           compositeForeignKeys: true,
         })
       ).toEqual([]);
+      // The optimistic-locking column the reader marked must be the one Hibernate versions.
+      const read: Record<string, string> = Object.fromEntries(
+        ir.models.flatMap((model: IrModel): [string, string][] =>
+          model.fields
+            .filter((field: IrField) => field.isVersion === true)
+            .map((field: IrField): [string, string] => [
+              model.tableName,
+              field.columnName,
+            ])
+        )
+      );
+      expect(read).toEqual((database as JpaDatabase).versioned ?? {});
     }
   );
 });

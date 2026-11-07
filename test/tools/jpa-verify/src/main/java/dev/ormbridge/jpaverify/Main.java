@@ -192,6 +192,7 @@ public final class Main {
       try (SessionFactory factory = metadata.buildSessionFactory();
           Connection connection = DriverManager.getConnection(url)) {
         Map<String, Object> schema = introspect(connection);
+        schema.put("versioned", Versions.of(metadata));
         if (exercise) {
           schema.put("exercise", new Exercise(factory, metadata, connection).run(entities));
         }

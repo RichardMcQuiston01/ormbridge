@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -189,6 +190,7 @@ public class Sample {
   @ColumnDefault("'x'")
   private String legacyDefinition = "x";
 
+  @Version
   @Column(name = "version", nullable = false)
   private long version;
 

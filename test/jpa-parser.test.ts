@@ -592,15 +592,18 @@ describe('defaults and generated values', () => {
     expect(field(schema, 'Thing', 'token').default).toEqual({ kind: 'uuid' });
   });
 
-  it('warns about @Version, @Convert and comments once each', async () => {
+  it('reads @Version as the optimistic-locking counter and warns about comments and checks once each', async () => {
     const schema: IrSchema = await parse(
       thing(`@Version long version;
         @org.hibernate.annotations.Comment("note") String commented;
         @org.hibernate.annotations.Check(constraints = "a > 0") int checked;`)
     );
-    expect(
-      warningsMatching(schema, /Thing\.version: the @Version/)
-    ).toHaveLength(1);
+    expect(field(schema, 'Thing', 'version')).toMatchObject({
+      type: 'bigInt',
+      isVersion: true,
+    });
+    expect(field(schema, 'Thing', 'commented').isVersion).toBeUndefined();
+    expect(warningsMatching(schema, /@Version/)).toHaveLength(0);
     expect(warningsMatching(schema, /comments \(commented\)/)).toHaveLength(1);
     expect(
       warningsMatching(schema, /@Check constraints on checked/)

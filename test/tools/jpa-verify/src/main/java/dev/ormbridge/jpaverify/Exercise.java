@@ -534,7 +534,8 @@ final class Exercise {
       if (!persistent(field) || isRelation(field)) {
         continue;
       }
-      if (find(field, "UpdateTimestamp") != null) {
+      if (find(field, "UpdateTimestamp") != null || find(field, "Version") != null) {
+        // Hibernate refreshes both by itself on update: a time stamp, and the optimistic-locking counter.
         stamps.add(field);
       } else if (dirty == null
           && find(field, "Id") == null
