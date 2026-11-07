@@ -158,6 +158,66 @@ function constructorName(
 }
 
 /**
+ * Zod Mini writes the derivations of an object schema as functions (`z.omit(User, { id: true })`) where Zod writes
+ * them as methods (`User.omit({ id: true })`). The schema is the first argument and the rest are the arguments of the
+ * method.
+ */
+const FUNCTIONAL_DERIVATIONS: ReadonlySet<string> = new Set([
+  'extend',
+  'safeExtend',
+  'merge',
+  'pick',
+  'omit',
+  'partial',
+  'required',
+]);
+
+/**
+ * The checks of Zod Mini (`z.string().check(z.maxLength(80), z.gte(0))`) and the method each one stands for in Zod,
+ * so that one set of rules reads both. A check that is not listed keeps its own name.
+ */
+const CHECK_METHODS: Readonly<Record<string, string>> = {
+  minLength: 'min',
+  maxLength: 'max',
+  length: 'length',
+  minimum: 'gte',
+  maximum: 'lte',
+  gte: 'gte',
+  lte: 'lte',
+  gt: 'gt',
+  lt: 'lt',
+  positive: 'positive',
+  negative: 'negative',
+  nonnegative: 'nonnegative',
+  nonpositive: 'nonpositive',
+  multipleOf: 'multipleOf',
+  regex: 'regex',
+  includes: 'includes',
+  startsWith: 'startsWith',
+  endsWith: 'endsWith',
+  lowercase: 'lowercase',
+  uppercase: 'uppercase',
+  refine: 'refine',
+  superRefine: 'superRefine',
+};
+
+/** Turns the arguments of `.check(...)` into the chain steps of the methods they stand for. */
+function expandChecks(file: ZodFileInfo, checks: SyntaxNode[]): ChainStep[] {
+  return checks.map((check: SyntaxNode): ChainStep => {
+    const call: SyntaxNode = stripWrappers(check);
+    const callee: SyntaxNode | null =
+      call.type === 'call_expression'
+        ? call.childForFieldName('function')
+        : null;
+    const name: string | undefined =
+      callee === null ? undefined : constructorName(file, callee);
+    return name === undefined
+      ? { name: 'check', args: [check] }
+      : { name: CHECK_METHODS[name] ?? name, args: callArguments(call) };
+  });
+}
+
+/**
  * Splits `z.string().min(3).optional()` or `UserSchema.omit({ id: true })` into its base and steps.
  * Returns undefined when the expression is neither (a number, a plain object, an unknown call).
  */
@@ -182,6 +242,16 @@ export function unwindChain(
   const args: SyntaxNode[] = callArguments(current);
   const name: string | undefined = constructorName(file, callee);
   if (name !== undefined) {
+    const schema: SyntaxNode | undefined = args[0];
+    if (FUNCTIONAL_DERIVATIONS.has(name) && schema !== undefined) {
+      const source: ZodChain | undefined = unwindChain(file, schema);
+      if (source !== undefined) {
+        return {
+          ...source,
+          steps: [...source.steps, { name, args: args.slice(1) }],
+        };
+      }
+    }
     return { base: { name, args }, steps: [] };
   }
   if (callee.type !== 'member_expression') {
@@ -198,7 +268,12 @@ export function unwindChain(
   }
   return {
     ...inner,
-    steps: [...inner.steps, { name: propertyNode.text, args }],
+    steps: [
+      ...inner.steps,
+      ...(propertyNode.text === 'check'
+        ? expandChecks(file, args)
+        : [{ name: propertyNode.text, args }]),
+    ],
   };
 }
 

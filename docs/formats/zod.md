@@ -1,6 +1,6 @@
 # Zod
 
-The `zod` format reads [Zod](https://zod.dev) 3 and Zod 4 schemas and writes Zod 4 schemas with their inferred TypeScript types. The written schemas validate the same data the [`typescript`](typescript.md) format describes. It claims no file extension (`.ts` belongs to no single format), so always pass `--from zod` or `--to zod`. The files are never run: the reader only looks at the source text.
+The `zod` format reads [Zod](https://zod.dev) 3, Zod 4 and Zod Mini (`zod/mini`) schemas and writes Zod 4 schemas with their inferred TypeScript types. The written schemas validate the same data the [`typescript`](typescript.md) format describes. It claims no file extension (`.ts` belongs to no single format), so always pass `--from zod` or `--to zod`. The files are never run: the reader only looks at the source text.
 
 ## Try it
 
@@ -30,6 +30,7 @@ Every top-level `const UserSchema = z.object({ ... })` is a model. The model is 
 
 - **Input.** A file, or a folder read recursively: every `.ts`, `.mts`, `.js` and `.mjs` file except `*.d.ts`, `*.test.*`, `*.spec.*` and anything under `node_modules/`, `dist/`, `build/`, `coverage/` and `.git/`. Several files may refer to each other by name: a schema, an enum or a shared property object that one file imports is found in the other input file. The import itself is not followed.
 - **Zod 3 and Zod 4.** Both spellings of the string formats work: `z.string().uuid()` and `z.uuid()`, `.email()` and `z.email()`, `.datetime()` and `z.iso.datetime()`, `.int()` and `z.int()`. `z.coerce.*` is read as the plain type. The namespace can be `z`, `zod`, `* as z`, the default import, `import { z } from 'zod/v4'` or named imports (`import { object, string } from 'zod'`).
+- **Zod Mini.** `import * as z from 'zod/mini'` is read like the full library: the schemas are the same, written with functions. `z.optional(x)`, `z.nullable(x)`, `z.nullish(x)`, `z.nonoptional(x)` and `z._default(x, value)` wrap a schema; the rules go in `.check(...)`, where `z.minLength(n)`, `z.maxLength(n)`, `z.length(n)`, `z.gte(n)`, `z.lte(n)`, `z.regex(re)` and the other checks are read as the methods they stand for (`.min(n)`, `.max(n)`, `.length(n)`, `.gte(n)`, `.lte(n)`, `.regex(re)`), so a string length is the maximum length and the others are listed in the warning of rules the shared model has no place for. Objects are derived with `z.extend(Base, shape)`, `z.pick(Base, mask)`, `z.omit(Base, mask)`, `z.partial(Base, mask?)` and `z.required(Base, mask?)`, the same as the methods of the next point. The same `.check(...)` is read on the full library's schemas too.
 - **Types.** Strings with `.max(n)` or `.length(n)` are length-limited strings, other strings are `text`. `.int()` and `z.int()` make `int`, other numbers are `float`, `z.bigint()` is `bigInt`. `z.date()` is a date-time (Zod cannot say "date only" there; `z.iso.date()` is a date). `uuid`, IP addresses, base64, ISO dates, times and durations map to their column types. `z.record`, `z.any`, `z.unknown` and `z.json` are `json`. Arrays become array columns.
 - **Enums.** `z.enum([...])`, `z.enum(CONST_ARRAY)`, `z.enum(constObject)`, `z.nativeEnum(TsEnum)` and a union of string literals become enums. A named schema (`const RoleSchema = z.enum([...])`) gives the enum `Role`. An enum written inside a property is named after the model and the property (`UserRole`). Members of a const object or TypeScript enum keep their names and values. A numeric TypeScript enum cannot be an enum here: the column is an `int` and a warning says so.
 - **Nullable and default.** `.optional()`, `.nullable()` and `.nullish()` make a column nullable, and so does a union with `z.null()`. `.default(x)` and `.catch(x)` read the default when it is a literal, an enum value, `() => new Date()`, `crypto.randomUUID()`, or `{}` or `[]` on a json column. A column with a default is not nullable, even with `.optional()`.
@@ -106,7 +107,7 @@ See [What zod cannot express](../CONVERSION_MATRIX.md#what-zod-cannot-express) i
 
 ## Checked against the real library
 
-`test/zod-parser-verify.test.ts` runs the fixture modules with the real Zod, Zod 3.25 and Zod 4 (through `tsx`), and compares what Zod reports (`schema.shape`, `isOptional()`, `isNullable()`, the type under the wrappers, string lengths and formats, enum members) with what the reader read. It needs `ZOD_DIR`; see [test/README.md](../../test/README.md). The test skips with a reason when Zod is not installed.
+`test/zod-parser-verify.test.ts` runs the fixture modules with the real Zod, Zod 3.25 and Zod 4 (through `tsx`; Zod Mini with Zod 4 only), and compares what Zod reports (`schema.shape`, `isOptional()`, `isNullable()`, the type under the wrappers, string lengths and formats, enum members) with what the reader read. It needs `ZOD_DIR`; see [test/README.md](../../test/README.md). The test skips with a reason when Zod is not installed.
 
 ## Programmatic API
 

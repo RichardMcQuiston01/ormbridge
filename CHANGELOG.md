@@ -2,8 +2,15 @@
 
 ## Unreleased
 
+`--from zod` reads Zod Mini (`zod/mini`): the wrappers written as functions (`z._default(x, value)` was kept as a json column and is now the default of `x`), the rules in `.check(...)` (a `z.maxLength(n)` was ignored and is now the maximum length of the string, as `.max(n)` is) and the objects derived with functions (`z.extend`, `z.pick`, `z.omit`, `z.partial` and `z.required` of a schema in the input were skipped and are now models of their own, as the methods are). **Output change:** `--from zod` on a file that uses `zod/mini`, or `.check(...)`, gives different models and warnings (below); every file written with the full library's methods is read as before.
+
+### Added
+
+- **Output change** (Zod reader, Zod Mini): `import * as z from 'zod/mini'` schemas are read like the full library's. `z._default(x, value)` (and `z.prefault`, `z.catch`) set the default of `x`; before, `z._default()` was "not a Zod constructor this reader knows" and the property became a json column. `.check(z.minLength(n), z.maxLength(n), z.length(n), z.gte(n), z.regex(re), ...)` is read as the methods of the same meaning: `z.maxLength(n)` is the maximum length (a `string(n)` column, `varchar(n)`), the rest are listed in the warning of rules the shared model has no place for under the name of the method (`name (.min(1))`) instead of `.check(...)`. `z.extend(Base, shape)`, `z.pick`, `z.omit`, `z.partial` and `z.required` of a schema that is in the input are models of their own, as `Base.extend(shape)` and the other methods already were; before, they were skipped without a warning. The same `.check(...)` is read on Zod 4's full schemas.
+
 ### Tests
 
+- The Zod Mini fixture (`test/fixtures/zod-extras/zod-mini.ts`) is checked against the real Zod 4 in the `real-tools-node` job: the inspector reads optional, nullable, the type, the length and the format from the definition of a schema when it has none of the full library's getters (`isOptional()`, `isInt`, `maxLength`), and the reader agrees with Zod about every property of every model, derived ones included. The same schemas written with functions and with methods give the same models, enums and warnings (`test/zod-parser.test.ts`).
 - The EF Core migration checks (`real-tools-dotnet`) cover the SQL Server provider: the verification tool builds the models with `UseSqlServer` (no connection is opened, so no server or licence is needed), writes the migrations and model snapshot EF Core 8 generates, and the replay is compared with EF Core's own model for a two-version scenario with `nvarchar(n)` and `nvarchar(max)`, `uniqueidentifier`, `datetime2`, `datetimeoffset`, `date`, `time`, `money`, `decimal(p,s)`, `varbinary(max)`, a row version, SQL defaults, a stored computed column, a filtered unique index, cascade and restrict foreign keys, a composite key, a rename and an alter. It found no gap in the reader, so no output changes.
 
 ## 0.19.0 - 2026-11-07
