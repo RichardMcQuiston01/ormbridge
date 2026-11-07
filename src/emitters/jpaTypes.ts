@@ -116,6 +116,8 @@ export interface ModelPlan {
   serializable?: boolean;
   /** True when a column default is left to the database, so inserts must leave null properties out. */
   dynamicInsert: boolean;
+  /** The class this one extends (joined inheritance: the model its primary key points at). */
+  extendsClass?: string;
 }
 
 /** The planned column of a field: its Java attribute and what the key role adds. */

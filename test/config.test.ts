@@ -149,6 +149,31 @@ describe('loadConfigFile', () => {
     expect(config.conversions[0]?.lombok).toBe(false);
   });
 
+  it('reads the jpaInheritance key and rejects other values', async () => {
+    const path: string = join(workDirectory, 'ormbridge.config.json');
+    await writeFile(
+      path,
+      JSON.stringify({
+        input: 'Model.java',
+        to: 'jpa',
+        jpaInheritance: 'joined',
+        conversions: [{ name: 'plain', jpaInheritance: 'none' }],
+      })
+    );
+    const config: ConfigFile = expectOk(await loadConfigFile(path));
+    expect(config.defaults.jpaInheritance).toBe('joined');
+    expect(config.conversions[0]?.jpaInheritance).toBe('none');
+
+    await writeFile(path, JSON.stringify({ jpaInheritance: 'single' }));
+    const rejected: Result<ConfigFile> = await loadConfigFile(path);
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.error.message).toContain(
+        '"jpaInheritance" must be one of none, joined'
+      );
+    }
+  });
+
   it('reads the conventions key and rejects other values', async () => {
     const path: string = join(workDirectory, 'ormbridge.config.json');
     await writeFile(

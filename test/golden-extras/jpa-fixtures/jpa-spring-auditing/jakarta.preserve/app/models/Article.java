@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -30,6 +31,7 @@ public class Article {
   @Column(name = "lastModifiedBy", length = 255)
   private String lastModifiedBy;
 
+  @Version
   @Column(name = "version")
   private Long version;
 

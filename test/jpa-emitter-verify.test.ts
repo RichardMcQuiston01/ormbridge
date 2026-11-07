@@ -1,13 +1,23 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   emitJpa,
   JPA_STYLES,
+  type JpaInheritanceMode,
   type JpaKeyMode,
   type JpaStyle,
 } from '../src/emitters/jpa.js';
+import { parseEfcore } from '../src/parsers/efcore.js';
 import type { MultiFileEmitOutput } from '../src/formats.js';
 import type {
   IrField,
@@ -100,6 +110,8 @@ interface Combo {
   keyMode?: JpaKeyMode;
   /** True when the entities use Lombok annotations in place of accessors. */
   lombok?: boolean;
+  /** `joined` writes a model whose key is its relation to another model as a subclass of it. */
+  inheritance?: JpaInheritanceMode;
   /** Shown in the test title: the key mode and Lombok, or `default`. */
   variant: string;
   /** The IR the database has to match. */
@@ -180,6 +192,78 @@ const COMBOS: Combo[] = SUBJECTS.flatMap((subject: Subject, index: number) => [
     variant: 'Lombok',
   },
 ]);
+
+/** Reads the entities of an EF Core fixture directory (`fixtures/efcore-extras/<name>`) into the IR. */
+async function parseEfcoreExtra(name: string): Promise<IrSchema> {
+  const directory: string = fileURLToPath(
+    new URL(`./fixtures/efcore-extras/${name}`, import.meta.url)
+  );
+  const files = readdirSync(directory)
+    .filter((entry: string) => entry.endsWith('.cs'))
+    .map((entry: string) => ({
+      path: join(directory, entry),
+      text: readFileSync(join(directory, entry), 'utf8'),
+    }));
+  const result = await parseEfcore(files, { appLabel: 'app' });
+  if (!result.ok) {
+    throw new Error(`${result.error.code}: ${result.error.message}`);
+  }
+  return result.value;
+}
+
+/**
+ * Schemas in which a model's primary key is its one-to-one relation to another model (joined inheritance in JPA, table
+ * per type in EF Core). They are also written as subclasses (`--jpa-inheritance joined`), and Hibernate has to create
+ * the same tables, keys and foreign keys from the subclasses.
+ */
+const JOINED_SUBJECTS: readonly Subject[] = [
+  {
+    label: 'jpa-inheritance-joined',
+    build: () => parseJpaExtra('inheritance-joined'),
+  },
+  ...['tpt', 'tpt-annotations', 'tpt-strategy'].map(
+    (name: string): Subject => ({
+      label: `efcore-${name}`,
+      build: () => parseEfcoreExtra(name),
+    })
+  ),
+];
+
+const JOINED_COMBOS: Combo[] = JOINED_SUBJECTS.flatMap(
+  (subject: Subject, position: number) => {
+    const index: number = SUBJECTS.length + position;
+    return [
+      {
+        subject,
+        style: 'jakarta' as const,
+        naming: 'preserve' as const,
+        provider: 'postgresql' as const,
+        name: `j${index}_jakarta_preserve_pg_joined`,
+        inheritance: 'joined' as const,
+        variant: 'joined inheritance',
+      },
+      {
+        subject,
+        style: 'javax' as const,
+        naming: 'preserve' as const,
+        provider: 'sqlite' as const,
+        name: `j${index}_javax_preserve_sqlite_joined`,
+        inheritance: 'joined' as const,
+        variant: 'joined inheritance',
+      },
+      {
+        subject,
+        style: 'jakarta' as const,
+        naming: 'normalize' as const,
+        provider: 'postgresql' as const,
+        name: `j${index}_jakarta_normalize_pg_joined_lombok`,
+        inheritance: 'joined' as const,
+        lombok: true,
+        variant: 'joined inheritance + Lombok',
+      },
+    ];
+  }
+);
 
 /** Every subject is also compiled (not run) for the providers that cannot run on H2, in both styles. */
 const COMPILE_ONLY: Combo[] = SUBJECTS.flatMap(
@@ -345,7 +429,7 @@ beforeAll(async () => {
   }
   const root: string = mkdtempSync(join(tmpdir(), 'ormbridge-jpa-gen-'));
   directories.push(root);
-  for (const combo of [...COMBOS, ...COMPILE_ONLY]) {
+  for (const combo of [...COMBOS, ...JOINED_COMBOS, ...COMPILE_ONLY]) {
     const built: IrSchema = await combo.subject.build();
     const compileOnly: boolean = combo.name.startsWith('c');
     const schema: IrSchema = compileOnly
@@ -358,6 +442,9 @@ beforeAll(async () => {
       style: combo.style,
       ...(combo.keyMode === undefined ? {} : { keyMode: combo.keyMode }),
       ...(combo.lombok === undefined ? {} : { lombok: combo.lombok }),
+      ...(combo.inheritance === undefined
+        ? {}
+        : { inheritance: combo.inheritance }),
     });
     write(root, combo);
   }
@@ -366,7 +453,9 @@ beforeAll(async () => {
     probe,
     groups(
       root,
-      COMBOS.filter((combo: Combo) => combo.style === 'jakarta')
+      [...COMBOS, ...JOINED_COMBOS].filter(
+        (combo: Combo) => combo.style === 'jakarta'
+      )
     ),
     { ...options, exercise: true }
   );
@@ -374,7 +463,9 @@ beforeAll(async () => {
     probe,
     groups(
       root,
-      COMBOS.filter((combo: Combo) => combo.style === 'javax')
+      [...COMBOS, ...JOINED_COMBOS].filter(
+        (combo: Combo) => combo.style === 'javax'
+      )
     ),
     { ...options, exercise: true, variant: 'javax' }
   );
@@ -410,7 +501,7 @@ function databaseOf(combo: Combo): JpaDatabase {
 }
 
 describe(titleWithReason('jpa emitter: real Hibernate', probe), () => {
-  it.skipIf(!probe.available).each(COMBOS)(
+  it.skipIf(!probe.available).each([...COMBOS, ...JOINED_COMBOS])(
     'compiles and creates the schema of $subject.label in H2 ($style style, $naming naming, $provider, $variant)',
     (combo: Combo) => {
       const database: JpaDatabase = databaseOf(combo);
@@ -428,7 +519,7 @@ describe(titleWithReason('jpa emitter: real Hibernate', probe), () => {
     60_000
   );
 
-  it.skipIf(!probe.available).each(COMBOS)(
+  it.skipIf(!probe.available).each([...COMBOS, ...JOINED_COMBOS])(
     'saves rows of $subject.label with the defaults, enums and generated values of the IR ($style style, $naming naming, $provider, $variant)',
     (combo: Combo) => {
       const database: JpaDatabase = databaseOf(combo);

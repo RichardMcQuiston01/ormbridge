@@ -22,8 +22,11 @@ import {
   type FormatName,
 } from './formats.js';
 import {
+  isJpaInheritanceMode,
   isJpaKeyMode,
+  JPA_INHERITANCE_MODES,
   JPA_KEY_MODES,
+  type JpaInheritanceMode,
   type JpaKeyMode,
 } from './emitters/jpa.js';
 import { checkStyle, OUTPUT_STYLES, type OutputStyle } from './styles.js';
@@ -69,6 +72,7 @@ interface ConvertFlags {
   prismaVersion?: string;
   style?: string;
   jpaKey?: string;
+  jpaInheritance?: string;
   lombok?: boolean;
   /** A path, or false when --no-config was given. */
   config?: string | boolean;
@@ -127,6 +131,7 @@ interface MergedSettings {
   prismaVersion?: number | string;
   style?: string;
   jpaKey?: string;
+  jpaInheritance?: string;
   lombok?: boolean;
 }
 
@@ -216,6 +221,17 @@ function buildRunOptions(
     jpaKey = settings.jpaKey;
   }
 
+  let jpaInheritance: JpaInheritanceMode | undefined;
+  if (settings.jpaInheritance !== undefined) {
+    if (!isJpaInheritanceMode(settings.jpaInheritance)) {
+      return failure(
+        'INVALID_OPTION',
+        `Invalid --jpa-inheritance value "${settings.jpaInheritance}". Expected one of: ${JPA_INHERITANCE_MODES.join(', ')}.`
+      );
+    }
+    jpaInheritance = settings.jpaInheritance;
+  }
+
   let prismaVersion: PrismaVersion | undefined;
   if (settings.prismaVersion !== undefined) {
     const versionText: string = String(settings.prismaVersion).trim();
@@ -253,6 +269,7 @@ function buildRunOptions(
       ...(prismaVersion === undefined ? {} : { prismaVersion }),
       ...(style === undefined ? {} : { style }),
       ...(jpaKey === undefined ? {} : { jpaKey }),
+      ...(jpaInheritance === undefined ? {} : { jpaInheritance }),
       ...(settings.lombok === undefined ? {} : { lombok: settings.lombok }),
       ...(settings.conventions === undefined
         ? {}
@@ -366,6 +383,9 @@ function planRuns(
     }
     if (flags.jpaKey !== undefined) {
       settings.jpaKey = flags.jpaKey;
+    }
+    if (flags.jpaInheritance !== undefined) {
+      settings.jpaInheritance = flags.jpaInheritance;
     }
     if (flags.lombok !== undefined) {
       settings.lombok = flags.lombok;
@@ -626,6 +646,10 @@ export async function runCli(
     .option(
       '--jpa-key <mode>',
       `how the JPA output writes a composite primary key (${JPA_KEY_MODES.join(' | ')}): idclass writes an @IdClass class (default), embedded writes an @Embeddable key class with @EmbeddedId (and @MapsId on a relationship in the key); a single-column key is always an @Id; only --to jpa reads it`
+    )
+    .option(
+      '--jpa-inheritance <mode>',
+      `how the JPA output writes a model whose primary key is its one-to-one relation to another model (${JPA_INHERITANCE_MODES.join(' | ')}): none writes a derived identity (@Id @OneToOne) (default), joined writes a subclass of the other model (@Inheritance(strategy = JOINED) on the root, @PrimaryKeyJoinColumn on the subclass); the tables are the same; only --to jpa reads it`
     )
     .option(
       '--lombok',

@@ -235,6 +235,20 @@ export function compareBehavior(ir: IrSchema, database: JpaDatabase): string[] {
           );
         }
       }
+      if (field.isVersion === true) {
+        if (database.versioned?.[model.tableName] !== field.columnName) {
+          problems.push(
+            `${label}: the column is the version in the IR, but Hibernate versions ${JSON.stringify(database.versioned?.[model.tableName])}`
+          );
+        }
+        const change: [unknown, unknown] | undefined =
+          exercise.updates[model.tableName]?.[field.columnName];
+        if (change !== undefined && change[0] === change[1]) {
+          problems.push(
+            `${label}: the version kept ${JSON.stringify(change[0])} on update`
+          );
+        }
+      }
       if (
         field.isAutoUpdated &&
         field.type === 'dateTime' &&

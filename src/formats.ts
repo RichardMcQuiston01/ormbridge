@@ -18,10 +18,13 @@ import {
 } from './emitters/efcore.js';
 import {
   emitJpa,
+  isJpaInheritanceMode,
   isJpaKeyMode,
   isJpaStyle,
   isValidJavaPackage,
+  JPA_INHERITANCE_MODES,
   JPA_KEY_MODES,
+  type JpaInheritanceMode,
   type JpaKeyMode,
 } from './emitters/jpa.js';
 import { emitNeo4j, isNeo4jStyle } from './emitters/neo4j.js';
@@ -112,6 +115,12 @@ export interface FormatOptions {
    * `@Embeddable` key class with `@EmbeddedId`, and `@MapsId` on a relationship in the key). Only `jpa` reads it.
    */
   jpaKey?: JpaKeyMode;
+  /**
+   * How the JPA output writes a model whose primary key is its one-to-one relation to another model: `none` (default;
+   * a derived identity, `@Id @OneToOne`) or `joined` (a subclass of the other model with `@Inheritance(strategy =
+   * JOINED)`). Only `jpa` reads it.
+   */
+  jpaInheritance?: JpaInheritanceMode;
   /**
    * Write Lombok annotations (`@Getter`, `@Setter`, `@NoArgsConstructor`; `@EqualsAndHashCode` on key classes) in
    * the JPA output instead of hand-written accessors (default false). Only `jpa` reads it.
@@ -821,6 +830,15 @@ const jpaAdapter: FormatAdapter = {
         `Invalid jpaKey "${String(options.jpaKey)}" for the jpa format. Expected one of: ${JPA_KEY_MODES.join(', ')}.`
       );
     }
+    if (
+      options.jpaInheritance !== undefined &&
+      !isJpaInheritanceMode(String(options.jpaInheritance))
+    ) {
+      return err(
+        'INVALID_OPTION',
+        `Invalid jpaInheritance "${String(options.jpaInheritance)}" for the jpa format. Expected one of: ${JPA_INHERITANCE_MODES.join(', ')}.`
+      );
+    }
     const packageName: string | undefined = options.namespace?.replace(
       /^\.+|\.+$/g,
       ''
@@ -841,6 +859,9 @@ const jpaAdapter: FormatAdapter = {
           ? {}
           : { style: options.style }),
         ...(options.jpaKey === undefined ? {} : { keyMode: options.jpaKey }),
+        ...(options.jpaInheritance === undefined
+          ? {}
+          : { inheritance: options.jpaInheritance }),
         ...(options.lombok === undefined ? {} : { lombok: options.lombok }),
       })
     );

@@ -61,13 +61,15 @@ export interface JpaTable {
 export interface JpaExercise {
   /** The row read back with SQL, by table. */
   rows: Record<string, Record<string, unknown> | null>;
-  /** The columns Hibernate refreshed on update (`@UpdateTimestamp`): [before, after] by table and column. */
+  /** The columns Hibernate refreshed on update (`@UpdateTimestamp`, `@Version`): [before, after] by table and column. */
   updates: Record<string, Record<string, [unknown, unknown]>>;
   errors: string[];
 }
 
 export interface JpaDatabase {
   tables: Record<string, JpaTable>;
+  /** The optimistic-locking column (`@Version`) Hibernate maps for each versioned table. */
+  versioned?: Record<string, string>;
   /** Present when the tool ran with `exercise`. */
   exercise?: JpaExercise;
 }
