@@ -180,6 +180,7 @@ const WRAPPER_BASES: ReadonlySet<string> = new Set([
   'brand',
   'catch',
   'default',
+  '_default',
   'prefault',
 ]);
 
@@ -503,7 +504,8 @@ function resolveWrapper(
   return applyStep(
     scope,
     resolveNode(scope, first, depth + 1),
-    { name, args: args.slice(1) },
+    // Zod Mini calls the default wrapper `_default` (`default` is a reserved word there).
+    { name: name === '_default' ? 'default' : name, args: args.slice(1) },
     depth
   );
 }

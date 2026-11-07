@@ -554,7 +554,10 @@ function buildProject(major: 3 | 4, emitted: string): Project {
   };
   const groups: Group[] = [];
   const extras: string[] = [...SHARED_EXTRAS];
-  extras.push(major === 3 ? 'zod3-only.ts' : 'zod4-style.ts');
+  // Zod Mini ships with Zod 4 only.
+  extras.push(
+    ...(major === 3 ? ['zod3-only.ts'] : ['zod4-style.ts', 'zod-mini.ts'])
+  );
   groups.push({
     label: 'extras',
     files: extras.map((name: string) => `extras/${name}`),

@@ -142,9 +142,16 @@ function stringFacts(leaf) {
     .map((check) => check._zod.def)
     .filter((def) => def.check === 'string_format' && def.format === 'regex')
     .map((def) => def.pattern.source);
+  // Zod Mini schemas have neither the format nor the maxLength getters of the full library; both are in the definition.
+  const format = leaf.format ?? leaf._zod.def.format;
+  const limits = checks
+    .map((check) => check._zod.def)
+    .filter((def) => def.check === 'max_length')
+    .map((def) => def.maximum);
   return {
-    formats: leaf.format && leaf.format !== 'regex' ? [leaf.format] : [],
-    maxLength: leaf.maxLength,
+    formats: format && format !== 'regex' ? [format] : [],
+    maxLength:
+      leaf.maxLength ?? (limits.length > 0 ? Math.min(...limits) : null),
     patterns,
   };
 }
@@ -158,7 +165,8 @@ function describeLeaf(leaf, exportsByInstance, depth) {
       Object.assign(facts, stringFacts(leaf));
       break;
     case 'number':
-      facts.int = leaf.isInt;
+      // Zod Mini schemas have no isInt: the format ('safeint', 'int32', ...) is in the definition of every Zod 4 schema.
+      facts.int = leaf.isInt ?? /int/.test(leaf._zod?.def?.format ?? '');
       break;
     case 'enum': {
       const entries =
@@ -183,14 +191,14 @@ function describeLeaf(leaf, exportsByInstance, depth) {
     case 'array':
     case 'set':
       facts.element = describeProperty(
-        leaf.element,
+        leaf.element ?? leaf._zod.def.element,
         exportsByInstance,
         depth + 1
       );
       break;
     case 'union':
-      facts.options = (leaf.options ?? []).map((option) =>
-        describeProperty(option, exportsByInstance, depth + 1)
+      facts.options = (leaf.options ?? leaf._zod?.def?.options ?? []).map(
+        (option) => describeProperty(option, exportsByInstance, depth + 1)
       );
       break;
     case 'object':
@@ -214,9 +222,16 @@ function describeProperty(schema, exportsByInstance, depth) {
     };
   }
   const { leaf, defaulted, piped } = strip(schema);
+  // Zod Mini schemas have no isOptional() or isNullable(); both are defined as "parses undefined" and "parses null".
   return {
-    optional: schema.isOptional(),
-    nullable: schema.isNullable(),
+    optional:
+      typeof schema.isOptional === 'function'
+        ? schema.isOptional()
+        : schema.safeParse(undefined).success,
+    nullable:
+      typeof schema.isNullable === 'function'
+        ? schema.isNullable()
+        : schema.safeParse(null).success,
     hasDefault: defaulted,
     piped,
     leaf: describeLeaf(leaf, exportsByInstance, depth),
