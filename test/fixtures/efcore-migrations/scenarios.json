@@ -66,6 +66,12 @@
     "names": ["Initial"]
   },
   {
+    "name": "sqlserver",
+    "provider": "sqlserver",
+    "contexts": ["SqlServer.V1.ShopContext", "SqlServer.V2.ShopContext"],
+    "names": ["Initial", "GrowTheShop"]
+  },
+  {
     "name": "tptpg",
     "provider": "npgsql",
     "contexts": ["TptPg.V1.FleetContext"],

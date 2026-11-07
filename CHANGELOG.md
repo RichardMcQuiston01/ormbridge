@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Tests
+
+- The EF Core migration checks (`real-tools-dotnet`) cover the SQL Server provider: the verification tool builds the models with `UseSqlServer` (no connection is opened, so no server or licence is needed), writes the migrations and model snapshot EF Core 8 generates, and the replay is compared with EF Core's own model for a two-version scenario with `nvarchar(n)` and `nvarchar(max)`, `uniqueidentifier`, `datetime2`, `datetimeoffset`, `date`, `time`, `money`, `decimal(p,s)`, `varbinary(max)`, a row version, SQL defaults, a stored computed column, a filtered unique index, cascade and restrict foreign keys, a composite key, a rename and an alter. It found no gap in the reader, so no output changes.
+
 ## 0.19.0 - 2026-11-07
 
 `--from efcore` on migrations and model snapshots now names the composite foreign key of a table-per-type table after its base table, as it already did for entity classes and single-column keys. The docs and the roadmap also say that enums cannot be read from migrations (EF Core writes only the column type). **Output change:** `--from efcore` on migrations or snapshots whose primary key is also a composite foreign key gives a different relation name (below); every other conversion is unchanged.

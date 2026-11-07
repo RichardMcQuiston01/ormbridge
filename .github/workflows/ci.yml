@@ -123,7 +123,7 @@ jobs:
           PRISMA_BIN: ${{ env.PRISMA7_BIN }}
           PRISMA_MAJOR: '7'
 
-  # EF Core 8 (reader and writer) with the SQLite and Npgsql providers.
+  # EF Core 8 (reader and writer) with the SQLite, Npgsql and SQL Server providers.
   real-tools-dotnet:
     runs-on: ubuntu-latest
     timeout-minutes: 5
