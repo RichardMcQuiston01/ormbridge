@@ -18,6 +18,7 @@ import {
   type JoinedPlan,
   type JpaInheritanceMode,
 } from './jpaInheritance.js';
+import { applyHierarchies, type HierarchyOutput } from './jpaHierarchy.js';
 import { keyOf, type KeyInfo, type KeyPart } from './jpaKeys.js';
 import { renderKeyClass } from './jpaKeyClass.js';
 import {
@@ -100,9 +101,11 @@ export interface JpaEmitOptions {
    */
   keyMode?: JpaKeyMode;
   /**
-   * How a model whose primary key is its one-to-one relation to another model is written: `none` (default; a
-   * derived identity, `@Id @OneToOne`) or `joined` (a subclass of the other model, `@Inheritance(strategy = JOINED)`
-   * on the root and `@PrimaryKeyJoinColumn` on the subclass). The tables are the same either way.
+   * How inheritance is written: `none` (default; a model whose primary key is its one-to-one relation to another model
+   * is a derived identity, `@Id @OneToOne`, and a hierarchy the JPA reader flattened stays flat), `joined` (that model is
+   * a subclass of the other one, `@Inheritance(strategy = JOINED)` on the root and `@PrimaryKeyJoinColumn` on the
+   * subclass) or `all` (`joined`, and the single-table and table-per-class hierarchies the JPA reader recorded are
+   * written as classes again). The tables are the same in every mode.
    */
   inheritance?: JpaInheritanceMode;
   /**
@@ -232,7 +235,7 @@ function planAndRender(
     keys.set(model.name, keyOf(model, warn));
   }
   const joined: JoinedPlan =
-    options.inheritance === 'joined'
+    options.inheritance === 'joined' || options.inheritance === 'all'
       ? planJoined(schema.models, keys, warn)
       : NO_JOINED;
   // With joined inheritance a superclass is planned before its subclasses, which must not reuse its attribute names.
@@ -342,6 +345,19 @@ function planAndRender(
       addOwningRelations(relationContext, planFor(plans, model))
     );
   }
+  // Single-table and table-per-class hierarchies the JPA reader recorded move attributes into subclasses, so this is
+  // done before the inverse sides are added to the owners they belong to.
+  const hierarchies: HierarchyOutput =
+    options.inheritance === 'all'
+      ? applyHierarchies({
+          schema,
+          plans,
+          inverses: relationContext.inverses,
+          style,
+          typeNames,
+          warn,
+        })
+      : { extraPlans: [], rootAnnotations: new Map() };
   addInverseRelations(relationContext);
 
   // Classes -----------------------------------------------------------------------------------
@@ -355,6 +371,9 @@ function planAndRender(
     plan.classAnnotations.push(
       annotation(imports.persistence('Entity')),
       tableAnnotation({ model, imports, warn })
+    );
+    plan.classAnnotations.push(
+      ...(hierarchies.rootAnnotations.get(model.name) ?? [])
     );
     const subclass: JoinedChild | undefined = joined.children.get(model.name);
     if (joined.roots.has(model.name)) {
@@ -500,6 +519,13 @@ function planAndRender(
     }
     files[pathOf(layout.packageName, plan.className)] = renderEntity(
       plan,
+      layout
+    );
+  }
+
+  for (const extra of hierarchies.extraPlans) {
+    files[pathOf(layout.packageName, extra.className)] = renderEntity(
+      extra,
       layout
     );
   }

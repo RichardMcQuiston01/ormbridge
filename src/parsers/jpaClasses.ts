@@ -237,6 +237,8 @@ export interface FlattenContext {
   warn: (message: string) => void;
   /** The entity (or subclass) the members are collected for. */
   declaredIn: string;
+  /** The entity of the hierarchy that declares the members (defaults to `declaredIn`). */
+  ownedBy?: string;
   /** Type arguments a subclass gives its generic superclass: `BaseEntity<Long>` makes `T` a `Long`. */
   generics?: ReadonlyMap<string, JavaType>;
 }
@@ -376,6 +378,7 @@ export function membersOf(
       isId: attribute.notes.has('Id') || insideId,
       inEmbeddedId: insideId,
       declaredIn: ctx.declaredIn,
+      ownedBy: ctx.ownedBy ?? ctx.declaredIn,
     });
   }
   return members;

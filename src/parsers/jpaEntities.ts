@@ -159,6 +159,22 @@ function genericsAt(
   return generics;
 }
 
+/** The entity that declares the class at `position` of an entity's chain: the closest entity at or below it. */
+function ownerAt(entity: EntityInfo, position: number): EntityInfo {
+  let current: EntityInfo = entity;
+  // The walk is bounded by the length of the chain, so a hierarchy that loops back on itself cannot make it endless.
+  for (
+    let steps = 0;
+    steps < entity.chain.length &&
+    current.parent !== undefined &&
+    position <= current.chain.indexOf(current.parent.cls);
+    steps += 1
+  ) {
+    current = current.parent;
+  }
+  return current;
+}
+
 /** True for a class whose attributes JPA maps into the tables of its subclasses or itself. */
 function isPersistentClass(project: Project, cls: JavaClass): boolean {
   return isEntityClass(project, cls) || isMappedSuperclass(project, cls);
@@ -232,6 +248,7 @@ export function entityMembers(
             project,
             warn,
             declaredIn: entity.name,
+            ownedBy: ownerAt(entity, position).name,
             generics: genericsAt(entity.chain, position),
           },
           cls,

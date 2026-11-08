@@ -27,6 +27,8 @@ export interface Resolver {
 export interface PlacedRelation {
   order: number;
   relation: IrRelation;
+  /** The entity of the hierarchy that declares the attribute of the relationship. */
+  ownedBy?: string;
 }
 
 export interface RelationOutput {

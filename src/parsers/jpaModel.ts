@@ -62,6 +62,12 @@ export interface Member {
   prefixedKeyName?: boolean;
   /** The entity class the member belongs to (the subclass in a hierarchy). */
   declaredIn: string;
+  /**
+   * The entity of the hierarchy that declares the member: the class itself, or for an attribute of a mapped
+   * superclass the first entity below it. In table per class this differs from `declaredIn`, which is the entity
+   * whose table the member was collected for.
+   */
+  ownedBy: string;
 }
 
 export type InheritanceKind =
