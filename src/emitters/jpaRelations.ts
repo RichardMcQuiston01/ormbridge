@@ -13,6 +13,7 @@ import {
   type AnnotationNode,
   type AnnotationValue,
 } from './jpaFormat.js';
+import type { JoinedChild } from './jpaInheritance.js';
 import type { KeyInfo, KeyPart } from './jpaKeys.js';
 import { attributeNameOf, javaString, uniqueName } from './jpaNames.js';
 import {
@@ -45,6 +46,8 @@ export interface RelationContext {
   /** The boxed Java type of the single-column key of each model, with its imports. */
   keyTypes: ReadonlyMap<string, { type: string; imports: Imports }>;
   inverses: InverseLink[];
+  /** The models written as subclasses (`--jpa-inheritance joined`), by name. */
+  joined: ReadonlyMap<string, JoinedChild>;
   warn: (message: string) => void;
 }
 
@@ -207,6 +210,14 @@ export function addOwningRelations(
     }
     if (relation.kind === 'manyToMany') {
       addManyToMany(ctx, plan, targetPlan, relation);
+      continue;
+    }
+    if (ctx.joined.get(model.name)?.relation === relation) {
+      // The primary key of a subclass is the join column of its table, not an attribute: the class extends its target.
+      plan.extendsClass = targetPlan.className;
+      for (const name of targetPlan.used) {
+        plan.used.add(name);
+      }
       continue;
     }
     const referenced: string | undefined = referencedColumn(

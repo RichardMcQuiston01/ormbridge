@@ -413,6 +413,25 @@ export function buildColumn(
     }
   }
 
+  // Optimistic locking ----------------------------------------------------------------------------
+  let versioned: boolean = false;
+  if (field.isVersion === true) {
+    if (
+      depth === 0 &&
+      !role.isKey &&
+      field.arrayDepth === undefined &&
+      (field.type === 'int' ||
+        field.type === 'bigInt' ||
+        field.type === 'dateTime')
+    ) {
+      versioned = true;
+    } else {
+      context.warn(
+        `${label}: Hibernate can use an integer or date-time column as the @Version counter, not ${role.isKey ? 'a key' : `a ${field.type} column`}; it was written as an ordinary column.`
+      );
+    }
+  }
+
   // Initializer: a new object already shows the default, and Hibernate has a value to insert -----
   const initializer: string | undefined =
     generatedSql === undefined &&
@@ -451,6 +470,9 @@ export function buildColumn(
     annotations.push(annotation(imports.persistence('Id')));
   }
   annotations.push(...generators, ...scalar.extra);
+  if (versioned) {
+    annotations.push(annotation(imports.persistence('Version')));
+  }
   annotations.push(
     annotation(
       imports.persistence('Column'),

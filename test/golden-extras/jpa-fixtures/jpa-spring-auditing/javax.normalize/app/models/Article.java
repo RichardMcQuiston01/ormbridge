@@ -10,6 +10,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import javax.persistence.Version;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.GenericGenerator;
@@ -32,6 +33,7 @@ public class Article {
   @Column(name = "last_modified_by", length = 255)
   private String lastModifiedBy;
 
+  @Version
   @Column(name = "version")
   private Long version;
 

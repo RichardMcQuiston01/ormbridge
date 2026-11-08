@@ -460,6 +460,146 @@ describe('Zod 4 types', () => {
   });
 });
 
+describe('Zod Mini', () => {
+  const MINI: string = `
+    import * as z from 'zod/mini';
+    export const Role = z.enum(['admin', 'editor', 'reader']);
+    export const User = z.object({
+      id: z.uuid(),
+      email: z.email().check(z.maxLength(120)),
+      name: z.string().check(z.minLength(1), z.maxLength(80)),
+      age: z.optional(z.int().check(z.gte(0))),
+      bio: z.nullable(z.string()),
+      role: z._default(Role, 'reader'),
+      active: z._default(z.boolean(), true),
+      createdAt: z.iso.datetime(),
+      tags: z.array(z.string()),
+      nickname: z.nullish(z.string()),
+    });
+    export const Post = z.object({
+      id: z.uuid(),
+      title: z.string().check(z.maxLength(200)),
+      publishedAt: z.optional(z.iso.datetime()),
+    });
+    export const PostSummary = z.pick(Post, { id: true, title: true });
+    export const UserPatch = z.partial(User);
+    export const Admin = z.extend(User, { level: z.int() });
+  `;
+  const FULL: string = `
+    import * as z from 'zod';
+    export const Role = z.enum(['admin', 'editor', 'reader']);
+    export const User = z.object({
+      id: z.uuid(),
+      email: z.email().max(120),
+      name: z.string().min(1).max(80),
+      age: z.int().gte(0).optional(),
+      bio: z.string().nullable(),
+      role: Role.default('reader'),
+      active: z.boolean().default(true),
+      createdAt: z.iso.datetime(),
+      tags: z.array(z.string()),
+      nickname: z.string().nullish(),
+    });
+    export const Post = z.object({
+      id: z.uuid(),
+      title: z.string().max(200),
+      publishedAt: z.iso.datetime().optional(),
+    });
+    export const PostSummary = Post.pick({ id: true, title: true });
+    export const UserPatch = User.partial();
+    export const Admin = User.extend({ level: z.int() });
+  `;
+
+  it('reads the same schemas written with functions as it reads them written with methods', async () => {
+    const mini: IrSchema = await parse(MINI);
+    const full: IrSchema = await parse(FULL);
+    expect(mini.models).toEqual(full.models);
+    expect(mini.enums).toEqual(full.enums);
+    expect(mini.warnings).toEqual(full.warnings);
+    expect(mini.models.map((item: IrModel) => item.name)).toEqual([
+      'User',
+      'Post',
+      'PostSummary',
+      'UserPatch',
+      'Admin',
+    ]);
+  });
+
+  it('reads the rules of .check(): lengths become the maximum length and the rest are named like the methods', async () => {
+    const schema: IrSchema = await parse(MINI);
+    expect(field(schema, 'User', 'email')).toMatchObject({
+      type: 'string',
+      maxLength: 120,
+    });
+    expect(field(schema, 'User', 'name')).toMatchObject({
+      type: 'string',
+      maxLength: 80,
+    });
+    expect(field(schema, 'Post', 'title').maxLength).toBe(200);
+    // One warning for User and one for each model derived from it (UserPatch, Admin).
+    expect(warningsMatching(schema, 'name (.min(1))')).toHaveLength(3);
+    expect(warningsMatching(schema, 'age (.gte(0))')).toHaveLength(3);
+    expect(warningsMatching(schema, '.check(')).toEqual([]);
+  });
+
+  it('reads z._default() as the default of the schema it wraps', async () => {
+    const schema: IrSchema = await parse(MINI);
+    expect(field(schema, 'User', 'role')).toMatchObject({
+      enumName: 'Role',
+      default: { kind: 'enumValue', value: 'reader' },
+    });
+    expect(field(schema, 'User', 'active')).toMatchObject({
+      type: 'boolean',
+      default: { kind: 'literal', value: true },
+    });
+  });
+
+  it('derives objects with z.pick, z.omit, z.partial and z.extend', async () => {
+    const schema: IrSchema = await parse(MINI);
+    expect(
+      model(schema, 'PostSummary').fields.map((item: IrField) => item.name)
+    ).toEqual(['id', 'title']);
+    expect(field(schema, 'UserPatch', 'email').isNullable).toBe(true);
+    expect(field(schema, 'Admin', 'level').type).toBe('int');
+    const omitted: IrSchema = await parse(`
+      import * as z from 'zod/mini';
+      export const Post = z.object({ id: z.uuid(), title: z.string(), body: z.string() });
+      export const PostBody = z.omit(Post, { id: true });
+    `);
+    expect(
+      model(omitted, 'PostBody').fields.map((item: IrField) => item.name)
+    ).toEqual(['title', 'body']);
+  });
+
+  it('reads the zod-mini fixture', async () => {
+    const schema: IrSchema = await parseFixtures('zod-mini.ts');
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual([
+      'Writer',
+      'Story',
+      'StorySummary',
+      'StoryBody',
+      'StoryDraft',
+      'WriterProfile',
+    ]);
+    expect(field(schema, 'Writer', 'nickname')).toMatchObject({
+      type: 'string',
+      maxLength: 30,
+      isNullable: true,
+    });
+    expect(field(schema, 'Writer', 'tags')).toMatchObject({
+      maxLength: 20,
+      arrayDepth: 1,
+    });
+    expect(field(schema, 'WriterProfile', 'followers')).toMatchObject({
+      type: 'int',
+      default: { kind: 'literal', value: 0 },
+    });
+    expect(
+      model(schema, 'Story').relations.map((item: IrRelation) => item.name)
+    ).toEqual(['writer', 'reviewer']);
+  });
+});
+
 describe('enums', () => {
   it('uses the declared name for a named enum schema and keeps unused ones', async () => {
     const schema: IrSchema = await parse(`

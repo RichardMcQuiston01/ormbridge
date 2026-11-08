@@ -1,0 +1,4 @@
+BankPayment.created_at: "createdAt" is taken in BankPayment, so the attribute was named "createdAt2".
+BankPayment.updated_at: "updatedAt" is taken in BankPayment, so the attribute was named "updatedAt2".
+CardPayment.created_at: "createdAt" is taken in CardPayment, so the attribute was named "createdAt2".
+CardPayment.updated_at: "updatedAt" is taken in CardPayment, so the attribute was named "updatedAt2".

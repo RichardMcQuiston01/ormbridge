@@ -17,6 +17,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import javax.persistence.Version;
 import org.hibernate.annotations.ColumnDefault;
 
 @Entity
@@ -184,6 +185,7 @@ public class Sample {
   @ColumnDefault("'x'")
   private String legacyDefinition = "x";
 
+  @Version
   @Column(name = "version", nullable = false)
   private long version;
 

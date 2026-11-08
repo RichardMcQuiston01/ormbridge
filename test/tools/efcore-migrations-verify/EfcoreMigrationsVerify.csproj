@@ -33,6 +33,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
+    <!-- The SQL Server provider only builds the model and writes the migration code: no connection is ever opened. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
     <!-- Brings the migration code generators; the tool never runs `dotnet ef`. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11" />
   </ItemGroup>
