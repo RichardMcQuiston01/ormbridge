@@ -63,6 +63,8 @@ export interface ConfigFile {
   defaults: ConversionConfig;
   /** Named conversions. Empty when the file describes a single conversion at the top level. */
   conversions: ConversionConfig[];
+  /** Addon packages or files to load before the conversions run (relative paths resolve against the config file). */
+  plugins: string[];
 }
 
 const CONVERSION_KEYS: readonly string[] = [
@@ -158,12 +160,15 @@ export function parseConfig(raw: unknown, path: string): Result<ConfigFile> {
   const baseDirectory: string = dirname(path);
   const topLevel: Record<string, unknown> = {};
   let rawConversions: unknown;
+  let rawPlugins: unknown;
   for (const [key, value] of Object.entries(raw)) {
     if (key === '$schema') {
       continue;
     }
     if (key === 'conversions') {
       rawConversions = value;
+    } else if (key === 'plugins') {
+      rawPlugins = value;
     } else if (key === 'name') {
       return fail(
         '"name" is only valid inside an entry of "conversions", not at the top level.'
@@ -212,7 +217,21 @@ export function parseConfig(raw: unknown, path: string): Result<ConfigFile> {
       conversions.push(parsed.value);
     }
   }
-  return ok({ path, defaults: defaults.value, conversions });
+  const plugins: string[] = [];
+  if (rawPlugins !== undefined) {
+    if (
+      !Array.isArray(rawPlugins) ||
+      !(rawPlugins as unknown[]).every(
+        (item: unknown): boolean => typeof item === 'string' && item !== ''
+      )
+    ) {
+      return fail(
+        '"plugins" must be an array of package names or paths (non-empty strings).'
+      );
+    }
+    plugins.push(...(rawPlugins as string[]));
+  }
+  return ok({ path, defaults: defaults.value, conversions, plugins });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
