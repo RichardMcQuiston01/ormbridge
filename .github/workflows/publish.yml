@@ -64,6 +64,9 @@ jobs:
       (needs.gate.outputs.reuse == 'true' && needs.ci.result == 'skipped') ||
       (needs.gate.outputs.reuse != 'true' && needs.ci.result == 'success')) }}
     runs-on: ubuntu-latest
+    # The one place the npm token is read: the core package and the addon packages are published by steps of this job.
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -98,8 +101,6 @@ jobs:
       - run: npm run build
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           version="${GITHUB_REF_NAME#v}"
           if [[ "$version" == *-* ]]; then
@@ -114,8 +115,6 @@ jobs:
       # npm yet, after the core package (an addon lists ormbridge as a peer dependency). Alphabetical order puts
       # ormbridge-kotlin before ormbridge-spring-data, which depends on it.
       - name: Publish the addon packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           for directory in packages/*/; do
             name="$(node -p "require('./${directory}package.json').name")"
