@@ -48,6 +48,10 @@ registerFormat({
 });
 ```
 
+### Plugins
+
+An addon package adds formats through `OrmbridgePlugin` (`{ name, formats }`); `loadPlugin(specifier, baseDirectory)`, `loadPlugins` and `registerPlugin(plugin)` register them, and the CLI's `--plugin` option and the `plugins` config key call the same functions. An adapter can also say which files a directory input contributes with `input` (`FormatInput`: `extensions`, `description`, `skippedDirectories`, `isSkippedFile`). See [Addons](./ADDONS.md).
+
 ### Emitter output
 
 `emit` returns `Result<FormatEmitOutput>`, which is either `{ text, warnings }` (one file, what every built-in emitter returns) or `{ files, warnings }`, where `files` maps a relative path (forward slashes, no leading slash, no `..`) to the file text. Return the second form when the format needs several files:

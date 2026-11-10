@@ -24,6 +24,7 @@ import {
   isValidJavaPackage,
   JPA_INHERITANCE_MODES,
   JPA_KEY_MODES,
+  type JpaEmitOptions,
   type JpaInheritanceMode,
   type JpaKeyMode,
 } from './emitters/jpa.js';
@@ -148,6 +149,18 @@ export interface MultiFileEmitOutput {
 /** What `FormatAdapter.emit` returns: one text, or a map of files. */
 export type FormatEmitOutput = EmitOutput | MultiFileEmitOutput;
 
+/** What a format reads from a directory. */
+export interface FormatInput {
+  /** Extensions of the source files, with the dot (`.kt`). */
+  extensions: readonly string[];
+  /** What the files are, for the message when none is found (`Kotlin (.kt) files with JPA entities`). */
+  description: string;
+  /** Directory names that are never searched (`build`, `node_modules`, ...). */
+  skippedDirectories?: readonly string[];
+  /** Files with an accepted extension that are not part of the model (tests, generated code). */
+  isSkippedFile?: (path: string) => boolean;
+}
+
 /**
  * One ORM format. An adapter that omits `parse` can only be written (output
  * only); one that omits `emit` can only be read (input only).
@@ -159,6 +172,11 @@ export interface FormatAdapter {
   extensions: string[];
   /** One-line, human-readable summary shown by `ormbridge formats`. */
   description: string;
+  /**
+   * Which files a directory input contributes. Without it a directory is searched the way Django models are (a
+   * `models.py` file or a `models/` package), so a format added by an addon should say what it reads.
+   */
+  input?: FormatInput;
   /** Reads source text into the shared intermediate representation. */
   parse?: (
     sources: SourceText[],
@@ -793,6 +811,64 @@ const efcoreAdapter: FormatAdapter = {
   },
 };
 
+/**
+ * Validates the options of the JPA writers (`jpa` and the addons that write the same classes in another language or with
+ * Spring Data conventions) and turns them into the options of `emitJpa`.
+ */
+export function jpaEmitOptionsFor(
+  options: FormatOptions
+): Result<JpaEmitOptions> {
+  if (options.style !== undefined) {
+    const checked: Result<OutputStyle> = checkStyle(
+      'jpa',
+      String(options.style),
+      'style'
+    );
+    if (!checked.ok) {
+      return checked;
+    }
+  }
+  if (options.jpaKey !== undefined && !isJpaKeyMode(String(options.jpaKey))) {
+    return err(
+      'INVALID_OPTION',
+      `Invalid jpaKey "${String(options.jpaKey)}" for the jpa format. Expected one of: ${JPA_KEY_MODES.join(', ')}.`
+    );
+  }
+  if (
+    options.jpaInheritance !== undefined &&
+    !isJpaInheritanceMode(String(options.jpaInheritance))
+  ) {
+    return err(
+      'INVALID_OPTION',
+      `Invalid jpaInheritance "${String(options.jpaInheritance)}" for the jpa format. Expected one of: ${JPA_INHERITANCE_MODES.join(', ')}.`
+    );
+  }
+  const packageName: string | undefined = options.namespace?.replace(
+    /^\.+|\.+$/g,
+    ''
+  );
+  if (packageName !== undefined && !isValidJavaPackage(packageName)) {
+    return err(
+      'INVALID_OPTION',
+      `Invalid namespace "${options.namespace ?? ''}" for the jpa format. Expected a Java package name such as app.models (letters, digits and underscores in dot-separated parts, none of them a Java keyword).`
+    );
+  }
+  return ok({
+    provider: options.provider,
+    naming: options.naming,
+    header: options.header,
+    ...(packageName === undefined ? {} : { packageName }),
+    ...(options.style === undefined || !isJpaStyle(options.style)
+      ? {}
+      : { style: options.style }),
+    ...(options.jpaKey === undefined ? {} : { keyMode: options.jpaKey }),
+    ...(options.jpaInheritance === undefined
+      ? {}
+      : { inheritance: options.jpaInheritance }),
+    ...(options.lombok === undefined ? {} : { lombok: options.lombok }),
+  });
+}
+
 const jpaAdapter: FormatAdapter = {
   name: 'jpa',
   // No extension is claimed: ".java" is too generic to infer, so pass --from/--to jpa.
@@ -814,57 +890,11 @@ const jpaAdapter: FormatAdapter = {
     schema: IrSchema,
     options: FormatOptions
   ): Result<FormatEmitOutput> => {
-    if (options.style !== undefined) {
-      const checked: Result<OutputStyle> = checkStyle(
-        'jpa',
-        String(options.style),
-        'style'
-      );
-      if (!checked.ok) {
-        return checked;
-      }
+    const emitOptions: Result<JpaEmitOptions> = jpaEmitOptionsFor(options);
+    if (!emitOptions.ok) {
+      return emitOptions;
     }
-    if (options.jpaKey !== undefined && !isJpaKeyMode(String(options.jpaKey))) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid jpaKey "${String(options.jpaKey)}" for the jpa format. Expected one of: ${JPA_KEY_MODES.join(', ')}.`
-      );
-    }
-    if (
-      options.jpaInheritance !== undefined &&
-      !isJpaInheritanceMode(String(options.jpaInheritance))
-    ) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid jpaInheritance "${String(options.jpaInheritance)}" for the jpa format. Expected one of: ${JPA_INHERITANCE_MODES.join(', ')}.`
-      );
-    }
-    const packageName: string | undefined = options.namespace?.replace(
-      /^\.+|\.+$/g,
-      ''
-    );
-    if (packageName !== undefined && !isValidJavaPackage(packageName)) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid namespace "${options.namespace ?? ''}" for the jpa format. Expected a Java package name such as app.models (letters, digits and underscores in dot-separated parts, none of them a Java keyword).`
-      );
-    }
-    return ok(
-      emitJpa(schema, {
-        provider: options.provider,
-        naming: options.naming,
-        header: options.header,
-        ...(packageName === undefined ? {} : { packageName }),
-        ...(options.style === undefined || !isJpaStyle(options.style)
-          ? {}
-          : { style: options.style }),
-        ...(options.jpaKey === undefined ? {} : { keyMode: options.jpaKey }),
-        ...(options.jpaInheritance === undefined
-          ? {}
-          : { inheritance: options.jpaInheritance }),
-        ...(options.lombok === undefined ? {} : { lombok: options.lombok }),
-      })
-    );
+    return ok(emitJpa(schema, emitOptions.value));
   },
 };
 

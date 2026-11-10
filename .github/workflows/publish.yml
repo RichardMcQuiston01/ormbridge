@@ -109,3 +109,26 @@ jobs:
             echo "Stable release ${version}: publishing with dist-tag 'latest'."
             npm publish --provenance --access public
           fi
+
+      # The addon packages in packages/ have their own versions. A release publishes every addon whose version is not on
+      # npm yet, after the core package (an addon lists ormbridge as a peer dependency). Alphabetical order puts
+      # ormbridge-kotlin before ormbridge-spring-data, which depends on it.
+      - name: Publish the addon packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for directory in packages/*/; do
+            name="$(node -p "require('./${directory}package.json').name")"
+            version="$(node -p "require('./${directory}package.json').version")"
+            if npm view "${name}@${version}" version > /dev/null 2>&1; then
+              echo "${name}@${version} is already on npm; skipping."
+              continue
+            fi
+            if [[ "$version" == *-* ]]; then
+              echo "Publishing ${name}@${version} with dist-tag 'next'."
+              npm publish "./${directory}" --provenance --access public --tag next
+            else
+              echo "Publishing ${name}@${version} with dist-tag 'latest'."
+              npm publish "./${directory}" --provenance --access public
+            fi
+          done

@@ -163,7 +163,7 @@ function stage(source: string, target: string, rewrite: boolean): void {
     const to: string = join(target, entry);
     if (statSync(from).isDirectory()) {
       stage(from, to, rewrite);
-    } else if (entry.endsWith('.java')) {
+    } else if (entry.endsWith('.java') || entry.endsWith('.kt')) {
       const text: string = readFileSync(from, 'utf8');
       writeFileSync(
         to,
@@ -177,8 +177,11 @@ function stage(source: string, target: string, rewrite: boolean): void {
 
 /** How `runJpaTool` builds and runs the tool. */
 export interface JpaToolOptions {
-  /** `javax` builds the tool against Hibernate 5 (`pom-javax.xml`); `jakarta` (default) against Hibernate 6. */
-  variant?: 'jakarta' | 'javax';
+  /**
+   * `javax` builds the tool against Hibernate 5 (`pom-javax.xml`); `jakarta` (default) against Hibernate 6; `kotlin`
+   * is Hibernate 6 with the Kotlin compiler, which compiles `.kt` files (`pom-kotlin.xml`).
+   */
+  variant?: 'jakarta' | 'javax' | 'kotlin';
   /** Also add a row to every table through the entity classes (`--exercise`). */
   exercise?: boolean;
   /** Only compile the sources (`--compile-only`); no schema is created. */
@@ -205,7 +208,14 @@ export function runJpaTool(
   const javax: boolean = options.variant === 'javax';
   try {
     cpSync(
-      join(TOOL, javax ? 'pom-javax.xml' : 'pom.xml'),
+      join(
+        TOOL,
+        javax
+          ? 'pom-javax.xml'
+          : options.variant === 'kotlin'
+            ? 'pom-kotlin.xml'
+            : 'pom.xml'
+      ),
       join(work, 'pom.xml')
     );
     cpSync(join(TOOL, 'src'), join(work, 'src'), { recursive: true });
@@ -227,7 +237,12 @@ export function runJpaTool(
     if (build.status !== 0) {
       fail('mvn package', build);
     }
-    const classPath: string = `${join(work, javax ? 'target-javax' : 'target', 'classes')}:${readFileSync(join(work, 'cp.txt'), 'utf8').trim()}`;
+    const target: string = javax
+      ? 'target-javax'
+      : options.variant === 'kotlin'
+        ? 'target-kotlin'
+        : 'target';
+    const classPath: string = `${join(work, target, 'classes')}:${readFileSync(join(work, 'cp.txt'), 'utf8').trim()}`;
     const arguments_: string[] = groups.map((group: ToolGroup): string => {
       const staged: string = join(work, 'fixtures', group.name);
       stage(group.directory, staged, options.keepImports !== true);

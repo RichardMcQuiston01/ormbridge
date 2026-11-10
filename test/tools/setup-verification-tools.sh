@@ -286,6 +286,15 @@ if want java; then
           package dependency:build-classpath -Dmdep.outputFile="${scratch}/cp5.txt" >&2
       ); then
         jpa_ready="yes"
+        # The Kotlin addon's tests (packages/kotlin, packages/spring-data) compile with the Kotlin compiler (pom-kotlin.xml).
+        cp "${here}/jpa-verify/pom-kotlin.xml" "${scratch}/pom.xml"
+        if ! (
+          cd "${scratch}"
+          JAVA_HOME="${java_home}" "${mvn_bin}" -B -q -Dmaven.repo.local="${target}/jpa/m2" \
+            package dependency:build-classpath -Dmdep.outputFile="${scratch}/cpk.txt" >&2
+        ); then
+          echo "Resolving the Kotlin compiler packages with Maven failed; the Kotlin verification tests will fail until they can be downloaded." >&2
+        fi
       else
         echo "Resolving the Hibernate 5 packages with Maven failed; the JPA verification tests will be skipped." >&2
       fi

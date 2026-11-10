@@ -20,7 +20,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && npm run build:addons",
+    "build:addons": "tsc -p packages/kotlin/tsconfig.json && tsc -p packages/spring-data/tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
     "test": "vitest run",
     "prepublishOnly": "npm run build && npm test",

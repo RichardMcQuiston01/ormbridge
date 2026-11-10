@@ -14,6 +14,7 @@ import {
   type FormatName,
   type SourceText,
 } from './convert.js';
+import { getFormat, type FormatInput } from './formats.js';
 import { orderSqlMigrationFiles } from './parsers/sqlMigrationOrder.js';
 import { describeThrown, err, ok, type Result } from './result.js';
 
@@ -500,7 +501,8 @@ async function discoverInputFiles(
   }
   if (files.length === 0) {
     const expected: string =
-      format === 'django'
+      declaredInput(format)?.description ??
+      (format === 'django'
         ? 'models.py files (or a models/ package)'
         : format === 'typeorm'
           ? 'TypeScript (.ts) entity files'
@@ -526,7 +528,7 @@ async function discoverInputFiles(
                               ? 'C# (.cs) files with Entity Framework Core models'
                               : format === 'jpa'
                                 ? 'Java (.java) files with Hibernate / JPA entities'
-                                : '.prisma files';
+                                : '.prisma files');
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -535,7 +537,20 @@ async function discoverInputFiles(
   return ok(files);
 }
 
+/** What an addon's format says it reads, when it says. */
+function declaredInput(format: FormatName): FormatInput | undefined {
+  const adapter = getFormat(format);
+  return adapter.ok ? adapter.value.input : undefined;
+}
+
 function isRelevantFile(filePath: string, format: FormatName): boolean {
+  const declared: FormatInput | undefined = declaredInput(format);
+  if (declared !== undefined) {
+    return (
+      declared.extensions.includes(extname(filePath)) &&
+      declared.isSkippedFile?.(filePath) !== true
+    );
+  }
   if (format === 'prisma') {
     return extname(filePath) === '.prisma';
   }
@@ -615,6 +630,13 @@ function isSkippedDirectory(
   parent: string,
   format: FormatName
 ): boolean {
+  const declared: FormatInput | undefined = declaredInput(format);
+  if (declared !== undefined) {
+    return (
+      SKIPPED_DIRECTORIES.has(name) ||
+      declared.skippedDirectories?.includes(name) === true
+    );
+  }
   if (format === 'laravel') {
     // bootstrap/cache holds generated files; the rest of bootstrap/ is ordinary code.
     return (

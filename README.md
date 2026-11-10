@@ -37,6 +37,8 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 
 Each format has a [guide](./docs/formats/README.md) and a runnable [example project](./examples/README.md).
 
+Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write) and `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories).
+
 [Back to Top](#table-of-contents)
 
 ## Getting Started
