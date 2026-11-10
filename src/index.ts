@@ -11,12 +11,14 @@ export {
   getFormatByExtension,
   listFormatNames,
   listFormats,
+  jpaEmitOptionsFor,
   registerFormat,
   unregisterFormat,
 } from './formats.js';
 export type {
   FormatAdapter,
   FormatEmitOutput,
+  FormatInput,
   FormatOptions,
   MultiFileEmitOutput,
 } from './formats.js';
@@ -181,3 +183,15 @@ export {
   isOrmbridgePlugin,
 } from './plugins.js';
 export type { OrmbridgePlugin } from './plugins.js';
+export { JAVA_RENDERER } from './emitters/jpa.js';
+export type { JpaExtension, JpaPlanned, JpaRenderer } from './emitters/jpa.js';
+export { Imports } from './emitters/jpaTypes.js';
+export type {
+  Attribute as JpaAttribute,
+  EnumPlan as JpaEnumPlan,
+  IdPart as JpaIdPart,
+  ModelPlan as JpaModelPlan,
+} from './emitters/jpaTypes.js';
+export type { AnnotationNode, AnnotationValue } from './emitters/jpaFormat.js';
+export type { FileLayout as JpaFileLayout } from './emitters/jpaRender.js';
+export type { KeyClassOptions as JpaKeyClassOptions } from './emitters/jpaKeyClass.js';

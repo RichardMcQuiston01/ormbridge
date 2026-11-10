@@ -8,7 +8,7 @@ A JPA model is the entity classes and their annotations, and ormbridge reads exa
 - **Mapped superclasses and embeddables** (`@MappedSuperclass`, `@Embeddable`), which are flattened into the entities that use them.
 - **Hibernate annotations** that change the schema (`@ColumnDefault`, `@JdbcTypeCode`, `@OnDelete`, `@CreationTimestamp`, `@NaturalId`, ...) and **Bean Validation** hints (`@NotNull`, `@Size`, `@Length`, `@Digits`).
 
-Not read: `orm.xml`, `persistence.xml` and `hbm.xml` mapping files (a model mapped in XML is not seen), and Kotlin or Groovy sources. Target: JPA 2.2 and 3 (`jakarta.persistence`), Hibernate 5 and 6, and the legacy `javax.persistence` package. Annotations are matched by their simple name, so wildcard imports (`import jakarta.persistence.*;`) and fully qualified names (`@jakarta.persistence.Entity`) work. The reader is checked against Hibernate ORM 6.4 (see the end of this page).
+Not read: `orm.xml`, `persistence.xml` and `hbm.xml` mapping files (a model mapped in XML is not seen), Groovy sources, and Kotlin sources (the [`ormbridge-kotlin`](./kotlin.md) addon reads and writes Kotlin entities, and [`ormbridge-spring-data`](./spring-data.md) adds Spring auditing and repositories). Target: JPA 2.2 and 3 (`jakarta.persistence`), Hibernate 5 and 6, and the legacy `javax.persistence` package. Annotations are matched by their simple name, so wildcard imports (`import jakarta.persistence.*;`) and fully qualified names (`@jakarta.persistence.Entity`) work. The reader is checked against Hibernate ORM 6.4 (see the end of this page).
 
 ## Try it
 

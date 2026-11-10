@@ -18,10 +18,12 @@ One guide per format: what is read, what is written, the options that apply, and
 | [Sequelize](sequelize.md)               |  yes  |  yes   | Sequelize 6: `define`, `Model.init`, sequelize-typescript |
 | [Entity Framework Core](efcore.md)      |  yes  |  yes   | EF Core 8: annotations or fluent API, `DbContext`         |
 | [Hibernate / JPA](jpa.md)               |  yes  |  yes   | Java entities, `--style jakarta` (default) or `javax`     |
+| [Kotlin](kotlin.md)                     |  yes  |  yes   | Addon `ormbridge-kotlin`; claims `.kt`                    |
+| [Spring Data JPA](spring-data.md)       |  yes  |  yes   | Addon `ormbridge-spring-data`; Java and Kotlin            |
 | [Graphene](graphene.md)                 |  no   |  yes   | graphene-django GraphQL schema                            |
 | [TypeScript](typescript.md)             |  no   |  yes   | Plain interfaces and enums                                |
 | [Neo4j](neo4j.md)                       |  no   |  yes   | Cypher constraints and indexes; `--style enterprise`      |
 | [neomodel](neomodel.md)                 |  no   |  yes   | Python `StructuredNode` classes for Neo4j                 |
 | [Spring Data Neo4j](sdn.md)             |  no   |  yes   | Java `@Node` classes (SDN 7, Spring Boot 3); `--to sdn`   |
 
-Only Django (`.py`), Prisma (`.prisma`) and SQL (`.sql`) claim a file extension, so pass `--from` or `--to` for every other format.
+Only Django (`.py`), Prisma (`.prisma`) and SQL (`.sql`) claim a file extension, so pass `--from` or `--to` for every other format (the Kotlin addon claims `.kt`). The Kotlin and Spring Data JPA formats come from [addon packages](../ADDONS.md): install the package and pass `--plugin`.

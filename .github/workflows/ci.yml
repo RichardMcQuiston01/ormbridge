@@ -7,6 +7,8 @@ on:
     branches: [dev, main]
   # Lets the publish workflow run the same jobs (including the `real-tools` jobs) before releasing.
   workflow_call:
+  # Lets the CI be run by hand on a branch whose pull request changed its base branch (GitHub starts no run for that).
+  workflow_dispatch:
 
 jobs:
   check:
@@ -161,7 +163,7 @@ jobs:
   # Hibernate ORM 6 and 5 (reader and writer), with Maven.
   real-tools-java:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v6
       - name: Choose the tools directory (outside the repository)
@@ -180,7 +182,7 @@ jobs:
           path: |
             ~/.npm
             ${{ env.TOOLS }}/jpa/m2
-          key: real-tools-java-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', 'test/tools/jpa-verify/pom.xml', 'test/tools/jpa-verify/pom-javax.xml', '.github/workflows/ci.yml') }}
+          key: real-tools-java-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', 'test/tools/jpa-verify/pom.xml', 'test/tools/jpa-verify/pom-javax.xml', 'test/tools/jpa-verify/pom-kotlin.xml', '.github/workflows/ci.yml') }}
           restore-keys: real-tools-java-${{ runner.os }}-
       - run: npm ci
       - name: Install Hibernate 6 and 5
@@ -193,6 +195,8 @@ jobs:
           test/jpa-parser-verify.test.ts
           test/jpa-emitter-golden.test.ts
           test/jpa-fixtures.test.ts
+          packages/kotlin/test/kotlin-verify.test.ts
+          packages/spring-data/test/spring-verify.test.ts
 
   # Doctrine ORM and Illuminate (Laravel), with PHP and Composer.
   real-tools-php:

@@ -34,6 +34,11 @@ export class Imports {
     }
   }
 
+  /** Drops the import of a simple name (an addon that replaced the annotation or type it was for). */
+  remove(simpleName: string): void {
+    this.names.delete(simpleName);
+  }
+
   /** Drops the imports whose simple name the text never uses (the imports an attribute brought along). */
   prune(text: string): void {
     for (const simple of [...this.names.keys()]) {
@@ -111,7 +116,7 @@ export interface ModelPlan {
   classAnnotations: AnnotationNode[];
   imports: Imports;
   /** The `@IdClass` or `@Embeddable` key class, when the primary key has several columns. */
-  idClass?: { name: string; parts: IdPart[] };
+  idClass?: { name: string; parts: IdPart[]; embeddable: boolean };
   /** True when the key is a relationship: Hibernate then wants the entity itself to be `Serializable`. */
   serializable?: boolean;
   /** True when a column default is left to the database, so inserts must leave null properties out. */
