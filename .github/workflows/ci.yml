@@ -7,6 +7,8 @@ on:
     branches: [dev, main]
   # Lets the publish workflow run the same jobs (including the `real-tools` jobs) before releasing.
   workflow_call:
+  # Lets the CI be run by hand on a branch whose pull request changed its base branch (GitHub starts no run for that).
+  workflow_dispatch:
 
 jobs:
   check:
