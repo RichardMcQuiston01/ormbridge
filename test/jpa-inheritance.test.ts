@@ -8,6 +8,8 @@ import {
 import { getFormat, type MultiFileEmitOutput } from '../src/formats.js';
 import type { IrField, IrModel, IrRelation, IrSchema } from '../src/ir.js';
 import { parseJpa } from '../src/parsers/jpa.js';
+import { compareIr, formatDifference } from './irCompare.js';
+import { parseJpaExtra } from './jpaSupport.js';
 import { field, idField, model, relation, schemaOf } from './gormFixtures.js';
 import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
 
@@ -232,7 +234,7 @@ describe('jpa emitter: joined inheritance', () => {
   });
 
   it('is validated through the adapter and exposes its modes', () => {
-    expect(JPA_INHERITANCE_MODES).toEqual(['none', 'joined']);
+    expect(JPA_INHERITANCE_MODES).toEqual(['none', 'joined', 'all']);
     expect(isJpaInheritanceMode('joined')).toBe(true);
     expect(isJpaInheritanceMode('single')).toBe(false);
     const adapter = expectOk(getFormat('jpa'));
@@ -242,12 +244,188 @@ describe('jpa emitter: joined inheritance', () => {
     });
     expect(bad?.ok).toBe(false);
     expect(!bad?.ok && bad?.error.message).toContain(
-      'Invalid jpaInheritance "single" for the jpa format. Expected one of: none, joined.'
+      'Invalid jpaInheritance "single" for the jpa format. Expected one of: none, joined, all.'
     );
     const good = adapter.emit?.(zoo(), {
       ...DEFAULT_OPTIONS,
       jpaInheritance: 'joined',
     });
     expect(good?.ok).toBe(true);
+  });
+});
+
+describe('jpa emitter: single-table and table-per-class hierarchies', () => {
+  async function emitFixture(
+    name: string,
+    overrides: Partial<JpaEmitOptions> = {}
+  ): Promise<{ schema: IrSchema; output: MultiFileEmitOutput }> {
+    const schema: IrSchema = await parseJpaExtra(name);
+    return { schema, output: emit(schema, overrides) };
+  }
+
+  it('records which class declares which column when reading a single-table hierarchy', async () => {
+    const schema: IrSchema = await parseJpaExtra('inheritance-single');
+    expect(schema.hierarchies).toEqual([
+      {
+        strategy: 'singleTable',
+        classes: [
+          {
+            name: 'Vehicle',
+            discriminatorValue: 'V',
+            fields: ['id', 'name'],
+            relations: [],
+          },
+          {
+            name: 'Car',
+            parent: 'Vehicle',
+            discriminatorValue: 'C',
+            fields: ['doors'],
+            relations: [],
+          },
+          {
+            name: 'Truck',
+            parent: 'Vehicle',
+            discriminatorValue: 'T',
+            fields: ['axles'],
+            relations: ['depot'],
+          },
+        ],
+        discriminator: {
+          field: 'kind',
+          column: 'kind',
+          type: 'string',
+          length: 10,
+        },
+      },
+    ]);
+    // The models stay flat, as for every other format.
+    expect(schema.models.map((item: IrModel) => item.name).sort()).toEqual([
+      'Depot',
+      'Vehicle',
+    ]);
+  });
+
+  it('records the classes of a table-per-class hierarchy, the abstract root included', async () => {
+    const schema: IrSchema = await parseJpaExtra('inheritance-table-per-class');
+    expect(schema.hierarchies).toEqual([
+      {
+        strategy: 'tablePerClass',
+        classes: [
+          {
+            name: 'Animal',
+            isAbstract: true,
+            fields: ['id', 'name'],
+            relations: [],
+          },
+          { name: 'Cat', parent: 'Animal', fields: ['lives'], relations: [] },
+          { name: 'Dog', parent: 'Animal', fields: ['trained'], relations: [] },
+        ],
+      },
+    ]);
+    expect(schema.models.map((item: IrModel) => item.name)).toEqual([
+      'Cat',
+      'Dog',
+    ]);
+  });
+
+  it('writes a single-table hierarchy as the root and its subclasses with --jpa-inheritance all', async () => {
+    const { output } = await emitFixture('inheritance-single', {
+      inheritance: 'all',
+    });
+    const vehicle: string = fileText(output, 'Vehicle');
+    expect(vehicle).toContain(
+      '@Inheritance(strategy = InheritanceType.SINGLE_TABLE)'
+    );
+    expect(vehicle).toContain(
+      '@DiscriminatorColumn(name = "kind", discriminatorType = DiscriminatorType.STRING, length = 10)'
+    );
+    expect(vehicle).toContain('@DiscriminatorValue("V")');
+    expect(vehicle).toContain('private String name;');
+    // The discriminator is written by the annotation; an attribute would map the column twice.
+    expect(vehicle).not.toContain('private String kind;');
+    expect(vehicle).not.toContain('doors');
+    const car: string = fileText(output, 'Car');
+    expect(car).toContain('public class Car extends Vehicle {');
+    expect(car).toContain('@DiscriminatorValue("C")');
+    expect(car).toContain('private int doors;');
+    expect(car).not.toContain('@Table');
+    const truck: string = fileText(output, 'Truck');
+    expect(truck).toContain('public class Truck extends Vehicle {');
+    expect(truck).toContain('private Depot depot;');
+    // The inverse side points at the subclass that owns the relationship.
+    const depot: string = fileText(output, 'Depot');
+    expect(depot).toContain('List<Truck> trucks');
+    expect(output.warnings).toEqual([]);
+  });
+
+  it('writes a table-per-class hierarchy with an abstract root and a sequence key', async () => {
+    const { output } = await emitFixture('inheritance-table-per-class', {
+      inheritance: 'all',
+    });
+    const animal: string = fileText(output, 'Animal');
+    expect(animal).toContain('public abstract class Animal {');
+    expect(animal).toContain(
+      '@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)'
+    );
+    expect(animal).toContain('GenerationType.SEQUENCE');
+    expect(animal).not.toContain('@Table');
+    const cat: string = fileText(output, 'Cat');
+    expect(cat).toContain('public class Cat extends Animal {');
+    expect(cat).toContain('@Table(name = "Cat")');
+    expect(cat).toContain('private Integer lives;');
+    expect(cat).not.toContain('private String name;');
+    expect(output.warnings.join('\n')).toContain(
+      'an identity column cannot generate the key of a table-per-class hierarchy'
+    );
+  });
+
+  it('keeps the hierarchies flat without the option or with joined', async () => {
+    for (const overrides of [{}, JOINED]) {
+      const { output } = await emitFixture('inheritance-single', overrides);
+      expect(
+        Object.keys(output.files).some((path) => path.endsWith('Car.java'))
+      ).toBe(false);
+      expect(fileText(output, 'Vehicle')).not.toContain('@Inheritance');
+    }
+  });
+
+  it('reads the written classes back as the same models', async () => {
+    for (const name of ['inheritance-single', 'inheritance-table-per-class']) {
+      const { schema, output } = await emitFixture(name, {
+        inheritance: 'all',
+      });
+      const reread: IrSchema = expectOk(
+        await parseJpa(
+          Object.entries(output.files).map(([path, text]) => ({ path, text })),
+          { appLabel: 'app' }
+        )
+      );
+      expect(compareIr(schema, reread).map(formatDifference), name).toEqual([]);
+      expect(
+        reread.hierarchies?.map((item) => item.strategy),
+        name
+      ).toEqual(schema.hierarchies?.map((item) => item.strategy));
+    }
+  });
+
+  it('writes the hierarchy flat, with a warning, when the models no longer match it', async () => {
+    const schema: IrSchema = await parseJpaExtra('inheritance-single');
+    const vehicle: IrModel | undefined = schema.models.find(
+      (item: IrModel) => item.name === 'Vehicle'
+    );
+    const renamed: IrField | undefined = vehicle?.fields.find(
+      (item: IrField) => item.name === 'doors'
+    );
+    if (renamed === undefined) {
+      throw new Error('The fixture has no doors field.');
+    }
+    renamed.name = 'doorCount';
+    const output: MultiFileEmitOutput = emit(schema, { inheritance: 'all' });
+    expect(output.warnings.join('\n')).toContain(
+      'the inheritance hierarchy no longer matches the models'
+    );
+    expect(
+      Object.keys(output.files).some((path) => path.endsWith('Car.java'))
+    ).toBe(false);
   });
 });

@@ -98,16 +98,30 @@ describe('jpa emitter: golden files of the key and Lombok options', () => {
   });
 });
 
-describe('jpa emitter: golden files of joined inheritance', () => {
+describe('jpa emitter: golden files of the inheritance modes', () => {
   const goldenRoot: string = fileURLToPath(
     new URL('./golden-extras/', import.meta.url)
   );
-  const SUBJECTS: [string, () => Promise<IrSchema>][] = [
-    ['jpa-inheritance-joined', () => parseJpaExtra('inheritance-joined')],
+  const SUBJECTS: [string, () => Promise<IrSchema>, 'joined' | 'all'][] = [
+    [
+      'jpa-inheritance-joined',
+      () => parseJpaExtra('inheritance-joined'),
+      'joined',
+    ],
+    [
+      'jpa-inheritance-single',
+      () => parseJpaExtra('inheritance-single'),
+      'all',
+    ],
+    [
+      'jpa-inheritance-table-per-class',
+      () => parseJpaExtra('inheritance-table-per-class'),
+      'all',
+    ],
   ];
 
-  describe.each(SUBJECTS)('%s fixture', (label, build) => {
-    it('matches the golden output of `--jpa-inheritance joined`, with the warnings and what reading it back changes', async () => {
+  describe.each(SUBJECTS)('%s fixture', (label, build, mode) => {
+    it(`matches the golden output of \`--jpa-inheritance ${mode}\`, with the warnings and what reading it back changes`, async () => {
       const schema: IrSchema = await build();
       const files: Record<string, string> = {};
       for (const style of JPA_STYLES) {
@@ -115,30 +129,30 @@ describe('jpa emitter: golden files of joined inheritance', () => {
           const output: MultiFileEmitOutput = emit(schema, {
             style,
             naming,
-            inheritance: 'joined',
+            inheritance: mode,
           });
           for (const [path, text] of Object.entries(output.files)) {
-            files[`${style}.${naming}.joined/${path}`] = text;
+            files[`${style}.${naming}.${mode}/${path}`] = text;
           }
-          files[`${style}.${naming}.joined.warnings.txt`] =
+          files[`${style}.${naming}.${mode}.warnings.txt`] =
             `${output.warnings.join('\n')}\n`;
         }
         const reread: IrSchema = expectOk(
           await parseJpa(
-            Object.entries(emit(schema, { style, inheritance: 'joined' }).files)
+            Object.entries(emit(schema, { style, inheritance: mode }).files)
               .sort(([first], [second]) => (first < second ? -1 : 1))
               .map(([path, text]) => ({ path, text })),
             { appLabel: 'app' }
           )
         );
-        files[`${style}.preserve.joined.drift.txt`] = `${compareIr(
+        files[`${style}.preserve.${mode}.drift.txt`] = `${compareIr(
           schema,
           reread
         )
           .map(formatDifference)
           .join('\n')}\n`;
       }
-      expectFilesMatchGolden(`jpa-modes/${label}-joined`, files, goldenRoot);
+      expectFilesMatchGolden(`jpa-modes/${label}-${mode}`, files, goldenRoot);
     });
   });
 });

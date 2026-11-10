@@ -80,6 +80,11 @@ afterAll(() => {
 interface Subject {
   label: string;
   build: () => Promise<IrSchema>;
+  /**
+   * True when rows cannot be saved class by class: a single-table subclass may declare a column NOT NULL, which the rows
+   * of the other classes of the table then violate (Hibernate itself rejects them). The schema is still compared.
+   */
+  schemaOnly?: boolean;
 }
 
 const SUBJECTS: readonly Subject[] = [
@@ -221,6 +226,15 @@ const JOINED_SUBJECTS: readonly Subject[] = [
     label: 'jpa-inheritance-joined',
     build: () => parseJpaExtra('inheritance-joined'),
   },
+  {
+    label: 'jpa-inheritance-single',
+    build: () => parseJpaExtra('inheritance-single'),
+    schemaOnly: true,
+  },
+  {
+    label: 'jpa-inheritance-table-per-class',
+    build: () => parseJpaExtra('inheritance-table-per-class'),
+  },
   ...['tpt', 'tpt-annotations', 'tpt-strategy'].map(
     (name: string): Subject => ({
       label: `efcore-${name}`,
@@ -238,28 +252,28 @@ const JOINED_COMBOS: Combo[] = JOINED_SUBJECTS.flatMap(
         style: 'jakarta' as const,
         naming: 'preserve' as const,
         provider: 'postgresql' as const,
-        name: `j${index}_jakarta_preserve_pg_joined`,
-        inheritance: 'joined' as const,
-        variant: 'joined inheritance',
+        name: `j${index}_jakarta_preserve_pg_inheritance`,
+        inheritance: 'all' as const,
+        variant: 'inheritance (all)',
       },
       {
         subject,
         style: 'javax' as const,
         naming: 'preserve' as const,
         provider: 'sqlite' as const,
-        name: `j${index}_javax_preserve_sqlite_joined`,
-        inheritance: 'joined' as const,
-        variant: 'joined inheritance',
+        name: `j${index}_javax_preserve_sqlite_inheritance`,
+        inheritance: 'all' as const,
+        variant: 'inheritance (all)',
       },
       {
         subject,
         style: 'jakarta' as const,
         naming: 'normalize' as const,
         provider: 'postgresql' as const,
-        name: `j${index}_jakarta_normalize_pg_joined_lombok`,
-        inheritance: 'joined' as const,
+        name: `j${index}_jakarta_normalize_pg_inheritance_lombok`,
+        inheritance: 'all' as const,
         lombok: true,
-        variant: 'joined inheritance + Lombok',
+        variant: 'inheritance (all) + Lombok',
       },
     ];
   }
@@ -519,7 +533,13 @@ describe(titleWithReason('jpa emitter: real Hibernate', probe), () => {
     60_000
   );
 
-  it.skipIf(!probe.available).each([...COMBOS, ...JOINED_COMBOS])(
+  it
+    .skipIf(!probe.available)
+    .each(
+      [...COMBOS, ...JOINED_COMBOS].filter(
+        (combo: Combo) => combo.subject.schemaOnly !== true
+      )
+    )(
     'saves rows of $subject.label with the defaults, enums and generated values of the IR ($style style, $naming naming, $provider, $variant)',
     (combo: Combo) => {
       const database: JpaDatabase = databaseOf(combo);

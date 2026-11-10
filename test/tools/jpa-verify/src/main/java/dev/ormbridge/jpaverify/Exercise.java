@@ -76,7 +76,8 @@ final class Exercise {
     }
     List<Class<?>> entities = new ArrayList<>();
     for (Class<?> type : classes) {
-      if (find(type, "Entity") != null) {
+      // An abstract class (the root of a table-per-class hierarchy) has no instance and no rows of its own.
+      if (find(type, "Entity") != null && !Modifier.isAbstract(type.getModifiers())) {
         entities.add(type);
       }
     }

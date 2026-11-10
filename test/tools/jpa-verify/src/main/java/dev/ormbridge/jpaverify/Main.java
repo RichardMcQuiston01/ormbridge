@@ -1,8 +1,11 @@
 package dev.ormbridge.jpaverify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
@@ -138,12 +141,23 @@ public final class Main {
     return false;
   }
 
-  private static void compile(Path directory, Path output) throws IOException {
+  private static void compile(Path directory, Path output) throws Exception {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     List<File> sources;
     try (Stream<Path> files = Files.walk(directory)) {
       sources =
           files.filter(p -> p.toString().endsWith(".java")).sorted().map(Path::toFile).collect(Collectors.toList());
+    }
+    List<File> kotlinSources;
+    try (Stream<Path> files = Files.walk(directory)) {
+      kotlinSources =
+          files.filter(p -> p.toString().endsWith(".kt")).sorted().map(Path::toFile).collect(Collectors.toList());
+    }
+    if (!kotlinSources.isEmpty()) {
+      compileKotlin(kotlinSources, output);
+    }
+    if (sources.isEmpty()) {
+      return;
     }
     try (StandardJavaFileManager manager = compiler.getStandardFileManager(null, null, null)) {
       Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(sources);
@@ -164,6 +178,42 @@ public final class Main {
       if (!success) {
         throw new IOException("compilation failed:\n" + log);
       }
+    }
+  }
+
+  /**
+   * Compiles Kotlin sources with the Kotlin compiler on the class path (pom-kotlin.xml; it is reached by reflection so
+   * that the other poms need not have it). The all-open plugin opens the entity classes the way a project that applies
+   * {@code kotlin("plugin.allopen")} and {@code kotlin("plugin.jpa")} does.
+   */
+  private static void compileKotlin(List<File> sources, Path output) throws Exception {
+    Class<?> compiler;
+    try {
+      compiler = Class.forName("org.jetbrains.kotlin.cli.jvm.K2JVMCompiler");
+    } catch (ClassNotFoundException missing) {
+      throw new IOException("Kotlin sources need the Kotlin compiler on the class path (build with pom-kotlin.xml)");
+    }
+    String classPath = System.getProperty("java.class.path");
+    List<String> arguments = new ArrayList<>();
+    arguments.addAll(List.of("-d", output.toString(), "-cp", classPath, "-jvm-target", "17", "-no-stdlib", "-no-reflect"));
+    for (String entry : classPath.split(File.pathSeparator)) {
+      if (entry.contains("kotlin-allopen-compiler-plugin-embeddable")) {
+        arguments.add("-Xplugin=" + entry);
+        for (String annotation : List.of("Entity", "MappedSuperclass", "Embeddable")) {
+          arguments.addAll(
+              List.of("-P", "plugin:org.jetbrains.kotlin.allopen:annotation=jakarta.persistence." + annotation));
+        }
+      }
+    }
+    for (File source : sources) {
+      arguments.add(source.getPath());
+    }
+    ByteArrayOutputStream log = new ByteArrayOutputStream();
+    Object instance = compiler.getDeclaredConstructor().newInstance();
+    Method exec = compiler.getMethod("exec", PrintStream.class, String[].class);
+    Object code = exec.invoke(instance, new PrintStream(log, true), (Object) arguments.toArray(new String[0]));
+    if (!String.valueOf(code).equals("OK")) {
+      throw new IOException("Kotlin compilation failed:\n" + log);
     }
   }
 

@@ -1,0 +1,59 @@
+{
+  "name": "ormbridge-kotlin",
+  "version": "0.1.0",
+  "description": "Kotlin entities (Hibernate / JPA, Spring Data JPA) for ormbridge: read Kotlin classes into the shared schema and write them from any other format.",
+  "author": {
+    "name": "Richard McQuiston",
+    "email": "richard.mcquiston01@gmail.com"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "ormbridge",
+    "ormbridge-plugin",
+    "kotlin",
+    "jpa",
+    "hibernate",
+    "spring",
+    "orm",
+    "schema",
+    "codegen"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "ormbridge": ">=0.21.0"
+  },
+  "dependencies": {
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "0.22.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RichardMcQuiston01/ormbridge.git",
+    "directory": "packages/kotlin"
+  },
+  "homepage": "https://github.com/RichardMcQuiston01/ormbridge/blob/main/packages/kotlin/README.md",
+  "bugs": {
+    "url": "https://github.com/RichardMcQuiston01/ormbridge/issues"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://ko-fi.com/P1V529Z7ZP"
+  }
+}

@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { extname, isAbsolute, relative, resolve } from 'node:path';
+import { dirname, extname, isAbsolute, relative, resolve } from 'node:path';
 import { Command, CommanderError } from 'commander';
 import {
   findConfigFile,
@@ -37,6 +37,7 @@ import {
   type RunOptions,
   type RunSummary,
 } from './io.js';
+import { loadPlugins } from './plugins.js';
 import type { Result } from './result.js';
 import type { NamingMode } from './transforms.js';
 
@@ -57,6 +58,7 @@ export interface CliEnvironment {
 }
 
 interface ConvertFlags {
+  plugin?: string[];
   input?: string[];
   output?: string;
   from?: string;
@@ -297,6 +299,27 @@ async function resolveConfig(
 }
 
 /**
+ * Loads the plugins named in the config file (relative to it) and by --plugin (relative to the working directory),
+ * so the formats they add are known before the conversions are validated.
+ */
+async function loadAddons(
+  fromFlags: readonly string[],
+  config: ConfigFile | undefined,
+  env: CliEnvironment
+): Promise<Result<unknown>> {
+  if (config !== undefined && config.plugins.length > 0) {
+    const loaded: Result<unknown> = await loadPlugins(
+      config.plugins,
+      dirname(config.path)
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+  }
+  return loadPlugins(fromFlags, env.cwd);
+}
+
+/**
  * Merges the config file and the flags into the conversions to run. Flags
  * override config values. With no -i and a config that lists `conversions`,
  * every listed conversion runs.
@@ -518,6 +541,14 @@ async function handleConvert(
   if (!config.ok) {
     return usageError(config.error.message);
   }
+  const plugins: Result<unknown> = await loadAddons(
+    flags.plugin ?? [],
+    config.value,
+    env
+  );
+  if (!plugins.ok) {
+    return usageError(plugins.error.message);
+  }
   const runs: Result<PlannedRun[]> = planRuns(
     flags,
     headerFromFlag,
@@ -649,7 +680,7 @@ export async function runCli(
     )
     .option(
       '--jpa-inheritance <mode>',
-      `how the JPA output writes a model whose primary key is its one-to-one relation to another model (${JPA_INHERITANCE_MODES.join(' | ')}): none writes a derived identity (@Id @OneToOne) (default), joined writes a subclass of the other model (@Inheritance(strategy = JOINED) on the root, @PrimaryKeyJoinColumn on the subclass); the tables are the same; only --to jpa reads it`
+      `how the JPA output writes inheritance (${JPA_INHERITANCE_MODES.join(' | ')}): none (default) writes a model whose key is its one-to-one relation to another as a derived identity (@Id @OneToOne) and keeps a hierarchy that was read flat; joined writes that model as a subclass (@Inheritance(strategy = JOINED), @PrimaryKeyJoinColumn); all also writes the single-table and table-per-class hierarchies that --from jpa recorded as classes again; the tables are the same in every mode; only --to jpa reads it`
     )
     .option(
       '--lombok',
@@ -668,6 +699,10 @@ export async function runCli(
       'read settings from this JSON config file instead of searching for ormbridge.config.json'
     )
     .option('--no-config', 'ignore any config file')
+    .option(
+      '--plugin <specifier...>',
+      'addon package or file to load first; it adds formats (--from / --to values); also set "plugins" in the config file'
+    )
     .action(async (flags: ConvertFlags, command: Command): Promise<void> => {
       const conflict: boolean =
         argv.includes('--no-config') &&
@@ -702,7 +737,35 @@ export async function runCli(
     .description(
       'List the supported formats, their file extensions, and whether each can be read and/or written'
     )
-    .action((): void => {
+    .option(
+      '--plugin <specifier...>',
+      'addon package or file to load first; its formats are listed too'
+    )
+    .option(
+      '--config <path>',
+      'read the "plugins" setting from this config file'
+    )
+    .option('--no-config', 'ignore any config file')
+    .action(async (flags: ConvertFlags): Promise<void> => {
+      const config: Result<ConfigFile | undefined> = await resolveConfig(
+        flags,
+        env
+      );
+      if (!config.ok) {
+        env.stderr(`error [USAGE]: ${config.error.message}\n`);
+        exitCode = EXIT_USAGE_ERROR;
+        return;
+      }
+      const loaded: Result<unknown> = await loadAddons(
+        flags.plugin ?? [],
+        config.value,
+        env
+      );
+      if (!loaded.ok) {
+        env.stderr(`error [USAGE]: ${loaded.error.message}\n`);
+        exitCode = EXIT_USAGE_ERROR;
+        return;
+      }
       env.stdout(describeFormats(listFormats()));
     });
 

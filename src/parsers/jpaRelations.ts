@@ -181,7 +181,7 @@ function toOne(
     ...(isKey ? { isPrimaryKey: true } : {}),
     ...(constraint === undefined ? {} : { constraintName: constraint }),
   };
-  output.relations.push({ order, relation });
+  output.relations.push({ order, relation, ownedBy: member.ownedBy });
   const mirror: string | undefined = scalarOnColumn(model, columnName);
   if (mirror !== undefined) {
     output.consumed.set(mirror, name);
@@ -328,7 +328,7 @@ function manyToMany(
     isNullable: false,
     onDelete: 'cascade',
   };
-  output.relations.push({ order, relation });
+  output.relations.push({ order, relation, ownedBy: member.ownedBy });
   joinTableNote(model, member, target, relation, resolver, place);
 }
 

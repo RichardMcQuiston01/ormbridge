@@ -1573,7 +1573,7 @@ model Cat {
     ]);
     expect(run.code).toBe(EXIT_USAGE_ERROR);
     expect(run.stderr).toContain(
-      'Invalid --jpa-inheritance value "single". Expected one of: none, joined.'
+      'Invalid --jpa-inheritance value "single". Expected one of: none, joined, all.'
     );
     expect((await cli(['convert', '--help'])).stdout).toContain(
       '--jpa-inheritance <mode>'
