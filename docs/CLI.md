@@ -121,6 +121,7 @@ Formats are inferred from file extensions (`.py` = Django, `.prisma` = Prisma, `
 | `--dry-run`                | off                                      | Run the whole conversion and report what would be written, without touching the filesystem.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `--check`                  | off                                      | Exit with code 3 if an output file is missing or differs from the conversion. Writes nothing. Needs an output path.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `--config <path>`          | searched                                 | Read settings from this JSON config file instead of searching for one.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `--plugin <specifier...>`  | none                                     | Addon package or file to load first; it adds formats (`--from` / `--to` values). Also the `plugins` config key. See [Addons](./ADDONS.md). Plugins are code that runs with your permissions.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `--no-config`              | off                                      | Ignore any config file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 [Back to Top](#command-line-reference)
@@ -142,7 +143,7 @@ Only the files the conversion produces are compared; extra files already in an o
 
 ## Config file
 
-Instead of repeating flags, put them in `ormbridge.config.json` (or `.ormbridgerc.json`). ormbridge looks in the current directory and each parent directory, and stops after the first directory that contains a `package.json` (or at the filesystem root). Use `--config <path>` to pick a file explicitly, or `--no-config` to ignore it. The file is plain JSON; no code is executed. Relative paths inside it resolve against the config file's directory, not the working directory.
+Instead of repeating flags, put them in `ormbridge.config.json` (or `.ormbridgerc.json`). ormbridge looks in the current directory and each parent directory, and stops after the first directory that contains a `package.json` (or at the filesystem root). Use `--config <path>` to pick a file explicitly, or `--no-config` to ignore it. The file is plain JSON and is never executed (the addons its `plugins` key names are, see [Addons](./ADDONS.md)). Relative paths inside it resolve against the config file's directory, not the working directory.
 
 ```json
 {
@@ -164,26 +165,27 @@ Instead of repeating flags, put them in `ormbridge.config.json` (or `.ormbridger
 }
 ```
 
-| Key              | Type                  | Same as                                                                                                                          |
-| ---------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `input`          | string or string list | `-i, --input`                                                                                                                    |
-| `output`         | string                | `-o, --output`                                                                                                                   |
-| `from`           | string                | `-f, --from`                                                                                                                     |
-| `to`             | string                | `-t, --to`                                                                                                                       |
-| `naming`         | string                | `--naming` (`preserve` or `normalize`)                                                                                           |
-| `provider`       | string                | `--provider`                                                                                                                     |
-| `header`         | boolean               | `--no-header` when `false`                                                                                                       |
-| `conventions`    | boolean               | `--no-conventions` when `false` (JSON Schema output)                                                                             |
-| `appLabel`       | string                | `--app-label`                                                                                                                    |
-| `autoField`      | string                | `--auto-field` (`int` or `bigint`)                                                                                               |
-| `namespace`      | string                | `--namespace` (Doctrine, Laravel, EF Core or JPA output)                                                                         |
-| `goPackage`      | string                | `--go-package` (GORM output)                                                                                                     |
-| `prismaVersion`  | number                | `--prisma-version` (`6` or `7`; Prisma output)                                                                                   |
-| `style`          | string                | `--style` (`sqlalchemy`, `sqlmodel`, `init`, `define`, `annotations`, `fluent`, `jakarta`, `javax`, `community` or `enterprise`) |
-| `jpaKey`         | string                | `--jpa-key` (`idclass` or `embedded`; JPA output)                                                                                |
-| `jpaInheritance` | string                | `--jpa-inheritance` (`none`, `joined` or `all`; JPA output)                                                                      |
-| `lombok`         | boolean               | `--lombok` when `true` (JPA output)                                                                                              |
-| `conversions`    | list of objects       | Several named conversions; each takes the keys above plus `name`                                                                 |
+| Key              | Type                  | Same as                                                                                                                                |
+| ---------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `input`          | string or string list | `-i, --input`                                                                                                                          |
+| `output`         | string                | `-o, --output`                                                                                                                         |
+| `from`           | string                | `-f, --from`                                                                                                                           |
+| `to`             | string                | `-t, --to`                                                                                                                             |
+| `naming`         | string                | `--naming` (`preserve` or `normalize`)                                                                                                 |
+| `provider`       | string                | `--provider`                                                                                                                           |
+| `header`         | boolean               | `--no-header` when `false`                                                                                                             |
+| `conventions`    | boolean               | `--no-conventions` when `false` (JSON Schema output)                                                                                   |
+| `appLabel`       | string                | `--app-label`                                                                                                                          |
+| `autoField`      | string                | `--auto-field` (`int` or `bigint`)                                                                                                     |
+| `namespace`      | string                | `--namespace` (Doctrine, Laravel, EF Core or JPA output)                                                                               |
+| `goPackage`      | string                | `--go-package` (GORM output)                                                                                                           |
+| `prismaVersion`  | number                | `--prisma-version` (`6` or `7`; Prisma output)                                                                                         |
+| `style`          | string                | `--style` (`sqlalchemy`, `sqlmodel`, `init`, `define`, `annotations`, `fluent`, `jakarta`, `javax`, `community` or `enterprise`)       |
+| `jpaKey`         | string                | `--jpa-key` (`idclass` or `embedded`; JPA output)                                                                                      |
+| `jpaInheritance` | string                | `--jpa-inheritance` (`none`, `joined` or `all`; JPA output)                                                                            |
+| `lombok`         | boolean               | `--lombok` when `true` (JPA output)                                                                                                    |
+| `plugins`        | list of strings       | Addon packages or paths to load before the conversions run (relative paths resolve against the config file); see [Addons](./ADDONS.md) |
+| `conversions`    | list of objects       | Several named conversions; each takes the keys above plus `name`                                                                       |
 
 Top-level keys are defaults for every entry in `conversions`. Flags override config values. With no `-i`, `ormbridge convert` runs every conversion in the list (and `-o` is rejected, since the conversions write to different paths); with `-i`, it runs a single conversion from the top-level settings. Unknown keys and bad values fail with a message naming the key, such as `"conversions[1].naming" must be "preserve" or "normalize" (got "weird")`.
 

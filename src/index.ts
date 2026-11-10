@@ -174,3 +174,10 @@ export type { NamingMode } from './transforms.js';
 export type * from './ir.js';
 export { err, ok } from './result.js';
 export type { ConversionError, ErrorCode, Result } from './result.js';
+export {
+  loadPlugin,
+  loadPlugins,
+  registerPlugin,
+  isOrmbridgePlugin,
+} from './plugins.js';
+export type { OrmbridgePlugin } from './plugins.js';
