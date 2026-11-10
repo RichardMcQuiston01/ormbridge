@@ -649,7 +649,7 @@ export async function runCli(
     )
     .option(
       '--jpa-inheritance <mode>',
-      `how the JPA output writes a model whose primary key is its one-to-one relation to another model (${JPA_INHERITANCE_MODES.join(' | ')}): none writes a derived identity (@Id @OneToOne) (default), joined writes a subclass of the other model (@Inheritance(strategy = JOINED) on the root, @PrimaryKeyJoinColumn on the subclass); the tables are the same; only --to jpa reads it`
+      `how the JPA output writes inheritance (${JPA_INHERITANCE_MODES.join(' | ')}): none (default) writes a model whose key is its one-to-one relation to another as a derived identity (@Id @OneToOne) and keeps a hierarchy that was read flat; joined writes that model as a subclass (@Inheritance(strategy = JOINED), @PrimaryKeyJoinColumn); all also writes the single-table and table-per-class hierarchies that --from jpa recorded as classes again; the tables are the same in every mode; only --to jpa reads it`
     )
     .option(
       '--lombok',

@@ -169,7 +169,7 @@ describe('loadConfigFile', () => {
     expect(rejected.ok).toBe(false);
     if (!rejected.ok) {
       expect(rejected.error.message).toContain(
-        '"jpaInheritance" must be one of none, joined'
+        '"jpaInheritance" must be one of none, joined, all'
       );
     }
   });

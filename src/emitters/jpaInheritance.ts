@@ -2,16 +2,18 @@ import type { IrModel, IrRelation } from '../ir.js';
 import type { KeyInfo, KeyPart } from './jpaKeys.js';
 
 /**
- * How a model whose primary key is its one-to-one relation to another model is written: `none` (the default) keeps
- * the derived identity (`@Id @OneToOne` on a relationship attribute), `joined` writes the model as a subclass of the
- * other one (`@Inheritance(strategy = JOINED)` on the root and `@PrimaryKeyJoinColumn` on the subclass). The tables
- * are the same either way; only the Java classes differ.
+ * How inheritance is written: `none` (the default) keeps a model whose primary key is its one-to-one relation to
+ * another model as a derived identity (`@Id @OneToOne`) and a hierarchy the JPA reader flattened as flat classes;
+ * `joined` writes that model as a subclass of the other one (`@Inheritance(strategy = JOINED)` on the root,
+ * `@PrimaryKeyJoinColumn` on the subclass); `all` does that and also writes the single-table and table-per-class
+ * hierarchies the JPA reader recorded (see jpaHierarchy.ts). The tables are the same in every mode.
  */
-export type JpaInheritanceMode = 'none' | 'joined';
+export type JpaInheritanceMode = 'none' | 'joined' | 'all';
 
 export const JPA_INHERITANCE_MODES: readonly JpaInheritanceMode[] = [
   'none',
   'joined',
+  'all',
 ];
 
 /** True when a value is one of the `--jpa-inheritance` modes. */

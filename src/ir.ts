@@ -213,10 +213,46 @@ export interface IrEnum {
   schema?: string;
 }
 
+/** One class of an inheritance hierarchy that the models flatten. */
+export interface IrHierarchyClass {
+  /** The class name; for a concrete class (and the root of a single table) also the name of its model. */
+  name: string;
+  /** The superclass in the hierarchy; absent for the root. */
+  parent?: string;
+  /** True for an abstract class. With table per class an abstract class has no model. */
+  isAbstract?: boolean;
+  /** Single table: the value of the discriminator column for the rows of this class. */
+  discriminatorValue?: string;
+  /** The names of the fields this class declares itself; its models hold them and those of its superclasses. */
+  fields: string[];
+  /** The names of the relations this class declares itself. */
+  relations: string[];
+}
+
+/**
+ * An inheritance hierarchy (JPA single table or table per class) that the shared model flattened: the models stay
+ * flat, as in every other format, and this records which class declares which column so that a format with
+ * inheritance can write the classes again. Formats that do not read it are not affected.
+ */
+export interface IrHierarchy {
+  strategy: 'singleTable' | 'tablePerClass';
+  /** The classes, the root first and every class after its superclass. */
+  classes: IrHierarchyClass[];
+  /** Single table: the discriminator column, which is also a field of the model. */
+  discriminator?: {
+    field: string;
+    column: string;
+    type: 'string' | 'char' | 'int';
+    length?: number;
+  };
+}
+
 export interface IrSchema {
   models: IrModel[];
   enums: IrEnum[];
   warnings: string[];
+  /** Inheritance hierarchies the models flatten (read by the JPA reader, written by the JPA writer). */
+  hierarchies?: IrHierarchy[];
 }
 
 export function findModel(

@@ -118,6 +118,8 @@ export interface ModelPlan {
   dynamicInsert: boolean;
   /** The class this one extends (joined inheritance: the model its primary key points at). */
   extendsClass?: string;
+  /** True for an abstract class (a table-per-class class without a table). */
+  isAbstract?: boolean;
 }
 
 /** The planned column of a field: its Java attribute and what the key role adds. */

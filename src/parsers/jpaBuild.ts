@@ -27,6 +27,7 @@ import {
   type Resolver,
 } from './jpaJoins.js';
 import { resolveRelations } from './jpaRelations.js';
+import { buildHierarchies } from './jpaHierarchy.js';
 import { inheritanceNotes, tableNotes } from './jpaNotes.js';
 
 /** True when an entity has a table of its own (single-table subclasses and abstract table-per-class roots do not). */
@@ -167,11 +168,13 @@ export function buildSchema(
   }
   const all: IrModel[] = [...models.values(), ...extraModels];
   dropDanglingRelations(all, warn);
+  const hierarchies = buildHierarchies(entities, models, built, outputs);
   return {
     models: all,
     enums: [...enums.values()],
     // A mapped superclass or a single-table hierarchy reads an attribute once per entity that includes it.
     warnings: [...new Set(project.warnings)],
+    ...(hierarchies.length === 0 ? {} : { hierarchies }),
   };
 }
 

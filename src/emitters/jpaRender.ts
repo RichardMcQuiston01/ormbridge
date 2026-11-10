@@ -93,7 +93,7 @@ export function renderEntity(plan: ModelPlan, layout: FileLayout): string {
     imports.use('java.io.Serializable');
   }
   body.push(
-    `public class ${plan.className}${plan.extendsClass === undefined ? '' : ` extends ${plan.extendsClass}`}${plan.serializable === true ? ' implements Serializable' : ''} {`
+    `public ${plan.isAbstract === true ? 'abstract ' : ''}class ${plan.className}${plan.extendsClass === undefined ? '' : ` extends ${plan.extendsClass}`}${plan.serializable === true ? ' implements Serializable' : ''} {`
   );
   if (plan.serializable === true) {
     body.push(`${INDENT}private static final long serialVersionUID = 1L;`, '');
