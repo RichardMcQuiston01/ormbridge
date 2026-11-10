@@ -7,13 +7,13 @@ An addon is an npm package that adds formats to ormbridge. Core keeps the interm
 Install it next to ormbridge and name it, either on the command line or in the config file:
 
 ```bash
-npm install ormbridge @ormbridge/kotlin
-npx ormbridge convert -i src/main/kotlin -f kotlin -t prisma --plugin @ormbridge/kotlin
+npm install ormbridge ormbridge-kotlin
+npx ormbridge convert -i src/main/kotlin -f kotlin -t prisma --plugin ormbridge-kotlin
 ```
 
 ```json
 {
-  "plugins": ["@ormbridge/kotlin"],
+  "plugins": ["ormbridge-kotlin"],
   "from": "kotlin",
   "to": "prisma",
   "input": ["src/main/kotlin"]
