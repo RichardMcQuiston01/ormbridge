@@ -155,4 +155,21 @@ describe('publish.yml gate', () => {
     expect(job('ci')).toContain('uses: ./.github/workflows/ci.yml');
     expect(job('ci')).toContain('needs: gate');
   });
+
+  it('skips the core package when its version is already on npm, so a re-run reaches the addons', () => {
+    const publish: string = job('publish');
+    expect(publish).toContain('npm view "ormbridge@${version}" version');
+    expect(publish).toContain('is already on npm; skipping.');
+  });
+
+  it('has a manual workflow that publishes only the addons that are not on npm yet', () => {
+    const addons: string = readFileSync(
+      new URL('../.github/workflows/publish-addons.yml', import.meta.url),
+      'utf8'
+    );
+    expect(addons).toMatch(/on:\n\s+workflow_dispatch:/);
+    expect(addons.match(/secrets\.NPM_TOKEN/g)).toHaveLength(1);
+    expect(addons).toContain('npm view "${name}@${version}" version');
+    expect(addons).toContain('--provenance --access public');
+  });
 });

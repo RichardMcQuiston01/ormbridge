@@ -100,10 +100,14 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+      # A re-run of this workflow (after the addon step failed, say) must not try to publish the core version again:
+      # npm rejects it and the steps after it would never run.
       - name: Publish to npm
         run: |
           version="${GITHUB_REF_NAME#v}"
-          if [[ "$version" == *-* ]]; then
+          if npm view "ormbridge@${version}" version > /dev/null 2>&1; then
+            echo "ormbridge@${version} is already on npm; skipping."
+          elif [[ "$version" == *-* ]]; then
             echo "Prerelease ${version}: publishing with dist-tag 'next'."
             npm publish --provenance --access public --tag next
           else

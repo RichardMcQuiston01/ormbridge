@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Release workflow: the core package is skipped when its version is already on npm, so a re-run of a failed publish reaches the addon step (the 0.21.0 re-run failed at the core step because `ormbridge@0.21.0` already existed). A new workflow, `Publish addons` (run by hand from the Actions tab), publishes the packages in `packages/` whose version is not on npm yet, without a release.
+
 ## 0.21.0 - 2026-11-10
 
 This release adds single-table and table-per-class inheritance to the JPA writer and a way to ship formats as addon packages, with the first two addons (Kotlin entities and Spring Data JPA) published beside the core package. **Output changes:** none for existing formats and options; `--jpa-inheritance all` is new and off by default, and `--from jpa` records a hierarchy beside the flat models without changing them.
