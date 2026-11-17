@@ -1,6 +1,6 @@
 {
   "name": "ormbridge-spring-data",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Spring Data JPA entities for ormbridge: Java or Kotlin classes with Spring auditing annotations and a JpaRepository per entity, read into and written from the shared schema.",
   "author": {
     "name": "Richard McQuiston",

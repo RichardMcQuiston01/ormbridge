@@ -1,6 +1,6 @@
 {
   "name": "ormbridge-kotlin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Kotlin entities (Hibernate / JPA, Spring Data JPA) for ormbridge: read Kotlin classes into the shared schema and write them from any other format.",
   "author": {
     "name": "Richard McQuiston",

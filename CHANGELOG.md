@@ -4,6 +4,7 @@
 
 ### Changed
 
+- `ormbridge-kotlin` and `ormbridge-spring-data` 0.1.1: the package READMEs follow the project README layout (author, table of contents, overview, getting started with working commands, more information, license), with absolute links so they work on the npm page. No code changes.
 - Release workflow: the core package is skipped when its version is already on npm, so a re-run of a failed publish reaches the addon step (the 0.21.0 re-run failed at the core step because `ormbridge@0.21.0` already existed). A new workflow, `Publish addons` (run by hand from the Actions tab), publishes the packages in `packages/` whose version is not on npm yet, without a release.
 
 ## 0.21.0 - 2026-11-10
