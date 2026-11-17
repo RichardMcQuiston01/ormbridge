@@ -6,11 +6,12 @@
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
+import process from 'node:process';
 
 const [outputArgument, ...names] = process.argv.slice(2);
 if (outputArgument === undefined || names.length === 0) {
-  console.error(
-    'Usage: node scripts/copy-grammars.mjs <output directory> <grammar name>...'
+  process.stderr.write(
+    'Usage: node scripts/copy-grammars.mjs <output directory> <grammar name>...\n'
   );
   process.exit(2);
 }
@@ -27,9 +28,11 @@ for (const name of names) {
     source = undefined;
   }
   if (source === undefined || !existsSync(source)) {
-    console.error(`The grammar ${file} was not found in tree-sitter-wasms.`);
+    process.stderr.write(
+      `The grammar ${file} was not found in tree-sitter-wasms.\n`
+    );
     process.exit(1);
   }
   copyFileSync(source, join(output, file));
-  console.log(`copied ${file} to ${outputArgument}`);
+  process.stdout.write(`copied ${file} to ${outputArgument}\n`);
 }
