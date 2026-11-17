@@ -40,7 +40,6 @@
     "ormbridge": ">=0.21.0"
   },
   "dependencies": {
-    "tree-sitter-wasms": "^0.1.13",
     "web-tree-sitter": "0.22.6"
   },
   "repository": {

@@ -1,6 +1,6 @@
-import { createRequire } from 'node:module';
 import Parser from 'web-tree-sitter';
-import { describeThrown, err, ok, type Result } from '../result.js';
+import { loadGrammarParser } from '../grammar.js';
+import type { Result } from '../result.js';
 
 export type SyntaxNode = Parser.SyntaxNode;
 
@@ -25,32 +25,9 @@ export interface PyCall {
   text: string;
 }
 
-let cachedParser: Parser | undefined;
-
 /** Lazily loads the tree-sitter Python grammar (WebAssembly, no native build step). */
-export async function getPythonParser(): Promise<Result<Parser>> {
-  if (cachedParser !== undefined) {
-    return ok(cachedParser);
-  }
-  try {
-    const requireFromHere: NodeRequire = createRequire(import.meta.url);
-    const wasmPath: string = requireFromHere.resolve(
-      'tree-sitter-wasms/out/tree-sitter-python.wasm'
-    );
-    await Parser.init();
-    const pythonLanguage: Parser.Language =
-      await Parser.Language.load(wasmPath);
-    const parser: Parser = new Parser();
-    parser.setLanguage(pythonLanguage);
-    cachedParser = parser;
-    return ok(parser);
-  } catch (thrown) {
-    return err(
-      'PARSER_INIT_FAILED',
-      `Failed to initialize the tree-sitter Python grammar. Check that the "web-tree-sitter" (0.22.x) and ` +
-        `"tree-sitter-wasms" packages are installed. Underlying error: ${describeThrown(thrown)}`
-    );
-  }
+export function getPythonParser(): Promise<Result<Parser>> {
+  return loadGrammarParser('python', 'Python', import.meta.url);
 }
 
 export function lastSegment(dottedName: string): string {
