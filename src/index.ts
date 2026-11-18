@@ -195,3 +195,4 @@ export type {
 export type { AnnotationNode, AnnotationValue } from './emitters/jpaFormat.js';
 export type { FileLayout as JpaFileLayout } from './emitters/jpaRender.js';
 export type { KeyClassOptions as JpaKeyClassOptions } from './emitters/jpaKeyClass.js';
+export { loadGrammarParser, locateGrammar } from './grammar.js';

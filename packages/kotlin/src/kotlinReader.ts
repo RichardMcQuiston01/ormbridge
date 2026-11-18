@@ -1,5 +1,5 @@
-import { createRequire } from 'node:module';
 import {
+  loadGrammarParser,
   parseJpa,
   type IrSchema,
   type JpaParseOptions,
@@ -10,34 +10,8 @@ import Parser from 'web-tree-sitter';
 import { splitTopLevel } from './kotlinSplit.js';
 import { kotlinToJava } from './kotlinToJava.js';
 
-let cachedParser: Parser | undefined;
-
-async function getKotlinParser(): Promise<Result<Parser>> {
-  if (cachedParser !== undefined) {
-    return { ok: true, value: cachedParser };
-  }
-  try {
-    const requireFromHere: NodeRequire = createRequire(import.meta.url);
-    const wasmPath: string = requireFromHere.resolve(
-      'tree-sitter-wasms/out/tree-sitter-kotlin.wasm'
-    );
-    await Parser.init();
-    const language: Parser.Language = await Parser.Language.load(wasmPath);
-    const parser: Parser = new Parser();
-    parser.setLanguage(language);
-    cachedParser = parser;
-    return { ok: true, value: parser };
-  } catch (thrown) {
-    return {
-      ok: false,
-      error: {
-        code: 'PARSER_INIT_FAILED',
-        message:
-          `Failed to initialize the tree-sitter Kotlin grammar. Check that the "web-tree-sitter" (0.22.x) and ` +
-          `"tree-sitter-wasms" packages are installed. Underlying error: ${thrown instanceof Error ? thrown.message : String(thrown)}`,
-      },
-    };
-  }
+function getKotlinParser(): Promise<Result<Parser>> {
+  return loadGrammarParser('kotlin', 'Kotlin', import.meta.url);
 }
 
 /** Kotlin test sources, build output and scripts are not the model. */

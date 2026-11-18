@@ -1,6 +1,6 @@
-import { createRequire } from 'node:module';
 import Parser from 'web-tree-sitter';
-import { describeThrown, err, ok, type Result } from '../result.js';
+import { loadGrammarParser } from '../grammar.js';
+import type { Result } from '../result.js';
 
 export type SyntaxNode = Parser.SyntaxNode;
 
@@ -110,31 +110,9 @@ export interface CsFile {
   nullableDirective: 'enable' | 'disable' | undefined;
 }
 
-let cachedParser: Parser | undefined;
-
 /** Lazily loads the tree-sitter C# grammar (WebAssembly, no native build step). */
-export async function getCSharpParser(): Promise<Result<Parser>> {
-  if (cachedParser !== undefined) {
-    return ok(cachedParser);
-  }
-  try {
-    const requireFromHere: NodeRequire = createRequire(import.meta.url);
-    const wasmPath: string = requireFromHere.resolve(
-      'tree-sitter-wasms/out/tree-sitter-c_sharp.wasm'
-    );
-    await Parser.init();
-    const language: Parser.Language = await Parser.Language.load(wasmPath);
-    const parser: Parser = new Parser();
-    parser.setLanguage(language);
-    cachedParser = parser;
-    return ok(parser);
-  } catch (thrown) {
-    return err(
-      'PARSER_INIT_FAILED',
-      `Failed to initialize the tree-sitter C# grammar. Check that the "web-tree-sitter" (0.22.x) and ` +
-        `"tree-sitter-wasms" packages are installed. Underlying error: ${describeThrown(thrown)}`
-    );
-  }
+export function getCSharpParser(): Promise<Result<Parser>> {
+  return loadGrammarParser('c_sharp', 'C#', import.meta.url);
 }
 
 // ---------------------------------------------------------------------------

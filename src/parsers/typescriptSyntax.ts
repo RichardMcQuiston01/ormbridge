@@ -1,6 +1,6 @@
-import { createRequire } from 'node:module';
 import Parser from 'web-tree-sitter';
-import { describeThrown, err, ok, type Result } from '../result.js';
+import { loadGrammarParser } from '../grammar.js';
+import type { Result } from '../result.js';
 
 export type SyntaxNode = Parser.SyntaxNode;
 
@@ -46,32 +46,9 @@ export interface TsDecorator {
   args: TsValue[];
 }
 
-let cachedParser: Parser | undefined;
-
 /** Lazily loads the tree-sitter TypeScript grammar (WebAssembly, no native build step). */
-export async function getTypeScriptParser(): Promise<Result<Parser>> {
-  if (cachedParser !== undefined) {
-    return ok(cachedParser);
-  }
-  try {
-    const requireFromHere: NodeRequire = createRequire(import.meta.url);
-    const wasmPath: string = requireFromHere.resolve(
-      'tree-sitter-wasms/out/tree-sitter-typescript.wasm'
-    );
-    await Parser.init();
-    const typescriptLanguage: Parser.Language =
-      await Parser.Language.load(wasmPath);
-    const parser: Parser = new Parser();
-    parser.setLanguage(typescriptLanguage);
-    cachedParser = parser;
-    return ok(parser);
-  } catch (thrown) {
-    return err(
-      'PARSER_INIT_FAILED',
-      `Failed to initialize the tree-sitter TypeScript grammar. Check that the "web-tree-sitter" (0.22.x) and ` +
-        `"tree-sitter-wasms" packages are installed. Underlying error: ${describeThrown(thrown)}`
-    );
-  }
+export function getTypeScriptParser(): Promise<Result<Parser>> {
+  return loadGrammarParser('typescript', 'TypeScript', import.meta.url);
 }
 
 export function lastSegment(dottedName: string): string {
