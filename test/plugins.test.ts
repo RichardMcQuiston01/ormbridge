@@ -89,6 +89,27 @@ describe('loadPlugin', () => {
     expect(again.ok).toBe(true);
   });
 
+  it('a second copy of a plugin with the same name does nothing', async () => {
+    await writeFile(join(workDirectory, 'demo-copy.mjs'), PLUGIN_SOURCE);
+    const first: Result<OrmbridgePlugin> = await loadPlugin(
+      './demo-plugin.mjs',
+      workDirectory
+    );
+    const copy: Result<OrmbridgePlugin> = await loadPlugin(
+      './demo-copy.mjs',
+      workDirectory
+    );
+    expect(first.ok).toBe(true);
+    expect(copy.ok).toBe(true);
+    // The first copy's format is still the registered one.
+    if (first.ok) {
+      expect(getFormat('demo')).toEqual({
+        ok: true,
+        value: first.value.formats[0],
+      });
+    }
+  });
+
   it('loads a package from node_modules of the base directory', async () => {
     const packageDirectory: string = join(
       workDirectory,

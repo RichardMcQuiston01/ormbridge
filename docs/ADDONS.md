@@ -29,6 +29,7 @@ npx ormbridge convert -i src/main/kotlin -f kotlin -t prisma --plugin ormbridge-
 
 | Package                                                                        | Formats                             | Guide                                       |
 | ------------------------------------------------------------------------------ | ----------------------------------- | ------------------------------------------- |
+| [`ormbridge-graphene`](https://www.npmjs.com/package/ormbridge-graphene)       | `graphene`                          | [Graphene](./formats/graphene.md)           |
 | [`ormbridge-kotlin`](https://www.npmjs.com/package/ormbridge-kotlin)           | `kotlin`                            | [Kotlin entities](./formats/kotlin.md)      |
 | [`ormbridge-spring-data`](https://www.npmjs.com/package/ormbridge-spring-data) | `spring-data`, `spring-data-kotlin` | [Spring Data JPA](./formats/spring-data.md) |
 

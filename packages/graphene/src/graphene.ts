@@ -1,13 +1,13 @@
-import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
-import type {
-  IrField,
-  IrModel,
-  IrRelation,
-  IrScalarType,
-  IrSchema,
-} from '../ir.js';
-import { toSnakeCase } from '../naming.js';
-import type { EmitOutput } from './prisma.js';
+import {
+  prismaOnlyWarnings,
+  toSnakeCase,
+  type EmitOutput,
+  type IrField,
+  type IrModel,
+  type IrRelation,
+  type IrScalarType,
+  type IrSchema,
+} from 'ormbridge';
 
 /**
  * Graphene (graphene-django) emitter.

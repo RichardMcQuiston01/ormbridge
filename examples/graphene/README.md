@@ -2,7 +2,7 @@
 
 This folder shows ormbridge converting the shared blog schema to a Graphene (graphene-django) GraphQL schema. Graphene is write-only, so there is no conversion back.
 
-- `ormbridge.config.json` defines one conversion: `to-graphene`.
+- `ormbridge.config.json` loads the Graphene add-on and defines one conversion: `to-graphene`. The `plugins` entry is a path into this repository; in your own project, run `npm install ormbridge-graphene` and write `"plugins": ["ormbridge-graphene"]`.
 - `generated/schema.py` is generated from `../schema/schema.prisma`: a `DjangoObjectType` per model, `Query` fields, create, update and delete mutations, and `schema = graphene.Schema(...)`. It imports the models from `.models`, so place it next to a Django `models.py` (ormbridge can write one with `--to django`).
 
 Run it (the config file supplies the paths and formats):

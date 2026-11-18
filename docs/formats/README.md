@@ -20,7 +20,7 @@ One guide per format: what is read, what is written, the options that apply, and
 | [Hibernate / JPA](jpa.md)               |  yes  |  yes   | Java entities, `--style jakarta` (default) or `javax`     |
 | [Kotlin](kotlin.md)                     |  yes  |  yes   | Addon `ormbridge-kotlin`; claims `.kt`                    |
 | [Spring Data JPA](spring-data.md)       |  yes  |  yes   | Addon `ormbridge-spring-data`; Java and Kotlin            |
-| [Graphene](graphene.md)                 |  no   |  yes   | graphene-django GraphQL schema                            |
+| [Graphene](graphene.md)                 |  no   |  yes   | Addon `ormbridge-graphene`; graphene-django schema        |
 | [TypeScript](typescript.md)             |  no   |  yes   | Plain interfaces and enums                                |
 | [Neo4j](neo4j.md)                       |  no   |  yes   | Cypher constraints and indexes; `--style enterprise`      |
 | [neomodel](neomodel.md)                 |  no   |  yes   | Python `StructuredNode` classes for Neo4j                 |
