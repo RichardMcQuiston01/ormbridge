@@ -191,10 +191,16 @@ describe('formats command output', () => {
   const cliPath: string = fileURLToPath(
     new URL('../dist/cli.js', import.meta.url)
   );
-  it.skipIf(!existsSync(cliPath))('is printed by the built CLI', () => {
+  // The built CLI has no addon loaded, so the formats that moved out of core are listed as their stubs. The expected
+  // text comes from the built registry as well, not from the one of this process, which loads the addons.
+  it.skipIf(!existsSync(cliPath))('is printed by the built CLI', async () => {
     const output: string = execFileSync('node', [cliPath, 'formats'], {
       encoding: 'utf8',
     });
-    expect(output).toBe(describeFormats(listFormats()));
+    const built: typeof import('../src/formats.js') = await import(
+      new URL('../dist/formats.js', import.meta.url).href
+    );
+    expect(output).toBe(built.describeFormats(built.listFormats()));
+    expect(output).toContain('moved to ormbridge-graphene');
   });
 });

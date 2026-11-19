@@ -1,4 +1,6 @@
-# Graphene
+# Graphene (addon)
+
+Graphene moved out of the core package in ormbridge 0.22. Install the add-on and load it: `npm install ormbridge-graphene`, then pass `--plugin ormbridge-graphene` (or set `"plugins": ["ormbridge-graphene"]` in the config file). See [Addons](../ADDONS.md). Without it, `--to graphene` fails with a message that says so.
 
 Graphene (graphene-django) is a Python GraphQL library. ormbridge writes a Graphene schema file and cannot read one (`ormbridge formats` lists it as `write`). It claims no file extension, because `.py` belongs to Django, so always pass `--to graphene`. The output is one text file, written to `-o`, and it is meant to sit next to a Django `models.py`, which you can generate with `--to django`.
 
@@ -6,7 +8,7 @@ Graphene (graphene-django) is a Python GraphQL library. ormbridge writes a Graph
 
 ```bash
 cd examples/graphene
-npx ormbridge convert           # ../schema/schema.prisma -> generated/schema.py
+npx ormbridge convert           # ../schema/schema.prisma -> generated/schema.py (the config loads the add-on)
 npx ormbridge convert --check   # exit code 3 if generated/schema.py is stale
 # inside this repository, after npm run build: node ../../dist/cli.js convert
 ```

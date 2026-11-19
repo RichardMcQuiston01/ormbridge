@@ -2,7 +2,6 @@ import { emitDjango } from './emitters/django.js';
 import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
 import { emitDrizzle } from './emitters/drizzle.js';
 import { emitGorm, isValidGoPackageName } from './emitters/gorm.js';
-import { emitGraphene } from './emitters/graphene.js';
 import { emitLaravel } from './emitters/laravel.js';
 import {
   emitPrisma,
@@ -11,6 +10,7 @@ import {
 } from './emitters/prisma.js';
 import { emitTypeorm } from './emitters/typeorm.js';
 import { emitJsonSchema } from './emitters/jsonSchema.js';
+import { movedStub } from './movedFormats.js';
 import {
   emitEfcore,
   isEfcoreStyle,
@@ -168,6 +168,11 @@ export interface FormatInput {
 export interface FormatAdapter {
   /** Unique identifier used by --from / --to and the programmatic API. */
   name: string;
+  /**
+   * Set on the stub of a format that moved into an addon package: the stub fails with a message that names the package,
+   * and registering the real format under the same name replaces it.
+   */
+  movedTo?: { packageName: string };
   /** File extensions (with the leading dot) used to infer this format from a path. */
   extensions: string[];
   /** One-line, human-readable summary shown by `ormbridge formats`. */
@@ -191,7 +196,10 @@ export interface FormatAdapter {
 
 const adapters: Map<string, FormatAdapter> = new Map<string, FormatAdapter>();
 
-/** Adds an adapter to the registry. Fails when the name or an extension is already taken. */
+/**
+ * Adds an adapter to the registry. Fails when the name or an extension is already taken, except that the stub of a moved
+ * format (`movedTo`) is replaced by the real format, in the same place of the list.
+ */
 export function registerFormat(adapter: FormatAdapter): Result<FormatAdapter> {
   if (adapter.name.trim() === '') {
     return err(
@@ -199,7 +207,8 @@ export function registerFormat(adapter: FormatAdapter): Result<FormatAdapter> {
       'A format adapter must have a non-empty name.'
     );
   }
-  if (adapters.has(adapter.name)) {
+  const existing: FormatAdapter | undefined = adapters.get(adapter.name);
+  if (existing !== undefined && existing.movedTo === undefined) {
     return err(
       'INVALID_OPTION',
       `The format "${adapter.name}" is already registered.`
@@ -364,14 +373,6 @@ const typeormAdapter: FormatAdapter = {
       })
     );
   },
-};
-
-const grapheneAdapter: FormatAdapter = {
-  name: 'graphene',
-  // No extension is claimed: ".py" belongs to Django, so pass --to graphene.
-  extensions: [],
-  description: 'Graphene (graphene-django) GraphQL schema',
-  emit: (schema: IrSchema): Result<EmitOutput> => ok(emitGraphene(schema)),
 };
 
 const typescriptAdapter: FormatAdapter = {
@@ -939,7 +940,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(laravelAdapter),
   registerFormat(gormAdapter),
   registerFormat(drizzleAdapter),
-  registerFormat(grapheneAdapter),
+  registerFormat(movedStub('graphene')),
   registerFormat(typescriptAdapter),
   registerFormat(zodAdapter),
   registerFormat(neo4jAdapter),

@@ -1,9 +1,14 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { emitGraphene } from '../src/emitters/graphene.js';
-import type { EmitOutput } from '../src/emitters/prisma.js';
-import type { IrField, IrModel, IrRelation, IrSchema } from '../src/ir.js';
-import { convertCanonical } from './harness.js';
+import type {
+  EmitOutput,
+  IrField,
+  IrModel,
+  IrRelation,
+  IrSchema,
+} from 'ormbridge';
+import { convertCanonical } from '../../../test/harness.js';
+import { emitGraphene } from '../src/index.js';
 
 function field(name: string, overrides: Partial<IrField> = {}): IrField {
   return {

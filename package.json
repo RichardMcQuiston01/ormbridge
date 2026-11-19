@@ -21,7 +21,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-grammars.mjs dist/grammars c_sharp go java php python typescript && npm run build:addons",
-    "build:addons": "tsc -p packages/kotlin/tsconfig.json && tsc -p packages/spring-data/tsconfig.json && node scripts/copy-grammars.mjs packages/kotlin/dist/grammars kotlin",
+    "build:addons": "node scripts/build-addons.mjs",
     "dev": "tsc -p tsconfig.json --watch",
     "test": "vitest run",
     "prepublishOnly": "npm run build && npm test",

@@ -70,8 +70,8 @@ jobs:
         run: >-
           npx vitest run
           test/django-verify.test.ts
-          test/graphene-verify.test.ts
-          test/graphene-emitter.test.ts
+          packages/graphene/test/graphene-verify.test.ts
+          packages/graphene/test/graphene-emitter.test.ts
           test/sqlalchemy-verify.test.ts
           test/sqlalchemy-parser-verify.test.ts
           test/sqlalchemy-emitter.test.ts

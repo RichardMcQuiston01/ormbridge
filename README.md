@@ -30,14 +30,14 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | Entity Framework Core (C#)  |  ✔   |   ✔   | EF Core 8: annotations or `--style fluent`, a `DbContext`; replays migrations; `OwnsMany`                                            |
 | Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` or 5 `--style javax`; `@EmbeddedId` keys; Lombok option                                                        |
 | TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                                                                                            |
-| Graphene (graphene-django)  |      |   ✔   | GraphQL types, queries and mutations that pair with Django                                                                           |
+| Graphene (graphene-django)  |      |   ✔   | Addon `ormbridge-graphene`: GraphQL types, queries and mutations that pair with Django                                               |
 | Neo4j (Cypher)              |      |   ✔   | Node constraints and indexes; relationships as comments; `--style enterprise` for Enterprise                                         |
 | Spring Data Neo4j (Java)    |      |   ✔   | SDN 7 for Spring Boot 3: `@Node`, `@Relationship`, `@RelationshipProperties` classes                                                 |
 | neomodel (Python, Neo4j)    |      |   ✔   | `StructuredNode` classes, relationships with cardinality, `StructuredRel` for join tables                                            |
 
 Each format has a [guide](./docs/formats/README.md) and a runnable [example project](./examples/README.md).
 
-Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write) and `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories).
+Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write), `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories) and `ormbridge-graphene` (the Graphene schema writer, which moved out of the core package in 0.22).
 
 [Back to Top](#table-of-contents)
 

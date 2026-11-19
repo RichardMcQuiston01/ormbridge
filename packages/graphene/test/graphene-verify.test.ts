@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { IrSchema } from '../src/ir.js';
+import type { IrSchema } from 'ormbridge';
 import {
   buildSpec,
   convertSource,
@@ -17,7 +17,7 @@ import {
   writeProjectFile,
   type ToolProbe,
   type VerifySource,
-} from './realToolSupport.js';
+} from '../../../test/realToolSupport.js';
 
 /**
  * Imports the generated graphene-django schema next to the Django models generated from the same
@@ -29,7 +29,7 @@ import {
  */
 
 const SCRIPT: string = fileURLToPath(
-  new URL('./tools/validate-graphene.py', import.meta.url)
+  new URL('./validate-graphene.py', import.meta.url)
 );
 
 const probe: ToolProbe = probePython(

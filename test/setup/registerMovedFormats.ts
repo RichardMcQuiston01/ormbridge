@@ -1,0 +1,14 @@
+import grapheneAddon from '../../packages/graphene/src/index.js';
+import { registerPlugin } from '../../src/plugins.js';
+
+/**
+ * Formats that moved into addon packages are still part of the product, so the core tests load them from the source
+ * of the packages in this repository: the conversion goldens, the matrix and every test that converts through the
+ * registry keep covering them. A test file that needs the format to be missing (the stub of core) unregisters it.
+ */
+for (const addon of [grapheneAddon]) {
+  const registered = registerPlugin(addon);
+  if (!registered.ok) {
+    throw new Error(registered.error.message);
+  }
+}
