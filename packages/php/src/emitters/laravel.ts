@@ -1,5 +1,5 @@
-import type { MultiFileEmitOutput } from '../formats.js';
-import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
+import type { MultiFileEmitOutput } from 'ormbridge';
+import { prismaOnlyWarnings } from 'ormbridge';
 import type {
   IrDefault,
   IrEnum,
@@ -10,17 +10,17 @@ import type {
   IrOnDelete,
   IrRelation,
   IrSchema,
-} from '../ir.js';
-import { findModel } from '../ir.js';
-import { toCamelCase, toPascalCase, toSnakeCase } from '../naming.js';
-import type { NamingMode } from '../transforms.js';
+} from 'ormbridge';
+import { findModel } from 'ormbridge';
+import { toCamelCase, toPascalCase, toSnakeCase } from 'ormbridge';
+import type { NamingMode } from 'ormbridge';
 import { isValidPhpNamespace } from './doctrine.js';
 import {
   COCKROACH_PREFIX,
   cockroachSequentialWarning,
   isCockroach,
-} from './cockroach.js';
-import type { PrismaProvider } from './prisma.js';
+} from 'ormbridge';
+import type { PrismaProvider } from 'ormbridge';
 
 /**
  * Laravel emitter (Laravel 11 / 12 style, PHP 8.1+). Writes one migration per

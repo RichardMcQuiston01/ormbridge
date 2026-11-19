@@ -50,6 +50,7 @@ export const efcoreAdapter: FormatAdapter = {
       '.vs',
       '.git',
     ],
+    inheritSkippedDirectories: false,
     skippedDirectoriesIgnoreCase: true,
     isSkippedFile: (path: string): boolean => NON_MODEL_FILE.test(path),
   },

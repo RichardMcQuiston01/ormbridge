@@ -2,7 +2,7 @@
 
 Doctrine ORM entities (PHP 8 attributes) generated from the shared schema [`../schema/schema.prisma`](../schema/schema.prisma), and the way back.
 
-- `ormbridge.config.json` defines two conversions.
+- `ormbridge.config.json` loads the PHP add-on and defines two conversions. The `plugins` entry is a path into this repository; in your own project, run `npm install ormbridge-php` and write `"plugins": ["ormbridge-php"]`.
 - `models/src/Entity/*.php` holds one entity per model, and `models/src/Enum/PostStatus.php` the backed enum (`to-doctrine`: Prisma to Doctrine, default namespace `App\Entity`).
 - `prisma/schema.prisma` is the Prisma output read back from `models/` (`from-doctrine`: Doctrine to Prisma).
 

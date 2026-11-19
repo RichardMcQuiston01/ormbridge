@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { IrField, IrModel, IrSchema } from '../src/ir.js';
+import type { IrField, IrModel, IrSchema } from '../../../src/ir.js';
 import {
   parseDoctrine,
   type DoctrineSourceFile,
 } from '../src/parsers/doctrine.js';
-import { expectOk } from './helpers.js';
+import { expectOk } from '../../../test/helpers.js';
 
 const HEADER: string = `<?php
 namespace App\\Entity;
@@ -319,7 +319,10 @@ describe('behaviour fixture', () => {
       path: name,
       text: readFileSync(
         fileURLToPath(
-          new URL(`./fixtures/doctrine-behaviour/${name}`, import.meta.url)
+          new URL(
+            `../../../test/fixtures/doctrine-behaviour/${name}`,
+            import.meta.url
+          )
         ),
         'utf8'
       ),

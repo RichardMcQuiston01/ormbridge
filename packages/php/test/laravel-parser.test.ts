@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getFormat, getFormatByExtension } from '../src/formats.js';
+import { getFormat, getFormatByExtension } from '../../../src/formats.js';
 import type {
   IrEnum,
   IrField,
@@ -12,14 +12,14 @@ import type {
   IrModel,
   IrRelation,
   IrSchema,
-} from '../src/ir.js';
-import { runConversion } from '../src/io.js';
+} from '../../../src/ir.js';
+import { runConversion } from '../../../src/io.js';
 import {
   parseLaravel,
   type LaravelSourceFile,
 } from '../src/parsers/laravel.js';
-import { loadCanonicalSources } from './harness.js';
-import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
+import { loadCanonicalSources } from '../../../test/harness.js';
+import { DEFAULT_OPTIONS, expectOk } from '../../../test/helpers.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -2426,7 +2426,7 @@ const replayScript: string = fileURLToPath(
   new URL('./tools/replay-laravel-migrations.php', import.meta.url)
 );
 const migrationsDirectory: string = fileURLToPath(
-  new URL('./fixtures/laravel/database/migrations', import.meta.url)
+  new URL('../../../test/fixtures/laravel/database/migrations', import.meta.url)
 );
 
 interface DatabaseColumn {

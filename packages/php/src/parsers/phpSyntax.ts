@@ -1,7 +1,7 @@
 import Parser from 'web-tree-sitter';
-import type { IrEnumValue } from '../ir.js';
-import { loadGrammarParser } from '../grammar.js';
-import type { Result } from '../result.js';
+import type { IrEnumValue } from 'ormbridge';
+import { loadGrammarParser } from 'ormbridge';
+import type { Result } from 'ormbridge';
 
 export type SyntaxNode = Parser.SyntaxNode;
 

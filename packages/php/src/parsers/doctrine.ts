@@ -10,9 +10,9 @@ import type {
   IrRelation,
   IrScalarType,
   IrSchema,
-} from '../ir.js';
-import { toCamelCase, toSnakeCase } from '../naming.js';
-import { err, ok, type Result } from '../result.js';
+} from 'ormbridge';
+import { toCamelCase, toSnakeCase } from 'ormbridge';
+import { err, ok, type Result } from 'ormbridge';
 import {
   attributesOf,
   collectDeclarations,
