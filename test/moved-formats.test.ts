@@ -126,4 +126,34 @@ describe('the built CLI without the addon', () => {
       expect(run.stderr).toContain(`--plugin ${moved.packageName}`);
     }
   );
+
+  it
+    .skipIf(!existsSync(cliPath))
+    .each(
+      MOVED_FORMATS.filter((moved: MovedFormat) => moved.read).map(
+        (moved: MovedFormat) => [moved.name, moved]
+      )
+    )(
+    '--from %s on a folder fails with the package message, not with "no files found"',
+    (_name: string, moved: MovedFormat) => {
+      const run = spawnSync(
+        'node',
+        [
+          cliPath,
+          'convert',
+          '-i',
+          fileURLToPath(new URL('./fixtures', import.meta.url)),
+          '-f',
+          moved.name,
+          '-t',
+          'prisma',
+          '--no-config',
+        ],
+        { encoding: 'utf8' }
+      );
+      expect(run.status).not.toBe(0);
+      expect(run.stderr).toContain(moved.packageName);
+      expect(run.stderr).not.toContain('were found in');
+    }
+  );
 });

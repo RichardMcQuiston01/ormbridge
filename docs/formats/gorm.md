@@ -1,4 +1,6 @@
-# GORM
+# GORM (addon)
+
+GORM moved out of the core package in ormbridge 0.22. Install the add-on and load it: `npm install ormbridge-gorm`, then pass `--plugin ormbridge-gorm` (or set `"plugins": ["ormbridge-gorm"]` in the config file). See [Addons](../ADDONS.md). Without it, `--from gorm` and `--to gorm` fail with a message that says so.
 
 GORM is the Go ORM; its schema is a set of Go structs with `gorm:"..."` tags. ormbridge reads and writes it (`ormbridge formats` lists it as `read + write`). It claims no file extension, so pass `--from gorm` when reading and `--to gorm` when writing. GORM output is a directory, so `-o` must be a directory.
 

@@ -21,6 +21,13 @@ export interface MovedFormat {
 
 export const MOVED_FORMATS: readonly MovedFormat[] = [
   {
+    name: 'gorm',
+    packageName: 'ormbridge-gorm',
+    description: 'GORM models (Go structs with gorm tags)',
+    read: true,
+    write: true,
+  },
+  {
     name: 'graphene',
     packageName: 'ormbridge-graphene',
     description: 'Graphene (graphene-django) GraphQL schema',
@@ -35,6 +42,19 @@ export function movedMessage(moved: MovedFormat): string {
     `The "${moved.name}" format moved out of the core package into ${moved.packageName}. ` +
     `Install it (npm install ${moved.packageName}) and load it with --plugin ${moved.packageName}, ` +
     `or add "plugins": ["${moved.packageName}"] to the config file.`
+  );
+}
+
+/** The entry of a moved format by name; one made up from the package name when the list has no entry (a stub of an addon). */
+export function movedFormatOf(name: string, packageName: string): MovedFormat {
+  return (
+    MOVED_FORMATS.find((candidate: MovedFormat) => candidate.name === name) ?? {
+      name,
+      packageName,
+      description: name,
+      read: true,
+      write: true,
+    }
   );
 }
 

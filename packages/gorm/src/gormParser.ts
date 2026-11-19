@@ -1,20 +1,25 @@
+import {
+  describeThrown,
+  err,
+  ok,
+  singularize,
+  toCamelCase,
+  toSnakeCase,
+  type IrCompositeForeignKey,
+  type IrDefault,
+  type IrEnum,
+  type IrEnumValue,
+  type IrField,
+  type IrIndex,
+  type IrIndexFieldOptions,
+  type IrModel,
+  type IrOnDelete,
+  type IrRelation,
+  type IrScalarType,
+  type IrSchema,
+  type Result,
+} from 'ormbridge';
 import type Parser from 'web-tree-sitter';
-import type {
-  IrCompositeForeignKey,
-  IrDefault,
-  IrEnum,
-  IrEnumValue,
-  IrField,
-  IrIndex,
-  IrIndexFieldOptions,
-  IrModel,
-  IrOnDelete,
-  IrRelation,
-  IrScalarType,
-  IrSchema,
-} from '../ir.js';
-import { singularize, toCamelCase, toSnakeCase } from '../naming.js';
-import { describeThrown, err, ok, type Result } from '../result.js';
 import {
   defaultImportName,
   describeGoType,

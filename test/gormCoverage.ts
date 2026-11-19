@@ -1,4 +1,4 @@
-import { gormColumnName } from '../src/emitters/gorm.js';
+import { gormColumnName } from '../packages/gorm/src/gormEmitter.js';
 import type { IrEnum, IrModel, IrRelation, IrSchema } from '../src/ir.js';
 
 /** One struct found in generated Go: its table, and the columns its fields map to. */

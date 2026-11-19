@@ -25,8 +25,8 @@ ormbridge convert -i ./src/Entity --from doctrine -o ./prisma/schema.prisma
 # Laravel project root -> Prisma (reads database/migrations and app/; vendor/, storage/, tests/ and bootstrap/cache are skipped)
 ormbridge convert -i ./my-laravel-app --from laravel -o ./prisma/schema.prisma
 
-# GORM (Go structs with gorm tags) -> Prisma (every .go file is read; vendor/, testdata/ and *_test.go are skipped)
-ormbridge convert -i ./internal/models --from gorm -o ./prisma/schema.prisma
+# GORM (Go structs with gorm tags) -> Prisma (needs the ormbridge-gorm add-on; every .go file is read; vendor/, testdata/ and *_test.go are skipped)
+ormbridge convert -i ./internal/models --from gorm --plugin ormbridge-gorm -o ./prisma/schema.prisma
 
 # Drizzle ORM (pgTable / mysqlTable / sqliteTable) -> Prisma (every .ts file is read and the tables are picked out; node_modules/, *.d.ts and *.test.ts are skipped)
 ormbridge convert -i ./src/db/schema --from drizzle -o ./prisma/schema.prisma

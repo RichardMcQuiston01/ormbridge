@@ -26,16 +26,16 @@ import {
   isValidGoPackageName,
   normalizeGormSchema,
   type GormEmitOptions,
-} from '../src/emitters/gorm.js';
+} from '../src/gormEmitter.js';
 import {
   getFormat,
   type FormatEmitOutput,
   type MultiFileEmitOutput,
-} from '../src/formats.js';
-import type { IrModel, IrSchema } from '../src/ir.js';
-import { err } from '../src/result.js';
-import { parseWith } from './conversionMatrix.js';
-import { checkGormOutput } from './gormCoverage.js';
+} from '../../../src/formats.js';
+import type { IrModel, IrSchema } from '../../../src/ir.js';
+import { err } from '../../../src/result.js';
+import { parseWith } from '../../../test/conversionMatrix.js';
+import { checkGormOutput } from '../../../test/gormCoverage.js';
 import {
   STATUS,
   field,
@@ -46,9 +46,12 @@ import {
   model,
   relation,
   schemaOf,
-} from './gormFixtures.js';
-import { convertCanonical, loadCanonicalSources } from './harness.js';
-import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
+} from '../../../test/gormFixtures.js';
+import {
+  convertCanonical,
+  loadCanonicalSources,
+} from '../../../test/harness.js';
+import { DEFAULT_OPTIONS, expectOk } from '../../../test/helpers.js';
 
 function emit(
   schema: IrSchema,

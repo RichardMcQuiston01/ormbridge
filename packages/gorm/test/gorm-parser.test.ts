@@ -10,23 +10,23 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { convertText, type ConvertResult } from '../src/convert.js';
-import { getFormat, getFormatByExtension } from '../src/formats.js';
+import { convertText, type ConvertResult } from '../../../src/convert.js';
+import { getFormat, getFormatByExtension } from '../../../src/formats.js';
 import type {
   IrField,
   IrIndex,
   IrModel,
   IrRelation,
   IrSchema,
-} from '../src/ir.js';
-import { runConversion } from '../src/io.js';
+} from '../../../src/ir.js';
+import { runConversion } from '../../../src/io.js';
 import {
   gormColumnName,
   gormTableName,
   parseGorm,
   type GormSourceFile,
-} from '../src/parsers/gorm.js';
-import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
+} from '../src/gormParser.js';
+import { DEFAULT_OPTIONS, expectOk } from '../../../test/helpers.js';
 
 const HEADER: string = `package models
 
@@ -147,7 +147,7 @@ describe('directory input', () => {
 
   it('reads every .go file of the fixture folder with --from gorm', async () => {
     const directory: string = fileURLToPath(
-      new URL('./fixtures/gorm', import.meta.url)
+      new URL('../../../test/fixtures/gorm', import.meta.url)
     );
     const summary = expectOk(
       await runConversion({
@@ -1266,10 +1266,10 @@ type Thing struct {
 
 describe('extras fixture', () => {
   const directory: string = fileURLToPath(
-    new URL('./fixtures/gorm-extras', import.meta.url)
+    new URL('../../../test/fixtures/gorm-extras', import.meta.url)
   );
   const goldenDirectory: string = fileURLToPath(
-    new URL('./golden-extras/', import.meta.url)
+    new URL('../../../test/golden-extras/', import.meta.url)
   );
 
   /** Compares text with test/golden-extras/<name>; run with UPDATE_GOLDEN=1 to rewrite it. */

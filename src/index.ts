@@ -44,8 +44,6 @@ export { parseEfcore, isSkippedEfcorePath } from './parsers/efcore.js';
 export type { EfcoreParseOptions, EfcoreSourceFile } from './parsers/efcore.js';
 export { parseJpa, isSkippedJpaPath } from './parsers/jpa.js';
 export type { JpaParseOptions, JpaSourceFile } from './parsers/jpa.js';
-export { parseGorm } from './parsers/gorm.js';
-export type { GormSourceFile, GormParseOptions } from './parsers/gorm.js';
 export { parseJsonSchema } from './parsers/jsonSchema.js';
 export type {
   JsonSchemaSourceFile,
@@ -85,8 +83,6 @@ export { emitDoctrine } from './emitters/doctrine.js';
 export type { DoctrineEmitOptions } from './emitters/doctrine.js';
 export { emitLaravel } from './emitters/laravel.js';
 export type { LaravelEmitOptions } from './emitters/laravel.js';
-export { emitGorm } from './emitters/gorm.js';
-export type { GormEmitOptions } from './emitters/gorm.js';
 export { emitDrizzle } from './emitters/drizzle.js';
 export type { DrizzleEmitOptions } from './emitters/drizzle.js';
 export {
@@ -173,7 +169,7 @@ export type {
 export { expandManyToMany, normalizeSchema } from './transforms.js';
 export type { NamingMode } from './transforms.js';
 export type * from './ir.js';
-export { err, ok } from './result.js';
+export { describeThrown, err, ok } from './result.js';
 export type { ConversionError, ErrorCode, Result } from './result.js';
 export {
   loadPlugin,
@@ -197,3 +193,17 @@ export type { KeyClassOptions as JpaKeyClassOptions } from './emitters/jpaKeyCla
 export { loadGrammarParser, locateGrammar } from './grammar.js';
 export { prismaOnlyWarnings } from './prismaOnlyConstructs.js';
 export { toSnakeCase } from './naming.js';
+export { findModel } from './ir.js';
+export {
+  limitIdentifier,
+  shortHash,
+  singularize,
+  splitWords,
+  toCamelCase,
+  toPascalCase,
+} from './naming.js';
+export {
+  COCKROACH_PREFIX,
+  cockroachSequentialWarning,
+  isCockroach,
+} from './emitters/cockroach.js';

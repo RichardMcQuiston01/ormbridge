@@ -1,7 +1,6 @@
 import { emitDjango } from './emitters/django.js';
 import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
 import { emitDrizzle } from './emitters/drizzle.js';
-import { emitGorm, isValidGoPackageName } from './emitters/gorm.js';
 import { emitLaravel } from './emitters/laravel.js';
 import {
   emitPrisma,
@@ -44,7 +43,6 @@ import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDrizzle } from './parsers/drizzle.js';
 import { parseEfcore } from './parsers/efcore.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
-import { parseGorm } from './parsers/gorm.js';
 import { parseJpa } from './parsers/jpa.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
 import { parseLaravel } from './parsers/laravel.js';
@@ -506,47 +504,6 @@ const laravelAdapter: FormatAdapter = {
   },
 };
 
-const gormAdapter: FormatAdapter = {
-  name: 'gorm',
-  // No extension is claimed: ".go" is too generic to infer, so pass --from/--to gorm.
-  extensions: [],
-  description: 'GORM models (Go structs with gorm tags)',
-  parse: (
-    sources: SourceText[],
-    options: FormatOptions
-  ): Promise<Result<IrSchema>> =>
-    parseGorm(
-      sources.map((source: SourceText) => ({
-        path: source.path,
-        text: source.text,
-      })),
-      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
-    ),
-  emit: (
-    schema: IrSchema,
-    options: FormatOptions
-  ): Result<FormatEmitOutput> => {
-    if (
-      options.goPackage !== undefined &&
-      !isValidGoPackageName(options.goPackage)
-    ) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid Go package name "${options.goPackage}". Expected a Go identifier such as models.`
-      );
-    }
-    return ok(
-      emitGorm(schema, {
-        provider: options.provider,
-        naming: options.naming,
-        ...(options.goPackage === undefined
-          ? {}
-          : { goPackage: options.goPackage }),
-      })
-    );
-  },
-};
-
 const drizzleAdapter: FormatAdapter = {
   name: 'drizzle',
   // No extension is claimed: ".ts" is too generic to infer, so pass --from/--to drizzle.
@@ -938,7 +895,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(typeormAdapter),
   registerFormat(doctrineAdapter),
   registerFormat(laravelAdapter),
-  registerFormat(gormAdapter),
+  registerFormat(movedStub('gorm')),
   registerFormat(drizzleAdapter),
   registerFormat(movedStub('graphene')),
   registerFormat(typescriptAdapter),
