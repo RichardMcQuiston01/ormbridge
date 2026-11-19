@@ -12,23 +12,23 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { convertText, type ConvertResult } from '../src/convert.js';
-import { getFormat, getFormatByExtension } from '../src/formats.js';
+import { convertText, type ConvertResult } from '../../../src/convert.js';
+import { getFormat, getFormatByExtension } from '../../../src/formats.js';
 import type {
   IrField,
   IrIndex,
   IrModel,
   IrRelation,
   IrSchema,
-} from '../src/ir.js';
-import { runConversion } from '../src/io.js';
+} from '../../../src/ir.js';
+import { runConversion } from '../../../src/io.js';
 import {
   isSkippedEfcorePath,
   parseEfcore,
   type EfcoreSourceFile,
 } from '../src/parsers/efcore.js';
-import type { Result } from '../src/result.js';
-import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
+import type { Result } from '../../../src/result.js';
+import { DEFAULT_OPTIONS, expectOk } from '../../../test/helpers.js';
 
 const HEADER: string = `#nullable enable
 using System.ComponentModel.DataAnnotations;
@@ -2381,7 +2381,7 @@ describe('directory input', () => {
 
 describe('canonical fixture', () => {
   const directory: string = fileURLToPath(
-    new URL('./fixtures/efcore', import.meta.url)
+    new URL('../../../test/fixtures/efcore', import.meta.url)
   );
 
   it('reads the blog schema', async () => {
@@ -2418,10 +2418,10 @@ describe('canonical fixture', () => {
 
 describe('extras fixture', () => {
   const root: string = fileURLToPath(
-    new URL('./fixtures/efcore-extras', import.meta.url)
+    new URL('../../../test/fixtures/efcore-extras', import.meta.url)
   );
   const goldenDirectory: string = fileURLToPath(
-    new URL('./golden-extras/', import.meta.url)
+    new URL('../../../test/golden-extras/', import.meta.url)
   );
 
   /** Compares text with test/golden-extras/<name>; run with UPDATE_GOLDEN=1 to rewrite it. */

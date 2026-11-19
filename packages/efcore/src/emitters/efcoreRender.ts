@@ -1,4 +1,4 @@
-import type { IrEnumValue } from '../ir.js';
+import type { IrEnumValue } from 'ormbridge';
 import type { ColumnSpec, EnumPlan } from './efcoreColumns.js';
 import { csString, verbatim } from './efcoreNames.js';
 import type {

@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import type { IrSchema } from '../src/ir.js';
+import type { IrSchema } from '../../../src/ir.js';
 import { parseEfcore } from '../src/parsers/efcore.js';
-import { CANONICAL_FIXTURES } from './fixtures/canonical.js';
+import { CANONICAL_FIXTURES } from '../../../test/fixtures/canonical.js';
 import {
   csharpFiles,
   isToolError,
@@ -14,12 +14,12 @@ import {
   type EfcoreDatabase,
   type EfcoreToolOutput,
 } from './efcoreSupport.js';
-import { expectOk } from './helpers.js';
-import { titleWithReason } from './realToolSupport.js';
-import { compareWithDatabase } from './sequelizeSupport.js';
+import { expectOk } from '../../../test/helpers.js';
+import { titleWithReason } from '../../../test/realToolSupport.js';
+import { compareWithDatabase } from '../../../test/sequelizeSupport.js';
 
 /**
- * Loads the C# fixtures with the real Entity Framework Core: `test/tools/efcore-verify` is built with the .NET
+ * Loads the C# fixtures with the real Entity Framework Core: `packages/efcore/test/tools/efcore-verify` is built with the .NET
  * SDK, creates every DbContext in an in-memory SQLite database (`EnsureCreated`) and prints what SQLite reports
  * (tables, columns, nullability, primary and unique keys, indexes, foreign keys and their actions). That is
  * compared with what the parser read from the same source.
@@ -29,7 +29,9 @@ import { compareWithDatabase } from './sequelizeSupport.js';
  * The tests are skipped, with the reason in their title, when the .NET SDK is missing.
  */
 
-const FIXTURES: string = fileURLToPath(new URL('./fixtures', import.meta.url));
+const FIXTURES: string = fileURLToPath(
+  new URL('../../../test/fixtures', import.meta.url)
+);
 
 interface VerifyGroup {
   label: string;

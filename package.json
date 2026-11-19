@@ -20,7 +20,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-grammars.mjs dist/grammars c_sharp java php python typescript && npm run build:addons",
+    "build": "tsc -p tsconfig.json && node scripts/copy-grammars.mjs dist/grammars java php python typescript && npm run build:addons",
     "build:addons": "node scripts/build-addons.mjs",
     "dev": "tsc -p tsconfig.json --watch",
     "test": "vitest run",

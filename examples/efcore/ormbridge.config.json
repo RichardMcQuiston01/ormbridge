@@ -1,4 +1,5 @@
 {
+  "plugins": ["../../packages/efcore/dist/index.js"],
   "conversions": [
     {
       "name": "to-efcore",

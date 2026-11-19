@@ -4,8 +4,8 @@ import type {
   IrEnumValue,
   IrField,
   IrScalarType,
-} from '../ir.js';
-import { toCamelCase } from '../naming.js';
+} from 'ormbridge';
+import { toCamelCase } from 'ormbridge';
 import {
   parseTypeText,
   type CsClass,

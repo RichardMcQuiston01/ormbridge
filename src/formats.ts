@@ -11,11 +11,6 @@ import { emitTypeorm } from './emitters/typeorm.js';
 import { emitJsonSchema } from './emitters/jsonSchema.js';
 import { movedStub } from './movedFormats.js';
 import {
-  emitEfcore,
-  isEfcoreStyle,
-  isValidCsharpNamespace,
-} from './emitters/efcore.js';
-import {
   emitJpa,
   isJpaInheritanceMode,
   isJpaKeyMode,
@@ -41,7 +36,6 @@ import { emitZod } from './emitters/zod.js';
 import type { IrSchema } from './ir.js';
 import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDrizzle } from './parsers/drizzle.js';
-import { parseEfcore } from './parsers/efcore.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parseJpa } from './parsers/jpa.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
@@ -155,6 +149,8 @@ export interface FormatInput {
   description: string;
   /** Directory names that are never searched (`build`, `node_modules`, ...). */
   skippedDirectories?: readonly string[];
+  /** True when the directory names above match in any letter case (`Bin`, `OBJ`). */
+  skippedDirectoriesIgnoreCase?: boolean;
   /** Files with an accepted extension that are not part of the model (tests, generated code). */
   isSkippedFile?: (path: string) => boolean;
 }
@@ -714,61 +710,6 @@ const sequelizeAdapter: FormatAdapter = {
   },
 };
 
-const efcoreAdapter: FormatAdapter = {
-  name: 'efcore',
-  // No extension is claimed: ".cs" is too generic to infer, so pass --from/--to efcore.
-  extensions: [],
-  description:
-    'Entity Framework Core 8 models (C#; DbContext, data annotations and the fluent API; --style fluent writes plain classes and configuration classes)',
-  parse: (
-    sources: SourceText[],
-    options: FormatOptions
-  ): Promise<Result<IrSchema>> =>
-    parseEfcore(
-      sources.map((source: SourceText) => ({
-        path: source.path,
-        text: source.text,
-      })),
-      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
-    ),
-  emit: (
-    schema: IrSchema,
-    options: FormatOptions
-  ): Result<FormatEmitOutput> => {
-    if (options.style !== undefined) {
-      const checked: Result<OutputStyle> = checkStyle(
-        'efcore',
-        String(options.style),
-        'style'
-      );
-      if (!checked.ok) {
-        return checked;
-      }
-    }
-    const namespace: string | undefined = options.namespace?.replace(
-      /^\.+|\.+$/g,
-      ''
-    );
-    if (namespace !== undefined && !isValidCsharpNamespace(namespace)) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid namespace "${options.namespace ?? ''}". Expected a C# namespace such as App.Models.`
-      );
-    }
-    return ok(
-      emitEfcore(schema, {
-        provider: options.provider,
-        naming: options.naming,
-        header: options.header,
-        ...(namespace === undefined ? {} : { namespace }),
-        ...(options.style === undefined || !isEfcoreStyle(options.style)
-          ? {}
-          : { style: options.style }),
-      })
-    );
-  },
-};
-
 /**
  * Validates the options of the JPA writers (`jpa` and the addons that write the same classes in another language or with
  * Spring Data conventions) and turns them into the options of `emitJpa`.
@@ -906,7 +847,7 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(sqlAdapter),
   registerFormat(sqlalchemyAdapter),
   registerFormat(sequelizeAdapter),
-  registerFormat(efcoreAdapter),
+  registerFormat(movedStub('efcore')),
   registerFormat(jpaAdapter),
   registerFormat(sdnAdapter),
 ];

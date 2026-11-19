@@ -35,13 +35,13 @@ ormbridge convert -i ./src/db/schema --from drizzle -o ./prisma/schema.prisma
 ormbridge convert -i ./src/schemas --from zod -o ./prisma/schema.prisma
 
 # Entity Framework Core models (C#: entities, DbContext and configuration classes) -> Prisma (every .cs file is read and the entities are picked out; bin/, obj/ and *.Designer.cs are skipped, and the Migrations/ folder is replayed when the input has no entity classes)
-ormbridge convert -i ./Models --from efcore -o ./prisma/schema.prisma
+ormbridge convert -i ./Models --from efcore --plugin ormbridge-efcore -o ./prisma/schema.prisma
 
 # EF Core migrations (the Migrations folder with its *ModelSnapshot.cs, no entity classes) -> Prisma: the Up methods are replayed in migration order
-ormbridge convert -i ./Data/Migrations --from efcore -o ./prisma/schema.prisma
+ormbridge convert -i ./Data/Migrations --from efcore --plugin ormbridge-efcore -o ./prisma/schema.prisma
 
 # Prisma -> Entity Framework Core 8 models (".cs" is not inferred, so pass --to efcore; -o is a directory; --style fluent writes plain classes and IEntityTypeConfiguration<T> classes)
-ormbridge convert -i ./prisma/schema.prisma --to efcore -o ./Data
+ormbridge convert -i ./prisma/schema.prisma --to efcore --plugin ormbridge-efcore -o ./Data
 ormbridge convert -i ./prisma/schema.prisma --to efcore --style fluent --namespace Shop.Data -o ./Data
 
 # Prisma -> Hibernate / JPA entities (Java; ".java" is not inferred, so pass --to jpa; -o is a directory below which the package folders are created; --style javax writes Hibernate 5 / javax.persistence)

@@ -40,8 +40,6 @@ export type {
 } from './parsers/drizzle.js';
 export { parseZod } from './parsers/zod.js';
 export type { ZodSourceFile, ZodParseOptions } from './parsers/zod.js';
-export { parseEfcore, isSkippedEfcorePath } from './parsers/efcore.js';
-export type { EfcoreParseOptions, EfcoreSourceFile } from './parsers/efcore.js';
 export { parseJpa, isSkippedJpaPath } from './parsers/jpa.js';
 export type { JpaParseOptions, JpaSourceFile } from './parsers/jpa.js';
 export { parseJsonSchema } from './parsers/jsonSchema.js';
@@ -116,14 +114,6 @@ export type {
   SequelizeStyle,
 } from './emitters/sequelize.js';
 export {
-  DEFAULT_EFCORE_NAMESPACE,
-  EFCORE_STYLES,
-  emitEfcore,
-  isEfcoreStyle,
-  isValidCsharpNamespace,
-} from './emitters/efcore.js';
-export type { EfcoreEmitOptions, EfcoreStyle } from './emitters/efcore.js';
-export {
   DEFAULT_JPA_PACKAGE,
   emitJpa,
   isJpaInheritanceMode,
@@ -142,8 +132,15 @@ export type {
 } from './emitters/jpa.js';
 export { emitSdn } from './emitters/sdn.js';
 export type { SdnEmitOptions } from './emitters/sdn.js';
-export { checkStyle, isOutputStyle, OUTPUT_STYLES } from './styles.js';
-export type { OutputStyle } from './styles.js';
+export {
+  checkStyle,
+  EFCORE_STYLES,
+  isOutputStyle,
+  OUTPUT_STYLES,
+} from './styles.js';
+export type { EfcoreStyle, OutputStyle } from './styles.js';
+export { sqlColumn, sqlDefault } from './parsers/sqlColumns.js';
+export type { ColumnShape } from './parsers/sqlColumns.js';
 export { emitTypeorm } from './emitters/typeorm.js';
 export type { TypeormEmitOptions } from './emitters/typeorm.js';
 export { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
@@ -203,7 +200,9 @@ export {
   toPascalCase,
 } from './naming.js';
 export {
+  COCKROACH_INDEX_METHODS,
   COCKROACH_PREFIX,
+  cockroachInvertible,
   cockroachSequentialWarning,
   isCockroach,
 } from './emitters/cockroach.js';

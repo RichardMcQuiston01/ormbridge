@@ -1,4 +1,4 @@
-import { toPascalCase } from '../naming.js';
+import { toPascalCase } from 'ormbridge';
 
 /** Name and literal helpers of the Entity Framework Core emitter. */
 

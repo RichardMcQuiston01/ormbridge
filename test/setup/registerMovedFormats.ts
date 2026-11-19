@@ -1,3 +1,4 @@
+import efcoreAddon from '../../packages/efcore/src/index.js';
 import gormAddon from '../../packages/gorm/src/index.js';
 import grapheneAddon from '../../packages/graphene/src/index.js';
 import { registerPlugin } from '../../src/plugins.js';
@@ -7,7 +8,7 @@ import { registerPlugin } from '../../src/plugins.js';
  * of the packages in this repository: the conversion goldens, the matrix and every test that converts through the
  * registry keep covering them. A test file that needs the format to be missing (the stub of core) unregisters it.
  */
-for (const addon of [gormAddon, grapheneAddon]) {
+for (const addon of [efcoreAddon, gormAddon, grapheneAddon]) {
   const registered = registerPlugin(addon);
   if (!registered.ok) {
     throw new Error(registered.error.message);

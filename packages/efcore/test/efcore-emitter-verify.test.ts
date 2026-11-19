@@ -7,11 +7,16 @@ import {
   emitEfcore,
   type EfcoreStyle,
 } from '../src/emitters/efcore.js';
-import type { MultiFileEmitOutput } from '../src/formats.js';
-import type { IrField, IrModel, IrRelation, IrSchema } from '../src/ir.js';
-import { normalizeSchema, type NamingMode } from '../src/transforms.js';
-import { constructsSchema } from './drizzleFixtures.js';
-import { edgesSchema } from './efcoreFixtures.js';
+import type { MultiFileEmitOutput } from '../../../src/formats.js';
+import type {
+  IrField,
+  IrModel,
+  IrRelation,
+  IrSchema,
+} from '../../../src/ir.js';
+import { normalizeSchema, type NamingMode } from '../../../src/transforms.js';
+import { constructsSchema } from '../../../test/drizzleFixtures.js';
+import { edgesSchema } from '../../../test/efcoreFixtures.js';
 import { compareBehavior } from './efcoreBehavior.js';
 import {
   EFCORE_EXTRAS,
@@ -24,14 +29,14 @@ import {
   type EfcoreDatabase,
   type EfcoreToolOutput,
 } from './efcoreSupport.js';
-import { kitchenSinkSchema, stressSchema } from './gormFixtures.js';
+import { kitchenSinkSchema, stressSchema } from '../../../test/gormFixtures.js';
 import {
   SOURCES_WITHOUT_VIEWS,
   parseSource,
   titleWithReason,
   type VerifySource,
-} from './realToolSupport.js';
-import { compareWithDatabase } from './sequelizeSupport.js';
+} from '../../../test/realToolSupport.js';
+import { compareWithDatabase } from '../../../test/sequelizeSupport.js';
 
 /**
  * Compiles the C# that the EF Core writer produces and lets the real Entity Framework Core 8 build the database
@@ -39,7 +44,7 @@ import { compareWithDatabase } from './sequelizeSupport.js';
  * "extras" fixtures and three IR fixtures), both styles and both naming modes, the models are written for SQLite
  * into their own namespace; all of them are compiled together with `dotnet` (nullable warnings and every other
  * warning are errors), `EnsureCreated()` creates each context in an in-memory SQLite database, and
- * `test/tools/efcore-verify` prints what SQLite reports. The tables, columns, nullability, keys, unique keys,
+ * `packages/efcore/test/tools/efcore-verify` prints what SQLite reports. The tables, columns, nullability, keys, unique keys,
  * indexes and foreign keys (with their delete actions) are compared with the IR.
  *
  * Set EFCORE_DIR to a scratch directory and have the .NET 8 SDK installed (see test/README.md and

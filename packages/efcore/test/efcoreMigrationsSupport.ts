@@ -16,11 +16,11 @@ import type {
   IrOnDelete,
   IrRelation,
   IrSchema,
-} from '../src/ir.js';
+} from '../../../src/ir.js';
 import type { DotnetProbe } from './efcoreSupport.js';
 
 /**
- * Support for `test/efcore-migrations-verify.test.ts`: runs `test/tools/efcore-migrations-verify`, which writes the
+ * Support for `test/efcore-migrations-verify.test.ts`: runs `packages/efcore/test/tools/efcore-migrations-verify`, which writes the
  * migrations and the model snapshot the real EF Core 8 generates for a sequence of models, and compares what
  * ormbridge reads from them with EF Core's own description of the final model.
  */
@@ -31,7 +31,7 @@ const TOOL: string = fileURLToPath(
 
 /** The models the tool compiles and the manifest that lists the scenarios (versions of a model, in order). */
 export const MIGRATION_FIXTURES: string = fileURLToPath(
-  new URL('./fixtures/efcore-migrations', import.meta.url)
+  new URL('../../../test/fixtures/efcore-migrations', import.meta.url)
 );
 
 export interface ModelColumn {
@@ -93,7 +93,7 @@ export function readScenarios(): Scenario[] {
   ) as Scenario[];
 }
 
-/** Builds `test/tools/efcore-migrations-verify` with the .NET SDK and runs it; throws with the output on failure. */
+/** Builds `packages/efcore/test/tools/efcore-migrations-verify` with the .NET SDK and runs it; throws with the output on failure. */
 export function runMigrationsTool(probe: DotnetProbe): MigrationToolOutput {
   const work: string = mkdtempSync(join(tmpdir(), 'ormbridge-efmig-'));
   try {

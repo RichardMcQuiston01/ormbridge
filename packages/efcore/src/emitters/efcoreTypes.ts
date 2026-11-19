@@ -1,16 +1,17 @@
+import type { EfcoreStyle } from 'ormbridge';
 import type {
   IrCompositeForeignKey,
   IrField,
   IrModel,
   IrRelation,
   IrSchema,
-} from '../ir.js';
+} from 'ormbridge';
 import type { ColumnSpec, EnumPlan } from './efcoreColumns.js';
-import type { PrismaProvider } from './prisma.js';
+import type { PrismaProvider } from 'ormbridge';
 
 /** The shapes the planning and rendering steps of the EF Core emitter share. */
 
-export type EfcoreStyle = 'annotations' | 'fluent';
+export type { EfcoreStyle };
 
 /** One property that is a database column: a field, or the foreign key column of a relation. */
 export interface ColumnMember {

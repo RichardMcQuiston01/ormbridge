@@ -155,10 +155,10 @@ jobs:
       - name: Tests with the real EF Core
         run: >-
           npx vitest run
-          test/efcore-emitter.test.ts
-          test/efcore-emitter-verify.test.ts
-          test/efcore-parser-verify.test.ts
-          test/efcore-migrations-verify.test.ts
+          packages/efcore/test/efcore-emitter.test.ts
+          packages/efcore/test/efcore-emitter-verify.test.ts
+          packages/efcore/test/efcore-parser-verify.test.ts
+          packages/efcore/test/efcore-migrations-verify.test.ts
 
   # Hibernate ORM 6 and 5 (reader and writer), with Maven.
   real-tools-java:

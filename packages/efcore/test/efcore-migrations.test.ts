@@ -13,19 +13,19 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { convertText, type ConvertResult } from '../src/convert.js';
+import { convertText, type ConvertResult } from '../../../src/convert.js';
 import type {
   IrCompositeForeignKey,
   IrField,
   IrModel,
   IrRelation,
   IrSchema,
-} from '../src/ir.js';
-import { runConversion } from '../src/io.js';
+} from '../../../src/ir.js';
+import { runConversion } from '../../../src/io.js';
 import { parseEfcore, type EfcoreSourceFile } from '../src/parsers/efcore.js';
-import type { Result } from '../src/result.js';
+import type { Result } from '../../../src/result.js';
 import { compareWithModel } from './efcoreMigrationsSupport.js';
-import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
+import { DEFAULT_OPTIONS, expectOk } from '../../../test/helpers.js';
 
 /**
  * Replays EF Core migrations. Most fixtures in test/fixtures/efcore-migrations/<scenario>/Migrations are written by
@@ -35,10 +35,10 @@ import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
  */
 
 const FIXTURES: string = fileURLToPath(
-  new URL('./fixtures/efcore-migrations', import.meta.url)
+  new URL('../../../test/fixtures/efcore-migrations', import.meta.url)
 );
 const GOLDENS: string = fileURLToPath(
-  new URL('./golden-extras/', import.meta.url)
+  new URL('../../../test/golden-extras/', import.meta.url)
 );
 
 /** Compares text with test/golden-extras/<name>; run with UPDATE_GOLDEN=1 to rewrite it. */

@@ -17,7 +17,7 @@ import {
   type JpaKeyMode,
   type JpaStyle,
 } from '../src/emitters/jpa.js';
-import { parseEfcore } from '../src/parsers/efcore.js';
+import { parseEfcore } from '../packages/efcore/src/parsers/efcore.js';
 import type { MultiFileEmitOutput } from '../src/formats.js';
 import type {
   IrField,
