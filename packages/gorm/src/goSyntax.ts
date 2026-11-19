@@ -1,6 +1,5 @@
 import Parser from 'web-tree-sitter';
-import { loadGrammarParser } from '../grammar.js';
-import type { Result } from '../result.js';
+import { loadGrammarParser, type Result } from 'ormbridge';
 
 export type SyntaxNode = Parser.SyntaxNode;
 

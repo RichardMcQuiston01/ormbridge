@@ -15,19 +15,12 @@ import {
   type SourceText,
 } from './convert.js';
 import { getFormat, type FormatInput } from './formats.js';
+import { movedFormatOf, movedMessage } from './movedFormats.js';
 import { orderSqlMigrationFiles } from './parsers/sqlMigrationOrder.js';
 import { describeThrown, err, ok, type Result } from './result.js';
 
 /** Directories skipped only when reading PHP projects: Composer packages and Symfony's cache/log directory. */
 const PHP_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set(['vendor', 'var']);
-
-/** Directories skipped when reading Go projects: vendored modules and Go's conventional test data. */
-const GO_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
-  'vendor',
-  'node_modules',
-  'testdata',
-  '.git',
-]);
 
 /**
  * Directories skipped when reading a Laravel project. The Django list does not
@@ -210,6 +203,17 @@ export interface RunSummary extends ConvertResult {
 export async function runConversion(
   options: RunOptions
 ): Promise<Result<RunSummary>> {
+  // A format that moved into an addon fails first with the message that names the package, not with a complaint that
+  // no input files were found (the stub knows nothing about the files of the format).
+  for (const name of [options.from, options.to]) {
+    const moved = getFormat(name);
+    if (moved.ok && moved.value.movedTo !== undefined) {
+      return err(
+        'UNSUPPORTED_CONVERSION',
+        movedMessage(movedFormatOf(name, moved.value.movedTo.packageName))
+      );
+    }
+  }
   const discovered: Result<string[]> = await discoverInputFiles(
     options.inputs,
     options.from
@@ -514,21 +518,19 @@ async function discoverInputFiles(
                 ? 'PHP (.php) entity files'
                 : format === 'laravel'
                   ? 'PHP (.php) migration and model files (database/migrations and app/)'
-                  : format === 'gorm'
-                    ? 'Go (.go) model files'
-                    : format === 'json-schema'
-                      ? 'JSON (.json) schema or OpenAPI files'
-                      : format === 'sql'
-                        ? 'SQL (.sql) files'
-                        : format === 'sqlalchemy'
-                          ? 'Python (.py) files with SQLAlchemy or SQLModel models'
-                          : format === 'sequelize'
-                            ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files (or sequelize-cli migrations)'
-                            : format === 'efcore'
-                              ? 'C# (.cs) files with Entity Framework Core models'
-                              : format === 'jpa'
-                                ? 'Java (.java) files with Hibernate / JPA entities'
-                                : '.prisma files');
+                  : format === 'json-schema'
+                    ? 'JSON (.json) schema or OpenAPI files'
+                    : format === 'sql'
+                      ? 'SQL (.sql) files'
+                      : format === 'sqlalchemy'
+                        ? 'Python (.py) files with SQLAlchemy or SQLModel models'
+                        : format === 'sequelize'
+                          ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files (or sequelize-cli migrations)'
+                          : format === 'efcore'
+                            ? 'C# (.cs) files with Entity Framework Core models'
+                            : format === 'jpa'
+                              ? 'Java (.java) files with Hibernate / JPA entities'
+                              : '.prisma files');
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -585,11 +587,6 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
       !JPA_NON_MODEL_FILE.test(basename(filePath))
     );
   }
-  if (format === 'gorm') {
-    return (
-      extname(filePath) === '.go' && !/_test\.go$/.test(basename(filePath))
-    );
-  }
   if (format === 'json-schema') {
     return (
       extname(filePath).toLowerCase() === '.json' &&
@@ -643,9 +640,6 @@ function isSkippedDirectory(
       LARAVEL_SKIPPED_DIRECTORIES.has(name) ||
       (name === 'cache' && basename(parent) === 'bootstrap')
     );
-  }
-  if (format === 'gorm') {
-    return GO_SKIPPED_DIRECTORIES.has(name);
   }
   if (format === 'json-schema') {
     return JSON_SCHEMA_SKIPPED_DIRECTORIES.has(name);

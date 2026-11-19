@@ -12,9 +12,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { IrModel, IrOnDelete, IrRelation, IrSchema } from '../src/ir.js';
-import { parseGorm, type GormSourceFile } from '../src/parsers/gorm.js';
-import { expectOk } from './helpers.js';
+import type {
+  IrModel,
+  IrOnDelete,
+  IrRelation,
+  IrSchema,
+} from '../../../src/ir.js';
+import { parseGorm, type GormSourceFile } from '../src/gormParser.js';
+import { expectOk } from '../../../test/helpers.js';
 
 /**
  * Checks the parser against Go itself, when Go is installed: the fixtures must pass `go vet`, and
@@ -74,7 +79,9 @@ const probe: SpawnSyncReturns<string> = spawnSync('go', ['version'], {
 });
 const hasGo: boolean = probe.status === 0;
 
-const FIXTURES: string = fileURLToPath(new URL('./fixtures/', import.meta.url));
+const FIXTURES: string = fileURLToPath(
+  new URL('../../../test/fixtures/', import.meta.url)
+);
 const DUMP_SOURCE: string = fileURLToPath(
   new URL('./tools/dump-gorm-schema.go', import.meta.url)
 );

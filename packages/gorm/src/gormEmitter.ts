@@ -1,25 +1,24 @@
-import type { MultiFileEmitOutput } from '../formats.js';
-import type {
-  IrDefault,
-  IrEnum,
-  IrEnumValue,
-  IrField,
-  IrIndex,
-  IrModel,
-  IrOnDelete,
-  IrRelation,
-  IrSchema,
-} from '../ir.js';
-import { findModel } from '../ir.js';
-import { splitWords, toSnakeCase } from '../naming.js';
-import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
-import type { NamingMode } from '../transforms.js';
 import {
   COCKROACH_PREFIX,
   cockroachSequentialWarning,
+  findModel,
   isCockroach,
-} from './cockroach.js';
-import type { PrismaProvider } from './prisma.js';
+  prismaOnlyWarnings,
+  splitWords,
+  toSnakeCase,
+  type MultiFileEmitOutput,
+  type NamingMode,
+  type PrismaProvider,
+  type IrDefault,
+  type IrEnum,
+  type IrEnumValue,
+  type IrField,
+  type IrIndex,
+  type IrModel,
+  type IrOnDelete,
+  type IrRelation,
+  type IrSchema,
+} from 'ormbridge';
 
 /**
  * GORM emitter (Go structs with `gorm:"..."` tags). Writes one file per model

@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      # The GORM tests (gorm-emitter, gorm-verify) run `go vet`, `gofmt` and `go build` and skip themselves without Go.
+      # The GORM tests (packages/gorm/test) run `go vet`, `gofmt` and `go build` and skip themselves without Go.
       # The runner image happens to ship Go, but that is not promised, so install it here: they always run in this job.
       - uses: actions/setup-go@v6
         with:

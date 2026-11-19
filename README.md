@@ -20,7 +20,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                                                                                                       |
 | Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; one file per entity                                                                                                |
 | Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both                                                                                   |
-| GORM (Go)                   |  ✔   |   ✔   | Structs with `gorm` tags; one file per model                                                                                         |
+| GORM (Go)                   |  ✔   |   ✔   | Addon `ormbridge-gorm`: structs with `gorm` tags; one file per model                                                                 |
 | Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable`, `mysqlTable`, `sqliteTable` plus `relations()`                                                                            |
 | Zod schemas (TypeScript)    |  ✔   |   ✔   | Reads Zod 3 and Zod 4 `z.object` schemas; writes Zod 4 schemas and inferred types                                                    |
 | JSON Schema / OpenAPI       |  ✔   |   ✔   | Draft 2020-12, 2019-09 and 7, and OpenAPI `components.schemas` (JSON)                                                                |
@@ -37,7 +37,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 
 Each format has a [guide](./docs/formats/README.md) and a runnable [example project](./examples/README.md).
 
-Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write), `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories) and `ormbridge-graphene` (the Graphene schema writer, which moved out of the core package in 0.22).
+Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write), `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories) and `ormbridge-graphene` (the Graphene schema writer) and `ormbridge-gorm` (GORM, read and write); both moved out of the core package in 0.22.
 
 [Back to Top](#table-of-contents)
 

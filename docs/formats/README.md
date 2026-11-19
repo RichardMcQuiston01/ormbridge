@@ -9,7 +9,7 @@ One guide per format: what is read, what is written, the options that apply, and
 | [TypeORM](typeorm.md)                   |  yes  |  yes   | Entity classes, decorators                                |
 | [Doctrine](doctrine.md)                 |  yes  |  yes   | PHP 8 attributes                                          |
 | [Laravel](laravel.md)                   |  yes  |  yes   | Migrations are replayed; Eloquent models name relations   |
-| [GORM](gorm.md)                         |  yes  |  yes   | Go structs with `gorm` tags                               |
+| [GORM](gorm.md)                         |  yes  |  yes   | Addon `ormbridge-gorm`; Go structs with `gorm` tags       |
 | [Drizzle](drizzle.md)                   |  yes  |  yes   | `pgTable`, `mysqlTable`, `sqliteTable`                    |
 | [Zod](zod.md)                           |  yes  |  yes   | Reads Zod 3 and 4, writes Zod 4 schemas                   |
 | [JSON Schema / OpenAPI](json-schema.md) |  yes  |  yes   | Draft 2020-12 and `components.schemas`                    |
