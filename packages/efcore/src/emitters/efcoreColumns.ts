@@ -4,10 +4,10 @@ import type {
   IrEnumValue,
   IrField,
   IrScalarType,
-} from '../ir.js';
+} from 'ormbridge';
 import { csString, verbatim } from './efcoreNames.js';
-import { isCockroach } from './cockroach.js';
-import type { PrismaProvider } from './prisma.js';
+import { isCockroach } from 'ormbridge';
+import type { PrismaProvider } from 'ormbridge';
 
 /**
  * Works out how one column is written in C#: the property type, the facets (length, precision, column type), the

@@ -44,7 +44,7 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="$(FixturesDir)/**/*.cs" />
-    <!-- The migration fixtures have their own project (test/tools/efcore-migrations-verify) and reuse type names. -->
+    <!-- The migration fixtures have their own project (packages/efcore/test/tools/efcore-migrations-verify) and reuse type names. -->
     <Compile Remove="$(FixturesDir)/efcore-migrations/**" />
   </ItemGroup>
 

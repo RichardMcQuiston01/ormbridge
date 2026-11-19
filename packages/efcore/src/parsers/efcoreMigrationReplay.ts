@@ -1,4 +1,4 @@
-import type { IrOnDelete } from '../ir.js';
+import type { IrOnDelete } from 'ormbridge';
 import {
   bodyStatements,
   flattenChain,

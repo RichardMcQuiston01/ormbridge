@@ -245,7 +245,7 @@ if want dotnet; then
     restored="yes"
     for project in efcore-verify efcore-migrations-verify; do
       rm -rf "${scratch:?}"/*
-      cp "${here}/${project}"/*.csproj "${here}/${project}/Program.cs" "${scratch}/"
+      cp "${here}/../../packages/efcore/test/tools/${project}"/*.csproj "${here}/../../packages/efcore/test/tools/${project}/Program.cs" "${scratch}/"
       if ! (
         cd "${scratch}"
         NUGET_PACKAGES="${target}/efcore/nuget" DOTNET_CLI_HOME="${target}/efcore/home" \

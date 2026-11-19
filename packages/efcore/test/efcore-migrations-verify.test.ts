@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import type { IrSchema } from '../src/ir.js';
+import type { IrSchema } from '../../../src/ir.js';
 import { parseEfcore } from '../src/parsers/efcore.js';
 import { probeDotnet } from './efcoreSupport.js';
 import {
@@ -15,11 +15,11 @@ import {
   type MigrationToolOutput,
   type Scenario,
 } from './efcoreMigrationsSupport.js';
-import { expectOk } from './helpers.js';
-import { titleWithReason } from './realToolSupport.js';
+import { expectOk } from '../../../test/helpers.js';
+import { titleWithReason } from '../../../test/realToolSupport.js';
 
 /**
- * Replays migrations that the real Entity Framework Core 8 generates. `test/tools/efcore-migrations-verify` does
+ * Replays migrations that the real Entity Framework Core 8 generates. `packages/efcore/test/tools/efcore-migrations-verify` does
  * what `dotnet ef migrations add` does for several models, each with a few versions: it asks EF Core's model
  * differ for the operations between two versions and has the C# generator write the migration, its Designer file
  * and the model snapshot. The tests replay the first k migrations (with and without the snapshot, for every k) and

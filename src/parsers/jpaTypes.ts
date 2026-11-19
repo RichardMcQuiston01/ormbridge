@@ -1,6 +1,6 @@
 import type { IrOnDelete } from '../ir.js';
 import type { JavaType } from './javaSyntax.js';
-import type { ColumnShape } from './efcoreTypes.js';
+import type { ColumnShape } from './sqlColumns.js';
 
 /** Java types that are not objects: their columns are NOT NULL. */
 const PRIMITIVES: ReadonlySet<string> = new Set([

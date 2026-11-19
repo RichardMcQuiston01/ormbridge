@@ -8,8 +8,8 @@ import type {
   IrOnDelete,
   IrRelation,
   IrSchema,
-} from '../ir.js';
-import { toCamelCase, toSnakeCase } from '../naming.js';
+} from 'ormbridge';
+import { toCamelCase, toSnakeCase } from 'ormbridge';
 import { scalarsOf } from './efcoreEntities.js';
 import {
   buildField,

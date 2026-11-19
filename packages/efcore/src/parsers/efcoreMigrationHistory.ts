@@ -1,6 +1,6 @@
 import type Parser from 'web-tree-sitter';
-import type { IrSchema } from '../ir.js';
-import { err, ok, type Result } from '../result.js';
+import type { IrSchema } from 'ormbridge';
+import { err, ok, type Result } from 'ormbridge';
 import {
   type ConstLookup,
   type CsClass,

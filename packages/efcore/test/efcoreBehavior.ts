@@ -5,7 +5,7 @@ import type {
   IrField,
   IrRelation,
   IrSchema,
-} from '../src/ir.js';
+} from '../../../src/ir.js';
 import type {
   EfcoreColumn,
   EfcoreDatabase,

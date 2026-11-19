@@ -1,6 +1,6 @@
 import type { IrDefault, IrEnum, IrField, IrScalarType } from '../ir.js';
 import { toCamelCase } from '../naming.js';
-import { sqlColumn, sqlDefault, type ColumnShape } from './efcoreTypes.js';
+import { sqlColumn, sqlDefault, type ColumnShape } from './sqlColumns.js';
 import type { Ann, Annotated } from './jpaAnnotations.js';
 import type { ConverterInfo, EntityInfo, Member, Project } from './jpaModel.js';
 import {

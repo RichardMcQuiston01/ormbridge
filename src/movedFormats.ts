@@ -28,6 +28,14 @@ export const MOVED_FORMATS: readonly MovedFormat[] = [
     write: true,
   },
   {
+    name: 'efcore',
+    packageName: 'ormbridge-efcore',
+    description:
+      'Entity Framework Core 8 models (C#; DbContext, data annotations and the fluent API; --style fluent writes plain classes and configuration classes)',
+    read: true,
+    write: true,
+  },
+  {
     name: 'graphene',
     packageName: 'ormbridge-graphene',
     description: 'Graphene (graphene-django) GraphQL schema',

@@ -1,4 +1,4 @@
-import type { MultiFileEmitOutput } from '../formats.js';
+import type { MultiFileEmitOutput } from 'ormbridge';
 import type {
   IrCompositeForeignKey,
   IrEnumValue,
@@ -8,11 +8,11 @@ import type {
   IrOnDelete,
   IrRelation,
   IrSchema,
-} from '../ir.js';
-import { findModel } from '../ir.js';
-import { toSnakeCase } from '../naming.js';
-import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
-import { normalizeSchema, type NamingMode } from '../transforms.js';
+} from 'ormbridge';
+import { findModel } from 'ormbridge';
+import { toSnakeCase } from 'ormbridge';
+import { prismaOnlyWarnings } from 'ormbridge';
+import { normalizeSchema, type NamingMode } from 'ormbridge';
 import {
   buildColumn,
   isPostgres,
@@ -47,8 +47,8 @@ import {
   COCKROACH_PREFIX,
   cockroachInvertible,
   isCockroach,
-} from './cockroach.js';
-import type { PrismaProvider } from './prisma.js';
+} from 'ormbridge';
+import type { PrismaProvider } from 'ormbridge';
 
 /**
  * Writes Entity Framework Core 8 models (C#, `#nullable enable`): one entity class per model, a C# enum per
@@ -69,8 +69,9 @@ export {
   isValidCsharpNamespace,
 } from './efcoreNames.js';
 export type { EfcoreStyle } from './efcoreTypes.js';
+import { EFCORE_STYLES } from 'ormbridge';
 
-export const EFCORE_STYLES: readonly EfcoreStyle[] = ['annotations', 'fluent'];
+export { EFCORE_STYLES };
 
 /** True when a value is one of the EF Core `--style` values. */
 export function isEfcoreStyle(value: string): value is EfcoreStyle {

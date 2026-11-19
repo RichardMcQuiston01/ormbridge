@@ -11,19 +11,19 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { IrModel, IrRelation, IrSchema } from '../src/ir.js';
+import type { IrModel, IrRelation, IrSchema } from '../../../src/ir.js';
 import { parseEfcore } from '../src/parsers/efcore.js';
-import type { ToolProbe } from './realToolSupport.js';
+import type { ToolProbe } from '../../../test/realToolSupport.js';
 import type {
   DbColumn,
   DbForeignKey,
   DbIndex,
   DbSchema,
   DbTable,
-} from './sequelizeSupport.js';
+} from '../../../test/sequelizeSupport.js';
 
 /**
- * What `test/tools/efcore-verify` prints for one DbContext: the tables of the SQLite database that EF Core
+ * What `packages/efcore/test/tools/efcore-verify` prints for one DbContext: the tables of the SQLite database that EF Core
  * creates (`EnsureCreated`), straight from the `PRAGMA` statements.
  */
 export interface EfcoreColumn {
@@ -234,7 +234,7 @@ export interface ToolRun {
   strict?: boolean;
 }
 
-/** Builds `test/tools/efcore-verify` with the .NET SDK and runs it; throws with the compiler output on failure. */
+/** Builds `packages/efcore/test/tools/efcore-verify` with the .NET SDK and runs it; throws with the compiler output on failure. */
 export function runEfcoreTool(
   probe: DotnetProbe,
   run: ToolRun
@@ -287,7 +287,9 @@ export function runEfcoreTool(
 // Reading the C# fixtures
 // ---------------------------------------------------------------------------
 
-const FIXTURES: string = fileURLToPath(new URL('./fixtures', import.meta.url));
+const FIXTURES: string = fileURLToPath(
+  new URL('../../../test/fixtures', import.meta.url)
+);
 
 /** Every `.cs` file below a directory, sorted. */
 export function csharpFiles(directory: string): string[] {

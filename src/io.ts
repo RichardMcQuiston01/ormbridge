@@ -127,22 +127,6 @@ const SEQUELIZE_SOURCE_FILE: RegExp = /\.(?:[cm]?js|ts)$/;
 const SEQUELIZE_NON_MODEL_FILE: RegExp =
   /(?:\.d\.ts|\.(?:test|spec)\.[cm]?[jt]s)$/;
 
-/**
- * Directories skipped when reading Entity Framework Core projects: build output and installed packages. The
- * Migrations folder is read: it is replayed when the input has no entity classes and skipped otherwise.
- */
-const EFCORE_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
-  'bin',
-  'obj',
-  'packages',
-  'node_modules',
-  '.vs',
-  '.git',
-]);
-
-/** Generated C# files: migration designers and compiler output. */
-const EFCORE_NON_MODEL_FILE: RegExp = /\.(?:Designer|g|generated)\.cs$/i;
-
 /** Directories skipped when reading Hibernate / JPA projects: build output, tool folders and installed packages. */
 const JPA_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   'target',
@@ -526,11 +510,9 @@ async function discoverInputFiles(
                         ? 'Python (.py) files with SQLAlchemy or SQLModel models'
                         : format === 'sequelize'
                           ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files (or sequelize-cli migrations)'
-                          : format === 'efcore'
-                            ? 'C# (.cs) files with Entity Framework Core models'
-                            : format === 'jpa'
-                              ? 'Java (.java) files with Hibernate / JPA entities'
-                              : '.prisma files');
+                          : format === 'jpa'
+                            ? 'Java (.java) files with Hibernate / JPA entities'
+                            : '.prisma files');
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -573,12 +555,6 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
     return (
       SEQUELIZE_SOURCE_FILE.test(fileName) &&
       !SEQUELIZE_NON_MODEL_FILE.test(fileName)
-    );
-  }
-  if (format === 'efcore') {
-    return (
-      extname(filePath) === '.cs' &&
-      !EFCORE_NON_MODEL_FILE.test(basename(filePath))
     );
   }
   if (format === 'jpa') {
@@ -631,7 +607,11 @@ function isSkippedDirectory(
   if (declared !== undefined) {
     return (
       SKIPPED_DIRECTORIES.has(name) ||
-      declared.skippedDirectories?.includes(name) === true
+      declared.skippedDirectories?.includes(
+        declared.skippedDirectoriesIgnoreCase === true
+          ? name.toLowerCase()
+          : name
+      ) === true
     );
   }
   if (format === 'laravel') {
@@ -652,9 +632,6 @@ function isSkippedDirectory(
   }
   if (format === 'sequelize') {
     return SEQUELIZE_SKIPPED_DIRECTORIES.has(name);
-  }
-  if (format === 'efcore') {
-    return EFCORE_SKIPPED_DIRECTORIES.has(name.toLowerCase());
   }
   if (format === 'jpa') {
     // src/test holds the tests; db/migration holds Flyway and Liquibase migrations.

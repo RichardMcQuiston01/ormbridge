@@ -8,13 +8,8 @@ import type {
   IrRelation,
   IrSchema,
   IrScalarType,
-} from '../ir.js';
-import {
-  singularize,
-  toCamelCase,
-  toPascalCase,
-  toSnakeCase,
-} from '../naming.js';
+} from 'ormbridge';
+import { singularize, toCamelCase, toPascalCase, toSnakeCase } from 'ormbridge';
 import type { CsValue } from './csharpSyntax.js';
 import { INDEX_METHODS } from './efcoreBuild.js';
 import {

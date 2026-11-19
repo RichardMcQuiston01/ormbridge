@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { convertText, type ConvertResult } from '../src/convert.js';
+import { convertText, type ConvertResult } from '../../../src/convert.js';
 import {
   DEFAULT_EFCORE_NAMESPACE,
   EFCORE_STYLES,
@@ -11,12 +11,12 @@ import {
   type EfcoreEmitOptions,
   type EfcoreStyle,
 } from '../src/emitters/efcore.js';
-import { getFormat, type MultiFileEmitOutput } from '../src/formats.js';
-import type { IrEnum, IrField, IrModel, IrSchema } from '../src/ir.js';
+import { getFormat, type MultiFileEmitOutput } from '../../../src/formats.js';
+import type { IrEnum, IrField, IrModel, IrSchema } from '../../../src/ir.js';
 import { parseEfcore } from '../src/parsers/efcore.js';
-import { checkStyle, OUTPUT_STYLES } from '../src/styles.js';
-import { constructsSchema } from './drizzleFixtures.js';
-import { edgesSchema } from './efcoreFixtures.js';
+import { checkStyle, OUTPUT_STYLES } from '../../../src/styles.js';
+import { constructsSchema } from '../../../test/drizzleFixtures.js';
+import { edgesSchema } from '../../../test/efcoreFixtures.js';
 import { EFCORE_EXTRAS, parseEfcoreExtra } from './efcoreSupport.js';
 import {
   field,
@@ -27,16 +27,16 @@ import {
   relation,
   schemaOf,
   stressSchema,
-} from './gormFixtures.js';
+} from '../../../test/gormFixtures.js';
 import {
   convertCanonical,
   expectFilesMatchGolden,
   loadCanonicalSources,
-} from './harness.js';
-import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
-import { compareIr, formatDifference } from './irCompare.js';
-import { EXTRA_SOURCES, parseSource } from './realToolSupport.js';
-import { CANONICAL_FIXTURES } from './fixtures/canonical.js';
+} from '../../../test/harness.js';
+import { DEFAULT_OPTIONS, expectOk } from '../../../test/helpers.js';
+import { compareIr, formatDifference } from '../../../test/irCompare.js';
+import { EXTRA_SOURCES, parseSource } from '../../../test/realToolSupport.js';
+import { CANONICAL_FIXTURES } from '../../../test/fixtures/canonical.js';
 
 type Provider = EfcoreEmitOptions['provider'];
 
@@ -2223,7 +2223,7 @@ describe('efcore emitter: reading the output back', () => {
 
 describe('efcore emitter: golden files', () => {
   const goldenRoot: string = fileURLToPath(
-    new URL('./golden-extras/', import.meta.url)
+    new URL('../../../test/golden-extras/', import.meta.url)
   );
 
   // The default (annotations style) conversions live in test/golden/<format>-to-efcore.<naming>/

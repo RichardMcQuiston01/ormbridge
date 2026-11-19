@@ -1,4 +1,3 @@
-import { EFCORE_STYLES, type EfcoreStyle } from './emitters/efcore.js';
 import { JPA_STYLES, type JpaStyle } from './emitters/jpa.js';
 import { NEO4J_STYLES, type Neo4jStyle } from './emitters/neo4j.js';
 import {
@@ -10,6 +9,12 @@ import {
   type SqlAlchemyStyle,
 } from './emitters/sqlalchemy.js';
 import { err, ok, type Result } from './result.js';
+
+/** The styles of the EF Core writer (the `ormbridge-efcore` addon): data annotations or the fluent API. */
+export type EfcoreStyle = 'annotations' | 'fluent';
+
+/** The EF Core output styles. */
+export const EFCORE_STYLES: readonly EfcoreStyle[] = ['annotations', 'fluent'];
 
 /** Every value `--style` accepts; which ones apply depends on the target format. */
 export type OutputStyle =

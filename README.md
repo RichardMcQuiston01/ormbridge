@@ -27,7 +27,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | SQL DDL                     |  ✔   |   ✔   | Tables and migrations: PostgreSQL, CockroachDB, MySQL, SQLite, SQL Server, ClickHouse (write only)                                   |
 | SQLAlchemy / SQLModel       |  ✔   |   ✔   | SQLAlchemy 2.0 (declarative, `Column()`, `Table()`) and SQLModel                                                                     |
 | Sequelize (JavaScript/TS)   |  ✔   |   ✔   | Sequelize 6 and 7, `sequelize-cli` migrations; writes TypeScript, `sequelize-cli` (`--style define`) or v7 decorators (`--style v7`) |
-| Entity Framework Core (C#)  |  ✔   |   ✔   | EF Core 8: annotations or `--style fluent`, a `DbContext`; replays migrations; `OwnsMany`                                            |
+| Entity Framework Core (C#)  |  ✔   |   ✔   | Addon `ormbridge-efcore`: EF Core 8: annotations or `--style fluent`, a `DbContext`; replays migrations; `OwnsMany`                  |
 | Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` or 5 `--style javax`; `@EmbeddedId` keys; Lombok option                                                        |
 | TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                                                                                            |
 | Graphene (graphene-django)  |      |   ✔   | Addon `ormbridge-graphene`: GraphQL types, queries and mutations that pair with Django                                               |
@@ -37,7 +37,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 
 Each format has a [guide](./docs/formats/README.md) and a runnable [example project](./examples/README.md).
 
-Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write), `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories) and `ormbridge-graphene` (the Graphene schema writer) and `ormbridge-gorm` (GORM, read and write); both moved out of the core package in 0.22.
+Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write), `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories) `ormbridge-graphene` (the Graphene schema writer), `ormbridge-gorm` (GORM, read and write) and `ormbridge-efcore` (Entity Framework Core, read and write); the last three moved out of the core package in 0.22.
 
 [Back to Top](#table-of-contents)
 
