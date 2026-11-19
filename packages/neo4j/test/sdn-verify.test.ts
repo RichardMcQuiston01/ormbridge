@@ -5,10 +5,10 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { collectEdges } from '../src/emitters/neo4jEdges.js';
 import { buildGraph } from '../src/emitters/neo4jGraph.js';
 import { emitSdn } from '../src/emitters/sdn.js';
-import type { IrSchema } from '../src/ir.js';
-import { normalizeSchema, type NamingMode } from '../src/transforms.js';
-import { constructsSchema } from './drizzleFixtures.js';
-import { kitchenSinkSchema, stressSchema } from './gormFixtures.js';
+import type { IrSchema } from '../../../src/ir.js';
+import { normalizeSchema, type NamingMode } from '../../../src/transforms.js';
+import { constructsSchema } from '../../../test/drizzleFixtures.js';
+import { kitchenSinkSchema, stressSchema } from '../../../test/gormFixtures.js';
 import { joinsSchema, keysSchema } from './neo4jFixtures.js';
 import { openNeo4jServers, type Neo4jAccess } from './neo4jSupport.js';
 import {
@@ -26,7 +26,7 @@ import {
   titleWithReason,
   VERIFY_SOURCES,
   type VerifySource,
-} from './realToolSupport.js';
+} from '../../../test/realToolSupport.js';
 
 /**
  * Compiles the Java of `--to sdn` against the real Spring Data Neo4j 7 (every lint warning is an error), builds

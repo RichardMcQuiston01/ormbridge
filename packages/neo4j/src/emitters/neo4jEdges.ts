@@ -4,14 +4,14 @@ import type {
   IrOnDelete,
   IrRelation,
   IrSchema,
-} from '../ir.js';
+} from 'ormbridge';
 import type {
   Graph,
   GraphJoin,
   GraphNode,
   GraphProperty,
 } from './neo4jGraph.js';
-import { toSnakeCase } from '../naming.js';
+import { toSnakeCase } from 'ormbridge';
 import { relationshipTypeOf } from './neo4jNames.js';
 import { isMirror } from './neo4jRelationships.js';
 

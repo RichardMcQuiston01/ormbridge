@@ -7,10 +7,10 @@ import {
   type GraphNode,
 } from '../src/emitters/neo4jGraph.js';
 import type { Neo4jStyle } from '../src/emitters/neo4jTypes.js';
-import type { IrField, IrModel, IrSchema } from '../src/ir.js';
-import { normalizeSchema, type NamingMode } from '../src/transforms.js';
-import { constructsSchema } from './drizzleFixtures.js';
-import { kitchenSinkSchema, stressSchema } from './gormFixtures.js';
+import type { IrField, IrModel, IrSchema } from '../../../src/ir.js';
+import { normalizeSchema, type NamingMode } from '../../../src/transforms.js';
+import { constructsSchema } from '../../../test/drizzleFixtures.js';
+import { kitchenSinkSchema, stressSchema } from '../../../test/gormFixtures.js';
 import { joinsSchema, keysSchema } from './neo4jFixtures.js';
 import {
   clearSchema,
@@ -31,7 +31,7 @@ import {
   VERIFY_SOURCES,
   type ToolProbe,
   type VerifySource,
-} from './realToolSupport.js';
+} from '../../../test/realToolSupport.js';
 
 /**
  * Runs the Cypher output of the Neo4j writer in a real Neo4j server (HTTP transaction endpoint) and

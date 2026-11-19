@@ -5,8 +5,8 @@ import type {
   IrModel,
   IrRelation,
   IrSchema,
-} from '../ir.js';
-import { findModel } from '../ir.js';
+} from 'ormbridge';
+import { findModel } from 'ormbridge';
 import {
   enumValuesOf,
   mapFieldType,

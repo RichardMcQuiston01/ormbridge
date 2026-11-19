@@ -1,4 +1,6 @@
-# neomodel
+# neomodel (addon)
+
+The `neomodel` format moved out of the core package in ormbridge 0.22, into `ormbridge-neo4j` (which has all three Neo4j writers: `neo4j`, `neomodel` and `sdn`). Install the add-on and load it: `npm install ormbridge-neo4j`, then pass `--plugin ormbridge-neo4j` (or set `"plugins": ["ormbridge-neo4j"]` in the config file). See [Addons](../ADDONS.md). Without it, `--to neomodel` fails with a message that says so.
 
 The `neomodel` format writes Python classes for [neomodel](https://neomodel.readthedocs.io), the object mapper for [Neo4j](https://neo4j.com). Each model becomes a class, each column a property, and each foreign key a relationship. It is write-only: it works with `--to` and never with `--from`. It claims no file extension, so always pass `--to neomodel`. The output is one Python module, for example `models.py`.
 

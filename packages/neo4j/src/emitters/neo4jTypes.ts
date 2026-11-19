@@ -1,13 +1,14 @@
-import type { IrEnum, IrField, IrScalarType } from '../ir.js';
+import { NEO4J_STYLES, type Neo4jStyle } from 'ormbridge';
+import type { IrEnum, IrField, IrScalarType } from 'ormbridge';
 
 /**
  * Output style of the Neo4j writer. `community` (the default) writes only what Neo4j Community
  * Edition accepts; `enterprise` adds the statements that need Enterprise Edition: `IS NOT NULL`
  * constraints, `IS NODE KEY` for composite primary keys and property type constraints.
  */
-export type Neo4jStyle = 'community' | 'enterprise';
+export type { Neo4jStyle };
 
-export const NEO4J_STYLES: readonly Neo4jStyle[] = ['community', 'enterprise'];
+export { NEO4J_STYLES };
 
 /** True when a value is a style of the Neo4j writer. */
 export function isNeo4jStyle(value: string): value is Neo4jStyle {

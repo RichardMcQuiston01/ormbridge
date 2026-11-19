@@ -1,6 +1,6 @@
-import type { IrField, IrScalarType } from '../ir.js';
+import type { IrField, IrScalarType } from 'ormbridge';
 import { mapFieldType, type Neo4jType } from './neo4jTypes.js';
-import type { Imports } from './jpaTypes.js';
+import type { Imports } from 'ormbridge';
 
 /** The Java types of the Spring Data Neo4j writer, chosen from the Neo4j type the Cypher writer documents. */
 

@@ -1,4 +1,6 @@
-# Neo4j
+# Neo4j (addon)
+
+The `neo4j` format moved out of the core package in ormbridge 0.22, into `ormbridge-neo4j` (which has all three Neo4j writers: `neo4j`, `neomodel` and `sdn`). Install the add-on and load it: `npm install ormbridge-neo4j`, then pass `--plugin ormbridge-neo4j` (or set `"plugins": ["ormbridge-neo4j"]` in the config file). See [Addons](../ADDONS.md). Without it, `--to neo4j` fails with a message that says so.
 
 The `neo4j` format writes a Cypher schema for [Neo4j](https://neo4j.com). Each model becomes a node label, and the primary keys, unique columns and indexes become constraints and indexes. It is write-only: it works with `--to` and never with `--from`. It claims no file extension, so always pass `--to neo4j`. The output is a `.cypher` file.
 

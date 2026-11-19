@@ -31,13 +31,13 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | Hibernate / JPA (Java)      |  ✔   |   ✔   | Hibernate 6 `jakarta` or 5 `--style javax`; `@EmbeddedId` keys; Lombok option                                                        |
 | TypeScript interfaces       |      |   ✔   | Plain interfaces and enums for front ends                                                                                            |
 | Graphene (graphene-django)  |      |   ✔   | Addon `ormbridge-graphene`: GraphQL types, queries and mutations that pair with Django                                               |
-| Neo4j (Cypher)              |      |   ✔   | Node constraints and indexes; relationships as comments; `--style enterprise` for Enterprise                                         |
-| Spring Data Neo4j (Java)    |      |   ✔   | SDN 7 for Spring Boot 3: `@Node`, `@Relationship`, `@RelationshipProperties` classes                                                 |
-| neomodel (Python, Neo4j)    |      |   ✔   | `StructuredNode` classes, relationships with cardinality, `StructuredRel` for join tables                                            |
+| Neo4j (Cypher)              |      |   ✔   | Addon `ormbridge-neo4j`: Node constraints and indexes; relationships as comments; `--style enterprise` for Enterprise                |
+| Spring Data Neo4j (Java)    |      |   ✔   | Addon `ormbridge-neo4j`: SDN 7 for Spring Boot 3: `@Node`, `@Relationship`, `@RelationshipProperties` classes                        |
+| neomodel (Python, Neo4j)    |      |   ✔   | Addon `ormbridge-neo4j`: `StructuredNode` classes, relationships with cardinality, `StructuredRel` for join tables                   |
 
 Each format has a [guide](./docs/formats/README.md) and a runnable [example project](./examples/README.md).
 
-Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write), `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories) `ormbridge-graphene` (the Graphene schema writer), `ormbridge-gorm` (GORM, read and write) and `ormbridge-efcore` (Entity Framework Core, read and write) and `ormbridge-php` (Doctrine and Laravel, read and write); the last four moved out of the core package in 0.22.
+Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write), `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories) `ormbridge-graphene` (the Graphene schema writer), `ormbridge-gorm` (GORM, read and write) and `ormbridge-efcore` (Entity Framework Core, read and write) `ormbridge-php` (Doctrine and Laravel, read and write) and `ormbridge-neo4j` (the Neo4j Cypher, neomodel and Spring Data Neo4j writers); the last five moved out of the core package in 0.22.
 
 [Back to Top](#table-of-contents)
 

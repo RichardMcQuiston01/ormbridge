@@ -1,6 +1,6 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import type { ToolProbe } from './realToolSupport.js';
+import type { ToolProbe } from '../../../test/realToolSupport.js';
 
 /**
  * Helpers for the test that runs the Cypher output of the Neo4j writer in a real Neo4j server and

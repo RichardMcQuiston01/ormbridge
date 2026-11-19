@@ -6,9 +6,9 @@ import { fileURLToPath } from 'node:url';
 import type { GraphEdge } from '../src/emitters/neo4jEdges.js';
 import type { Graph, GraphNode } from '../src/emitters/neo4jGraph.js';
 import { primaryKeyNamesOf } from '../src/emitters/neo4jGraph.js';
-import type { IrField, IrModel } from '../src/ir.js';
+import type { IrField, IrModel } from '../../../src/ir.js';
 import type { Neo4jServer } from './neo4jSupport.js';
-import { probePython, type ToolProbe } from './realToolSupport.js';
+import { probePython, type ToolProbe } from '../../../test/realToolSupport.js';
 
 /**
  * Helpers for the tests that load the neomodel output with the real neomodel and a real Neo4j server:

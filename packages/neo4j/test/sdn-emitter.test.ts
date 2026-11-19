@@ -1,11 +1,11 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { convertText, type ConvertResult } from '../src/convert.js';
+import { convertText, type ConvertResult } from '../../../src/convert.js';
 import { emitSdn, isValidJavaPackage } from '../src/emitters/sdn.js';
-import { getFormat, type MultiFileEmitOutput } from '../src/formats.js';
-import type { IrSchema } from '../src/ir.js';
-import { normalizeSchema, type NamingMode } from '../src/transforms.js';
-import { constructsSchema } from './drizzleFixtures.js';
+import { getFormat, type MultiFileEmitOutput } from '../../../src/formats.js';
+import type { IrSchema } from '../../../src/ir.js';
+import { normalizeSchema, type NamingMode } from '../../../src/transforms.js';
+import { constructsSchema } from '../../../test/drizzleFixtures.js';
 import {
   field,
   idField,
@@ -14,16 +14,19 @@ import {
   relation,
   schemaOf,
   stressSchema,
-} from './gormFixtures.js';
-import { expectFilesMatchGolden, loadCanonicalSources } from './harness.js';
-import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
+} from '../../../test/gormFixtures.js';
+import {
+  expectFilesMatchGolden,
+  loadCanonicalSources,
+} from '../../../test/harness.js';
+import { DEFAULT_OPTIONS, expectOk } from '../../../test/helpers.js';
 import { joinsSchema, keysSchema } from './neo4jFixtures.js';
-import { checkSdnOutput } from './sdnCoverage.js';
+import { checkSdnOutput } from '../../../test/sdnCoverage.js';
 import {
   EXTRA_SOURCES,
   parseSource,
   type VerifySource,
-} from './realToolSupport.js';
+} from '../../../test/realToolSupport.js';
 
 function emit(
   schema: IrSchema,
@@ -457,7 +460,7 @@ describe('agreement with the other Neo4j writers', () => {
 
 describe('sdn emitter: golden files', () => {
   const goldenRoot: string = fileURLToPath(
-    new URL('./golden-extras/', import.meta.url)
+    new URL('../../../test/golden-extras/', import.meta.url)
   );
   const fixtures: [string, () => Promise<IrSchema>][] = [
     ['kitchen-sink', () => Promise.resolve(kitchenSinkSchema())],

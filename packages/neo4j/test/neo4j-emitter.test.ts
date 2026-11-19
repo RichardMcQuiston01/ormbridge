@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertText, type ConvertResult } from '../src/convert.js';
+import { convertText, type ConvertResult } from '../../../src/convert.js';
 import { emitNeo4j } from '../src/emitters/neo4j.js';
 import {
   labelOf,
@@ -8,11 +8,11 @@ import {
   relationshipTypeOf,
 } from '../src/emitters/neo4jNames.js';
 import { mapFieldType } from '../src/emitters/neo4jTypes.js';
-import { getFormat } from '../src/formats.js';
-import type { IrModel, IrSchema } from '../src/ir.js';
-import { checkStyle } from '../src/styles.js';
-import { loadCanonicalSources } from './harness.js';
-import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
+import { getFormat } from '../../../src/formats.js';
+import type { IrModel, IrSchema } from '../../../src/ir.js';
+import { checkStyle } from '../../../src/styles.js';
+import { loadCanonicalSources } from '../../../test/harness.js';
+import { DEFAULT_OPTIONS, expectOk } from '../../../test/helpers.js';
 import {
   field,
   idField,
@@ -20,8 +20,8 @@ import {
   model,
   relation,
   schemaOf,
-} from './gormFixtures.js';
-import { checkNeo4jOutput } from './neo4jCoverage.js';
+} from '../../../test/gormFixtures.js';
+import { checkNeo4jOutput } from '../../../test/neo4jCoverage.js';
 import { joinsSchema, keysSchema, typesModel } from './neo4jFixtures.js';
 import { splitCypher } from './neo4jSupport.js';
 

@@ -2,7 +2,7 @@
 
 This folder shows the `neo4j` format: a Cypher schema generated from the shared Prisma schema [`../schema/schema.prisma`](../schema/schema.prisma). The format is write-only, so there is no round trip.
 
-- `ormbridge.config.json` defines two conversions, both from `prisma` to `neo4j`.
+- `ormbridge.config.json` loads the Neo4j add-on and defines two conversions, both from `prisma` to `neo4j`. The `plugins` entry is a path into this repository; in your own project, run `npm install ormbridge-neo4j` and write `"plugins": ["ormbridge-neo4j"]`.
 - `generated/schema.cypher` is the default `community` style. It runs on Neo4j Community Edition.
 - `generated/schema.enterprise.cypher` is the `enterprise` style (`"style": "enterprise"`). It adds `IS NOT NULL` and property type constraints, which need Enterprise Edition.
 

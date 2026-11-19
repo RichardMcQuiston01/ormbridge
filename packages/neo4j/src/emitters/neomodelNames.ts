@@ -1,4 +1,4 @@
-import { toSnakeCase } from '../naming.js';
+import { toSnakeCase } from 'ormbridge';
 
 /** Name and literal helpers of the neomodel writer. */
 

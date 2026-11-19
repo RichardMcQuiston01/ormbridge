@@ -2,10 +2,10 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { emitNeomodel } from '../src/emitters/neomodel.js';
 import { collectEdges, type GraphEdge } from '../src/emitters/neo4jEdges.js';
 import { buildGraph, type Graph } from '../src/emitters/neo4jGraph.js';
-import type { IrSchema } from '../src/ir.js';
-import { normalizeSchema, type NamingMode } from '../src/transforms.js';
-import { constructsSchema } from './drizzleFixtures.js';
-import { kitchenSinkSchema, stressSchema } from './gormFixtures.js';
+import type { IrSchema } from '../../../src/ir.js';
+import { normalizeSchema, type NamingMode } from '../../../src/transforms.js';
+import { constructsSchema } from '../../../test/drizzleFixtures.js';
+import { kitchenSinkSchema, stressSchema } from '../../../test/gormFixtures.js';
 import { joinsSchema, keysSchema } from './neo4jFixtures.js';
 import { openNeo4jServers, type Neo4jAccess } from './neo4jSupport.js';
 import {
@@ -26,7 +26,7 @@ import {
   VERIFY_SOURCES,
   type ToolProbe,
   type VerifySource,
-} from './realToolSupport.js';
+} from '../../../test/realToolSupport.js';
 
 /**
  * Imports the Python module of `--to neomodel` with the real neomodel, runs `install_labels` against a real
