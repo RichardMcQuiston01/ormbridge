@@ -5,17 +5,17 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { emitLaravel } from '../src/emitters/laravel.js';
-import { getFormat, type FormatOptions } from '../src/formats.js';
-import type { MultiFileEmitOutput } from '../src/formats.js';
+import { getFormat, type FormatOptions } from '../../../src/formats.js';
+import type { MultiFileEmitOutput } from '../../../src/formats.js';
 import type {
   IrEnum,
   IrField,
   IrModel,
   IrRelation,
   IrSchema,
-} from '../src/ir.js';
-import { convertCanonical } from './harness.js';
-import { DEFAULT_OPTIONS } from './helpers.js';
+} from '../../../src/ir.js';
+import { convertCanonical } from '../../../test/harness.js';
+import { DEFAULT_OPTIONS } from '../../../test/helpers.js';
 
 function field(name: string, overrides: Partial<IrField> = {}): IrField {
   return {

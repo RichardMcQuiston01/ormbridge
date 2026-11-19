@@ -28,11 +28,6 @@ export { parseDjango } from './parsers/django.js';
 export type { DjangoSourceFile, DjangoParseOptions } from './parsers/django.js';
 export { parsePrisma } from './parsers/prisma.js';
 export type { PrismaSourceFile, PrismaParseOptions } from './parsers/prisma.js';
-export { parseDoctrine } from './parsers/doctrine.js';
-export type {
-  DoctrineSourceFile,
-  DoctrineParseOptions,
-} from './parsers/doctrine.js';
 export { parseDrizzle } from './parsers/drizzle.js';
 export type {
   DrizzleSourceFile,
@@ -47,11 +42,6 @@ export type {
   JsonSchemaSourceFile,
   JsonSchemaParseOptions,
 } from './parsers/jsonSchema.js';
-export { parseLaravel } from './parsers/laravel.js';
-export type {
-  LaravelSourceFile,
-  LaravelParseOptions,
-} from './parsers/laravel.js';
 export { parseSequelize } from './parsers/sequelize.js';
 export type {
   SequelizeParseOptions,
@@ -77,10 +67,6 @@ export type {
   PrismaProvider,
 } from './emitters/prisma.js';
 export { emitDjango } from './emitters/django.js';
-export { emitDoctrine } from './emitters/doctrine.js';
-export type { DoctrineEmitOptions } from './emitters/doctrine.js';
-export { emitLaravel } from './emitters/laravel.js';
-export type { LaravelEmitOptions } from './emitters/laravel.js';
 export { emitDrizzle } from './emitters/drizzle.js';
 export type { DrizzleEmitOptions } from './emitters/drizzle.js';
 export {

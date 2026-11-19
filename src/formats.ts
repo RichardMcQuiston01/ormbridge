@@ -1,7 +1,5 @@
 import { emitDjango } from './emitters/django.js';
-import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
 import { emitDrizzle } from './emitters/drizzle.js';
-import { emitLaravel } from './emitters/laravel.js';
 import {
   emitPrisma,
   type EmitOutput,
@@ -34,12 +32,10 @@ import { emitSqlDdl } from './emitters/sqlDdl.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import { emitZod } from './emitters/zod.js';
 import type { IrSchema } from './ir.js';
-import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDrizzle } from './parsers/drizzle.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
 import { parseJpa } from './parsers/jpa.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
-import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
 import { parseSequelize } from './parsers/sequelize.js';
 import { parseSqlAlchemy } from './parsers/sqlalchemy.js';
@@ -149,6 +145,12 @@ export interface FormatInput {
   description: string;
   /** Directory names that are never searched (`build`, `node_modules`, ...). */
   skippedDirectories?: readonly string[];
+  /** False when only the directories above are skipped, without the names every folder walk skips (`migrations`, `build`, `dist`, `env`). Default: true. */
+  inheritSkippedDirectories?: boolean;
+  /** Directories that are skipped by their name and the folder they are in (`bootstrap/cache`). */
+  isSkippedDirectory?: (name: string, parent: string) => boolean;
+  /** The folders to read when a directory is given (a project root holds the model folders). Default: the directory itself. */
+  roots?: (directory: string) => Promise<readonly string[]>;
   /** True when the directory names above match in any letter case (`Bin`, `OBJ`). */
   skippedDirectoriesIgnoreCase?: boolean;
   /** Files with an accepted extension that are not part of the model (tests, generated code). */
@@ -413,88 +415,6 @@ const jsonSchemaAdapter: FormatAdapter = {
         ...(options.conventions === undefined
           ? {}
           : { conventions: options.conventions }),
-      })
-    );
-  },
-};
-
-const doctrineAdapter: FormatAdapter = {
-  name: 'doctrine',
-  // No extension is claimed: ".php" is too generic to infer, so pass --from/--to doctrine.
-  extensions: [],
-  description: 'Doctrine ORM entities (PHP 8 attributes)',
-  parse: (
-    sources: SourceText[],
-    options: FormatOptions
-  ): Promise<Result<IrSchema>> =>
-    parseDoctrine(
-      sources.map((source: SourceText) => ({
-        path: source.path,
-        text: source.text,
-      })),
-      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
-    ),
-  emit: (
-    schema: IrSchema,
-    options: FormatOptions
-  ): Result<FormatEmitOutput> => {
-    const namespace: string | undefined = options.namespace?.replace(
-      /^\\+|\\+$/g,
-      ''
-    );
-    if (namespace !== undefined && !isValidPhpNamespace(namespace)) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid namespace "${options.namespace ?? ''}". Expected a PHP namespace such as App\\Entity.`
-      );
-    }
-    const prepared: IrSchema =
-      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
-    return ok(
-      emitDoctrine(prepared, {
-        provider: options.provider,
-        camelFields: options.naming === 'normalize',
-        ...(namespace === undefined ? {} : { namespace }),
-      })
-    );
-  },
-};
-
-const laravelAdapter: FormatAdapter = {
-  name: 'laravel',
-  // No extension is claimed: ".php" is too generic to infer, so pass --from/--to laravel.
-  extensions: [],
-  description: 'Laravel migrations and Eloquent models',
-  parse: (
-    sources: SourceText[],
-    options: FormatOptions
-  ): Promise<Result<IrSchema>> =>
-    parseLaravel(
-      sources.map((source: SourceText) => ({
-        path: source.path,
-        text: source.text,
-      })),
-      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
-    ),
-  emit: (
-    schema: IrSchema,
-    options: FormatOptions
-  ): Result<FormatEmitOutput> => {
-    const namespace: string | undefined = options.namespace?.replace(
-      /^\\+|\\+$/g,
-      ''
-    );
-    if (namespace !== undefined && !isValidPhpNamespace(namespace)) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid namespace "${options.namespace ?? ''}". Expected a PHP namespace such as App\\Models.`
-      );
-    }
-    return ok(
-      emitLaravel(schema, {
-        provider: options.provider,
-        naming: options.naming,
-        ...(namespace === undefined ? {} : { namespace }),
       })
     );
   },
@@ -834,8 +754,8 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
   registerFormat(prismaAdapter),
   registerFormat(typeormAdapter),
-  registerFormat(doctrineAdapter),
-  registerFormat(laravelAdapter),
+  registerFormat(movedStub('doctrine')),
+  registerFormat(movedStub('laravel')),
   registerFormat(movedStub('gorm')),
   registerFormat(drizzleAdapter),
   registerFormat(movedStub('graphene')),

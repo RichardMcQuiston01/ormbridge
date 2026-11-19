@@ -18,8 +18,8 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 | Django models               |  ✔   |   ✔   | `models.py` files or `models/` packages                                                                                              |
 | Prisma schema               |  ✔   |   ✔   | All six providers; Prisma 7 header with `--prisma-version 7`                                                                         |
 | TypeORM entities            |  ✔   |   ✔   | Decorator-based entity classes                                                                                                       |
-| Doctrine ORM entities (PHP) |  ✔   |   ✔   | PHP 8 attributes; one file per entity                                                                                                |
-| Laravel (PHP)               |  ✔   |   ✔   | Reads migrations plus Eloquent models; writes both                                                                                   |
+| Doctrine ORM entities (PHP) |  ✔   |   ✔   | Addon `ormbridge-php`: PHP 8 attributes; one file per entity                                                                         |
+| Laravel (PHP)               |  ✔   |   ✔   | Addon `ormbridge-php`: reads migrations plus Eloquent models; writes both                                                            |
 | GORM (Go)                   |  ✔   |   ✔   | Addon `ormbridge-gorm`: structs with `gorm` tags; one file per model                                                                 |
 | Drizzle ORM (TypeScript)    |  ✔   |   ✔   | `pgTable`, `mysqlTable`, `sqliteTable` plus `relations()`                                                                            |
 | Zod schemas (TypeScript)    |  ✔   |   ✔   | Reads Zod 3 and Zod 4 `z.object` schemas; writes Zod 4 schemas and inferred types                                                    |
@@ -37,7 +37,7 @@ It reads source files with [tree-sitter](https://tree-sitter.github.io/), so you
 
 Each format has a [guide](./docs/formats/README.md) and a runnable [example project](./examples/README.md).
 
-Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write), `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories) `ormbridge-graphene` (the Graphene schema writer), `ormbridge-gorm` (GORM, read and write) and `ormbridge-efcore` (Entity Framework Core, read and write); the last three moved out of the core package in 0.22.
+Formats can also come from [addon packages](./docs/ADDONS.md) that you install next to ormbridge and name with `--plugin`: `ormbridge-kotlin` (Kotlin entities, read and write), `ormbridge-spring-data` (Spring Data JPA in Java and Kotlin, with auditing and repositories) `ormbridge-graphene` (the Graphene schema writer), `ormbridge-gorm` (GORM, read and write) and `ormbridge-efcore` (Entity Framework Core, read and write) and `ormbridge-php` (Doctrine and Laravel, read and write); the last four moved out of the core package in 0.22.
 
 [Back to Top](#table-of-contents)
 

@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { convertText } from '../src/convert.js';
-import { getFormat, getFormatByExtension } from '../src/formats.js';
+import { convertText } from '../../../src/convert.js';
+import { getFormat, getFormatByExtension } from '../../../src/formats.js';
 import type {
   IrEnum,
   IrField,
@@ -12,13 +12,13 @@ import type {
   IrModel,
   IrRelation,
   IrSchema,
-} from '../src/ir.js';
-import { runConversion } from '../src/io.js';
+} from '../../../src/ir.js';
+import { runConversion } from '../../../src/io.js';
 import {
   parseDoctrine,
   type DoctrineSourceFile,
 } from '../src/parsers/doctrine.js';
-import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
+import { DEFAULT_OPTIONS, expectOk } from '../../../test/helpers.js';
 
 const HEADER: string = `<?php
 namespace App\\Entity;
@@ -120,7 +120,7 @@ describe('directory input', () => {
 
   it('reads every .php file of the fixture folder with --from doctrine', async () => {
     const directory: string = fileURLToPath(
-      new URL('./fixtures/doctrine', import.meta.url)
+      new URL('../../../test/fixtures/doctrine', import.meta.url)
     );
     const summary = expectOk(
       await runConversion({

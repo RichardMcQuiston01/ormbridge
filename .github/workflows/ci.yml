@@ -234,9 +234,9 @@ jobs:
       - name: Tests with the real Doctrine and Illuminate
         run: >-
           npx vitest run
-          test/doctrine-emitter.test.ts
-          test/laravel-emitter.test.ts
-          test/laravel-parser.test.ts
+          packages/php/test/doctrine-emitter.test.ts
+          packages/php/test/laravel-emitter.test.ts
+          packages/php/test/laravel-parser.test.ts
 
   # The SQL DDL, Sequelize 7, CockroachDB, ClickHouse and Neo4j tests, which execute their output in real servers
   # (SQLite needs none). Only this job starts the servers. The CockroachDB test also runs drizzle-kit, so Drizzle is

@@ -12,9 +12,9 @@ import type {
   IrRelation,
   IrScalarType,
   IrSchema,
-} from '../ir.js';
-import { singularize, toPascalCase, toSnakeCase } from '../naming.js';
-import { err, ok, type Result } from '../result.js';
+} from 'ormbridge';
+import { singularize, toPascalCase, toSnakeCase } from 'ormbridge';
+import { err, ok, type Result } from 'ormbridge';
 import {
   argumentNodes,
   collectDeclarations,

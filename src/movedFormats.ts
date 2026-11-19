@@ -28,6 +28,20 @@ export const MOVED_FORMATS: readonly MovedFormat[] = [
     write: true,
   },
   {
+    name: 'doctrine',
+    packageName: 'ormbridge-php',
+    description: 'Doctrine ORM entities (PHP 8 attributes)',
+    read: true,
+    write: true,
+  },
+  {
+    name: 'laravel',
+    packageName: 'ormbridge-php',
+    description: 'Laravel migrations and Eloquent models',
+    read: true,
+    write: true,
+  },
+  {
     name: 'efcore',
     packageName: 'ormbridge-efcore',
     description:

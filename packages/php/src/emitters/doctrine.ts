@@ -1,5 +1,5 @@
-import type { MultiFileEmitOutput } from '../formats.js';
-import { prismaOnlyWarnings } from '../prismaOnlyConstructs.js';
+import type { MultiFileEmitOutput } from 'ormbridge';
+import { prismaOnlyWarnings } from 'ormbridge';
 import type {
   IrDefault,
   IrEnum,
@@ -10,20 +10,15 @@ import type {
   IrOnDelete,
   IrRelation,
   IrSchema,
-} from '../ir.js';
-import { findModel } from '../ir.js';
-import {
-  singularize,
-  toCamelCase,
-  toPascalCase,
-  toSnakeCase,
-} from '../naming.js';
+} from 'ormbridge';
+import { findModel } from 'ormbridge';
+import { singularize, toCamelCase, toPascalCase, toSnakeCase } from 'ormbridge';
 import {
   COCKROACH_PREFIX,
   cockroachSequentialWarning,
   isCockroach,
-} from './cockroach.js';
-import type { PrismaProvider } from './prisma.js';
+} from 'ormbridge';
+import type { PrismaProvider } from 'ormbridge';
 
 /**
  * Doctrine ORM emitter (PHP 8.1+ attributes). Writes one PSR-4 file per entity

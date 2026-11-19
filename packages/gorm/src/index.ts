@@ -35,6 +35,7 @@ export const gormAdapter: FormatAdapter = {
     extensions: ['.go'],
     description: 'Go (.go) model files',
     skippedDirectories: ['vendor', 'node_modules', 'testdata', '.git'],
+    inheritSkippedDirectories: false,
     isSkippedFile: isGoTestFile,
   },
   parse: (

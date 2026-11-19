@@ -1,4 +1,6 @@
-# Laravel
+# Laravel (addon)
+
+Laravel moved out of the core package in ormbridge 0.22, into `ormbridge-php` (which also has Doctrine). Install the add-on and load it: `npm install ormbridge-php`, then pass `--plugin ormbridge-php` (or set `"plugins": ["ormbridge-php"]` in the config file). See [Addons](../ADDONS.md). Without it, `--from laravel` and `--to laravel` fail with a message that says so.
 
 Laravel (11 and 12, PHP 8.1+) keeps its schema in migrations and its relations in Eloquent models. ormbridge reads and writes both (`ormbridge formats` lists it as `read + write`). It claims no file extension, because `.php` is shared with Doctrine, so pass `--from laravel` when reading and `--to laravel` when writing. Laravel output is a directory, so `-o` must be a directory.
 

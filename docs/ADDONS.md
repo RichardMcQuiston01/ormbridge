@@ -27,13 +27,14 @@ npx ormbridge convert -i src/main/kotlin -f kotlin -t prisma --plugin ormbridge-
 
 ## Available addons
 
-| Package                                                                        | Formats                             | Guide                                        |
-| ------------------------------------------------------------------------------ | ----------------------------------- | -------------------------------------------- |
-| [`ormbridge-efcore`](https://www.npmjs.com/package/ormbridge-efcore)           | `efcore`                            | [Entity Framework Core](./formats/efcore.md) |
-| [`ormbridge-gorm`](https://www.npmjs.com/package/ormbridge-gorm)               | `gorm`                              | [GORM](./formats/gorm.md)                    |
-| [`ormbridge-graphene`](https://www.npmjs.com/package/ormbridge-graphene)       | `graphene`                          | [Graphene](./formats/graphene.md)            |
-| [`ormbridge-kotlin`](https://www.npmjs.com/package/ormbridge-kotlin)           | `kotlin`                            | [Kotlin entities](./formats/kotlin.md)       |
-| [`ormbridge-spring-data`](https://www.npmjs.com/package/ormbridge-spring-data) | `spring-data`, `spring-data-kotlin` | [Spring Data JPA](./formats/spring-data.md)  |
+| Package                                                                        | Formats                             | Guide                                                              |
+| ------------------------------------------------------------------------------ | ----------------------------------- | ------------------------------------------------------------------ |
+| [`ormbridge-efcore`](https://www.npmjs.com/package/ormbridge-efcore)           | `efcore`                            | [Entity Framework Core](./formats/efcore.md)                       |
+| [`ormbridge-gorm`](https://www.npmjs.com/package/ormbridge-gorm)               | `gorm`                              | [GORM](./formats/gorm.md)                                          |
+| [`ormbridge-graphene`](https://www.npmjs.com/package/ormbridge-graphene)       | `graphene`                          | [Graphene](./formats/graphene.md)                                  |
+| [`ormbridge-kotlin`](https://www.npmjs.com/package/ormbridge-kotlin)           | `kotlin`                            | [Kotlin entities](./formats/kotlin.md)                             |
+| [`ormbridge-php`](https://www.npmjs.com/package/ormbridge-php)                 | `doctrine`, `laravel`               | [Doctrine](./formats/doctrine.md), [Laravel](./formats/laravel.md) |
+| [`ormbridge-spring-data`](https://www.npmjs.com/package/ormbridge-spring-data) | `spring-data`, `spring-data-kotlin` | [Spring Data JPA](./formats/spring-data.md)                        |
 
 The addons live in the [`packages/`](../packages/) folder of this repository, are versioned on their own and are published with each release of ormbridge. They depend on `ormbridge` as a peer dependency, so install both. Addon formats are not in the [conversion matrix](./CONVERSION_MATRIX.md), which covers the formats of the core package.
 

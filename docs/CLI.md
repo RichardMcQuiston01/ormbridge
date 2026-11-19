@@ -20,10 +20,10 @@ ormbridge convert -i ./prisma/schema.prisma -o ./shop/models.py --app-label shop
 ormbridge convert -i ./src/entities --from typeorm -o ./prisma/schema.prisma
 
 # Doctrine (PHP 8 attributes) -> Prisma (every .php file is read; vendor/, var/ and *Test.php are skipped)
-ormbridge convert -i ./src/Entity --from doctrine -o ./prisma/schema.prisma
+ormbridge convert -i ./src/Entity --from doctrine --plugin ormbridge-php -o ./prisma/schema.prisma
 
 # Laravel project root -> Prisma (reads database/migrations and app/; vendor/, storage/, tests/ and bootstrap/cache are skipped)
-ormbridge convert -i ./my-laravel-app --from laravel -o ./prisma/schema.prisma
+ormbridge convert -i ./my-laravel-app --from laravel --plugin ormbridge-php -o ./prisma/schema.prisma
 
 # GORM (Go structs with gorm tags) -> Prisma (needs the ormbridge-gorm add-on; every .go file is read; vendor/, testdata/ and *_test.go are skipped)
 ormbridge convert -i ./internal/models --from gorm --plugin ormbridge-gorm -o ./prisma/schema.prisma
