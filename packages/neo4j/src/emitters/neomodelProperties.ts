@@ -1,4 +1,4 @@
-import type { IrEnum, IrEnumValue, IrField, IrSchema } from '../ir.js';
+import type { IrEnum, IrEnumValue, IrField, IrSchema } from 'ormbridge';
 import type { GraphProperty } from './neo4jGraph.js';
 import { oneLine } from './neo4jNames.js';
 import { mapFieldType, type Neo4jType } from './neo4jTypes.js';

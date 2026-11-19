@@ -1,18 +1,22 @@
-import type { MultiFileEmitOutput } from '../formats.js';
-import type { IrField, IrModel, IrSchema } from '../ir.js';
-import { annotation, type AnnotationNode } from './jpaFormat.js';
-import { planEnums, renderEnumBody } from './jpaEnums.js';
+import type { MultiFileEmitOutput } from 'ormbridge';
+import type { IrField, IrModel, IrSchema } from 'ormbridge';
 import {
-  attributeNameOf,
+  annotation,
   capitalize,
-  classNameOf,
   DEFAULT_JPA_PACKAGE,
+  formatAnnotation,
+  Imports,
   javaString,
+  jpaAttributeNameOf as attributeNameOf,
+  jpaClassNameOf as classNameOf,
+  planEnums,
+  renderEnumBody,
+  renderFile,
   RESERVED_TYPE_NAMES,
   uniqueName,
-} from './jpaNames.js';
-import { renderFile } from './jpaRender.js';
-import { Imports, type EnumPlan } from './jpaTypes.js';
+  type AnnotationNode,
+  type JpaEnumPlan as EnumPlan,
+} from 'ormbridge';
 import {
   collectEdges,
   defaultReverseName,
@@ -29,7 +33,6 @@ import {
 } from './neo4jGraph.js';
 import { labelOf, oneLine } from './neo4jNames.js';
 import { javaTypeOf, RESERVED_SDN_TYPES } from './sdnTypes.js';
-import { formatAnnotation } from './jpaFormat.js';
 
 /**
  * Spring Data Neo4j writer (Java, SDN 7 with Spring Boot 3).
@@ -46,7 +49,7 @@ import { formatAnnotation } from './jpaFormat.js';
  * missing key becomes a generated internal id `graphId` and the key columns are plain properties.
  */
 
-export { isValidJavaPackage } from './jpaNames.js';
+export { isValidJavaPackage } from 'ormbridge';
 export const DEFAULT_SDN_PACKAGE: string = DEFAULT_JPA_PACKAGE;
 
 export interface SdnEmitOptions {

@@ -1,5 +1,4 @@
 import { JPA_STYLES, type JpaStyle } from './emitters/jpa.js';
-import { NEO4J_STYLES, type Neo4jStyle } from './emitters/neo4j.js';
 import {
   SEQUELIZE_OUTPUT_STYLES,
   type SequelizeOutputStyle,
@@ -15,6 +14,12 @@ export type EfcoreStyle = 'annotations' | 'fluent';
 
 /** The EF Core output styles. */
 export const EFCORE_STYLES: readonly EfcoreStyle[] = ['annotations', 'fluent'];
+
+/** The styles of the Neo4j writers (the `ormbridge-neo4j` addon): Community Edition or Enterprise Edition statements. */
+export type Neo4jStyle = 'community' | 'enterprise';
+
+/** The Neo4j output styles. */
+export const NEO4J_STYLES: readonly Neo4jStyle[] = ['community', 'enterprise'];
 
 /** Every value `--style` accepts; which ones apply depends on the target format. */
 export type OutputStyle =

@@ -20,12 +20,6 @@ import {
   type JpaInheritanceMode,
   type JpaKeyMode,
 } from './emitters/jpa.js';
-import { emitNeo4j, isNeo4jStyle } from './emitters/neo4j.js';
-import {
-  emitSdn,
-  isValidJavaPackage as isValidSdnPackage,
-} from './emitters/sdn.js';
-import { emitNeomodel } from './emitters/neomodel.js';
 import { emitSequelize, isSequelizeOutputStyle } from './emitters/sequelize.js';
 import { emitSqlAlchemy, isSqlAlchemyStyle } from './emitters/sqlalchemy.js';
 import { emitSqlDdl } from './emitters/sqlDdl.js';
@@ -470,55 +464,6 @@ const zodAdapter: FormatAdapter = {
   },
 };
 
-const neo4jAdapter: FormatAdapter = {
-  name: 'neo4j',
-  // Output only, and no extension is claimed: ".cypher" is not read by anything here, so pass --to neo4j.
-  extensions: [],
-  description:
-    'Neo4j Cypher schema: node constraints and indexes, relationships as comments (--style enterprise adds Enterprise Edition constraints)',
-  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
-    if (options.style !== undefined) {
-      const checked: Result<OutputStyle> = checkStyle(
-        'neo4j',
-        String(options.style),
-        'style'
-      );
-      if (!checked.ok) {
-        return checked;
-      }
-    }
-    const prepared: IrSchema =
-      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
-    return ok(
-      emitNeo4j(prepared, {
-        camelFields: options.naming === 'normalize',
-        header: options.header,
-        ...(options.style === undefined || !isNeo4jStyle(options.style)
-          ? {}
-          : { style: options.style }),
-      })
-    );
-  },
-};
-
-const neomodelAdapter: FormatAdapter = {
-  name: 'neomodel',
-  // Output only, and no extension is claimed: ".py" is too generic to infer, so pass --to neomodel.
-  extensions: [],
-  description:
-    'neomodel classes for Neo4j (Python: StructuredNode, RelationshipTo and RelationshipFrom)',
-  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
-    const prepared: IrSchema =
-      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
-    return ok(
-      emitNeomodel(prepared, {
-        camelFields: options.naming === 'normalize',
-        header: options.header,
-      })
-    );
-  },
-};
-
 const sqlAdapter: FormatAdapter = {
   name: 'sql',
   extensions: ['.sql'],
@@ -717,38 +662,6 @@ const jpaAdapter: FormatAdapter = {
   },
 };
 
-const sdnAdapter: FormatAdapter = {
-  name: 'sdn',
-  // Output only, and no extension is claimed: ".java" is too generic to infer, so pass --to sdn.
-  extensions: [],
-  description:
-    'Spring Data Neo4j entities (Java: @Node, @Relationship and @RelationshipProperties, SDN 7 for Spring Boot 3)',
-  emit: (
-    schema: IrSchema,
-    options: FormatOptions
-  ): Result<FormatEmitOutput> => {
-    const packageName: string | undefined = options.namespace?.replace(
-      /^\.+|\.+$/g,
-      ''
-    );
-    if (packageName !== undefined && !isValidSdnPackage(packageName)) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid namespace "${options.namespace ?? ''}" for the sdn format. Expected a Java package name such as app.models (letters, digits and underscores in dot-separated parts, none of them a Java keyword).`
-      );
-    }
-    const prepared: IrSchema =
-      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
-    return ok(
-      emitSdn(prepared, {
-        camelFields: options.naming === 'normalize',
-        header: options.header,
-        ...(packageName === undefined ? {} : { packageName }),
-      })
-    );
-  },
-};
-
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
@@ -761,15 +674,15 @@ const builtIns: Result<FormatAdapter>[] = [
   registerFormat(movedStub('graphene')),
   registerFormat(typescriptAdapter),
   registerFormat(zodAdapter),
-  registerFormat(neo4jAdapter),
-  registerFormat(neomodelAdapter),
+  registerFormat(movedStub('neo4j')),
+  registerFormat(movedStub('neomodel')),
   registerFormat(jsonSchemaAdapter),
   registerFormat(sqlAdapter),
   registerFormat(sqlalchemyAdapter),
   registerFormat(sequelizeAdapter),
   registerFormat(movedStub('efcore')),
   registerFormat(jpaAdapter),
-  registerFormat(sdnAdapter),
+  registerFormat(movedStub('sdn')),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

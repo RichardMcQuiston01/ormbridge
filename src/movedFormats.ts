@@ -28,6 +28,30 @@ export const MOVED_FORMATS: readonly MovedFormat[] = [
     write: true,
   },
   {
+    name: 'neo4j',
+    packageName: 'ormbridge-neo4j',
+    description:
+      'Neo4j Cypher schema: node constraints and indexes, relationships as comments (--style enterprise adds Enterprise Edition constraints)',
+    read: false,
+    write: true,
+  },
+  {
+    name: 'neomodel',
+    packageName: 'ormbridge-neo4j',
+    description:
+      'neomodel classes for Neo4j (Python: StructuredNode, RelationshipTo and RelationshipFrom)',
+    read: false,
+    write: true,
+  },
+  {
+    name: 'sdn',
+    packageName: 'ormbridge-neo4j',
+    description:
+      'Spring Data Neo4j entities (Java: @Node, @Relationship and @RelationshipProperties, SDN 7 for Spring Boot 3)',
+    read: false,
+    write: true,
+  },
+  {
     name: 'doctrine',
     packageName: 'ormbridge-php',
     description: 'Doctrine ORM entities (PHP 8 attributes)',

@@ -1,4 +1,4 @@
-import type { IrField, IrIndex, IrModel, IrSchema } from '../ir.js';
+import type { IrField, IrIndex, IrModel, IrSchema } from 'ormbridge';
 import {
   collectEdges,
   defaultReverseName,
@@ -31,7 +31,7 @@ import {
   type PropertyContext,
   type PropertyRole,
 } from './neomodelProperties.js';
-import type { EmitOutput } from './prisma.js';
+import type { EmitOutput } from 'ormbridge';
 
 /**
  * neomodel writer (Python, the object-graph mapper for Neo4j).

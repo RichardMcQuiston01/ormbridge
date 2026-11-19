@@ -116,15 +116,14 @@ export type {
   JpaKeyMode,
   JpaStyle,
 } from './emitters/jpa.js';
-export { emitSdn } from './emitters/sdn.js';
-export type { SdnEmitOptions } from './emitters/sdn.js';
 export {
   checkStyle,
   EFCORE_STYLES,
   isOutputStyle,
+  NEO4J_STYLES,
   OUTPUT_STYLES,
 } from './styles.js';
-export type { EfcoreStyle, OutputStyle } from './styles.js';
+export type { EfcoreStyle, Neo4jStyle, OutputStyle } from './styles.js';
 export { sqlColumn, sqlDefault } from './parsers/sqlColumns.js';
 export type { ColumnShape } from './parsers/sqlColumns.js';
 export { emitTypeorm } from './emitters/typeorm.js';
@@ -139,10 +138,6 @@ export {
   JSON_SCHEMA_CONVENTION_KEYWORDS,
 } from './emitters/jsonSchema.js';
 export type { JsonSchemaOptions } from './emitters/jsonSchema.js';
-export { emitNeo4j, isNeo4jStyle, NEO4J_STYLES } from './emitters/neo4j.js';
-export type { Neo4jEmitOptions, Neo4jStyle } from './emitters/neo4j.js';
-export { emitNeomodel } from './emitters/neomodel.js';
-export type { NeomodelEmitOptions } from './emitters/neomodel.js';
 export { emitZod } from './emitters/zod.js';
 export type {
   ZodBigIntMode,
@@ -192,3 +187,14 @@ export {
   cockroachSequentialWarning,
   isCockroach,
 } from './emitters/cockroach.js';
+export { annotation, formatAnnotation } from './emitters/jpaFormat.js';
+export { planEnums, renderEnumBody } from './emitters/jpaEnums.js';
+export {
+  attributeNameOf as jpaAttributeNameOf,
+  capitalize,
+  classNameOf as jpaClassNameOf,
+  javaString,
+  RESERVED_TYPE_NAMES,
+  uniqueName,
+} from './emitters/jpaNames.js';
+export { renderFile } from './emitters/jpaRender.js';

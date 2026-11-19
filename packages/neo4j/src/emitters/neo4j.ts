@@ -1,4 +1,4 @@
-import type { IrIndex, IrModel, IrSchema } from '../ir.js';
+import type { IrIndex, IrModel, IrSchema } from 'ormbridge';
 import {
   buildGraph,
   primaryKeyNamesOf,
@@ -14,7 +14,7 @@ import {
   type SchemaTarget,
 } from './neo4jStatements.js';
 import type { Neo4jStyle } from './neo4jTypes.js';
-import type { EmitOutput } from './prisma.js';
+import type { EmitOutput } from 'ormbridge';
 
 export { isNeo4jStyle, NEO4J_STYLES, type Neo4jStyle } from './neo4jTypes.js';
 

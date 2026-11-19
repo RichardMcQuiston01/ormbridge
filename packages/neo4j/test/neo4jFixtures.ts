@@ -1,4 +1,4 @@
-import type { IrEnum, IrModel, IrSchema } from '../src/ir.js';
+import type { IrEnum, IrModel, IrSchema } from '../../../src/ir.js';
 import {
   field,
   idField,
@@ -6,7 +6,7 @@ import {
   model,
   relation,
   schemaOf,
-} from './gormFixtures.js';
+} from '../../../test/gormFixtures.js';
 
 /** IR fixtures for the Neo4j tests: every property type, awkward names, keys, indexes and join tables. */
 

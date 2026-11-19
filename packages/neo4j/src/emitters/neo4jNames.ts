@@ -1,9 +1,4 @@
-import {
-  singularize,
-  toCamelCase,
-  toPascalCase,
-  toSnakeCase,
-} from '../naming.js';
+import { singularize, toCamelCase, toPascalCase, toSnakeCase } from 'ormbridge';
 
 const PLAIN_IDENTIFIER: RegExp = /^[A-Za-z_][A-Za-z0-9_]*$/;
 

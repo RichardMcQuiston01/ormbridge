@@ -86,11 +86,11 @@ ormbridge convert -i ./prisma/schema.prisma --to sqlalchemy -o ./app/models.py
 ormbridge convert -i ./prisma/schema.prisma --to sqlalchemy --style sqlmodel -o ./app/models.py
 
 # Prisma -> Neo4j Cypher schema (".cypher" is not inferred, so pass --to neo4j; --style enterprise adds IS NOT NULL, NODE KEY and type constraints, which need Neo4j Enterprise Edition)
-ormbridge convert -i ./prisma/schema.prisma --to neo4j -o ./neo4j/schema.cypher
-ormbridge convert -i ./prisma/schema.prisma --to neo4j --style enterprise -o ./neo4j/schema.enterprise.cypher
+ormbridge convert -i ./prisma/schema.prisma --plugin ormbridge-neo4j --to neo4j -o ./neo4j/schema.cypher
+ormbridge convert -i ./prisma/schema.prisma --plugin ormbridge-neo4j --to neo4j --style enterprise -o ./neo4j/schema.enterprise.cypher
 
 # Prisma -> Spring Data Neo4j 7 entities (Java; ".java" is not inferred, so pass --to sdn; -o is a directory below which the package folders follow --namespace, default app.models)
-ormbridge convert -i ./prisma/schema.prisma --to sdn -o ./src/main/java
+ormbridge convert -i ./prisma/schema.prisma --plugin ormbridge-neo4j --to sdn -o ./src/main/java
 ormbridge convert -i ./prisma/schema.prisma --to sdn --namespace com.acme.graph -o ./src/main/java
 
 # Prisma -> neomodel classes for Neo4j (".py" means Django, so pass --to neomodel; the output is one Python module)

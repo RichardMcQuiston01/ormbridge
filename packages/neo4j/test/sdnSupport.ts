@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import type { GraphEdge } from '../src/emitters/neo4jEdges.js';
 import type { Graph, GraphNode } from '../src/emitters/neo4jGraph.js';
 import type { Neo4jServer } from './neo4jSupport.js';
-import type { ToolProbe } from './realToolSupport.js';
+import type { ToolProbe } from '../../../test/realToolSupport.js';
 
 /**
  * Helpers for the tests that compile the Spring Data Neo4j output (`--to sdn`) against the real Spring Data Neo4j

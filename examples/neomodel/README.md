@@ -2,7 +2,7 @@
 
 This folder shows the `neomodel` format: Python classes for [neomodel](https://neomodel.readthedocs.io) generated from the shared Prisma schema [`../schema/schema.prisma`](../schema/schema.prisma). The format is write-only, so there is no round trip.
 
-- `ormbridge.config.json` defines one conversion, from `prisma` to `neomodel`.
+- `ormbridge.config.json` loads the Neo4j add-on and defines one conversion, from `prisma` to `neomodel`. The `plugins` entry is a path into this repository; in your own project, run `npm install ormbridge-neo4j` and write `"plugins": ["ormbridge-neo4j"]`.
 - `generated/models.py` is the module. Each model is a `StructuredNode` class, and each foreign key is a `RelationshipTo` on one class and a `RelationshipFrom` on the other. The post-to-tag join table is one relationship, with no class of its own.
 
 The labels and relationship types are the same as in the [Neo4j example](../neo4j), so the two folders describe the same graph.

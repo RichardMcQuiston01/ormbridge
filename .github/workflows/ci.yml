@@ -348,7 +348,7 @@ jobs:
           test/sequelize7-server-verify.test.ts
           test/cockroachdb-verify.test.ts
           test/clickhouse-verify.test.ts
-          test/neo4j-verify.test.ts
+          packages/neo4j/test/neo4j-verify.test.ts
 
   # neomodel (Python) and Spring Data Neo4j (Java) against a Neo4j 5 Community service container. A separate job keeps
   # the Python and Maven installs and the extra container out of `real-tools-databases`, which is the longest job.
@@ -393,7 +393,7 @@ jobs:
           path: |
             ~/.npm
             ${{ env.TOOLS }}/sdn/m2
-          key: real-tools-neo4j-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', 'test/tools/sdn-verify/pom.xml', '.github/workflows/ci.yml') }}
+          key: real-tools-neo4j-${{ runner.os }}-${{ hashFiles('test/tools/setup-verification-tools.sh', 'packages/neo4j/test/tools/sdn-verify/pom.xml', '.github/workflows/ci.yml') }}
           restore-keys: real-tools-neo4j-${{ runner.os }}-
       - run: npm ci
       - name: Install neomodel (pinned in the setup script) and the Spring Data Neo4j packages
@@ -406,7 +406,7 @@ jobs:
           echo "NEO4J_USER=neo4j" >> "$GITHUB_ENV"
           echo "NEO4J_PASSWORD=ormbridge-ci-password" >> "$GITHUB_ENV"
       - name: Tests with the real neomodel and Spring Data Neo4j
-        run: npx vitest run --no-file-parallelism test/neomodel-verify.test.ts test/sdn-verify.test.ts
+        run: npx vitest run --no-file-parallelism packages/neo4j/test/neomodel-verify.test.ts packages/neo4j/test/sdn-verify.test.ts
 
   # The single name that stands for all of the real-tool jobs above. Branch protection and `needs: ci` in publish.yml
   # keep working with it, and it fails when any of them failed, was cancelled or did not run.

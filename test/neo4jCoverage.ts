@@ -5,7 +5,7 @@ import type {
   IrRelation,
   IrSchema,
 } from '../src/ir.js';
-import { relationshipTypeOf } from '../src/emitters/neo4jNames.js';
+import { relationshipTypeOf } from '../packages/neo4j/src/emitters/neo4jNames.js';
 
 function escapePattern(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

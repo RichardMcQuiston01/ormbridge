@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { convertText, type ConvertResult } from '../src/convert.js';
+import { convertText, type ConvertResult } from '../../../src/convert.js';
 import { collectEdges } from '../src/emitters/neo4jEdges.js';
 import { buildGraph } from '../src/emitters/neo4jGraph.js';
 import { emitNeomodel } from '../src/emitters/neomodel.js';
@@ -13,10 +13,10 @@ import {
   classNameOf,
   pyString,
 } from '../src/emitters/neomodelNames.js';
-import { getFormat } from '../src/formats.js';
-import type { IrSchema } from '../src/ir.js';
-import { normalizeSchema, type NamingMode } from '../src/transforms.js';
-import { constructsSchema } from './drizzleFixtures.js';
+import { getFormat } from '../../../src/formats.js';
+import type { IrSchema } from '../../../src/ir.js';
+import { normalizeSchema, type NamingMode } from '../../../src/transforms.js';
+import { constructsSchema } from '../../../test/drizzleFixtures.js';
 import {
   field,
   idField,
@@ -26,11 +26,14 @@ import {
   schemaOf,
   stressSchema,
   STATUS,
-} from './gormFixtures.js';
-import { expectFilesMatchGolden, loadCanonicalSources } from './harness.js';
-import { DEFAULT_OPTIONS, expectOk } from './helpers.js';
+} from '../../../test/gormFixtures.js';
+import {
+  expectFilesMatchGolden,
+  loadCanonicalSources,
+} from '../../../test/harness.js';
+import { DEFAULT_OPTIONS, expectOk } from '../../../test/helpers.js';
 import { joinsSchema, keysSchema } from './neo4jFixtures.js';
-import { checkNeomodelOutput } from './neomodelCoverage.js';
+import { checkNeomodelOutput } from '../../../test/neomodelCoverage.js';
 import {
   compareCatalogWithSchema,
   compareProperties,
@@ -41,7 +44,7 @@ import {
   EXTRA_SOURCES,
   parseSource,
   type VerifySource,
-} from './realToolSupport.js';
+} from '../../../test/realToolSupport.js';
 
 function emit(
   schema: IrSchema,
@@ -691,7 +694,7 @@ describe.skipIf(!pythonAvailable)('Python syntax', () => {
 
 describe('neomodel emitter: golden files', () => {
   const goldenRoot: string = fileURLToPath(
-    new URL('./golden-extras/', import.meta.url)
+    new URL('../../../test/golden-extras/', import.meta.url)
   );
   const fixtures: [string, () => Promise<IrSchema>][] = [
     ['kitchen-sink', () => Promise.resolve(kitchenSinkSchema())],

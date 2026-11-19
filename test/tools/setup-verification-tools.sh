@@ -314,7 +314,7 @@ if want sdn; then
   if [ -n "${java_bin}" ] && [ -n "${mvn_bin}" ]; then
     mkdir -p "${target}/sdn"
     scratch="$(mktemp -d)"
-    cp -r "${here}/sdn-verify/pom.xml" "${here}/sdn-verify/src" "${scratch}/"
+    cp -r "${here}/../../packages/neo4j/test/tools/sdn-verify/pom.xml" "${here}/../../packages/neo4j/test/tools/sdn-verify/src" "${scratch}/"
     java_home="$(dirname "$(dirname "$(readlink -f "${java_bin}")")")"
     # Building the tool fills the Maven repository that the test uses (-Dmaven.repo.local); the test then needs no network.
     if (

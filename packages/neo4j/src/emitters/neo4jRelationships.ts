@@ -5,8 +5,8 @@ import type {
   IrOnDelete,
   IrRelation,
   IrSchema,
-} from '../ir.js';
-import { findModel } from '../ir.js';
+} from 'ormbridge';
+import { findModel } from 'ormbridge';
 import {
   referencedField,
   type Graph,
