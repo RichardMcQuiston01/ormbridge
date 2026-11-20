@@ -1,11 +1,11 @@
 import type { IrEnum, IrField, IrSchema } from '../src/ir.js';
-import { collectEdges } from '../src/emitters/neo4jEdges.js';
+import { collectEdges } from '../packages/neo4j/src/emitters/neo4jEdges.js';
 import {
   buildGraph,
   primaryKeyNamesOf,
   type Graph,
   type GraphNode,
-} from '../src/emitters/neo4jGraph.js';
+} from '../packages/neo4j/src/emitters/neo4jGraph.js';
 import { attributeNameOf } from '../src/emitters/jpaNames.js';
 
 function escapePattern(text: string): string {

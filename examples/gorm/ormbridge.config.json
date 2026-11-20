@@ -1,4 +1,5 @@
 {
+  "plugins": ["../../packages/gorm/dist/index.js"],
   "conversions": [
     {
       "name": "to-gorm",

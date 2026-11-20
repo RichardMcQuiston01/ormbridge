@@ -1,4 +1,5 @@
 {
+  "plugins": ["../../packages/neo4j/dist/index.js"],
   "conversions": [
     {
       "name": "to-neomodel",

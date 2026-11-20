@@ -1,9 +1,5 @@
 import { emitDjango } from './emitters/django.js';
-import { emitDoctrine, isValidPhpNamespace } from './emitters/doctrine.js';
 import { emitDrizzle } from './emitters/drizzle.js';
-import { emitGorm, isValidGoPackageName } from './emitters/gorm.js';
-import { emitGraphene } from './emitters/graphene.js';
-import { emitLaravel } from './emitters/laravel.js';
 import {
   emitPrisma,
   type EmitOutput,
@@ -11,11 +7,7 @@ import {
 } from './emitters/prisma.js';
 import { emitTypeorm } from './emitters/typeorm.js';
 import { emitJsonSchema } from './emitters/jsonSchema.js';
-import {
-  emitEfcore,
-  isEfcoreStyle,
-  isValidCsharpNamespace,
-} from './emitters/efcore.js';
+import { movedStub } from './movedFormats.js';
 import {
   emitJpa,
   isJpaInheritanceMode,
@@ -28,26 +20,16 @@ import {
   type JpaInheritanceMode,
   type JpaKeyMode,
 } from './emitters/jpa.js';
-import { emitNeo4j, isNeo4jStyle } from './emitters/neo4j.js';
-import {
-  emitSdn,
-  isValidJavaPackage as isValidSdnPackage,
-} from './emitters/sdn.js';
-import { emitNeomodel } from './emitters/neomodel.js';
 import { emitSequelize, isSequelizeOutputStyle } from './emitters/sequelize.js';
 import { emitSqlAlchemy, isSqlAlchemyStyle } from './emitters/sqlalchemy.js';
 import { emitSqlDdl } from './emitters/sqlDdl.js';
 import { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
 import { emitZod } from './emitters/zod.js';
 import type { IrSchema } from './ir.js';
-import { parseDoctrine } from './parsers/doctrine.js';
 import { parseDrizzle } from './parsers/drizzle.js';
-import { parseEfcore } from './parsers/efcore.js';
 import { parseDjango, type DjangoSourceFile } from './parsers/django.js';
-import { parseGorm } from './parsers/gorm.js';
 import { parseJpa } from './parsers/jpa.js';
 import { parseJsonSchema } from './parsers/jsonSchema.js';
-import { parseLaravel } from './parsers/laravel.js';
 import { parsePrisma, type PrismaSourceFile } from './parsers/prisma.js';
 import { parseSequelize } from './parsers/sequelize.js';
 import { parseSqlAlchemy } from './parsers/sqlalchemy.js';
@@ -157,6 +139,14 @@ export interface FormatInput {
   description: string;
   /** Directory names that are never searched (`build`, `node_modules`, ...). */
   skippedDirectories?: readonly string[];
+  /** False when only the directories above are skipped, without the names every folder walk skips (`migrations`, `build`, `dist`, `env`). Default: true. */
+  inheritSkippedDirectories?: boolean;
+  /** Directories that are skipped by their name and the folder they are in (`bootstrap/cache`). */
+  isSkippedDirectory?: (name: string, parent: string) => boolean;
+  /** The folders to read when a directory is given (a project root holds the model folders). Default: the directory itself. */
+  roots?: (directory: string) => Promise<readonly string[]>;
+  /** True when the directory names above match in any letter case (`Bin`, `OBJ`). */
+  skippedDirectoriesIgnoreCase?: boolean;
   /** Files with an accepted extension that are not part of the model (tests, generated code). */
   isSkippedFile?: (path: string) => boolean;
 }
@@ -168,6 +158,11 @@ export interface FormatInput {
 export interface FormatAdapter {
   /** Unique identifier used by --from / --to and the programmatic API. */
   name: string;
+  /**
+   * Set on the stub of a format that moved into an addon package: the stub fails with a message that names the package,
+   * and registering the real format under the same name replaces it.
+   */
+  movedTo?: { packageName: string };
   /** File extensions (with the leading dot) used to infer this format from a path. */
   extensions: string[];
   /** One-line, human-readable summary shown by `ormbridge formats`. */
@@ -191,7 +186,10 @@ export interface FormatAdapter {
 
 const adapters: Map<string, FormatAdapter> = new Map<string, FormatAdapter>();
 
-/** Adds an adapter to the registry. Fails when the name or an extension is already taken. */
+/**
+ * Adds an adapter to the registry. Fails when the name or an extension is already taken, except that the stub of a moved
+ * format (`movedTo`) is replaced by the real format, in the same place of the list.
+ */
 export function registerFormat(adapter: FormatAdapter): Result<FormatAdapter> {
   if (adapter.name.trim() === '') {
     return err(
@@ -199,7 +197,8 @@ export function registerFormat(adapter: FormatAdapter): Result<FormatAdapter> {
       'A format adapter must have a non-empty name.'
     );
   }
-  if (adapters.has(adapter.name)) {
+  const existing: FormatAdapter | undefined = adapters.get(adapter.name);
+  if (existing !== undefined && existing.movedTo === undefined) {
     return err(
       'INVALID_OPTION',
       `The format "${adapter.name}" is already registered.`
@@ -366,14 +365,6 @@ const typeormAdapter: FormatAdapter = {
   },
 };
 
-const grapheneAdapter: FormatAdapter = {
-  name: 'graphene',
-  // No extension is claimed: ".py" belongs to Django, so pass --to graphene.
-  extensions: [],
-  description: 'Graphene (graphene-django) GraphQL schema',
-  emit: (schema: IrSchema): Result<EmitOutput> => ok(emitGraphene(schema)),
-};
-
 const typescriptAdapter: FormatAdapter = {
   name: 'typescript',
   // Output only, and no extension is claimed: TypeORM already reads TypeScript, so pass --to typescript.
@@ -418,129 +409,6 @@ const jsonSchemaAdapter: FormatAdapter = {
         ...(options.conventions === undefined
           ? {}
           : { conventions: options.conventions }),
-      })
-    );
-  },
-};
-
-const doctrineAdapter: FormatAdapter = {
-  name: 'doctrine',
-  // No extension is claimed: ".php" is too generic to infer, so pass --from/--to doctrine.
-  extensions: [],
-  description: 'Doctrine ORM entities (PHP 8 attributes)',
-  parse: (
-    sources: SourceText[],
-    options: FormatOptions
-  ): Promise<Result<IrSchema>> =>
-    parseDoctrine(
-      sources.map((source: SourceText) => ({
-        path: source.path,
-        text: source.text,
-      })),
-      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
-    ),
-  emit: (
-    schema: IrSchema,
-    options: FormatOptions
-  ): Result<FormatEmitOutput> => {
-    const namespace: string | undefined = options.namespace?.replace(
-      /^\\+|\\+$/g,
-      ''
-    );
-    if (namespace !== undefined && !isValidPhpNamespace(namespace)) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid namespace "${options.namespace ?? ''}". Expected a PHP namespace such as App\\Entity.`
-      );
-    }
-    const prepared: IrSchema =
-      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
-    return ok(
-      emitDoctrine(prepared, {
-        provider: options.provider,
-        camelFields: options.naming === 'normalize',
-        ...(namespace === undefined ? {} : { namespace }),
-      })
-    );
-  },
-};
-
-const laravelAdapter: FormatAdapter = {
-  name: 'laravel',
-  // No extension is claimed: ".php" is too generic to infer, so pass --from/--to laravel.
-  extensions: [],
-  description: 'Laravel migrations and Eloquent models',
-  parse: (
-    sources: SourceText[],
-    options: FormatOptions
-  ): Promise<Result<IrSchema>> =>
-    parseLaravel(
-      sources.map((source: SourceText) => ({
-        path: source.path,
-        text: source.text,
-      })),
-      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
-    ),
-  emit: (
-    schema: IrSchema,
-    options: FormatOptions
-  ): Result<FormatEmitOutput> => {
-    const namespace: string | undefined = options.namespace?.replace(
-      /^\\+|\\+$/g,
-      ''
-    );
-    if (namespace !== undefined && !isValidPhpNamespace(namespace)) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid namespace "${options.namespace ?? ''}". Expected a PHP namespace such as App\\Models.`
-      );
-    }
-    return ok(
-      emitLaravel(schema, {
-        provider: options.provider,
-        naming: options.naming,
-        ...(namespace === undefined ? {} : { namespace }),
-      })
-    );
-  },
-};
-
-const gormAdapter: FormatAdapter = {
-  name: 'gorm',
-  // No extension is claimed: ".go" is too generic to infer, so pass --from/--to gorm.
-  extensions: [],
-  description: 'GORM models (Go structs with gorm tags)',
-  parse: (
-    sources: SourceText[],
-    options: FormatOptions
-  ): Promise<Result<IrSchema>> =>
-    parseGorm(
-      sources.map((source: SourceText) => ({
-        path: source.path,
-        text: source.text,
-      })),
-      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
-    ),
-  emit: (
-    schema: IrSchema,
-    options: FormatOptions
-  ): Result<FormatEmitOutput> => {
-    if (
-      options.goPackage !== undefined &&
-      !isValidGoPackageName(options.goPackage)
-    ) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid Go package name "${options.goPackage}". Expected a Go identifier such as models.`
-      );
-    }
-    return ok(
-      emitGorm(schema, {
-        provider: options.provider,
-        naming: options.naming,
-        ...(options.goPackage === undefined
-          ? {}
-          : { goPackage: options.goPackage }),
       })
     );
   },
@@ -592,55 +460,6 @@ const zodAdapter: FormatAdapter = {
       options.naming === 'normalize' ? normalizeSchema(schema) : schema;
     return ok(
       emitZod(prepared, { camelFields: options.naming === 'normalize' })
-    );
-  },
-};
-
-const neo4jAdapter: FormatAdapter = {
-  name: 'neo4j',
-  // Output only, and no extension is claimed: ".cypher" is not read by anything here, so pass --to neo4j.
-  extensions: [],
-  description:
-    'Neo4j Cypher schema: node constraints and indexes, relationships as comments (--style enterprise adds Enterprise Edition constraints)',
-  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
-    if (options.style !== undefined) {
-      const checked: Result<OutputStyle> = checkStyle(
-        'neo4j',
-        String(options.style),
-        'style'
-      );
-      if (!checked.ok) {
-        return checked;
-      }
-    }
-    const prepared: IrSchema =
-      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
-    return ok(
-      emitNeo4j(prepared, {
-        camelFields: options.naming === 'normalize',
-        header: options.header,
-        ...(options.style === undefined || !isNeo4jStyle(options.style)
-          ? {}
-          : { style: options.style }),
-      })
-    );
-  },
-};
-
-const neomodelAdapter: FormatAdapter = {
-  name: 'neomodel',
-  // Output only, and no extension is claimed: ".py" is too generic to infer, so pass --to neomodel.
-  extensions: [],
-  description:
-    'neomodel classes for Neo4j (Python: StructuredNode, RelationshipTo and RelationshipFrom)',
-  emit: (schema: IrSchema, options: FormatOptions): Result<EmitOutput> => {
-    const prepared: IrSchema =
-      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
-    return ok(
-      emitNeomodel(prepared, {
-        camelFields: options.naming === 'normalize',
-        header: options.header,
-      })
     );
   },
 };
@@ -756,61 +575,6 @@ const sequelizeAdapter: FormatAdapter = {
   },
 };
 
-const efcoreAdapter: FormatAdapter = {
-  name: 'efcore',
-  // No extension is claimed: ".cs" is too generic to infer, so pass --from/--to efcore.
-  extensions: [],
-  description:
-    'Entity Framework Core 8 models (C#; DbContext, data annotations and the fluent API; --style fluent writes plain classes and configuration classes)',
-  parse: (
-    sources: SourceText[],
-    options: FormatOptions
-  ): Promise<Result<IrSchema>> =>
-    parseEfcore(
-      sources.map((source: SourceText) => ({
-        path: source.path,
-        text: source.text,
-      })),
-      { appLabel: options.appLabel ?? DEFAULT_APP_LABEL }
-    ),
-  emit: (
-    schema: IrSchema,
-    options: FormatOptions
-  ): Result<FormatEmitOutput> => {
-    if (options.style !== undefined) {
-      const checked: Result<OutputStyle> = checkStyle(
-        'efcore',
-        String(options.style),
-        'style'
-      );
-      if (!checked.ok) {
-        return checked;
-      }
-    }
-    const namespace: string | undefined = options.namespace?.replace(
-      /^\.+|\.+$/g,
-      ''
-    );
-    if (namespace !== undefined && !isValidCsharpNamespace(namespace)) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid namespace "${options.namespace ?? ''}". Expected a C# namespace such as App.Models.`
-      );
-    }
-    return ok(
-      emitEfcore(schema, {
-        provider: options.provider,
-        naming: options.naming,
-        header: options.header,
-        ...(namespace === undefined ? {} : { namespace }),
-        ...(options.style === undefined || !isEfcoreStyle(options.style)
-          ? {}
-          : { style: options.style }),
-      })
-    );
-  },
-};
-
 /**
  * Validates the options of the JPA writers (`jpa` and the addons that write the same classes in another language or with
  * Spring Data conventions) and turns them into the options of `emitJpa`.
@@ -898,59 +662,27 @@ const jpaAdapter: FormatAdapter = {
   },
 };
 
-const sdnAdapter: FormatAdapter = {
-  name: 'sdn',
-  // Output only, and no extension is claimed: ".java" is too generic to infer, so pass --to sdn.
-  extensions: [],
-  description:
-    'Spring Data Neo4j entities (Java: @Node, @Relationship and @RelationshipProperties, SDN 7 for Spring Boot 3)',
-  emit: (
-    schema: IrSchema,
-    options: FormatOptions
-  ): Result<FormatEmitOutput> => {
-    const packageName: string | undefined = options.namespace?.replace(
-      /^\.+|\.+$/g,
-      ''
-    );
-    if (packageName !== undefined && !isValidSdnPackage(packageName)) {
-      return err(
-        'INVALID_OPTION',
-        `Invalid namespace "${options.namespace ?? ''}" for the sdn format. Expected a Java package name such as app.models (letters, digits and underscores in dot-separated parts, none of them a Java keyword).`
-      );
-    }
-    const prepared: IrSchema =
-      options.naming === 'normalize' ? normalizeSchema(schema) : schema;
-    return ok(
-      emitSdn(prepared, {
-        camelFields: options.naming === 'normalize',
-        header: options.header,
-        ...(packageName === undefined ? {} : { packageName }),
-      })
-    );
-  },
-};
-
 // The built-in names and extensions are distinct, so these registrations cannot fail.
 const builtIns: Result<FormatAdapter>[] = [
   registerFormat(djangoAdapter),
   registerFormat(prismaAdapter),
   registerFormat(typeormAdapter),
-  registerFormat(doctrineAdapter),
-  registerFormat(laravelAdapter),
-  registerFormat(gormAdapter),
+  registerFormat(movedStub('doctrine')),
+  registerFormat(movedStub('laravel')),
+  registerFormat(movedStub('gorm')),
   registerFormat(drizzleAdapter),
-  registerFormat(grapheneAdapter),
+  registerFormat(movedStub('graphene')),
   registerFormat(typescriptAdapter),
   registerFormat(zodAdapter),
-  registerFormat(neo4jAdapter),
-  registerFormat(neomodelAdapter),
+  registerFormat(movedStub('neo4j')),
+  registerFormat(movedStub('neomodel')),
   registerFormat(jsonSchemaAdapter),
   registerFormat(sqlAdapter),
   registerFormat(sqlalchemyAdapter),
   registerFormat(sequelizeAdapter),
-  registerFormat(efcoreAdapter),
+  registerFormat(movedStub('efcore')),
   registerFormat(jpaAdapter),
-  registerFormat(sdnAdapter),
+  registerFormat(movedStub('sdn')),
 ];
 export const BUILT_IN_FORMAT_NAMES: readonly string[] = builtIns.flatMap(
   (registered: Result<FormatAdapter>) =>

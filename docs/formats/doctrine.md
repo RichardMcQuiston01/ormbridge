@@ -1,4 +1,6 @@
-# Doctrine
+# Doctrine (addon)
+
+Doctrine moved out of the core package in ormbridge 0.22, into `ormbridge-php` (which also has Laravel). Install the add-on and load it: `npm install ormbridge-php`, then pass `--plugin ormbridge-php` (or set `"plugins": ["ormbridge-php"]` in the config file). See [Addons](../ADDONS.md). Without it, `--from doctrine` and `--to doctrine` fail with a message that says so.
 
 ormbridge reads and writes Doctrine ORM entities written with PHP 8 attributes (`ormbridge formats` lists `doctrine` as `read + write`). It claims no file extension, because `.php` is too generic: always pass `--from doctrine` when reading and `--to doctrine` when writing. Reading is static (tree-sitter), so PHP and Composer are not needed. Writing produces several files, so `-o` must be a directory.
 

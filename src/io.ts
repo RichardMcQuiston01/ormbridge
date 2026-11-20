@@ -15,32 +15,9 @@ import {
   type SourceText,
 } from './convert.js';
 import { getFormat, type FormatInput } from './formats.js';
+import { movedFormatOf, movedMessage } from './movedFormats.js';
 import { orderSqlMigrationFiles } from './parsers/sqlMigrationOrder.js';
 import { describeThrown, err, ok, type Result } from './result.js';
-
-/** Directories skipped only when reading PHP projects: Composer packages and Symfony's cache/log directory. */
-const PHP_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set(['vendor', 'var']);
-
-/** Directories skipped when reading Go projects: vendored modules and Go's conventional test data. */
-const GO_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
-  'vendor',
-  'node_modules',
-  'testdata',
-  '.git',
-]);
-
-/**
- * Directories skipped when reading a Laravel project. The Django list does not
- * apply: `migrations` is where Laravel keeps its schema, and `build` / `env` /
- * `dist` are ordinary names there.
- */
-const LARAVEL_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
-  'vendor',
-  'storage',
-  'node_modules',
-  'tests',
-  '.git',
-]);
 
 /** Directories skipped when reading JSON Schema documents. */
 const JSON_SCHEMA_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
@@ -134,22 +111,6 @@ const SEQUELIZE_SOURCE_FILE: RegExp = /\.(?:[cm]?js|ts)$/;
 const SEQUELIZE_NON_MODEL_FILE: RegExp =
   /(?:\.d\.ts|\.(?:test|spec)\.[cm]?[jt]s)$/;
 
-/**
- * Directories skipped when reading Entity Framework Core projects: build output and installed packages. The
- * Migrations folder is read: it is replayed when the input has no entity classes and skipped otherwise.
- */
-const EFCORE_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
-  'bin',
-  'obj',
-  'packages',
-  'node_modules',
-  '.vs',
-  '.git',
-]);
-
-/** Generated C# files: migration designers and compiler output. */
-const EFCORE_NON_MODEL_FILE: RegExp = /\.(?:Designer|g|generated)\.cs$/i;
-
 /** Directories skipped when reading Hibernate / JPA projects: build output, tool folders and installed packages. */
 const JPA_SKIPPED_DIRECTORIES: ReadonlySet<string> = new Set([
   'target',
@@ -210,6 +171,17 @@ export interface RunSummary extends ConvertResult {
 export async function runConversion(
   options: RunOptions
 ): Promise<Result<RunSummary>> {
+  // A format that moved into an addon fails first with the message that names the package, not with a complaint that
+  // no input files were found (the stub knows nothing about the files of the format).
+  for (const name of [options.from, options.to]) {
+    const moved = getFormat(name);
+    if (moved.ok && moved.value.movedTo !== undefined) {
+      return err(
+        'UNSUPPORTED_CONVERSION',
+        movedMessage(movedFormatOf(name, moved.value.movedTo.packageName))
+      );
+    }
+  }
   const discovered: Result<string[]> = await discoverInputFiles(
     options.inputs,
     options.from
@@ -479,8 +451,9 @@ async function discoverInputFiles(
       );
     }
     if (inputStat.isDirectory()) {
-      const roots: string[] =
-        format === 'laravel' ? await laravelRoots(input) : [input];
+      const roots: readonly string[] = (await declaredInput(format)?.roots?.(
+        input
+      )) ?? [input];
       for (const root of roots) {
         const found: string[] = await walkDirectory(root, format);
         if (format === 'sequelize' && found.length === 0) {
@@ -510,25 +483,17 @@ async function discoverInputFiles(
             ? 'TypeScript (.ts) Drizzle schema files'
             : format === 'zod'
               ? 'TypeScript or JavaScript (.ts, .mts, .js, .mjs) files with Zod schemas'
-              : format === 'doctrine'
-                ? 'PHP (.php) entity files'
-                : format === 'laravel'
-                  ? 'PHP (.php) migration and model files (database/migrations and app/)'
-                  : format === 'gorm'
-                    ? 'Go (.go) model files'
-                    : format === 'json-schema'
-                      ? 'JSON (.json) schema or OpenAPI files'
-                      : format === 'sql'
-                        ? 'SQL (.sql) files'
-                        : format === 'sqlalchemy'
-                          ? 'Python (.py) files with SQLAlchemy or SQLModel models'
-                          : format === 'sequelize'
-                            ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files (or sequelize-cli migrations)'
-                            : format === 'efcore'
-                              ? 'C# (.cs) files with Entity Framework Core models'
-                              : format === 'jpa'
-                                ? 'Java (.java) files with Hibernate / JPA entities'
-                                : '.prisma files');
+              : format === 'json-schema'
+                ? 'JSON (.json) schema or OpenAPI files'
+                : format === 'sql'
+                  ? 'SQL (.sql) files'
+                  : format === 'sqlalchemy'
+                    ? 'Python (.py) files with SQLAlchemy or SQLModel models'
+                    : format === 'sequelize'
+                      ? 'JavaScript or TypeScript (.js, .cjs, .mjs, .ts) Sequelize model files (or sequelize-cli migrations)'
+                      : format === 'jpa'
+                        ? 'Java (.java) files with Hibernate / JPA entities'
+                        : '.prisma files');
     return err(
       'NO_INPUT_FILES',
       `No ${expected} were found in: ${inputs.join(', ')}.`
@@ -573,21 +538,10 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
       !SEQUELIZE_NON_MODEL_FILE.test(fileName)
     );
   }
-  if (format === 'efcore') {
-    return (
-      extname(filePath) === '.cs' &&
-      !EFCORE_NON_MODEL_FILE.test(basename(filePath))
-    );
-  }
   if (format === 'jpa') {
     return (
       extname(filePath) === '.java' &&
       !JPA_NON_MODEL_FILE.test(basename(filePath))
-    );
-  }
-  if (format === 'gorm') {
-    return (
-      extname(filePath) === '.go' && !/_test\.go$/.test(basename(filePath))
     );
   }
   if (format === 'json-schema') {
@@ -600,11 +554,6 @@ function isRelevantFile(filePath: string, format: FormatName): boolean {
     return (
       extname(filePath).toLowerCase() === '.sql' &&
       !SQL_ROLLBACK_FILES.test(basename(filePath))
-    );
-  }
-  if (format === 'doctrine' || format === 'laravel') {
-    return (
-      extname(filePath) === '.php' && !/Test\.php$/.test(basename(filePath))
     );
   }
   if (format === 'sqlalchemy') {
@@ -633,19 +582,15 @@ function isSkippedDirectory(
   const declared: FormatInput | undefined = declaredInput(format);
   if (declared !== undefined) {
     return (
-      SKIPPED_DIRECTORIES.has(name) ||
-      declared.skippedDirectories?.includes(name) === true
+      declared.isSkippedDirectory?.(name, parent) === true ||
+      (declared.inheritSkippedDirectories !== false &&
+        SKIPPED_DIRECTORIES.has(name)) ||
+      declared.skippedDirectories?.includes(
+        declared.skippedDirectoriesIgnoreCase === true
+          ? name.toLowerCase()
+          : name
+      ) === true
     );
-  }
-  if (format === 'laravel') {
-    // bootstrap/cache holds generated files; the rest of bootstrap/ is ordinary code.
-    return (
-      LARAVEL_SKIPPED_DIRECTORIES.has(name) ||
-      (name === 'cache' && basename(parent) === 'bootstrap')
-    );
-  }
-  if (format === 'gorm') {
-    return GO_SKIPPED_DIRECTORIES.has(name);
   }
   if (format === 'json-schema') {
     return JSON_SCHEMA_SKIPPED_DIRECTORIES.has(name);
@@ -659,9 +604,6 @@ function isSkippedDirectory(
   if (format === 'sequelize') {
     return SEQUELIZE_SKIPPED_DIRECTORIES.has(name);
   }
-  if (format === 'efcore') {
-    return EFCORE_SKIPPED_DIRECTORIES.has(name.toLowerCase());
-  }
   if (format === 'jpa') {
     // src/test holds the tests; db/migration holds Flyway and Liquibase migrations.
     return (
@@ -670,28 +612,7 @@ function isSkippedDirectory(
       (/^migrations?$/.test(name) && basename(parent) === 'db')
     );
   }
-  return (
-    SKIPPED_DIRECTORIES.has(name) ||
-    (format === 'doctrine' && PHP_SKIPPED_DIRECTORIES.has(name))
-  );
-}
-
-/**
- * For a Laravel project root (it has `database/migrations` or `app`), only those
- * two directories are read. Any other directory, such as `app/Models` or
- * `database/migrations` passed on its own, is read as given.
- */
-async function laravelRoots(directory: string): Promise<string[]> {
-  const roots: string[] = [];
-  for (const candidate of [
-    join(directory, 'database', 'migrations'),
-    join(directory, 'app'),
-  ]) {
-    if ((await classifyPath(candidate)) === 'directory') {
-      roots.push(candidate);
-    }
-  }
-  return roots.length > 0 ? roots : [directory];
+  return SKIPPED_DIRECTORIES.has(name);
 }
 
 /** Where `sequelize-cli` looks for migrations when `.sequelizerc` does not say otherwise. */

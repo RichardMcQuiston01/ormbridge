@@ -1,4 +1,6 @@
-# Spring Data Neo4j
+# Spring Data Neo4j (addon)
+
+The `sdn` format moved out of the core package in ormbridge 0.22, into `ormbridge-neo4j` (which has all three Neo4j writers: `neo4j`, `neomodel` and `sdn`). Install the add-on and load it: `npm install ormbridge-neo4j`, then pass `--plugin ormbridge-neo4j` (or set `"plugins": ["ormbridge-neo4j"]` in the config file). See [Addons](../ADDONS.md). Without it, `--to sdn` fails with a message that says so.
 
 The `sdn` format writes Java classes for [Spring Data Neo4j](https://spring.io/projects/spring-data-neo4j) 7, the version for Spring Boot 3. Each model becomes an `@Node` class, each column a field, and each foreign key an `@Relationship` field. It is write-only: it works with `--to` and never with `--from`. It claims no file extension, so always pass `--to sdn`. The output is a folder of `.java` files, one for each class, enum and converter.
 

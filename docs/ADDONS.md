@@ -27,10 +27,15 @@ npx ormbridge convert -i src/main/kotlin -f kotlin -t prisma --plugin ormbridge-
 
 ## Available addons
 
-| Package                                                                        | Formats                             | Guide                                       |
-| ------------------------------------------------------------------------------ | ----------------------------------- | ------------------------------------------- |
-| [`ormbridge-kotlin`](https://www.npmjs.com/package/ormbridge-kotlin)           | `kotlin`                            | [Kotlin entities](./formats/kotlin.md)      |
-| [`ormbridge-spring-data`](https://www.npmjs.com/package/ormbridge-spring-data) | `spring-data`, `spring-data-kotlin` | [Spring Data JPA](./formats/spring-data.md) |
+| Package                                                                        | Formats                             | Guide                                                                                                 |
+| ------------------------------------------------------------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| [`ormbridge-efcore`](https://www.npmjs.com/package/ormbridge-efcore)           | `efcore`                            | [Entity Framework Core](./formats/efcore.md)                                                          |
+| [`ormbridge-gorm`](https://www.npmjs.com/package/ormbridge-gorm)               | `gorm`                              | [GORM](./formats/gorm.md)                                                                             |
+| [`ormbridge-graphene`](https://www.npmjs.com/package/ormbridge-graphene)       | `graphene`                          | [Graphene](./formats/graphene.md)                                                                     |
+| [`ormbridge-kotlin`](https://www.npmjs.com/package/ormbridge-kotlin)           | `kotlin`                            | [Kotlin entities](./formats/kotlin.md)                                                                |
+| [`ormbridge-neo4j`](https://www.npmjs.com/package/ormbridge-neo4j)             | `neo4j`, `neomodel`, `sdn`          | [Neo4j](./formats/neo4j.md), [neomodel](./formats/neomodel.md), [Spring Data Neo4j](./formats/sdn.md) |
+| [`ormbridge-php`](https://www.npmjs.com/package/ormbridge-php)                 | `doctrine`, `laravel`               | [Doctrine](./formats/doctrine.md), [Laravel](./formats/laravel.md)                                    |
+| [`ormbridge-spring-data`](https://www.npmjs.com/package/ormbridge-spring-data) | `spring-data`, `spring-data-kotlin` | [Spring Data JPA](./formats/spring-data.md)                                                           |
 
 The addons live in the [`packages/`](../packages/) folder of this repository, are versioned on their own and are published with each release of ormbridge. They depend on `ormbridge` as a peer dependency, so install both. Addon formats are not in the [conversion matrix](./CONVERSION_MATRIX.md), which covers the formats of the core package.
 
@@ -63,6 +68,7 @@ export default plugin;
 - Export a `default` condition from `package.json` (`"exports": { ".": { "import": "./dist/index.js", "default": "./dist/index.js" } }`), which is how ormbridge resolves the package.
 - The adapter interface is described in the [format registry](./API.md#format-registry). Give the adapter an `input` (the extensions of its source files, what the files are called in the "no files found" message, the directories and files to skip) so that a directory input is searched for the right files; without it a directory is searched like Django models.
 - The JPA writer can be reused: `emitJpa` takes an `extension` with a `renderer` (writes the planned classes in another language; the Kotlin addon does this) and an `adjust` step (changes the plans and adds files; the Spring Data addon does this), and `jpaEmitOptionsFor(formatOptions)` validates and converts the options of a format the way the `jpa` format does. See the two addons in [`packages/`](../packages/) for working examples.
+- If the addon reads source code with tree-sitter, ship only the grammar it needs: copy it at build time with `node scripts/copy-grammars.mjs dist/grammars <name>` (see the repository's `scripts/copy-grammars.mjs`) and load it with `loadGrammarParser(name, label, import.meta.url)`, which looks in the addon's `grammars` folder first. Do not depend on `tree-sitter-wasms`, which is 50 MB.
 - Programmatic use: `loadPlugin(specifier, baseDirectory)`, `loadPlugins` and `registerPlugin(plugin)` are exported from `ormbridge`.
 
 [Back to the format guides](./formats/README.md)

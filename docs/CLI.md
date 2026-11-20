@@ -20,13 +20,13 @@ ormbridge convert -i ./prisma/schema.prisma -o ./shop/models.py --app-label shop
 ormbridge convert -i ./src/entities --from typeorm -o ./prisma/schema.prisma
 
 # Doctrine (PHP 8 attributes) -> Prisma (every .php file is read; vendor/, var/ and *Test.php are skipped)
-ormbridge convert -i ./src/Entity --from doctrine -o ./prisma/schema.prisma
+ormbridge convert -i ./src/Entity --from doctrine --plugin ormbridge-php -o ./prisma/schema.prisma
 
 # Laravel project root -> Prisma (reads database/migrations and app/; vendor/, storage/, tests/ and bootstrap/cache are skipped)
-ormbridge convert -i ./my-laravel-app --from laravel -o ./prisma/schema.prisma
+ormbridge convert -i ./my-laravel-app --from laravel --plugin ormbridge-php -o ./prisma/schema.prisma
 
-# GORM (Go structs with gorm tags) -> Prisma (every .go file is read; vendor/, testdata/ and *_test.go are skipped)
-ormbridge convert -i ./internal/models --from gorm -o ./prisma/schema.prisma
+# GORM (Go structs with gorm tags) -> Prisma (needs the ormbridge-gorm add-on; every .go file is read; vendor/, testdata/ and *_test.go are skipped)
+ormbridge convert -i ./internal/models --from gorm --plugin ormbridge-gorm -o ./prisma/schema.prisma
 
 # Drizzle ORM (pgTable / mysqlTable / sqliteTable) -> Prisma (every .ts file is read and the tables are picked out; node_modules/, *.d.ts and *.test.ts are skipped)
 ormbridge convert -i ./src/db/schema --from drizzle -o ./prisma/schema.prisma
@@ -35,13 +35,13 @@ ormbridge convert -i ./src/db/schema --from drizzle -o ./prisma/schema.prisma
 ormbridge convert -i ./src/schemas --from zod -o ./prisma/schema.prisma
 
 # Entity Framework Core models (C#: entities, DbContext and configuration classes) -> Prisma (every .cs file is read and the entities are picked out; bin/, obj/ and *.Designer.cs are skipped, and the Migrations/ folder is replayed when the input has no entity classes)
-ormbridge convert -i ./Models --from efcore -o ./prisma/schema.prisma
+ormbridge convert -i ./Models --from efcore --plugin ormbridge-efcore -o ./prisma/schema.prisma
 
 # EF Core migrations (the Migrations folder with its *ModelSnapshot.cs, no entity classes) -> Prisma: the Up methods are replayed in migration order
-ormbridge convert -i ./Data/Migrations --from efcore -o ./prisma/schema.prisma
+ormbridge convert -i ./Data/Migrations --from efcore --plugin ormbridge-efcore -o ./prisma/schema.prisma
 
 # Prisma -> Entity Framework Core 8 models (".cs" is not inferred, so pass --to efcore; -o is a directory; --style fluent writes plain classes and IEntityTypeConfiguration<T> classes)
-ormbridge convert -i ./prisma/schema.prisma --to efcore -o ./Data
+ormbridge convert -i ./prisma/schema.prisma --to efcore --plugin ormbridge-efcore -o ./Data
 ormbridge convert -i ./prisma/schema.prisma --to efcore --style fluent --namespace Shop.Data -o ./Data
 
 # Prisma -> Hibernate / JPA entities (Java; ".java" is not inferred, so pass --to jpa; -o is a directory below which the package folders are created; --style javax writes Hibernate 5 / javax.persistence)
@@ -86,11 +86,11 @@ ormbridge convert -i ./prisma/schema.prisma --to sqlalchemy -o ./app/models.py
 ormbridge convert -i ./prisma/schema.prisma --to sqlalchemy --style sqlmodel -o ./app/models.py
 
 # Prisma -> Neo4j Cypher schema (".cypher" is not inferred, so pass --to neo4j; --style enterprise adds IS NOT NULL, NODE KEY and type constraints, which need Neo4j Enterprise Edition)
-ormbridge convert -i ./prisma/schema.prisma --to neo4j -o ./neo4j/schema.cypher
-ormbridge convert -i ./prisma/schema.prisma --to neo4j --style enterprise -o ./neo4j/schema.enterprise.cypher
+ormbridge convert -i ./prisma/schema.prisma --plugin ormbridge-neo4j --to neo4j -o ./neo4j/schema.cypher
+ormbridge convert -i ./prisma/schema.prisma --plugin ormbridge-neo4j --to neo4j --style enterprise -o ./neo4j/schema.enterprise.cypher
 
 # Prisma -> Spring Data Neo4j 7 entities (Java; ".java" is not inferred, so pass --to sdn; -o is a directory below which the package folders follow --namespace, default app.models)
-ormbridge convert -i ./prisma/schema.prisma --to sdn -o ./src/main/java
+ormbridge convert -i ./prisma/schema.prisma --plugin ormbridge-neo4j --to sdn -o ./src/main/java
 ormbridge convert -i ./prisma/schema.prisma --to sdn --namespace com.acme.graph -o ./src/main/java
 
 # Prisma -> neomodel classes for Neo4j (".py" means Django, so pass --to neomodel; the output is one Python module)

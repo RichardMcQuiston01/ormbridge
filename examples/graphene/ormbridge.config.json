@@ -1,4 +1,5 @@
 {
+  "plugins": ["../../packages/graphene/dist/index.js"],
   "conversions": [
     {
       "name": "to-graphene",

@@ -28,11 +28,6 @@ export { parseDjango } from './parsers/django.js';
 export type { DjangoSourceFile, DjangoParseOptions } from './parsers/django.js';
 export { parsePrisma } from './parsers/prisma.js';
 export type { PrismaSourceFile, PrismaParseOptions } from './parsers/prisma.js';
-export { parseDoctrine } from './parsers/doctrine.js';
-export type {
-  DoctrineSourceFile,
-  DoctrineParseOptions,
-} from './parsers/doctrine.js';
 export { parseDrizzle } from './parsers/drizzle.js';
 export type {
   DrizzleSourceFile,
@@ -40,22 +35,13 @@ export type {
 } from './parsers/drizzle.js';
 export { parseZod } from './parsers/zod.js';
 export type { ZodSourceFile, ZodParseOptions } from './parsers/zod.js';
-export { parseEfcore, isSkippedEfcorePath } from './parsers/efcore.js';
-export type { EfcoreParseOptions, EfcoreSourceFile } from './parsers/efcore.js';
 export { parseJpa, isSkippedJpaPath } from './parsers/jpa.js';
 export type { JpaParseOptions, JpaSourceFile } from './parsers/jpa.js';
-export { parseGorm } from './parsers/gorm.js';
-export type { GormSourceFile, GormParseOptions } from './parsers/gorm.js';
 export { parseJsonSchema } from './parsers/jsonSchema.js';
 export type {
   JsonSchemaSourceFile,
   JsonSchemaParseOptions,
 } from './parsers/jsonSchema.js';
-export { parseLaravel } from './parsers/laravel.js';
-export type {
-  LaravelSourceFile,
-  LaravelParseOptions,
-} from './parsers/laravel.js';
 export { parseSequelize } from './parsers/sequelize.js';
 export type {
   SequelizeParseOptions,
@@ -81,12 +67,6 @@ export type {
   PrismaProvider,
 } from './emitters/prisma.js';
 export { emitDjango } from './emitters/django.js';
-export { emitDoctrine } from './emitters/doctrine.js';
-export type { DoctrineEmitOptions } from './emitters/doctrine.js';
-export { emitLaravel } from './emitters/laravel.js';
-export type { LaravelEmitOptions } from './emitters/laravel.js';
-export { emitGorm } from './emitters/gorm.js';
-export type { GormEmitOptions } from './emitters/gorm.js';
 export { emitDrizzle } from './emitters/drizzle.js';
 export type { DrizzleEmitOptions } from './emitters/drizzle.js';
 export {
@@ -120,14 +100,6 @@ export type {
   SequelizeStyle,
 } from './emitters/sequelize.js';
 export {
-  DEFAULT_EFCORE_NAMESPACE,
-  EFCORE_STYLES,
-  emitEfcore,
-  isEfcoreStyle,
-  isValidCsharpNamespace,
-} from './emitters/efcore.js';
-export type { EfcoreEmitOptions, EfcoreStyle } from './emitters/efcore.js';
-export {
   DEFAULT_JPA_PACKAGE,
   emitJpa,
   isJpaInheritanceMode,
@@ -144,11 +116,16 @@ export type {
   JpaKeyMode,
   JpaStyle,
 } from './emitters/jpa.js';
-export { emitSdn } from './emitters/sdn.js';
-export type { SdnEmitOptions } from './emitters/sdn.js';
-export { checkStyle, isOutputStyle, OUTPUT_STYLES } from './styles.js';
-export type { OutputStyle } from './styles.js';
-export { emitGraphene } from './emitters/graphene.js';
+export {
+  checkStyle,
+  EFCORE_STYLES,
+  isOutputStyle,
+  NEO4J_STYLES,
+  OUTPUT_STYLES,
+} from './styles.js';
+export type { EfcoreStyle, Neo4jStyle, OutputStyle } from './styles.js';
+export { sqlColumn, sqlDefault } from './parsers/sqlColumns.js';
+export type { ColumnShape } from './parsers/sqlColumns.js';
 export { emitTypeorm } from './emitters/typeorm.js';
 export type { TypeormEmitOptions } from './emitters/typeorm.js';
 export { emitTypescriptInterfaces } from './emitters/typescriptInterfaces.js';
@@ -161,10 +138,6 @@ export {
   JSON_SCHEMA_CONVENTION_KEYWORDS,
 } from './emitters/jsonSchema.js';
 export type { JsonSchemaOptions } from './emitters/jsonSchema.js';
-export { emitNeo4j, isNeo4jStyle, NEO4J_STYLES } from './emitters/neo4j.js';
-export type { Neo4jEmitOptions, Neo4jStyle } from './emitters/neo4j.js';
-export { emitNeomodel } from './emitters/neomodel.js';
-export type { NeomodelEmitOptions } from './emitters/neomodel.js';
 export { emitZod } from './emitters/zod.js';
 export type {
   ZodBigIntMode,
@@ -174,7 +147,7 @@ export type {
 export { expandManyToMany, normalizeSchema } from './transforms.js';
 export type { NamingMode } from './transforms.js';
 export type * from './ir.js';
-export { err, ok } from './result.js';
+export { describeThrown, err, ok } from './result.js';
 export type { ConversionError, ErrorCode, Result } from './result.js';
 export {
   loadPlugin,
@@ -195,3 +168,33 @@ export type {
 export type { AnnotationNode, AnnotationValue } from './emitters/jpaFormat.js';
 export type { FileLayout as JpaFileLayout } from './emitters/jpaRender.js';
 export type { KeyClassOptions as JpaKeyClassOptions } from './emitters/jpaKeyClass.js';
+export { loadGrammarParser, locateGrammar } from './grammar.js';
+export { prismaOnlyWarnings } from './prismaOnlyConstructs.js';
+export { toSnakeCase } from './naming.js';
+export { findModel } from './ir.js';
+export {
+  limitIdentifier,
+  shortHash,
+  singularize,
+  splitWords,
+  toCamelCase,
+  toPascalCase,
+} from './naming.js';
+export {
+  COCKROACH_INDEX_METHODS,
+  COCKROACH_PREFIX,
+  cockroachInvertible,
+  cockroachSequentialWarning,
+  isCockroach,
+} from './emitters/cockroach.js';
+export { annotation, formatAnnotation } from './emitters/jpaFormat.js';
+export { planEnums, renderEnumBody } from './emitters/jpaEnums.js';
+export {
+  attributeNameOf as jpaAttributeNameOf,
+  capitalize,
+  classNameOf as jpaClassNameOf,
+  javaString,
+  RESERVED_TYPE_NAMES,
+  uniqueName,
+} from './emitters/jpaNames.js';
+export { renderFile } from './emitters/jpaRender.js';

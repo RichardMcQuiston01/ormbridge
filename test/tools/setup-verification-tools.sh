@@ -245,7 +245,7 @@ if want dotnet; then
     restored="yes"
     for project in efcore-verify efcore-migrations-verify; do
       rm -rf "${scratch:?}"/*
-      cp "${here}/${project}"/*.csproj "${here}/${project}/Program.cs" "${scratch}/"
+      cp "${here}/../../packages/efcore/test/tools/${project}"/*.csproj "${here}/../../packages/efcore/test/tools/${project}/Program.cs" "${scratch}/"
       if ! (
         cd "${scratch}"
         NUGET_PACKAGES="${target}/efcore/nuget" DOTNET_CLI_HOME="${target}/efcore/home" \
@@ -314,7 +314,7 @@ if want sdn; then
   if [ -n "${java_bin}" ] && [ -n "${mvn_bin}" ]; then
     mkdir -p "${target}/sdn"
     scratch="$(mktemp -d)"
-    cp -r "${here}/sdn-verify/pom.xml" "${here}/sdn-verify/src" "${scratch}/"
+    cp -r "${here}/../../packages/neo4j/test/tools/sdn-verify/pom.xml" "${here}/../../packages/neo4j/test/tools/sdn-verify/src" "${scratch}/"
     java_home="$(dirname "$(dirname "$(readlink -f "${java_bin}")")")"
     # Building the tool fills the Maven repository that the test uses (-Dmaven.repo.local); the test then needs no network.
     if (

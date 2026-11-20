@@ -20,6 +20,9 @@ export interface OrmbridgePlugin {
   formats: FormatAdapter[];
 }
 
+/** The plugin that registered each format name, so loading the same plugin again (another copy of it) does nothing. */
+const registeredBy: Map<string, string> = new Map<string, string>();
+
 /** True when a value has the shape of an `OrmbridgePlugin`. */
 export function isOrmbridgePlugin(value: unknown): value is OrmbridgePlugin {
   if (typeof value !== 'object' || value === null) {
@@ -34,7 +37,7 @@ export function isOrmbridgePlugin(value: unknown): value is OrmbridgePlugin {
 }
 
 /**
- * Adds the formats of a plugin to the registry. A format that is already registered from the same plugin is skipped. When a
+ * Adds the formats of a plugin to the registry. A format that the same plugin (by name) already registered is skipped, so a second copy of a plugin does nothing. When a
  * format cannot be registered (its name or an extension is taken) the formats added so far are removed again, so a
  * plugin is registered completely or not at all.
  */
@@ -45,7 +48,11 @@ export function registerPlugin(
   for (const adapter of plugin.formats) {
     // Loading a plugin twice (the CLI flag and the config file) hands back the same adapter objects.
     const existing: Result<FormatAdapter> = getFormat(adapter.name);
-    if (existing.ok && existing.value === adapter) {
+    if (
+      existing.ok &&
+      (existing.value === adapter ||
+        registeredBy.get(adapter.name) === plugin.name)
+    ) {
       continue;
     }
     const result: Result<FormatAdapter> = registerFormat(adapter);
@@ -59,6 +66,7 @@ export function registerPlugin(
       );
     }
     added.push(adapter.name);
+    registeredBy.set(adapter.name, plugin.name);
   }
   return ok(plugin);
 }
